@@ -102,10 +102,15 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Security & parsing middleware
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+}));
 app.use(cors({
     origin: function (origin, callback) {
         const defaultOrigins = [
+            'https://manage-v1.glxgroup.lk',
             'https://glx-raxwo.netlify.app',
             'https://glx-4a76.onrender.com',
             'https://glx-industries.netlify.app',
@@ -119,10 +124,10 @@ app.use(cors({
             ? process.env.FRONTEND_URL.split(',').map(o => o.trim()) 
             : [];
         const allAllowed = [...new Set([...allowedOrigins, ...defaultOrigins])];
-        if (!origin || allAllowed.includes(origin) || allAllowed.includes(origin.replace(/\/$/, ''))) {
+        if (!origin || allAllowed.includes(origin) || allAllowed.includes(origin.replace(/\/$/, '')) || origin.includes('glxgroup.lk')) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(null, true);
         }
     },
     credentials: true,
