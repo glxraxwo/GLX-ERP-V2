@@ -19,26 +19,26 @@ export default function DateRangeFilter({
 
     return (
         <div className={`flex flex-wrap items-center gap-2 ${className}`}>
-            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1 min-h-[44px]">
-                <Calendar size={15} className="text-gray-400 shrink-0" />
+            <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-[#132238] border border-gray-300 dark:border-slate-700 rounded-lg px-2.5 py-1 min-h-[44px]">
+                <Calendar size={15} className="text-gray-400 dark:text-slate-400 shrink-0" />
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-gray-500 uppercase leading-none">{fromLabel}</span>
+                    <span className="text-[9px] font-bold text-gray-500 dark:text-slate-400 uppercase leading-none">{fromLabel}</span>
                     <input
                         type="date"
-                        className="bg-transparent text-xs text-gray-800 focus:outline-none cursor-pointer"
+                        className="bg-transparent text-xs text-gray-800 dark:text-slate-100 focus:outline-none cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
                         value={startDate || ''}
                         onChange={(e) => onStartDateChange(e.target.value)}
                     />
                 </div>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1 min-h-[44px]">
-                <Calendar size={15} className="text-gray-400 shrink-0" />
+            <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-[#132238] border border-gray-300 dark:border-slate-700 rounded-lg px-2.5 py-1 min-h-[44px]">
+                <Calendar size={15} className="text-gray-400 dark:text-slate-400 shrink-0" />
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-gray-500 uppercase leading-none">{toLabel}</span>
+                    <span className="text-[9px] font-bold text-gray-500 dark:text-slate-400 uppercase leading-none">{toLabel}</span>
                     <input
                         type="date"
-                        className="bg-transparent text-xs text-gray-800 focus:outline-none cursor-pointer"
+                        className="bg-transparent text-xs text-gray-800 dark:text-slate-100 focus:outline-none cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
                         value={endDate || ''}
                         onChange={(e) => onEndDateChange(e.target.value)}
                     />

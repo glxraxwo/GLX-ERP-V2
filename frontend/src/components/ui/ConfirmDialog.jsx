@@ -23,7 +23,7 @@ export default function ConfirmDialog({
                         <AlertTriangle size={18} className={variant === 'danger' ? 'text-red-600' : 'text-amber-600'} />
                     </div>
                     <div className="flex-1">
-                        <p className="text-sm text-gray-700 leading-relaxed">{message}</p>
+                        <p className="text-sm text-gray-700 dark:text-slate-300 leading-relaxed">{message}</p>
                     </div>
                 </div>
                 {/* Full-width buttons stacked on mobile, side-by-side on sm+ */}

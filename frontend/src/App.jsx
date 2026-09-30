@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import LoginPage from './pages/LoginPage';
+import AppHubPage from './pages/AppHubPage';
 import DashboardPage from './pages/DashboardPage';
 import ProductsPage from './pages/ProductsPage';
 import CategoriesPage from './pages/CategoriesPage';
@@ -149,7 +150,8 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<DashboardPage />} />
+        <Route path="/" element={<AppHubPage />} />
+        <Route path="/hub" element={<AppHubPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/products" element={<ProtectedRoute requiredAnyPermission={['products.view', 'inventory.view', 'sales.view', 'dashboard.view']}><ProductsPage /></ProtectedRoute>} />
         <Route path="/barcode-generator" element={<ProtectedRoute requiredAnyPermission={['products.view', 'inventory.view', 'sales.view', 'dashboard.view']}><BarcodeGeneratorPage /></ProtectedRoute>} />

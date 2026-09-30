@@ -34,7 +34,7 @@ export default function LoginPage() {
             const { token, ...user } = response.data;
             login(user, token);
             toast.success(`Welcome back, ${user.firstName}!`);
-            navigate('/dashboard');
+            navigate('/');
         },
         onError: (error) => {
             const message = error.response?.data?.message || 'Login failed';
@@ -42,9 +42,9 @@ export default function LoginPage() {
         },
     });
 
-    // Already logged in? Go to dashboard
+    // Already logged in? Go to App Hub
     if (isAuthenticated) {
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to="/" replace />;
     }
 
     const onSubmit = (data) => {

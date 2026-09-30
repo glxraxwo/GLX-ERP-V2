@@ -14,10 +14,10 @@ export default function Button({
 
     const variants = {
         primary: 'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 shadow-xs',
-        secondary: 'bg-gray-100 text-gray-800 hover:bg-gray-200 active:bg-gray-300 border border-gray-200',
+        secondary: 'bg-gray-100 dark:bg-[#182B46] text-gray-800 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-[#203656] active:bg-gray-300 dark:active:bg-[#28436a] border border-gray-200 dark:border-slate-700',
         danger: 'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 shadow-xs',
-        outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100',
-        ghost: 'text-gray-700 hover:bg-gray-100 active:bg-gray-200',
+        outline: 'border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-[#1C2E4A] active:bg-gray-100 dark:active:bg-[#233857]',
+        ghost: 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-[#182B46] active:bg-gray-200 dark:active:bg-[#203656]',
     };
 
     const sizes = {

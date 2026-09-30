@@ -19,6 +19,14 @@ export const useStockItems = (filters = {}) => useQuery({
     refetchOnMount: 'always', // Always fetch fresh data when component mounts
 });
 
+export const useLowStockAlertCount = (options = {}) => useQuery({
+    queryKey: ['stock', { lowStock: 'true', limit: 1 }],
+    queryFn: () => stockApi.list({ lowStock: 'true', limit: 1 }),
+    refetchInterval: 60000,
+    staleTime: 30000,
+    ...options
+});
+
 export const useStockMovements = (filters = {}) => useQuery({
     queryKey: ['stockMovements', filters],
     queryFn: () => stockApi.movements(filters),

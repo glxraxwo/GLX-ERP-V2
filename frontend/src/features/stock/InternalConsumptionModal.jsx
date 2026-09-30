@@ -201,9 +201,9 @@ export default function InternalConsumptionModal({ isOpen, onClose }) {
                         </Button>
                     </div>
 
-                    <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                    <div className="border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
                         <table className="w-full text-left text-xs">
-                            <thead className="bg-gray-100 text-gray-700 font-semibold border-b border-gray-200">
+                            <thead className="bg-gray-100 dark:bg-[#0B1728] text-gray-700 dark:text-slate-300 font-semibold border-b border-gray-200 dark:border-slate-700">
                                 <tr>
                                     <th className="p-2.5">Stock Item</th>
                                     <th className="p-2.5 w-24 text-right">Available</th>
@@ -213,25 +213,25 @@ export default function InternalConsumptionModal({ isOpen, onClose }) {
                                     <th className="p-2.5 w-12 text-center"></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 bg-white">
+                            <tbody className="divide-y divide-gray-200 dark:divide-slate-700 bg-white dark:bg-[#111F33]">
                                 {items.map((item, idx) => {
                                     const subtotal = (Number(item.quantity) || 0) * (Number(item.costPerUnit) || 0);
                                     return (
-                                        <tr key={idx} className="hover:bg-gray-50">
+                                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-[#182B46]">
                                             <td className="p-2">
                                                 <select
                                                     value={item.productId}
                                                     onChange={(e) => handleProductChange(idx, e.target.value)}
-                                                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+                                                    className="w-full border border-gray-300 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
                                                     required
                                                 >
-                                                    <option value="">-- Select Item --</option>
+                                                    <option value="" className="dark:bg-[#132238]">-- Select Item --</option>
                                                     {productOptions.map(opt => (
-                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                        <option key={opt.value} value={opt.value} className="dark:bg-[#132238]">{opt.label}</option>
                                                     ))}
                                                 </select>
                                             </td>
-                                            <td className="p-2 text-right font-medium text-gray-600">
+                                            <td className="p-2 text-right font-medium text-gray-600 dark:text-slate-300">
                                                 {item.availableStock || 0}
                                             </td>
                                             <td className="p-2 text-right">
@@ -241,7 +241,7 @@ export default function InternalConsumptionModal({ isOpen, onClose }) {
                                                     step="any"
                                                     value={item.quantity}
                                                     onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
-                                                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary-500 font-bold"
+                                                    className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white rounded-lg px-2 py-1.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary-500 font-bold"
                                                     required
                                                 />
                                             </td>
@@ -252,11 +252,11 @@ export default function InternalConsumptionModal({ isOpen, onClose }) {
                                                     step="any"
                                                     value={item.costPerUnit}
                                                     onChange={(e) => handleItemChange(idx, 'costPerUnit', e.target.value)}
-                                                    className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary-500 font-mono"
+                                                    className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white rounded-lg px-2 py-1.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary-500 font-mono"
                                                     required
                                                 />
                                             </td>
-                                            <td className="p-2 text-right font-bold text-gray-900">
+                                            <td className="p-2 text-right font-bold text-gray-900 dark:text-white">
                                                 {subtotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}
                                             </td>
                                             <td className="p-2 text-center">
@@ -264,7 +264,7 @@ export default function InternalConsumptionModal({ isOpen, onClose }) {
                                                     <button
                                                         type="button"
                                                         onClick={() => removeItemRow(idx)}
-                                                        className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                                                        className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
                                                     >
                                                         <Trash2 size={14} />
                                                     </button>
@@ -297,7 +297,7 @@ export default function InternalConsumptionModal({ isOpen, onClose }) {
                     onChange={(e) => setNotes(e.target.value)}
                 />
 
-                <div className="flex justify-end gap-2 pt-3 border-t">
+                <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-slate-700">
                     <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
                         Cancel
                     </Button>

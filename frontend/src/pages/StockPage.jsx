@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Boxes, AlertTriangle, PackagePlus, ArrowRightLeft, Settings2, History, Edit, Trash2, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -25,16 +25,28 @@ import InternalConsumptionModal from '../features/stock/InternalConsumptionModal
 
 export default function StockPage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { user } = useAuthStore();
     const { hasPermission } = usePermission();
     const canAdjust = hasPermission('inventory.adjust') || ['super_admin', 'admin', 'manager', 'warehouse_manager', 'warehouse_staff'].includes(user?.role);
 
-    const [filters, setFilters] = useState({
-        search: '', warehouseId: '', lowStock: '',
+    const [filters, setFilters] = useState(() => ({
+        search: searchParams.get('search') || '',
+        warehouseId: searchParams.get('warehouseId') || '',
+        lowStock: searchParams.get('lowStock') || '',
         stockType: '', // 'open' or 'balance' or ''
-        startDate: '', endDate: '',
-        page: 1, limit: 20,
-    });
+        startDate: '',
+        endDate: '',
+        page: 1,
+        limit: 20,
+    }));
+
+    useEffect(() => {
+        const paramLowStock = searchParams.get('lowStock');
+        if (paramLowStock !== null && paramLowStock !== filters.lowStock) {
+            setFilters(prev => ({ ...prev, lowStock: paramLowStock, page: 1 }));
+        }
+    }, [searchParams]);
 
     const [isInternalConsumptionOpen, setIsInternalConsumptionOpen] = useState(false);
     const [isReleaseModalOpen, setIsReleaseModalOpen] = useState(false);
@@ -170,8 +182,8 @@ export default function StockPage() {
             {/* ─── PAGE HEADER ─── */}
             <div className="mb-6">
                 <div className="mb-1">
-                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Stock Overview</h1>
-                    <p className="text-sm text-gray-500 mt-0.5">Current inventory across all warehouses</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Stock Overview</h1>
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Current inventory across all warehouses</p>
                 </div>
 
                 {/* Action buttons — wrap on mobile */}
@@ -193,8 +205,8 @@ export default function StockPage() {
                         >
                             <ArrowUpFromLine size={16} /> Stock Out (බඩු පිට කිරීම)
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => setIsInternalConsumptionOpen(true)} className="bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 font-semibold">
-                            <Boxes size={15} className="mr-1.5 text-amber-600" /> Internal Usage (Expense)
+                        <Button variant="outline" size="sm" onClick={() => setIsInternalConsumptionOpen(true)} className="bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-700/60 hover:bg-amber-100 dark:hover:bg-amber-900/40 font-semibold">
+                            <Boxes size={15} className="mr-1.5 text-amber-600 dark:text-amber-400" /> Internal Usage (Expense)
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => navigate('/stock/opening')}>
                             <PackagePlus size={15} className="mr-1.5" /> Opening
@@ -215,24 +227,24 @@ export default function StockPage() {
             {/* ─── SUMMARY STRIP ─── */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
                 <Card className="p-4">
-                    <p className="text-xs text-gray-500 mb-1">Total Items</p>
-                    <p className="text-2xl font-bold text-gray-800">{total}</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">Total Items</p>
+                    <p className="text-2xl font-bold text-gray-800 dark:text-white">{total}</p>
                 </Card>
                 <Card className="p-4">
-                    <p className="text-xs text-gray-500 mb-1">Page Value</p>
-                    <p className="text-xl font-bold text-gray-800 truncate">{fmtMoney(totalValue)}</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">Page Value</p>
+                    <p className="text-xl font-bold text-gray-800 dark:text-white truncate">{fmtMoney(totalValue)}</p>
                 </Card>
                 <Card className="p-4">
-                    <p className="text-xs text-gray-500 mb-1">Warehouses</p>
-                    <p className="text-2xl font-bold text-gray-800">{warehouseOptions.length}</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">Warehouses</p>
+                    <p className="text-2xl font-bold text-gray-800 dark:text-white">{warehouseOptions.length}</p>
                 </Card>
-                <Card className="p-4 bg-amber-50/80 border border-amber-200">
+                <Card className="p-4 bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-xs font-semibold text-amber-700 flex items-center gap-1 mb-1">
-                                <AlertTriangle size={13} className="text-amber-600" /> Low / Critical Stock
+                            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1 mb-1">
+                                <AlertTriangle size={13} className="text-amber-600 dark:text-amber-400" /> Low / Critical Stock
                             </p>
-                            <span className="text-2xl font-black text-amber-800">
+                            <span className="text-2xl font-black text-amber-800 dark:text-amber-300">
                                 {lowStockCount} Items
                             </span>
                         </div>
@@ -240,7 +252,7 @@ export default function StockPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => navigate('/stock/low-stock')}
-                            className="text-xs font-bold text-amber-900 bg-white border-amber-300 hover:bg-amber-100 shadow-xs"
+                            className="text-xs font-bold text-amber-900 dark:text-amber-200 bg-white dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/60 shadow-xs"
                         >
                             Alerts Page →
                         </Button>
@@ -251,13 +263,13 @@ export default function StockPage() {
             {/* ─── FILTERS + TABLE ─── */}
             <Card className="overflow-visible">
                 {/* Filter bar */}
-                <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row flex-wrap gap-3">
+                <div className="p-4 border-b border-gray-200 dark:border-slate-700/80 flex flex-col sm:flex-row flex-wrap gap-3">
                     <div className="relative flex-1 min-w-0">
-                        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                         <input
                             type="text"
                             placeholder="Search product..."
-                            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-[16px] min-h-[44px]"
+                            className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-[16px] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-emerald-500"
                             value={filters.search}
                             onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))}
                         />
@@ -303,7 +315,7 @@ export default function StockPage() {
                 </div>
 
                 {isLoading ? (
-                    <div className="py-16 text-center text-gray-500">Loading...</div>
+                    <div className="py-16 text-center text-gray-500 dark:text-slate-400">Loading...</div>
                 ) : items.length === 0 ? (
                     <EmptyState
                         icon={Boxes}
@@ -318,64 +330,47 @@ export default function StockPage() {
                 ) : (
                     <>
                         {/* Desktop table */}
-                        <div className="hidden sm:block overflow-auto max-h-[calc(100vh-320px)] min-h-[380px] relative border-b border-gray-200">
+                        <div className="hidden sm:block overflow-auto max-h-[calc(100vh-320px)] min-h-[380px] relative border-b border-gray-200 dark:border-slate-700/80">
                             <table className="w-full min-w-[640px] border-collapse">
-                                <thead className="sticky top-0 z-20 bg-slate-100 shadow-xs">
+                                <thead className="sticky top-0 z-20 bg-slate-100 dark:bg-[#0B1728] shadow-xs">
                                     <tr>
-                                        <th className="sticky top-0 bg-slate-100 z-20 px-5 py-3.5 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 shadow-[inset_0_-1px_0_#e2e8f0]">Product</th>
-                                        <th className="sticky top-0 bg-slate-100 z-20 px-4 py-3.5 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 shadow-[inset_0_-1px_0_#e2e8f0]">Warehouse</th>
-                                        <th className="sticky top-0 bg-slate-100 z-20 px-4 py-3.5 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 shadow-[inset_0_-1px_0_#e2e8f0]">Batch</th>
-                                        <th className="sticky top-0 bg-slate-100 z-20 px-4 py-3.5 text-right text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 shadow-[inset_0_-1px_0_#e2e8f0]">Open Stock (Avail / Res)</th>
-                                        <th className="sticky top-0 bg-slate-100 z-20 px-4 py-3.5 text-right text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 shadow-[inset_0_-1px_0_#e2e8f0]">Balance Stock</th>
-                                        <th className="sticky top-0 bg-slate-100 z-20 px-4 py-3.5 text-right text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 shadow-[inset_0_-1px_0_#e2e8f0]">Total Stock</th>
-                                        <th className="sticky top-0 bg-slate-100 z-20 px-4 py-3.5 text-right text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 shadow-[inset_0_-1px_0_#e2e8f0]">Value</th>
-                                        <th className="sticky top-0 bg-slate-100 z-20 px-4 py-3.5 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 shadow-[inset_0_-1px_0_#e2e8f0]">Status</th>
-                                        <th className="sticky top-0 bg-slate-100 z-20 px-4 py-3.5 text-center text-xs font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 shadow-[inset_0_-1px_0_#e2e8f0]">Actions</th>
+                                        <th className="sticky top-0 bg-slate-100 dark:bg-[#0B1728] z-20 px-5 py-3.5 text-left text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-700 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_#1e293b]">Product</th>
+                                        <th className="sticky top-0 bg-slate-100 dark:bg-[#0B1728] z-20 px-4 py-3.5 text-left text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-700 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_#1e293b]">Warehouse</th>
+                                        <th className="sticky top-0 bg-slate-100 dark:bg-[#0B1728] z-20 px-4 py-3.5 text-left text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-700 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_#1e293b]">Batch</th>
+                                        <th className="sticky top-0 bg-slate-100 dark:bg-[#0B1728] z-20 px-4 py-3.5 text-right text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-700 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_#1e293b]">Total Stock</th>
+                                        <th className="sticky top-0 bg-slate-100 dark:bg-[#0B1728] z-20 px-4 py-3.5 text-right text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-700 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_#1e293b]">Value</th>
+                                        <th className="sticky top-0 bg-slate-100 dark:bg-[#0B1728] z-20 px-4 py-3.5 text-center text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-700 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_#1e293b]">Status</th>
+                                        <th className="sticky top-0 bg-slate-100 dark:bg-[#0B1728] z-20 px-4 py-3.5 text-center text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-700 shadow-[inset_0_-1px_0_#e2e8f0] dark:shadow-[inset_0_-1px_0_#1e293b]">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-blue-100/50">
+                                <tbody className="divide-y divide-blue-100/50 dark:divide-slate-800">
                                     {items.map((r, idx) => {
                                         const s = getStockStatus(r);
                                         const isEven = idx % 2 === 1;
                                         return (
-                                            <tr key={r._id} className={`${isEven ? 'bg-blue-50/40' : 'bg-white'} hover:bg-blue-100/60 transition-colors`}>
+                                            <tr key={r._id} className={`${isEven ? 'bg-[#E3EEFC] dark:bg-[#182B46]' : 'bg-white dark:bg-[#0F1E33]'} hover:bg-[#CDE2FB] dark:hover:bg-[#223B60] transition-colors`}>
                                                 <td className="px-5 py-3">
-                                                    <p className="font-medium text-sm text-gray-800">{r.productName}</p>
+                                                    <p className="font-medium text-sm text-gray-800 dark:text-white">{r.productName}</p>
                                                     {(r.productId?.sinhalaName || r.sinhalaName) && (
-                                                        <p className="text-xs font-medium text-emerald-700">{r.productId?.sinhalaName || r.sinhalaName}</p>
+                                                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{r.productId?.sinhalaName || r.sinhalaName}</p>
                                                     )}
-                                                    <p className="text-xs font-mono text-gray-400">{r.productCode}</p>
+                                                    <p className="text-xs font-mono text-gray-400 dark:text-slate-400">{r.productCode}</p>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <p className="text-sm text-gray-700">{r.warehouseId?.name}</p>
-                                                    <p className="text-xs font-mono text-gray-400">{r.warehouseId?.warehouseCode}</p>
+                                                    <p className="text-sm text-gray-700 dark:text-slate-200">{r.warehouseId?.name}</p>
+                                                    <p className="text-xs font-mono text-gray-400 dark:text-slate-400">{r.warehouseId?.warehouseCode}</p>
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                                                <td className="px-4 py-3 text-sm text-gray-700 dark:text-slate-200 whitespace-nowrap">
                                                     {r.batchNumber ? (
                                                         <Badge variant="warning">{r.batchNumber}</Badge>
                                                     ) : (
-                                                        <span className="text-gray-400 text-xs">Standard</span>
+                                                        <span className="text-gray-400 dark:text-slate-400 text-xs">Standard</span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-sm font-medium text-gray-800 whitespace-nowrap">
-                                                    <div>
-                                                        <span>{fmt(r.quantities.openStock)}</span>{' '}
-                                                        <span className="text-xs text-gray-400">{r.unitOfMeasure}</span>
-                                                    </div>
-                                                    <div className="text-[10px] text-gray-500 mt-0.5">
-                                                        Avail: <span className="text-green-700 font-semibold">{fmt(Math.max(0, r.quantities.openStock - r.quantities.reserved))}</span>
-                                                        {r.quantities.reserved > 0 && (
-                                                            <> · Res: <span className="text-amber-600 font-medium">{fmt(r.quantities.reserved)}</span></>
-                                                        )}
-                                                    </div>
+                                                <td className="px-4 py-3 text-right text-sm font-semibold text-gray-800 dark:text-white whitespace-nowrap">
+                                                    {fmt(r.quantities.onHand)} <span className="text-xs text-gray-400 dark:text-slate-400">{r.unitOfMeasure}</span>
                                                 </td>
-                                                <td className="px-4 py-3 text-right text-sm font-medium text-gray-600 whitespace-nowrap">
-                                                    {fmt(r.quantities.balanceStock)} <span className="text-xs text-gray-400">{r.unitOfMeasure}</span>
-                                                </td>
-                                                <td className="px-4 py-3 text-right text-sm font-semibold text-gray-800 whitespace-nowrap">
-                                                    {fmt(r.quantities.onHand)} <span className="text-xs text-gray-400">{r.unitOfMeasure}</span>
-                                                </td>
-                                                <td className="px-4 py-3 text-right text-sm text-gray-600 whitespace-nowrap">
+                                                <td className="px-4 py-3 text-right text-sm text-gray-600 dark:text-slate-300 whitespace-nowrap">
                                                     {fmtMoney(r.totalValue)}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
@@ -396,21 +391,21 @@ export default function StockPage() {
                                                             <>
                                                                 <button
                                                                     onClick={() => handleOpenEditModal(r)}
-                                                                    className="p-1 text-gray-500 hover:text-primary-600 hover:bg-gray-50 rounded border border-gray-100 flex items-center gap-1 text-xs px-2 py-1"
+                                                                    className="p-1 text-gray-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded border border-gray-100 dark:border-slate-700 flex items-center gap-1 text-xs px-2 py-1"
                                                                     title="Edit Stock Item"
                                                                 >
                                                                     <Edit size={14} /> Edit
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleOpenDeleteConfirm(r)}
-                                                                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded border border-red-100 flex items-center gap-1 text-xs px-2 py-1"
+                                                                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 rounded border border-red-100 dark:border-red-900/50 flex items-center gap-1 text-xs px-2 py-1"
                                                                     title="Delete Stock Item"
                                                                 >
                                                                     <Trash2 size={14} /> Delete
                                                                 </button>
                                                             </>
                                                         )}
-                                                        {!canAdjust && <span className="text-xs text-gray-400">—</span>}
+                                                        {!canAdjust && <span className="text-xs text-gray-400 dark:text-slate-500">—</span>}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -421,47 +416,35 @@ export default function StockPage() {
                         </div>
 
                         {/* Mobile cards */}
-                        <div className="sm:hidden divide-y divide-gray-100">
+                        <div className="sm:hidden divide-y divide-gray-100 dark:divide-slate-800">
                             {items.map((r) => {
                                 const s = getStockStatus(r);
-                                const available = Math.max(0, r.quantities.openStock - r.quantities.reserved);
                                 return (
                                     <div key={r._id} className="px-4 py-4">
                                         {/* Header row */}
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="min-w-0 flex-1">
-                                                <p className="font-semibold text-sm text-gray-800 truncate">{r.productName}</p>
+                                                <p className="font-semibold text-sm text-gray-800 dark:text-white truncate">{r.productName}</p>
                                                 {(r.productId?.sinhalaName || r.sinhalaName) && (
-                                                    <p className="text-xs font-medium text-emerald-700 truncate">{r.productId?.sinhalaName || r.sinhalaName}</p>
+                                                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 truncate">{r.productId?.sinhalaName || r.sinhalaName}</p>
                                                 )}
-                                                <p className="text-xs font-mono text-gray-400 mt-0.5">{r.productCode}</p>
+                                                <p className="text-xs font-mono text-gray-400 dark:text-slate-400 mt-0.5">{r.productCode}</p>
                                             </div>
                                             <Badge variant={s.variant} className="ml-2 flex-shrink-0">{s.label}</Badge>
                                         </div>
 
                                         {/* Warehouse & Batch */}
-                                        <div className="flex justify-between items-center text-xs text-gray-500 mb-3">
+                                        <div className="flex justify-between items-center text-xs text-gray-500 dark:text-slate-400 mb-3">
                                             <span>📦 {r.warehouseId?.name}{r.warehouseId?.warehouseCode && ` · ${r.warehouseId.warehouseCode}`}</span>
-                                            <span>Batch: <span className="font-semibold text-gray-700">{r.batchNumber || "Standard"}</span></span>
+                                            <span>Batch: <span className="font-semibold text-gray-700 dark:text-slate-200">{r.batchNumber || "Standard"}</span></span>
                                         </div>
 
-                                        {/* Quantities grid */}
-                                        <div className="grid grid-cols-3 gap-2 text-xs">
-                                            <div className="bg-blue-50 rounded-lg p-2 text-center">
-                                                <p className="text-blue-500 mb-0.5 font-medium">Open Stock</p>
-                                                <p className="font-bold text-blue-950 text-sm">{fmt(r.quantities.openStock)}</p>
-                                                <p className="text-[10px] text-blue-600">Avail: {fmt(available)}</p>
-                                            </div>
-                                            <div className="bg-amber-50 rounded-lg p-2 text-center">
-                                                <p className="text-amber-500 mb-0.5 font-medium">Balance Stock</p>
-                                                <p className="font-bold text-amber-700 text-sm">{fmt(r.quantities.balanceStock)}</p>
-                                                <p className="text-[10px] text-gray-400">{r.unitOfMeasure}</p>
-                                            </div>
-                                            <div className="bg-gray-50 rounded-lg p-2 text-center">
-                                                <p className="text-gray-500 mb-0.5 font-medium">Total Stock</p>
-                                                <p className="font-bold text-gray-800 text-sm">{fmt(r.quantities.onHand)}</p>
-                                                <p className="text-[10px] text-gray-400">{r.unitOfMeasure}</p>
-                                            </div>
+                                        {/* Total Stock */}
+                                        <div className="bg-gray-50 dark:bg-slate-800/60 rounded-lg p-2.5 flex items-center justify-between border border-transparent dark:border-slate-700/50 text-xs">
+                                            <span className="text-gray-500 dark:text-slate-400 font-medium">Total Stock</span>
+                                            <span className="font-bold text-gray-800 dark:text-white text-sm">
+                                                {fmt(r.quantities.onHand)} <span className="text-xs font-normal text-gray-400 dark:text-slate-400">{r.unitOfMeasure}</span>
+                                            </span>
                                         </div>
 
                                         {/* Mobile Release Action */}
@@ -479,9 +462,9 @@ export default function StockPage() {
                                         )}
 
                                         {/* Value */}
-                                        <div className="flex justify-between items-center mt-3 pt-2.5 border-t border-gray-100">
-                                            <span className="text-xs text-gray-400">Stock Value</span>
-                                            <span className="text-sm font-semibold text-gray-700">{fmtMoney(r.totalValue)}</span>
+                                        <div className="flex justify-between items-center mt-3 pt-2.5 border-t border-gray-100 dark:border-slate-800">
+                                            <span className="text-xs text-gray-400 dark:text-slate-400">Stock Value</span>
+                                            <span className="text-sm font-semibold text-gray-700 dark:text-slate-200">{fmtMoney(r.totalValue)}</span>
                                         </div>
                                     </div>
                                 );
@@ -503,34 +486,34 @@ export default function StockPage() {
                             <form onSubmit={handleReleaseSubmit} className="space-y-4">
                                 {selectedItemForRelease && (
                                     <>
-                                        <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-1">
+                                        <div className="bg-gray-50 dark:bg-slate-800/60 p-3 rounded-lg text-sm space-y-1 border border-gray-100 dark:border-slate-700/60">
                                             <p>
-                                                <span className="text-gray-500">Product:</span>{' '}
-                                                <span className="font-semibold text-gray-800">
+                                                <span className="text-gray-500 dark:text-slate-400">Product:</span>{' '}
+                                                <span className="font-semibold text-gray-800 dark:text-white">
                                                     {selectedItemForRelease.productName}
                                                 </span>
                                             </p>
                                             <p>
-                                                <span className="text-gray-500">Warehouse:</span>{' '}
-                                                <span className="text-gray-700">
+                                                <span className="text-gray-500 dark:text-slate-400">Warehouse:</span>{' '}
+                                                <span className="text-gray-700 dark:text-slate-200">
                                                     {selectedItemForRelease.warehouseId?.name}
                                                 </span>
                                             </p>
                                             <p>
-                                                <span className="text-gray-500">Batch Code:</span>{' '}
-                                                <span className="font-mono text-gray-700">
+                                                <span className="text-gray-500 dark:text-slate-400">Batch Code:</span>{' '}
+                                                <span className="font-mono text-gray-700 dark:text-slate-200">
                                                     {selectedItemForRelease.batchNumber || 'Standard'}
                                                 </span>
                                             </p>
                                             <p>
-                                                <span className="text-gray-500">Current Balance Stock:</span>{' '}
-                                                <span className="font-bold text-amber-700">
+                                                <span className="text-gray-500 dark:text-slate-400">Current Balance Stock:</span>{' '}
+                                                <span className="font-bold text-amber-700 dark:text-amber-300">
                                                     {fmt(selectedItemForRelease.quantities.balanceStock)} {selectedItemForRelease.unitOfMeasure}
                                                 </span>
                                             </p>
                                             <p>
-                                                <span className="text-gray-500">Current Open Stock:</span>{' '}
-                                                <span className="font-bold text-blue-700">
+                                                <span className="text-gray-500 dark:text-slate-400">Current Open Stock:</span>{' '}
+                                                <span className="font-bold text-blue-700 dark:text-blue-300">
                                                     {fmt(selectedItemForRelease.quantities.openStock)} {selectedItemForRelease.unitOfMeasure}
                                                 </span>
                                             </p>
@@ -579,9 +562,9 @@ export default function StockPage() {
                             <form onSubmit={handleEditSubmit} className="space-y-4">
                                 {selectedItemForEdit && (
                                     <>
-                                        <div className="bg-gray-50 p-3 rounded-lg text-xs space-y-1">
-                                            <p><span className="text-gray-500">Product:</span> <span className="font-semibold text-gray-800">{selectedItemForEdit.productName}</span></p>
-                                            <p><span className="text-gray-500">Warehouse:</span> <span className="text-gray-700">{selectedItemForEdit.warehouseId?.name}</span></p>
+                                        <div className="bg-gray-50 dark:bg-slate-800/60 p-3 rounded-lg text-xs space-y-1 border border-gray-100 dark:border-slate-700/60">
+                                            <p><span className="text-gray-500 dark:text-slate-400">Product:</span> <span className="font-semibold text-gray-800 dark:text-white">{selectedItemForEdit.productName}</span></p>
+                                            <p><span className="text-gray-500 dark:text-slate-400">Warehouse:</span> <span className="text-gray-700 dark:text-slate-200">{selectedItemForEdit.warehouseId?.name}</span></p>
                                         </div>
 
                                         <Input

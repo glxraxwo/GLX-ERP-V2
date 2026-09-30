@@ -439,3 +439,64 @@ textarea {
   width: 850px;
   background: white;
 }
+
+/* ──────────────────────────────────────────────────────────
+   Global Alternating Zebra Striped Table Rows (White / Noticeable Light Blue)
+   ────────────────────────────────────────────────────────── */
+@media screen {
+  /* Alternating even rows: Clearly perceptible pleasant light blue */
+  table:not(.no-zebra) tbody tr:nth-child(even):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+    background-color: #E3EEFC !important;
+  }
+
+  /* Alternating odd rows: Crisp White */
+  table:not(.no-zebra) tbody tr:nth-child(odd):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+    background-color: #FFFFFF !important;
+  }
+
+  /* Row hover effect: Distinct soft blue highlight */
+  table:not(.no-zebra) tbody tr:hover:not(.no-hover):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+    background-color: #CDE2FB !important;
+  }
+
+  /* Dark mode alternating rows */
+  .dark table:not(.no-zebra) tbody tr:nth-child(even):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+    background-color: #182B46 !important;
+  }
+
+  .dark table:not(.no-zebra) tbody tr:nth-child(odd):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+    background-color: #0F1E33 !important;
+  }
+
+  .dark table:not(.no-zebra) tbody tr:hover:not(.no-hover):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+    background-color: #223B60 !important;
+  }
+
+  /* Dark mode table header: Clean dark slate */
+  .dark table:not(.no-zebra) thead tr th,
+  .dark table:not(.no-zebra) thead tr,
+  .dark table:not(.no-zebra) thead {
+    background-color: #0B1728 !important;
+    color: #94A3B8 !important;
+    border-color: #1E293B !important;
+  }
+
+  /* Dark mode table body text visibility: Crisp high-contrast readable text */
+  .dark table:not(.no-zebra) tbody tr td {
+    color: #CBD5E1;
+    border-color: #1E2D42 !important;
+  }
+  .dark table:not(.no-zebra) tbody tr td p,
+  .dark table:not(.no-zebra) tbody tr td span:not([class*="text-"]) {
+    color: #E2E8F0;
+  }
+  .dark table:not(.no-zebra) tbody tr td .text-gray-800,
+  .dark table:not(.no-zebra) tbody tr td .text-gray-900,
+  .dark table:not(.no-zebra) tbody tr td .text-gray-700 {
+    color: #F8FAFC !important;
+  }
+  .dark table:not(.no-zebra) tbody tr td .text-gray-600,
+  .dark table:not(.no-zebra) tbody tr td .text-gray-500 {
+    color: #94A3B8 !important;
+  }
+}
