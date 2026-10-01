@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
     Search, X, ArrowUpRight, Sparkles, 
     Layers, ShieldAlert, ChevronLeft, ChevronRight,
-    LayoutGrid, ListFilter
+    LayoutGrid, ListFilter, Pin, PinOff, RotateCcw, Zap
 } from 'lucide-react';
 import { NAVIGATION_CATEGORIES } from '../config/navigationConfig';
 import { usePermission } from '../hooks/usePermission';
@@ -161,6 +161,48 @@ export default function AppHubPage() {
         return localStorage.getItem('hub_categories_wrapped') === 'true';
     });
 
+    // Default pinned modules for fast 1-click access
+    const DEFAULT_PINNED_PATHS = ['/invoices', '/customers', '/pos'];
+
+    // Pinned shortcuts persisted in localStorage
+    const [pinnedPaths, setPinnedPaths] = useState(() => {
+        try {
+            const saved = localStorage.getItem('glx_apphub_pinned_paths');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) return parsed;
+            }
+        } catch (e) {
+            console.error('Failed to load pinned paths', e);
+        }
+        return DEFAULT_PINNED_PATHS;
+    });
+
+    const togglePin = (path, e) => {
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+        setPinnedPaths(prev => {
+            const next = prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path];
+            try {
+                localStorage.setItem('glx_apphub_pinned_paths', JSON.stringify(next));
+            } catch (err) {
+                console.error('Failed to save pinned paths', err);
+            }
+            return next;
+        });
+    };
+
+    const handleResetPinned = () => {
+        setPinnedPaths(DEFAULT_PINNED_PATHS);
+        try {
+            localStorage.setItem('glx_apphub_pinned_paths', JSON.stringify(DEFAULT_PINNED_PATHS));
+        } catch (err) {
+            console.error('Failed to reset pinned paths', err);
+        }
+    };
+
     const toggleWrap = () => {
         setIsWrapped(prev => {
             const next = !prev;
@@ -299,6 +341,38 @@ export default function AppHubPage() {
         return filteredCategories.reduce((sum, cat) => sum + cat.items.length, 0);
     }, [filteredCategories]);
 
+    // Catalog map to retrieve pinned items with proper category info
+    const allItemsMap = useMemo(() => {
+        const map = new Map();
+        NAVIGATION_CATEGORIES.forEach(cat => {
+            cat.items.forEach(item => {
+                map.set(item.path, {
+                    ...item,
+                    categoryId: cat.id,
+                    categoryLabel: cat.label
+                });
+            });
+        });
+        return map;
+    }, []);
+
+    // Filter pinned items by user permissions & role
+    const pinnedItems = useMemo(() => {
+        return pinnedPaths.map(path => {
+            const item = allItemsMap.get(path);
+            if (!item) return null;
+
+            if (item.excludeRoles && item.excludeRoles.includes(user?.role)) return null;
+            const isPermitted = isAdmin ||
+                (!item.permission && !item.anyPermission) ||
+                (item.permission && hasPermission(item.permission)) ||
+                (item.anyPermission && hasAnyPermission(item.anyPermission));
+
+            if (!isPermitted) return null;
+            return item;
+        }).filter(Boolean);
+    }, [pinnedPaths, allItemsMap, user?.role, isAdmin, hasPermission, hasAnyPermission]);
+
     const handleCardClick = (item) => {
         // Save current scroll position before leaving App Hub
         const mainEl = document.getElementById('main-content');
@@ -390,6 +464,133 @@ export default function AppHubPage() {
                         </button>
                     )}
                 </div>
+            </div>
+
+            {/* ── Quick Access Bar (Top-up / Pinned Shortcuts) ── */}
+            <div className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 shadow-xs ${
+                isDark
+                    ? 'bg-[#0E1A2B] border-slate-700/80'
+                    : isSoft
+                        ? 'bg-gradient-to-r from-white via-slate-50 to-amber-50/20 border-slate-200'
+                        : 'bg-white border-slate-200'
+            }`}>
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-700/80">
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-xs">
+                            <Pin size={15} className="rotate-45" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h2 className={`text-sm sm:text-base font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                    Quick Access Bar
+                                </h2>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                    isDark 
+                                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' 
+                                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}>
+                                    {pinnedItems.length} Pinned
+                                </span>
+                            </div>
+                            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                Fast 1-click access to essential modules. Click 📌 on any module below to top-up here.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Right Controls */}
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                        {pinnedPaths.length !== DEFAULT_PINNED_PATHS.length && (
+                            <button
+                                type="button"
+                                onClick={handleResetPinned}
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                                    isDark 
+                                        ? 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white' 
+                                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                }`}
+                                title="Restore recommended shortcuts (Invoices, Quotations & Estimates, Customers, POS)"
+                            >
+                                <RotateCcw size={12} />
+                                <span>Reset Defaults</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Body: Pinned Cards */}
+                {pinnedItems.length === 0 ? (
+                    <div className="py-6 text-center">
+                        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            No shortcuts pinned yet. Click the <span className="font-bold text-amber-500">📌 Pin</span> icon on any module below to top-up here for quick access.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={handleResetPinned}
+                            className="mt-3 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+                        >
+                            <Pin size={13} className="rotate-45" />
+                            <span>Add Recommended Shortcuts</span>
+                        </button>
+                    </div>
+                ) : (
+                    <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {pinnedItems.map((item) => {
+                            const IconComponent = item.icon;
+                            const themeStyles = getCategoryThemeStyles(item.categoryId, isDark);
+                            return (
+                                <div
+                                    key={item.path}
+                                    onClick={() => handleCardClick(item)}
+                                    className={`group relative p-3 sm:p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex items-center justify-between gap-3 ${
+                                        isDark
+                                            ? `bg-[#132238] border-slate-700/80 ${themeStyles.cardBorder} hover:bg-[#182C48]`
+                                            : `bg-slate-50/80 border-slate-200/90 ${themeStyles.cardBorder} hover:bg-white hover:border-slate-300`
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border transition-transform duration-200 group-hover:scale-105 ${themeStyles.icon}`}>
+                                            <IconComponent size={20} />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h4 className={`text-xs sm:text-[13px] font-bold truncate leading-snug transition-colors ${
+                                                isDark ? 'text-white group-hover:text-sky-300' : 'text-slate-900 group-hover:text-[#000865]'
+                                            }`}>
+                                                {item.title}
+                                            </h4>
+                                            <span className="text-[10px] font-medium text-slate-400 capitalize truncate block">
+                                                {item.categoryLabel || item.categoryId}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Unpin button */}
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => togglePin(item.path, e)}
+                                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                                isDark 
+                                                    ? 'text-slate-400 hover:text-red-400 hover:bg-slate-800' 
+                                                    : 'text-slate-400 hover:text-red-600 hover:bg-slate-200/60'
+                                            }`}
+                                            title="Remove from Quick Access"
+                                            aria-label="Remove pin"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                        <div className={`p-1 rounded-md opacity-60 group-hover:opacity-100 transition-opacity ${
+                                            isDark ? 'text-sky-300' : 'text-[#000865]'
+                                        }`}>
+                                            <ArrowUpRight size={13} />
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* ── Category Filter Pills with Mobile Arrows, Drag-to-Scroll & Wrap Toggle ── */}
@@ -580,11 +781,26 @@ export default function AppHubPage() {
                                                         <IconComponent size={22} />
                                                     </div>
 
-                                                    {/* Open in tab icon indicator */}
-                                                    <div className={`opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg ${
-                                                        isDark ? 'bg-slate-700/80 text-sky-300' : 'bg-slate-100 text-slate-500'
-                                                    }`}>
-                                                        <ArrowUpRight size={14} />
+                                                    {/* Actions: Pin/Top-up button + Open in tab indicator */}
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => togglePin(item.path, e)}
+                                                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                                                pinnedPaths.includes(item.path)
+                                                                    ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30 shadow-2xs hover:bg-amber-500/25'
+                                                                    : 'opacity-0 group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-700/80 text-slate-400 hover:text-amber-500'
+                                                            }`}
+                                                            title={pinnedPaths.includes(item.path) ? "Pinned in Quick Access Bar (Click to unpin)" : "Top-up to Quick Access Bar (Pin)"}
+                                                            aria-label="Toggle pin"
+                                                        >
+                                                            <Pin size={14} className={pinnedPaths.includes(item.path) ? "fill-amber-500 rotate-45" : ""} />
+                                                        </button>
+                                                        <div className={`opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg ${
+                                                            isDark ? 'bg-slate-700/80 text-sky-300' : 'bg-slate-100 text-slate-500'
+                                                        }`}>
+                                                            <ArrowUpRight size={14} />
+                                                        </div>
                                                     </div>
                                                 </div>
 

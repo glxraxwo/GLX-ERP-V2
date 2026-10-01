@@ -19,20 +19,41 @@ const invoiceLineSchema = z.object({
 });
 
 export const createInvoiceSchema = z.object({
-    customerId: objectId,
-    invoiceType: z.enum(['standard', 'proforma', 'service']).optional(),
+    customerId: objectId.optional(),
+    customerName: z.string().optional(),
+    customerPhone: z.string().optional(),
+    customerEmail: z.string().optional(),
+    customerAddress: z.string().optional(),
+    invoiceType: z.enum(['standard', 'proforma', 'service', 'commercial']).optional(),
     salesOrderIds: z.array(objectId).optional(),
     invoiceDate: z.string().optional(),
     dueDate: z.string().optional(),
     items: z.array(invoiceLineSchema).min(1),
     shippingCost: z.coerce.number().min(0).optional(),
     otherCharges: z.coerce.number().min(0).optional(),
+    advancePercentage: z.coerce.number().min(0).max(100).optional(),
+    advanceAmount: z.coerce.number().min(0).optional(),
+    showAdvanceOnInvoice: z.boolean().optional(),
     notes: z.string().optional(),
     internalNotes: z.string().optional(),
     paymentInstructions: z.string().optional(),
     termsAndConditions: z.string().optional(),
     status: z.enum(['draft', 'approved']).optional(),
-});
+
+    // Vehicle & Workshop engineering metadata
+    vehicleNo: z.string().optional(),
+    vehicleModel: z.string().optional(),
+    vehicleOwner: z.string().optional(),
+    insuranceCompany: z.string().optional(),
+    jobCaption: z.string().optional(),
+    introducer: z.string().optional(),
+    introducerName: z.string().optional(),
+    biller: z.string().optional(),
+    billerName: z.string().optional(),
+    numberPlateImage: z.string().optional(),
+    lorryBodyImage: z.string().optional(),
+    photos: z.array(z.string()).optional(),
+}).passthrough();
 
 export const updateInvoiceSchema = createInvoiceSchema.partial();
 

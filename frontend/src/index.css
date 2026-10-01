@@ -275,6 +275,12 @@ textarea {
     display: table-header-group;
   }
 
+  thead th,
+  thead tr {
+    position: static !important;
+    box-shadow: none !important;
+  }
+
   tfoot {
     display: table-footer-group;
   }
@@ -444,32 +450,41 @@ textarea {
    Global Alternating Zebra Striped Table Rows (White / Noticeable Light Blue)
    ────────────────────────────────────────────────────────── */
 @media screen {
-  /* Alternating even rows: Clearly perceptible pleasant light blue */
-  table:not(.no-zebra) tbody tr:nth-child(even):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+  /* Alternating even rows: Clearly perceptible pleasant light blue (excluded from print containers) */
+  table:not(.no-zebra):not(.print-table) tbody tr:nth-child(even):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
     background-color: #E3EEFC !important;
   }
 
   /* Alternating odd rows: Crisp White */
-  table:not(.no-zebra) tbody tr:nth-child(odd):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+  table:not(.no-zebra):not(.print-table) tbody tr:nth-child(odd):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
     background-color: #FFFFFF !important;
   }
 
   /* Row hover effect: Distinct soft blue highlight */
-  table:not(.no-zebra) tbody tr:hover:not(.no-hover):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+  table:not(.no-zebra):not(.print-table) tbody tr:hover:not(.no-hover):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
     background-color: #CDE2FB !important;
   }
 
   /* Dark mode alternating rows */
-  .dark table:not(.no-zebra) tbody tr:nth-child(even):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+  .dark table:not(.no-zebra):not(.print-table) tbody tr:nth-child(even):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
     background-color: #182B46 !important;
   }
 
-  .dark table:not(.no-zebra) tbody tr:nth-child(odd):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+  .dark table:not(.no-zebra):not(.print-table) tbody tr:nth-child(odd):not(.no-stripe):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
     background-color: #0F1E33 !important;
   }
 
-  .dark table:not(.no-zebra) tbody tr:hover:not(.no-hover):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
+  .dark table:not(.no-zebra):not(.print-table) tbody tr:hover:not(.no-hover):not([class*="bg-red"]):not([class*="bg-rose"]):not([class*="bg-emerald"]):not([class*="bg-green"]):not([class*="bg-amber"]):not([class*="bg-yellow"]) {
     background-color: #223B60 !important;
+  }
+
+  /* Clean transparent background for all printable documents & quotation views */
+  .print-container table tbody tr,
+  .print-page table tbody tr,
+  .print-table tbody tr,
+  table.no-zebra tbody tr {
+    background-color: transparent !important;
+    background: transparent !important;
   }
 
   /* Dark mode table header: Clean dark slate */
@@ -498,5 +513,57 @@ textarea {
   .dark table:not(.no-zebra) tbody tr td .text-gray-600,
   .dark table:not(.no-zebra) tbody tr td .text-gray-500 {
     color: #94A3B8 !important;
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     Universal Sticky Table Headers Across All Data Tables
+     ────────────────────────────────────────────────────────── */
+  table:not(.no-sticky):not(.print-table) thead {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+  }
+
+  table:not(.no-sticky):not(.print-table) thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+    background-color: #F8FAFC !important;
+    /* Inset shadow acts as crisp persistent bottom border that never detaches */
+    box-shadow: inset 0 -1px 0 #CBD5E1, 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark table:not(.no-sticky):not(.print-table) thead th {
+    background-color: #0B1728 !important;
+    box-shadow: inset 0 -1px 0 #1E293B, 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Exclude printable sheets and document preview areas */
+  .print-container table thead,
+  .print-container table thead th,
+  .print-area table thead,
+  .print-area table thead th,
+  .quotation-print-area table thead,
+  .quotation-print-area table thead th,
+  .employee-payment-sheet-print table thead,
+  .employee-payment-sheet-print table thead th {
+    position: static !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+  }
+
+  /* Table overflow containers - Constrain height so inner vertical scroll engages sticky headers */
+  div.overflow-x-auto:has(table:not(.no-sticky-height)):not([class*="max-h-"]):not(.print-container):not(.print-area):not(.quotation-print-area):not(.employee-payment-sheet-print),
+  div.overflow-auto:has(table:not(.no-sticky-height)):not([class*="max-h-"]):not(.print-container):not(.print-area):not(.quotation-print-area):not(.employee-payment-sheet-print) {
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  @media (max-width: 640px) {
+    div.overflow-x-auto:has(table:not(.no-sticky-height)):not([class*="max-h-"]):not(.print-container):not(.print-area):not(.quotation-print-area):not(.employee-payment-sheet-print),
+    div.overflow-auto:has(table:not(.no-sticky-height)):not([class*="max-h-"]):not(.print-container):not(.print-area):not(.quotation-print-area):not(.employee-payment-sheet-print) {
+      max-height: calc(100vh - 180px);
+    }
   }
 }

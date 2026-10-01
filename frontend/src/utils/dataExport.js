@@ -446,6 +446,76 @@ export const exportDocumentToPDF = async (docData, documentType = 'invoice') => 
     } catch (e) {
         console.warn('Failed to render QR on PDF', e);
     }
+
+    // 7. Photo Attachments Page (Number Plate, Body & Inspection Photos)
+    const photosToRender = [];
+    if (docData.numberPlateImage) photosToRender.push({ title: 'Vehicle Number Plate Photo', src: docData.numberPlateImage });
+    if (docData.lorryBodyImage) photosToRender.push({ title: 'Vehicle / Lorry Body Condition', src: docData.lorryBodyImage });
+    if (Array.isArray(docData.photos)) {
+        docData.photos.forEach((src) => {
+            if (src && !photosToRender.some(p => p.src === src)) {
+                photosToRender.push({ title: `Inspection Photo ${photosToRender.length + 1}`, src });
+            }
+        });
+    }
+
+    if (photosToRender.length > 0) {
+        doc.addPage();
+        doc.setDrawColor(220);
+        doc.setLineWidth(0.2);
+        doc.rect(5, 5, pageWidth - 10, doc.internal.pageSize.height - 10);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text('GLX TRUCK BODY ENGINEERS - VEHICLE & INSPECTION PHOTOS', 10, 15);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(80, 80, 80);
+        doc.text(`${title} No: ${docCode}  |  Customer: ${customerName}  |  Vehicle No: ${docData.vehicleNo || 'N/A'}  |  Date: ${fmtDate(docDate)}`, 10, 20);
+
+        doc.setDrawColor(200);
+        doc.line(10, 23, pageWidth - 10, 23);
+
+        let curY = 28;
+        const colWidth = (pageWidth - 28) / 2;
+        const imgH = 65;
+
+        for (let pi = 0; pi < photosToRender.length; pi++) {
+            const p = photosToRender[pi];
+            const col = pi % 2;
+            const posX = 10 + col * (colWidth + 8);
+            if (pi > 0 && pi % 2 === 0) {
+                curY += imgH + 16;
+                if (curY + imgH > doc.internal.pageSize.height - 25) {
+                    doc.addPage();
+                    doc.setDrawColor(220);
+                    doc.rect(5, 5, pageWidth - 10, doc.internal.pageSize.height - 10);
+                    curY = 15;
+                }
+            }
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7.5);
+            doc.setTextColor(30, 41, 59);
+            doc.text(p.title, posX, curY - 2);
+
+            try {
+                let imgData = p.src;
+                if (!p.src.startsWith('data:image')) {
+                    imgData = await loadImageBase64(p.src);
+                }
+                if (imgData) {
+                    doc.addImage(imgData, 'JPEG', posX, curY, colWidth, imgH);
+                    doc.setDrawColor(200);
+                    doc.rect(posX, curY, colWidth, imgH);
+                }
+            } catch (err) {
+                console.warn('Could not add photo to PDF', err);
+            }
+        }
+    }
     
     doc.save(`${title.toLowerCase()}_${docCode.replace(/[\\/:*?"<>|]/g, '_')}.pdf`);
 };
@@ -595,6 +665,19 @@ export const printDocumentAsPDF = async (docData, documentType = 'invoice') => {
     }
 };
 
+const waitForImages = async (el) => {
+    if (!el) return;
+    const images = Array.from(el.querySelectorAll('img'));
+    await Promise.all(images.map(img => {
+        if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+        return new Promise(resolve => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            setTimeout(resolve, 2500); // 2.5s maximum fallback
+        });
+    }));
+};
+
 /**
  * Helper to generate a multi-page jsPDF instance from a DOM element (or multi-page .print-page elements).
  */
@@ -614,14 +697,20 @@ export const generateElementPDF = async (element) => {
     const pdfHeight = pdf.internal.pageSize.height;
 
     // Check if the target element contains multi-page (.print-page) elements
-    const pageElements = element.querySelectorAll('.print-page');
+    let pageElements = Array.from(element.querySelectorAll('.print-page'));
+    if (pageElements.length === 0 && element.classList?.contains('print-page')) {
+        pageElements = [element];
+    }
 
     if (pageElements && pageElements.length > 0) {
         for (let i = 0; i < pageElements.length; i++) {
             const pageEl = pageElements[i];
+            await waitForImages(pageEl);
+
             const canvas = await html2canvas(pageEl, {
                 scale: 2.5, // Crisp high-DPI resolution
                 useCORS: true,
+                allowTaint: false,
                 logging: false,
                 backgroundColor: '#ffffff',
                 ignoreElements: (el) => el.classList?.contains('no-print') || el.tagName === 'BUTTON'
@@ -650,9 +739,11 @@ export const generateElementPDF = async (element) => {
             pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
         }
     } else {
+        await waitForImages(element);
         const canvas = await html2canvas(element, {
             scale: 2.5,
             useCORS: true,
+            allowTaint: false,
             logging: false,
             backgroundColor: '#ffffff',
             ignoreElements: (el) => el.classList?.contains('no-print') || el.tagName === 'BUTTON'

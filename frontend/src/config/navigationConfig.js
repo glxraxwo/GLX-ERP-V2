@@ -161,10 +161,10 @@ export const NAVIGATION_CATEGORIES = [
         borderColor: 'border-violet-200',
         items: [
             {
-                title: 'Customer Invoices',
+                title: 'Invoices, Quotations & Estimates',
                 path: '/invoices',
                 icon: Receipt,
-                description: 'Billing, tax invoices, customer balance tracking and outstanding ageing',
+                description: 'Billing, tax invoices, quotations, vehicle estimates, and customer balance tracking',
                 permission: 'invoices.view',
                 category: 'finance'
             },
@@ -204,14 +204,7 @@ export const NAVIGATION_CATEGORIES = [
                 permission: 'customers.view',
                 category: 'sales'
             },
-            {
-                title: 'Price Quotations',
-                path: '/crm/quotations',
-                icon: FileSpreadsheet,
-                description: 'Prepare tailored vehicle body quotes, revisions and quotation printouts',
-                permission: 'sales.view',
-                category: 'sales'
-            },
+
             {
                 title: 'Yard Projects (CRM)',
                 path: '/crm/projects',

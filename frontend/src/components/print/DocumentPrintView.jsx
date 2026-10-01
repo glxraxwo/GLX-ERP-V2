@@ -37,7 +37,7 @@ const fmtPrintTs = (d = new Date()) => {
         const se    = String(d.getSeconds()).padStart(2,'0');
         const ampm  = h >= 12 ? 'PM' : 'AM';
         h = h % 12 || 12;
-        return `${day}/${mon}/${yr}   ${h}:${mi}:${se}${ampm}`;
+        return `${day}/${mon}/${yr}    ${h}:${mi}:${se}${ampm}`;
     } catch { return new Date().toLocaleString(); }
 };
 
@@ -75,7 +75,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     if (signerChoice === 'company') {
         activeSignature = companyInfo?.bossSignature || '';
         signerName = '';
-        signerTitle = companyInfo?.bossTitle || 'Authorized Signature';
+        signerTitle = companyInfo?.bossTitle || 'Authorized Person';
     } else if (signerChoice === 'my' && currentUser?.signature) {
         activeSignature = currentUser.signature;
         signerName = currentUser.fullName || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim();
@@ -97,7 +97,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
         } else {
             activeSignature = companyInfo?.bossSignature || '';
             signerName = '';
-            signerTitle = companyInfo?.bossTitle || 'Authorized Signature';
+            signerTitle = companyInfo?.bossTitle || 'Authorized Person';
         }
     }
 
@@ -107,24 +107,16 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     const isInvoice   = !isProforma && !isEstimate && (!!doc.invoiceNumber || doc.documentType === 'invoice');
     const isQuotation = !isProforma && !isEstimate && !isInvoice;
 
-    const leftHeaderTitle = isProforma 
-        ? (lang === 'si' ? 'PROFORMA QUOTATION / ප්‍රොෆෝමා මිල ගණන්' : lang === 'ta' ? 'PROFORMA QUOTATION / முன் விலைப்புள்ளி' : 'PROFORMA QUOTATION')
-        : isEstimate
-        ? (lang === 'si' ? 'ESTIMATE / ඇස්තමේන්තුව' : lang === 'ta' ? 'ESTIMATE / மதிப்பீடு' : 'ESTIMATE')
-        : isInvoice
-        ? (lang === 'si' ? 'INVOICE / ඉන්වොයිසිය' : lang === 'ta' ? 'INVOICE / விலைப்பட்டியல்' : 'INVOICE')
-        : (lang === 'si' ? 'QUOTATION / මිල ගණන් කැඳවීම' : lang === 'ta' ? 'QUOTATION / விலைப்புள்ளி' : 'QUOTATION');
-
     const docNumberLabel = (isInvoice || isProforma)
         ? (lang === 'si' ? 'ඉන්වොයිස් අංකය' : lang === 'ta' ? 'விலைப்பட்டியல் எண்' : 'Invoice No.')
         : isEstimate
         ? (lang === 'si' ? 'ඇස්තමේන්තු අංකය' : lang === 'ta' ? 'மதிப்பீடு எண்' : 'Estimate No.')
         : (lang === 'si' ? 'මිල ගණන් අංකය' : lang === 'ta' ? 'விலைப்புள்ளி எண்' : 'Quotation No.');
 
-    let docLabel = t.quotation;
-    if (isEstimate)  docLabel = t.estimate;
-    if (isInvoice)   docLabel = t.invoice;
-    if (isProforma)  docLabel = t.proforma;
+    let docLabel = t.quotation || 'Quotation';
+    if (isEstimate)  docLabel = t.estimate || 'Estimate';
+    if (isInvoice)   docLabel = t.invoice || 'Invoice';
+    if (isProforma)  docLabel = t.proforma || 'Proforma';
 
     /* ── meta ── */
     const docNumber       = doc.proformaNumber || doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'N/A';
@@ -199,14 +191,14 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
         allPhotos.push({ title: 'Vehicle / Lorry Body Condition', src: doc.lorryBodyImage });
     }
     if (Array.isArray(doc.photos)) {
-        doc.photos.forEach((src, idx) => {
+        doc.photos.forEach((src) => {
             if (src && !allPhotos.some(p => p.src === src)) {
                 allPhotos.push({ title: `Inspection Photo ${allPhotos.length + 1}`, src });
             }
         });
     }
     if (Array.isArray(doc.inspectionPhotos)) {
-        doc.inspectionPhotos.forEach((src, idx) => {
+        doc.inspectionPhotos.forEach((src) => {
             if (src && !allPhotos.some(p => p.src === src)) {
                 allPhotos.push({ title: `Inspection Photo ${allPhotos.length + 1}`, src });
             }
@@ -221,14 +213,21 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     });
 
     const hasEdits = Object.keys(editedValues).length > 0;
-    const editNum = Number(doc.editCount || (doc.version > 1 ? doc.version - 1 : 0) || (hasEdits ? 1 : 0));
-    const revisionCode = editNum > 0 ? `E${editNum}` : 'E0';
 
     /* ── inline print styles ── */
     const printStyles = `
         @page {
             size: A4 portrait;
-            margin: 0.25in; /* 0.25in on all sides = 0.5in width & height reduction on A4 */
+            margin: 0.25in;
+        }
+        @media screen {
+            .print-page {
+                background: #fff;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+                border: 1px solid #e2e8f0;
+                margin-bottom: 24px;
+                box-sizing: border-box;
+            }
         }
         @media print {
             html, body {
@@ -239,21 +238,49 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                 print-color-adjust: exact !important;
             }
             .no-print { display: none !important; }
-            .print-container {
-                width: calc(210mm - 0.5in) !important;
-                max-width: calc(210mm - 0.5in) !important;
+            .print-page {
+                width: 100% !important;
+                max-width: 100% !important;
                 min-height: calc(297mm - 0.5in) !important;
                 padding: 10px 14px !important;
                 margin: 0 auto !important;
                 box-sizing: border-box !important;
+                box-shadow: none !important;
+                border: none !important;
+                page-break-after: always !important;
+                break-after: page !important;
             }
-            body { margin: 0; background: #fff !important; }
+            .print-page:last-child {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+            .print-container table,
+            .print-page table,
+            table.print-table {
+                background-color: transparent !important;
+                background: transparent !important;
+            }
+            .print-container table tbody tr,
+            .print-page table tbody tr,
+            table.print-table tbody tr,
+            .print-container table tbody tr td,
+            .print-page table tbody tr td {
+                background-color: transparent !important;
+                background: transparent !important;
+            }
             input, textarea { border: none !important; background: transparent !important; box-shadow: none !important; resize: none !important; }
+        }
+        /* Ensure on-screen preview also has pure transparent/white rows without blue stripes */
+        .print-container table tbody tr,
+        .print-page table tbody tr,
+        table.print-table tbody tr {
+            background-color: transparent !important;
+            background: transparent !important;
         }
     `;
 
     return (
-        <div style={{ fontFamily: "'Calibri', 'Segoe UI', Arial, Helvetica, sans-serif", color: '#222', background: '#fff', width: '100%', maxWidth: 'calc(210mm - 0.5in)', margin: '0 auto', fontSize: 12.5 }}>
+        <div style={{ fontFamily: "'Calibri', 'Segoe UI', Arial, Helvetica, sans-serif", color: '#111', background: '#fff', width: '100%', maxWidth: 'calc(210mm - 0.5in)', margin: '0 auto', fontSize: 12.5 }}>
             <style>{printStyles}</style>
 
             {/* ── Toolbar (no-print) ── */}
@@ -356,12 +383,12 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                 background: signatureScale === 'large' ? '#e0f2fe' : '#fff',
                                 color: signatureScale === 'large' ? '#0369a1' : '#374151',
                             }}
-                            title="Toggle signature size for print balance (Standard 72px / Large 88px)"
+                            title="Toggle signature size (Standard 72px / Large 88px)"
                         >
-                            ✍️ Sig: {signatureScale === 'large' ? 'Large (88px)' : 'Standard (72px)'}
+                            ✍️ Sig: {signatureScale === 'large' ? 'Large' : 'Standard'}
                         </button>
 
-                        {/* Signer Switcher (if current user has their own signature) */}
+                        {/* Signer Switcher */}
                         {currentUser?.signature && (
                             <button
                                 type="button"
@@ -376,524 +403,593 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                     background: signerChoice !== 'company' ? '#dcfce7' : '#fff',
                                     color: signerChoice !== 'company' ? '#15803d' : '#4b5563',
                                 }}
-                                title="Click to toggle between your personal manager signature and company default signature"
                             >
-                                👤 {signerChoice !== 'company' ? `Signed by: ${currentUser.firstName || 'My Sig'}` : 'Signed by: Company Seal'}
+                                👤 {signerChoice !== 'company' ? `Signed: ${currentUser.firstName || 'My Sig'}` : 'Signed: Company'}
                             </button>
                         )}
                     </div>
 
                     {isQuickEdit && (
-                        <div style={{ width: '100%', padding: '6px 10px', background: '#eff6ff', border: '1px dashed #93c5fd', borderRadius: 6, fontSize: 11, color: '#1e40af', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span>✏️ <strong>Quick Edit Active:</strong> You can edit Customer info, Vehicle No, Remarks, and Terms &amp; Conditions inline below. When finished, click <em>'Done Editing'</em> or proceed directly to Print/PDF.</span>
+                        <div style={{ width: '100%', padding: '6px 10px', background: '#eff6ff', border: '1px dashed #93c5fd', borderRadius: 6, fontSize: 11, color: '#1e40af' }}>
+                            ✏️ <strong>Quick Edit Active:</strong> You can edit Customer info, Vehicle No, Remarks, and Terms &amp; Conditions inline below.
                         </div>
                     )}
                 </div>
             )}
 
             {/* ══════════════════════════════════════════════════
-                PRINTABLE AREA (100% Matches GLX physical print)
+                PRINTABLE ROOT AREA (Multi-Page Supported)
             ══════════════════════════════════════════════════ */}
-            <div 
-                ref={ref} 
-                className="print-container" 
-                style={{ 
-                    background: '#fff', 
-                    padding: '12px 18px', 
-                    width: '100%',
-                    maxWidth: 'calc(210mm - 0.5in)',
-                    minHeight: 'calc(297mm - 0.5in)',
-                    boxSizing: 'border-box',
-                    margin: '0 auto' 
-                }}
-            >
+            <div ref={ref} className="print-root-container">
 
-                {/* ── COMPANY HEADER ── */}
-                {showLetterheadHeader && (
-                    <div style={{ borderBottom: '1.5px solid #555', paddingBottom: 8, marginBottom: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                            {/* Logo */}
-                            <div style={{ flexShrink: 0, width: 72, marginTop: 2 }}>
-                                <img src="/logo.jpg" alt="GLX Logo" style={{ width: '100%', height: 'auto', objectFit: 'contain', filter: 'grayscale(100%)' }} />
+                {/* ──────────────────────────────────────────────
+                    PAGE 1: 100% Matches GLX Physical Print Format
+                ────────────────────────────────────────────── */}
+                <div 
+                    className="print-page print-container" 
+                    style={{ 
+                        background: '#fff', 
+                        padding: showLetterheadHeader ? '14px 18px 12px 18px' : '28mm 18px 12px 18px', 
+                        width: '100%',
+                        maxWidth: 'calc(210mm - 0.5in)',
+                        minHeight: 'calc(297mm - 0.5in)',
+                        boxSizing: 'border-box',
+                        margin: '0 auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between'
+                    }}
+                >
+                    <div>
+                        {/* ── COMPANY HEADER (Shown only if digital header is toggled on) ── */}
+                        {showLetterheadHeader && (
+                            <div style={{ borderBottom: '1.5px solid #444', paddingBottom: 8, marginBottom: 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                                    <div style={{ flexShrink: 0, width: 72, marginTop: 2 }}>
+                                        <img src="/logo.jpg" alt="GLX Logo" crossOrigin="anonymous" style={{ width: '100%', height: 'auto', objectFit: 'contain', filter: 'grayscale(100%)' }} />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 800, fontSize: 17, letterSpacing: 0.5, lineHeight: 1.1 }}>
+                                            GLX TRUCK BODY ENGINEERS
+                                        </div>
+                                        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.8, color: '#444', marginBottom: 5 }}>
+                                            ALUMINIUM , STEEL &amp; FREEZER BOX MANUFACTURE
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 11, lineHeight: 1.55 }}>
+                                            <div>
+                                                No.14,Negambo Road,<br />
+                                                Thudella,Ja-Ela,<br />
+                                                Sri Lanka.<br />
+                                                (11350)
+                                            </div>
+                                            <div>
+                                                No.2020/3L,2,Seeduwa Road,<br />
+                                                Kotugoda,Ja-Ela.<br />
+                                                Sri Lanka.<br />
+                                                (11390)
+                                            </div>
+                                            <div style={{ fontSize: 11, lineHeight: 1.6 }}>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 600 }}>Mobile</span> : 071 6666 888</div>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 600 }}>Tel</span> : 011 740 4446</div>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 600 }}>Email</span> : glx.engi@gmail.com</div>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 600 }}>Web</span> : www.glx.lk</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── CUSTOMER + DOCUMENT META (Exact format of media_1790881963777.png) ── */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, fontSize: 12.5 }}>
+                            {/* Left: Customer Block */}
+                            <div style={{ maxWidth: '54%', lineHeight: 1.55 }}>
+                                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: '#000' }}>{t.billTo || 'Customer'}</div>
+                                {isQuickEdit ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
+                                        <input
+                                            type="text"
+                                            value={customerNameVal}
+                                            onChange={(e) => setEditedValues(prev => ({ ...prev, customerName: e.target.value }))}
+                                            placeholder="Customer Name"
+                                            className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40 font-semibold"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={customerAddressVal}
+                                            onChange={(e) => setEditedValues(prev => ({ ...prev, customerAddress: e.target.value }))}
+                                            placeholder="Customer Address"
+                                            className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={customerPhoneVal}
+                                            onChange={(e) => setEditedValues(prev => ({ ...prev, customerPhone: e.target.value }))}
+                                            placeholder="Phone Number"
+                                            className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={vehicleNoVal}
+                                            onChange={(e) => setEditedValues(prev => ({ ...prev, vehicleNo: e.target.value }))}
+                                            placeholder="Vehicle Number (e.g. WP LC - 1757)"
+                                            className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40 font-mono font-bold"
+                                        />
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div style={{ fontWeight: 500, fontSize: 13, color: '#000' }}>{customerNameVal}</div>
+                                        {customerAddressVal && <div style={{ fontSize: 12.5, color: '#222' }}>{customerAddressVal}</div>}
+                                        {customerPhoneVal   && <div style={{ fontSize: 12.5, color: '#222' }}>{customerPhoneVal}</div>}
+                                        {vehicleNoVal && (
+                                            <div style={{ fontWeight: 700, fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 13.5, marginTop: 8, color: '#000' }}>
+                                                {vehicleNoVal}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </div>
 
-                            {/* Middle & Right: Company name + subtitle + address cols */}
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 700, fontSize: 17, letterSpacing: 0.5, lineHeight: 1.1 }}>
-                                    GLX TRUCK BODY ENGINEERS
-                                </div>
-                                <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: 0.8, color: '#444', marginBottom: 5 }}>
-                                    ALUMINIUM , STEEL &amp; FREEZER BOX MANUFACTURE
-                                </div>
-                                {/* 3 Column Address & Contact Block */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 11, lineHeight: 1.55 }}>
-                                    <div>
-                                        No.14,Negambo Road,<br />
-                                        Thudella,Ja-Ela,<br />
-                                        Sri Lanka.<br />
-                                        (11350)
+                            {/* Right: Meta Details */}
+                            <div style={{ textAlign: 'left', minWidth: 230 }}>
+                                {[
+                                    [docNumberLabel, docNumber],
+                                    [t.sales || 'Sales', isQuickEdit ? (
+                                        <input
+                                            type="text"
+                                            value={salesRepVal}
+                                            onChange={(e) => setEditedValues(prev => ({ ...prev, salesRep: e.target.value }))}
+                                            className="text-xs p-0.5 border border-blue-300 rounded bg-blue-50/40 w-28"
+                                        />
+                                    ) : salesRepVal],
+                                    [t.branch || 'Branch', isQuickEdit ? (
+                                        <input
+                                            type="text"
+                                            value={branchVal}
+                                            onChange={(e) => setEditedValues(prev => ({ ...prev, branch: e.target.value }))}
+                                            className="text-xs p-0.5 border border-blue-300 rounded bg-blue-50/40 w-28"
+                                        />
+                                    ) : branchVal],
+                                    [t.date || 'Date', <>
+                                        <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmtDate(docDate)}</span>
+                                        {fmtTime(docDate) && <><br/><span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 11.5 }}>{fmtTime(docDate)}</span></>}
+                                    </>],
+                                ].map(([label, value]) => (
+                                    <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 12.5 }}>
+                                        <span style={{ fontWeight: 700, color: '#000' }}>{label}</span>
+                                        <span style={{ color: '#000' }}>&nbsp;&nbsp;{value}</span>
                                     </div>
-                                    <div>
-                                        No.2020/3L,2,Seeduwa Road,<br />
-                                        Kotugoda,Ja-Ela.<br />
-                                        Sri Lanka.<br />
-                                        (11390)
-                                    </div>
-                                    <div style={{ fontSize: 11, lineHeight: 1.6 }}>
-                                        <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500 }}>Mobile</span> : 071 6666 888</div>
-                                        <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500 }}>Tel</span> : 011 740 4446</div>
-                                        <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500 }}>Email</span> : glx.engi@gmail.com</div>
-                                        <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500 }}>Web</span> : www.glx.lk</div>
-                                    </div>
-                                </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
-                )}
 
-                {/* ── CUSTOMER + DOCUMENT META ── */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, fontSize: 12.5 }}>
-                    {/* Left: Customer Block */}
-                    <div style={{ maxWidth: '52%', lineHeight: 1.6 }}>
-                        <div style={{
-                            fontSize: 15,
-                            fontWeight: 700,
-                            letterSpacing: 0.6,
-                            color: '#111827',
-                            marginBottom: 8,
-                            textTransform: 'uppercase',
-                        }}>
-                            {leftHeaderTitle}
-                        </div>
-                        <div style={{ fontWeight: 600, marginBottom: 1, color: '#374151' }}>{t.billTo || 'Customer'}</div>
-                        {isQuickEdit ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
-                                <input
-                                    type="text"
-                                    value={customerNameVal}
-                                    onChange={(e) => setEditedValues(prev => ({ ...prev, customerName: e.target.value }))}
-                                    placeholder="Customer Name"
-                                    className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40 font-semibold"
-                                />
-                                <input
-                                    type="text"
-                                    value={customerAddressVal}
-                                    onChange={(e) => setEditedValues(prev => ({ ...prev, customerAddress: e.target.value }))}
-                                    placeholder="Customer Address"
-                                    className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
-                                />
-                                <input
-                                    type="text"
-                                    value={customerPhoneVal}
-                                    onChange={(e) => setEditedValues(prev => ({ ...prev, customerPhone: e.target.value }))}
-                                    placeholder="Phone Number"
-                                    className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
-                                />
-                                <input
-                                    type="text"
-                                    value={vehicleNoVal}
-                                    onChange={(e) => setEditedValues(prev => ({ ...prev, vehicleNo: e.target.value }))}
-                                    placeholder="Vehicle Number (e.g. WP CAA-1234)"
-                                    className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40 font-mono font-bold"
-                                />
+                        {/* ── ITEMS TABLE ── */}
+                        <table className="no-zebra print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, marginBottom: 4, background: 'transparent' }}>
+                            <thead>
+                                <tr style={{ background: 'transparent' }}>
+                                    <th style={{ padding: '6px 4px 6px 0', textAlign: 'left',   fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#000', background: 'transparent' }}>
+                                        {t.description || 'DESCRIPTION'}
+                                    </th>
+                                    <th style={{ padding: '6px 8px', textAlign: 'right',  fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 95, color: '#000', background: 'transparent' }}>
+                                        {t.rate || 'RATE'}
+                                    </th>
+                                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 55, color: '#000', background: 'transparent' }}>
+                                        {t.qty || 'QTY'}
+                                    </th>
+                                    <th style={{ padding: '6px 0 6px 8px', textAlign: 'right',  fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 105, color: '#000', background: 'transparent' }}>
+                                        {t.amount || 'AMOUNT'}
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody style={{ background: 'transparent' }}>
+                                {items.map((item, idx) => {
+                                    const qty        = Number(item.quantity) || 1;
+                                    const rate       = Number(item.unitPrice || item.rate || 0);
+                                    const grossAmt   = qty * rate;
+                                    const discRate   = Number(item.discount  || 0);
+                                    const discAmt    = discRate > 0
+                                        ? discRate * qty
+                                        : Number(item.discountAmount || item.lineDiscount ||
+                                            (item.discountPercent ? (grossAmt * item.discountPercent / 100) : 0));
+                                    const effDiscRate = discRate > 0 ? discRate : (qty > 0 ? +(discAmt / qty).toFixed(2) : 0);
+
+                                    const mainName = item.productName || item.description || 'Line Item';
+                                    const sinhalaName = item.productTranslation || item.sinhalaName || '';
+                                    const title = lang === 'si'
+                                        ? (sinhalaName || mainName)
+                                        : mainName;
+                                    const subtitle = lang === 'si'
+                                        ? (sinhalaName && mainName !== sinhalaName ? mainName : '')
+                                        : (sinhalaName && sinhalaName !== mainName ? sinhalaName : '');
+                                    const descExtra = item.description && item.description !== mainName && item.description !== sinhalaName ? item.description : '';
+
+                                    return (
+                                        <React.Fragment key={idx}>
+                                            <tr style={{ verticalAlign: 'top', background: 'transparent' }}>
+                                                <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent' }}>
+                                                    <div style={{ fontWeight: 500, color: '#000' }}>
+                                                        <span>{title}</span>
+                                                        {subtitle && (
+                                                            <span style={{ 
+                                                                color: lang === 'si' ? '#475569' : '#047857', 
+                                                                fontWeight: 600, 
+                                                                fontSize: 12,
+                                                                marginLeft: 6
+                                                            }}>
+                                                                ({subtitle})
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {descExtra && (
+                                                        <div style={{ whiteSpace: 'pre-wrap', fontSize: 12, color: '#333', marginTop: 1 }}>
+                                                            {descExtra}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent' }}>{fmt(rate)}</td>
+                                                <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent' }}>{qty}</td>
+                                                <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent' }}>{fmt(grossAmt)}</td>
+                                            </tr>
+                                            {(discAmt > 0 || effDiscRate > 0) && (
+                                                <tr style={{ color: '#dc2626', background: 'transparent' }}>
+                                                    <td style={{ paddingBottom: 6, paddingRight: 4, color: '#dc2626', fontSize: 12, fontWeight: 500, background: 'transparent' }}>Discount</td>
+                                                    <td style={{ textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 8px 6px', color: '#dc2626', fontSize: 12, background: 'transparent' }}>-{fmt(effDiscRate)}</td>
+                                                    <td style={{ textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 8px 6px', color: '#dc2626', fontSize: 12, background: 'transparent' }}>{qty}</td>
+                                                    <td style={{ textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 0 6px 8px', color: '#dc2626', fontSize: 12, background: 'transparent' }}>-{fmt(discAmt)}</td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
+
+                                {laborCost > 0 && (
+                                    <tr style={{ verticalAlign: 'top', background: 'transparent' }}>
+                                        <td style={{ padding: '6px 4px 2px 0', fontWeight: 500, color: '#000', background: 'transparent' }}>Labor Charge / Workmanship</td>
+                                        <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent' }}>{fmt(laborCost)}</td>
+                                        <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent' }}>1</td>
+                                        <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent' }}>{fmt(laborCost)}</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+
+                        {/* ── SUBTOTALS + REMARKS (Clean layout matching media_1790881963777.png) ── */}
+                        <div style={{ marginTop: 10, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, fontSize: 12.5 }}>
+                            {/* Left: Remarks */}
+                            <div style={{ maxWidth: '45%', lineHeight: 1.6 }}>
+                                <span style={{ fontWeight: 700, color: '#000' }}>{t.remarks || 'Remarks'} &nbsp;&nbsp;&nbsp;&nbsp;:</span>
+                                {isQuickEdit ? (
+                                    <input
+                                        type="text"
+                                        value={remarksText}
+                                        onChange={(e) => setEditedValues(prev => ({ ...prev, remarks: e.target.value }))}
+                                        placeholder="Add remarks..."
+                                        className="w-full text-xs p-1 mt-1 border border-blue-300 rounded bg-blue-50/40"
+                                    />
+                                ) : (
+                                    remarksText ? <span style={{ marginLeft: 6, color: '#000' }}>{remarksText}</span> : null
+                                )}
                             </div>
-                        ) : (
-                            <>
-                                <div style={{ fontWeight: 500 }}>{customerNameVal}</div>
-                                {customerAddressVal && <div>{customerAddressVal}</div>}
-                                {customerPhoneVal   && <div>{customerPhoneVal}</div>}
-                                {vehicleNoVal && (
-                                    <div style={{ fontWeight: 600, fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 13, marginTop: 4 }}>
-                                        {vehicleNoVal}
+
+                            {/* Right: Totals block */}
+                            <div style={{ minWidth: 260 }}>
+                                {/* SUB TOTAL */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: 4, color: '#000' }}>
+                                    <span>SUB TOTAL</span>
+                                    <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmt(subtotal + laborCost)}</span>
+                                </div>
+                                {/* DISCOUNT (in RED) */}
+                                {totalDiscount > 0 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: 4, color: '#dc2626' }}>
+                                        <span>DISCOUNT</span>
+                                        <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>-{fmt(totalDiscount)}</span>
                                     </div>
                                 )}
-                            </>
-                        )}
-                    </div>
+                                {/* GRAND TOTAL */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 13.5, color: '#000', marginTop: 4 }}>
+                                    <span>GRAND TOTAL</span>
+                                    <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmt(grandTotal)}</span>
+                                </div>
 
-                    {/* Right: Meta Details */}
-                    <div style={{ textAlign: 'left', minWidth: 220 }}>
-                        {/* Revision Indicator & Print Time Stamp at the right-hand corner */}
-                        <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'flex-end', 
-                            alignItems: 'center', 
-                            gap: 6, 
-                            marginBottom: 4,
-                            paddingBottom: 2
-                        }}>
-                            <span 
-                                title={`Document Revision: [${revisionCode}]`}
-                                style={{
-                                    fontFamily: "'Consolas', 'Segoe UI Mono', monospace",
-                                    fontSize: 12,
-                                    fontWeight: 700,
-                                    color: '#dc2626',
-                                    letterSpacing: 0.5
-                                }}
-                            >
-                                [{revisionCode}]
-                            </span>
-                            <span style={{ 
-                                fontFamily: "'Consolas', 'Segoe UI Mono', monospace", 
-                                fontSize: 11, 
-                                color: '#475569' 
-                            }}>
-                                {printTimestamp}
-                            </span>
+                                {/* Optional Advance Paid & Balance Due */}
+                                {(advancePaid > 0 && (doc.showAdvanceOnInvoice || isInvoice)) && (
+                                    <>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 4, color: '#166534' }}>
+                                            <span>ADVANCE PAID</span>
+                                            <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>-{fmt(advancePaid)}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 2, color: '#92400e' }}>
+                                            <span>BALANCE DUE</span>
+                                            <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmt(balanceDue)}</span>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
-                        {[
-                            [docNumberLabel, docNumber],
-                            [t.sales || 'Sales', isQuickEdit ? (
-                                <input
-                                    type="text"
-                                    value={salesRepVal}
-                                    onChange={(e) => setEditedValues(prev => ({ ...prev, salesRep: e.target.value }))}
-                                    className="text-xs p-0.5 border border-blue-300 rounded bg-blue-50/40 w-28"
-                                />
-                            ) : salesRepVal],
-                            [t.branch || 'Branch', isQuickEdit ? (
-                                <input
-                                    type="text"
-                                    value={branchVal}
-                                    onChange={(e) => setEditedValues(prev => ({ ...prev, branch: e.target.value }))}
-                                    className="text-xs p-0.5 border border-blue-300 rounded bg-blue-50/40 w-28"
-                                />
-                            ) : branchVal],
-                            [t.date || 'Date', <>
-                                <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmtDate(docDate)}</span>
-                                {fmtTime(docDate) && <><br/><span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 11 }}>{fmtTime(docDate)}</span></>}
-                            </>],
-                        ].map(([label, value]) => (
-                            <div key={label} style={{ display: 'grid', gridTemplateColumns: '100px 1fr', columnGap: 4, lineHeight: 1.65 }}>
-                                <span style={{ fontWeight: 600 }}>{label}</span>
-                                <span>: &nbsp;{value}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* ── ITEMS TABLE ── */}
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, marginBottom: 0 }}>
-                    <thead>
-                        <tr style={{ borderTop: '1.5px solid #333', borderBottom: '1.5px solid #333' }}>
-                            <th style={{ padding: '5px 4px 5px 0', textAlign: 'left',   fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                {t.description || 'DESCRIPTION'}
-                            </th>
-                            <th style={{ padding: '5px 4px', textAlign: 'right',  fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, width: 90 }}>
-                                {t.rate || 'RATE'}
-                            </th>
-                            <th style={{ padding: '5px 4px', textAlign: 'center', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, width: 50 }}>
-                                {t.qty || 'QTY'}
-                            </th>
-                            <th style={{ padding: '5px 4px 5px 0', textAlign: 'right',  fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, width: 100 }}>
-                                {t.amount || 'AMOUNT'}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {items.map((item, idx) => {
-                            const qty        = Number(item.quantity) || 1;
-                            const rate       = Number(item.unitPrice || item.rate || 0);
-                            const grossAmt   = qty * rate;
-                            const discRate   = Number(item.discount || 0);
-                            const discAmt    = discRate > 0
-                                ? discRate * qty
-                                : Number(item.discountAmount || item.lineDiscount ||
-                                    (item.discountPercent ? (grossAmt * item.discountPercent / 100) : 0));
-                            const effDiscRate = discRate > 0 ? discRate : (qty > 0 ? +(discAmt / qty).toFixed(2) : 0);
-
-                            const mainName = item.productName || item.description || 'Line Item';
-                            const sinhalaName = item.productTranslation || item.sinhalaName || '';
-                            const title = lang === 'si'
-                                ? (sinhalaName || mainName)
-                                : mainName;
-                            const subtitle = lang === 'si'
-                                ? (sinhalaName && mainName !== sinhalaName ? mainName : '')
-                                : (sinhalaName && sinhalaName !== mainName ? sinhalaName : '');
-                            const descExtra = item.description && item.description !== mainName && item.description !== sinhalaName ? item.description : '';
-
-                            return (
-                                <React.Fragment key={idx}>
-                                    <tr style={{ verticalAlign: 'top' }}>
-                                        <td style={{ padding: '5px 4px 2px 0', lineHeight: 1.45 }}>
-                                            <div style={{ fontWeight: 500, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 6 }}>
-                                                <span>{title}</span>
-                                                {subtitle && (
-                                                    <span style={{ 
-                                                        color: lang === 'si' ? '#475569' : '#047857', 
-                                                        fontWeight: 600, 
-                                                        fontSize: 12 
-                                                    }}>
-                                                        ({subtitle})
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {descExtra && (
-                                                <div style={{ whiteSpace: 'pre-wrap', fontSize: 11.5, color: '#4b5563', marginTop: 1 }}>
-                                                    {descExtra}
-                                                </div>
+                        {/* ── TERMS & CONDITIONS (Colon-aligned matching media_1790881963777.png) ── */}
+                        <div style={{ paddingTop: 4, fontSize: lang === 'en' ? 11.5 : 11, lineHeight: 1.65, marginBottom: 14 }}>
+                            {!isInvoice && (
+                                <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start' }}>
+                                        <span style={{ fontWeight: 700, color: '#000' }}>{t.conditionOfPayments || 'Condition of Payments'}</span>
+                                        <span style={{ fontWeight: 700, color: '#000' }}>:</span>
+                                        <div>
+                                            {isQuickEdit ? (
+                                                <textarea
+                                                    rows={2}
+                                                    value={conditionOfPayments}
+                                                    onChange={(e) => setEditedValues(prev => ({ ...prev, conditionOfPayments: e.target.value }))}
+                                                    className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
+                                                />
+                                            ) : (
+                                                <div style={{ whiteSpace: 'pre-line', fontWeight: 500, color: '#000' }}>{conditionOfPayments}</div>
                                             )}
-                                        </td>
-                                        <td style={{ padding: '5px 4px 2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5 }}>{fmt(rate)}</td>
-                                        <td style={{ padding: '5px 4px 2px', textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5 }}>{qty}</td>
-                                        <td style={{ padding: '5px 0   2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5 }}>{fmt(grossAmt)}</td>
-                                    </tr>
-                                    {(discAmt > 0 || effDiscRate > 0) && (
-                                        <tr>
-                                            <td style={{ paddingBottom: 5, paddingRight: 4, color: '#555', fontSize: 12 }}>Discount</td>
-                                            <td style={{ textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", paddingBottom: 5, color: '#555', fontSize: 12 }}>-{fmt(effDiscRate)}</td>
-                                            <td style={{ textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", paddingBottom: 5, color: '#555', fontSize: 12 }}>{qty}</td>
-                                            <td style={{ textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", paddingBottom: 5, color: '#555', fontSize: 12 }}>-{fmt(discAmt)}</td>
-                                        </tr>
-                                    )}
-                                </React.Fragment>
-                            );
-                        })}
-
-                        {laborCost > 0 && (
-                            <tr style={{ verticalAlign: 'top' }}>
-                                <td style={{ padding: '5px 4px 2px 0', fontWeight: 500 }}>Labor Charge / Workmanship</td>
-                                <td style={{ padding: '5px 4px 2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmt(laborCost)}</td>
-                                <td style={{ padding: '5px 4px 2px', textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>1</td>
-                                <td style={{ padding: '5px 0   2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmt(laborCost)}</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-
-                {/* ── SUBTOTALS + REMARKS ── */}
-                <div style={{ borderTop: '1.5px solid #333', marginTop: 2, paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6, fontSize: 12.5 }}>
-                    {/* Left: Remarks */}
-                    <div style={{ maxWidth: '45%', lineHeight: 1.6 }}>
-                        <span style={{ fontWeight: 600 }}>{t.remarks || 'Remarks'}</span>
-                        {isQuickEdit ? (
-                            <input
-                                type="text"
-                                value={remarksText}
-                                onChange={(e) => setEditedValues(prev => ({ ...prev, remarks: e.target.value }))}
-                                placeholder="Add remarks..."
-                                className="w-full text-xs p-1 mt-1 border border-blue-300 rounded bg-blue-50/40"
-                            />
-                        ) : (
-                            remarksText ? <> &nbsp;: &nbsp;{remarksText}</> : ' &nbsp;:'
-                        )}
-                    </div>
-
-                    {/* Right: Totals block */}
-                    <div style={{ minWidth: 260 }}>
-                        {/* SUB TOTAL */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: 2 }}>
-                            <span>SUB TOTAL</span>
-                            <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmt(subtotal + laborCost)}</span>
-                        </div>
-                        {/* DISCOUNT */}
-                        {totalDiscount > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: 2 }}>
-                                <span>DISCOUNT</span>
-                                <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>-{fmt(totalDiscount)}</span>
-                            </div>
-                        )}
-                        {/* GRAND TOTAL */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 13.5, borderTop: '1.5px solid #333', borderBottom: '3px double #333', padding: '3px 0' }}>
-                            <span>GRAND TOTAL</span>
-                            <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmt(grandTotal)}</span>
-                        </div>
-
-                        {/* Optional Advance Paid & Balance Due (only if explicit) */}
-                        {(advancePaid > 0 && (doc.showAdvanceOnInvoice || isInvoice)) && (
-                            <>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 4, color: '#166534' }}>
-                                    <span>ADVANCE PAID</span>
-                                    <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>-{fmt(advancePaid)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 2, color: '#92400e' }}>
-                                    <span>BALANCE DUE</span>
-                                    <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmt(balanceDue)}</span>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {/* ── TERMS & CONDITIONS (Colon-aligned matching physical print) ── */}
-                <div style={{ borderTop: '1px solid #ccc', paddingTop: 8, fontSize: lang === 'en' ? 11.5 : 11, lineHeight: 1.65, marginBottom: 10 }}>
-                    {!isInvoice && (
-                        <>
-                            <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start' }}>
-                                <span style={{ fontWeight: 600, color: '#374151' }}>{t.conditionOfPayments || 'Condition of Payments'}</span>
-                                <span>:</span>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start', marginTop: 4 }}>
+                                        <span style={{ fontWeight: 700, color: '#000' }}>{t.completionOfWork || 'Completion of Work'}</span>
+                                        <span style={{ fontWeight: 700, color: '#000' }}>:</span>
+                                        <div>
+                                            {isQuickEdit ? (
+                                                <input
+                                                    type="text"
+                                                    value={completionOfWork}
+                                                    onChange={(e) => setEditedValues(prev => ({ ...prev, completionOfWork: e.target.value }))}
+                                                    className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
+                                                />
+                                            ) : (
+                                                <div style={{ fontWeight: 500, color: '#000' }}>{completionOfWork}</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start', marginTop: 4 }}>
+                                        <span style={{ fontWeight: 700, color: '#000' }}>{t.validity || 'Validity'} &nbsp;({isInvoice || isProforma ? 'Invoice' : isEstimate ? 'Estimate' : 'Quotation'})</span>
+                                        <span style={{ fontWeight: 700, color: '#000' }}>:</span>
+                                        <div>
+                                            {isQuickEdit ? (
+                                                <input
+                                                    type="text"
+                                                    value={validityQuotation}
+                                                    onChange={(e) => setEditedValues(prev => ({ ...prev, validityQuotation: e.target.value }))}
+                                                    className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40 font-semibold"
+                                                />
+                                            ) : (
+                                                <div style={{ fontWeight: 700, color: '#000' }}>{validityQuotation}</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start', marginTop: 4 }}>
+                                <span style={{ fontWeight: 700, color: '#000' }}>{t.warranty || 'Warranty'}</span>
+                                <span style={{ fontWeight: 700, color: '#000' }}>:</span>
                                 <div>
                                     {isQuickEdit ? (
                                         <textarea
                                             rows={2}
-                                            value={conditionOfPayments}
-                                            onChange={(e) => setEditedValues(prev => ({ ...prev, conditionOfPayments: e.target.value }))}
+                                            value={warrantyCondition}
+                                            onChange={(e) => setEditedValues(prev => ({ ...prev, warrantyCondition: e.target.value }))}
                                             className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
                                         />
                                     ) : (
-                                        <div style={{ whiteSpace: 'pre-wrap', fontWeight: 500 }}>{conditionOfPayments}</div>
+                                        <div style={{ whiteSpace: 'pre-line', fontWeight: 500, color: '#000' }}>{warrantyCondition}</div>
                                     )}
                                 </div>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start', marginTop: 3 }}>
-                                <span style={{ fontWeight: 600, color: '#374151' }}>{t.completionOfWork || 'Completion of Work'}</span>
-                                <span>:</span>
-                                <div>
-                                    {isQuickEdit ? (
-                                        <input
-                                            type="text"
-                                            value={completionOfWork}
-                                            onChange={(e) => setEditedValues(prev => ({ ...prev, completionOfWork: e.target.value }))}
-                                            className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
-                                        />
-                                    ) : (
-                                        <div style={{ fontWeight: 500 }}>{completionOfWork}</div>
-                                    )}
-                                </div>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start', marginTop: 3 }}>
-                                <span style={{ fontWeight: 600, color: '#374151' }}>{t.validity || 'Validity'} &nbsp;({isInvoice || isProforma ? 'Invoice' : isEstimate ? 'Estimate' : 'Quotation'})</span>
-                                <span>:</span>
-                                <div>
-                                    {isQuickEdit ? (
-                                        <input
-                                            type="text"
-                                            value={validityQuotation}
-                                            onChange={(e) => setEditedValues(prev => ({ ...prev, validityQuotation: e.target.value }))}
-                                            className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40 font-semibold"
-                                        />
-                                    ) : (
-                                        <div style={{ fontWeight: 600 }}>{validityQuotation}</div>
-                                    )}
-                                </div>
-                            </div>
-                        </>
-                    )}
-                    <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start', marginTop: 3 }}>
-                        <span style={{ fontWeight: 600, color: '#374151' }}>{t.warranty || 'Warranty'}</span>
-                        <span>:</span>
-                        <div>
-                            {isQuickEdit ? (
-                                <textarea
-                                    rows={2}
-                                    value={warrantyCondition}
-                                    onChange={(e) => setEditedValues(prev => ({ ...prev, warrantyCondition: e.target.value }))}
-                                    className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
-                                />
-                            ) : (
-                                <div style={{ whiteSpace: 'pre-wrap', fontWeight: 500 }}>{warrantyCondition}</div>
-                            )}
                         </div>
                     </div>
-                </div>
 
-                {/* ── PHOTO ATTACHMENTS (Vehicle & Inspection Photos) ── */}
-                {showPhotosInPrint && allPhotos.length > 0 && (
-                    <div style={{ marginTop: 14, marginBottom: 14, border: '1px solid #cbd5e1', borderRadius: 8, padding: 12, background: '#f8fafc', pageBreakInside: 'avoid' }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#1e293b', marginBottom: 10, borderBottom: '1px solid #e2e8f0', paddingBottom: 4 }}>
-                            Vehicle Verification &amp; Inspection Photo Attachments ({allPhotos.length} Photos)
+                    {/* ── FOOTER: Signature (left) + QR Code (right) (100% matches media_1790881963777.png) ── */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, marginTop: 'auto', pageBreakInside: 'avoid' }}>
+                        {/* Signature block */}
+                        <div>
+                            <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 2, color: '#000' }}>
+                                {lang === 'si' ? 'ඔබේ විශ්වාසවන්ත,' : lang === 'ta' ? 'உங்கள் உண்மையுள்ள,' : 'Yours Faithfully,'}
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#000', marginBottom: 16, lineHeight: 1.2 }}>
+                                {companyInfo?.companyName || 'GLX INDUSTRIES'} - {branchVal}
+                            </div>
+
+                            {/* Seal + Signature image area - safely below company name */}
+                            <div style={{ position: 'relative', minHeight: 56, marginTop: 8 }}>
+                                {companyInfo?.companySeal && (
+                                    <img
+                                        src={companyInfo.companySeal}
+                                        alt="Official Company Seal"
+                                        crossOrigin="anonymous"
+                                        style={{ 
+                                            position: 'absolute', 
+                                            bottom: 2, 
+                                            left: 130, 
+                                            width: 68, 
+                                            height: 68, 
+                                            objectFit: 'contain', 
+                                            opacity: 0.82, 
+                                            pointerEvents: 'none', 
+                                            zIndex: 1 
+                                        }}
+                                    />
+                                )}
+                                {activeSignature ? (
+                                    <img
+                                        src={activeSignature}
+                                        alt="Authorized Signature"
+                                        crossOrigin="anonymous"
+                                        style={{ 
+                                            height: signatureScale === 'large' ? 62 : 48, 
+                                            maxWidth: 210, 
+                                            objectFit: 'contain', 
+                                            marginBottom: 2, 
+                                            position: 'relative', 
+                                            zIndex: 2, 
+                                            display: 'block' 
+                                        }}
+                                    />
+                                ) : (
+                                    <div style={{ height: 40 }} />
+                                )}
+                                {/* Dotted signature line matching physical print */}
+                                <div style={{ fontSize: 14, letterSpacing: 1, color: '#444', lineHeight: 0.8 }}>
+                                    ............................................................
+                                </div>
+                            </div>
+                            <div style={{ fontSize: 11.5, color: '#000', marginTop: 4, fontWeight: 700 }}>
+                                {signerName ? (
+                                    <span>
+                                        <strong>{signerName}</strong> &nbsp;—&nbsp; {signerTitle || (lang === 'si' ? 'බලයලත් නිලධාරී' : 'Authorized Person')}
+                                    </span>
+                                ) : (
+                                    <span>
+                                        {t.authorizedSignature || (lang === 'si' ? 'බලයලත් නිලධාරී' : 'Authorized Person')}
+                                        {signerTitle ? ` (${signerTitle})` : ''}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Print timestamp in RED font */}
+                            <div style={{ fontSize: 10.5, color: '#dc2626', fontFamily: "'Consolas', monospace", marginTop: 14, fontWeight: 600 }}>
+                                Printed at &nbsp;&nbsp;&nbsp;&nbsp; {printTimestamp}
+                            </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: allPhotos.length === 1 ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                            {allPhotos.map((photo, pIdx) => (
-                                <div key={pIdx} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: 8, textAlign: 'center' }}>
-                                    <div style={{ fontSize: 10.5, fontWeight: 600, color: '#475569', textTransform: 'uppercase', marginBottom: 6 }}>
-                                        {photo.title}
+
+                        {/* QR Code */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <QRCodeSVG value={qrString} size={110} level="M" />
+                        </div>
+                    </div>
+                </div>{/* /print-page (Page 1) */}
+
+                {/* ──────────────────────────────────────────────
+                    PAGE 2: Vehicle & Inspection Photo Attachments
+                    (Rendered only if photos exist and not hidden)
+                ────────────────────────────────────────────── */}
+                {showPhotosInPrint && allPhotos.length > 0 && (
+                    <div 
+                        className="print-page print-container photo-page" 
+                        style={{ 
+                            background: '#fff', 
+                            padding: '16px 20px', 
+                            width: '100%',
+                            maxWidth: 'calc(210mm - 0.5in)',
+                            minHeight: 'calc(297mm - 0.5in)',
+                            boxSizing: 'border-box',
+                            margin: '20px auto 0 auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between'
+                        }}
+                    >
+                        <div>
+                            {/* Page 2 Header */}
+                            <div style={{ borderBottom: '1.5px solid #1e293b', paddingBottom: 8, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                    <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 0.5, color: '#0f172a' }}>
+                                        {companyInfo?.companyName || 'GLX TRUCK BODY ENGINEERS'}
                                     </div>
-                                    <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                                        <img 
-                                            src={photo.src} 
-                                            alt={photo.title} 
-                                            style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} 
-                                        />
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                                        VEHICLE VERIFICATION &amp; INSPECTION PHOTO ATTACHMENTS
                                     </div>
                                 </div>
-                            ))}
+                                <div style={{ textAlign: 'right', fontSize: 11, color: '#475569', lineHeight: 1.5 }}>
+                                    <div><strong>{docNumberLabel}:</strong> {docNumber}</div>
+                                    <div><strong>Date:</strong> {fmtDate(docDate)}</div>
+                                </div>
+                            </div>
+
+                            {/* Customer & Vehicle Info Strip - Clean Formal Document Style */}
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                paddingBottom: 8, 
+                                marginBottom: 14, 
+                                borderBottom: '1px solid #e2e8f0', 
+                                fontSize: 11.5 
+                            }}>
+                                <div>
+                                    <span style={{ color: '#64748b', fontWeight: 600 }}>Customer: </span>
+                                    <strong style={{ color: '#1e293b' }}>{customerNameVal}</strong>
+                                </div>
+                                {vehicleNoVal && (
+                                    <div>
+                                        <span style={{ color: '#64748b', fontWeight: 600 }}>Vehicle No: </span>
+                                        <strong style={{ fontFamily: 'monospace', color: '#1e293b', fontSize: 12.5 }}>{vehicleNoVal}</strong>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Photos Grid */}
+                            <div style={{ 
+                                display: 'grid', 
+                                gridTemplateColumns: allPhotos.length === 1 ? '1fr' : 'repeat(2, 1fr)', 
+                                gap: 16 
+                            }}>
+                                {allPhotos.map((photo, pIdx) => (
+                                    <div key={pIdx} style={{ 
+                                        background: '#fff', 
+                                        border: '1px solid #cbd5e1', 
+                                        borderRadius: 6, 
+                                        padding: 8, 
+                                        textAlign: 'center',
+                                        pageBreakInside: 'avoid',
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                    }}>
+                                        <div style={{ 
+                                            fontSize: 11, 
+                                            fontWeight: 700, 
+                                            color: '#1e293b', 
+                                            textTransform: 'uppercase', 
+                                            paddingBottom: 6, 
+                                            marginBottom: 6,
+                                            borderBottom: '1px solid #f1f5f9',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between'
+                                        }}>
+                                            <span>{photo.title}</span>
+                                            <span style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>#{pIdx + 1}</span>
+                                        </div>
+                                        <div style={{ 
+                                            height: allPhotos.length <= 2 ? 320 : 210, 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            background: '#f8fafc', 
+                                            borderRadius: 6, 
+                                            overflow: 'hidden',
+                                            border: '1px solid #f1f5f9'
+                                        }}>
+                                            <img 
+                                                src={photo.src} 
+                                                alt={photo.title} 
+                                                crossOrigin="anonymous"
+                                                style={{ 
+                                                    maxHeight: '100%', 
+                                                    maxWidth: '100%', 
+                                                    objectFit: 'contain' 
+                                                }} 
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Page 2 Footer */}
+                        <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10.5, color: '#64748b' }}>
+                            <div>
+                                Printed at &nbsp;<span style={{ color: '#dc2626', fontWeight: 600 }}>{printTimestamp}</span> &nbsp;|&nbsp; GLX TRUCK BODY ENGINEERS ({branchVal})
+                            </div>
+                            <div style={{ fontWeight: 600 }}>
+                                Page 2 of 2 (Attachments)
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* ── FOOTER: Signature (left) + QR Code (right) ── */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, pageBreakInside: 'avoid' }}>
-                    {/* Signature block */}
-                    <div>
-                        <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 2 }}>
-                            {lang === 'si' ? 'ඔබේ විශ්වාසවන්ත,' : lang === 'ta' ? 'உங்கள் உண்மையுள்ள,' : 'Yours Faithfully,'}
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 600 }}>
-                            {companyInfo?.companyName || 'GLX INDUSTRIES'} - {branch}
-                        </div>
-
-                        {/* Seal + Signature image area */}
-                        <div style={{ position: 'relative', minHeight: 76, paddingTop: 10 }}>
-                            {companyInfo?.companySeal && (
-                                <img
-                                    src={companyInfo.companySeal}
-                                    alt="Official Company Seal"
-                                    style={{ 
-                                        position: 'absolute', 
-                                        top: -14, 
-                                        left: 100, 
-                                        width: 86, 
-                                        height: 86, 
-                                        objectFit: 'contain', 
-                                        opacity: 0.82, 
-                                        pointerEvents: 'none', 
-                                        zIndex: 1 
-                                    }}
-                                />
-                            )}
-                            {activeSignature ? (
-                                <img
-                                    src={activeSignature}
-                                    alt="Authorized Signature"
-                                    style={{ 
-                                        height: signatureScale === 'large' ? 88 : 72, 
-                                        maxWidth: 240, 
-                                        objectFit: 'contain', 
-                                        marginBottom: 4, 
-                                        position: 'relative', 
-                                        zIndex: 2, 
-                                        display: 'block' 
-                                    }}
-                                />
-                            ) : (
-                                <div style={{ height: 48 }} />
-                            )}
-                            {/* Dotted signature line matching physical print */}
-                            <div style={{ fontSize: 14, letterSpacing: 1, color: '#666', lineHeight: 0.8 }}>
-                                ............................................................
-                            </div>
-                        </div>
-                        <div style={{ fontSize: 11.5, color: '#333', marginTop: 4, fontWeight: 500 }}>
-                            {signerName ? (
-                                <span>
-                                    <strong>{signerName}</strong> &nbsp;—&nbsp; {signerTitle || (lang === 'si' ? 'බලයලත් නිලධාරී' : 'Authorized Officer')}
-                                </span>
-                            ) : (
-                                <span>
-                                    {t.authorizedSignature || (lang === 'si' ? 'බලයලත් නිලධාරී' : 'Authorized Person')}
-                                    {signerTitle ? ` (${signerTitle})` : ''}
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Print timestamp */}
-                        <div style={{ fontSize: 10, color: '#e74c3c', fontFamily: 'monospace', marginTop: 16 }}>
-                            Printed at &nbsp;&nbsp; {printTimestamp} &nbsp;&nbsp; <strong style={{ color: '#b91c1c' }}>[{revisionCode}]</strong>
-                        </div>
-                    </div>
-
-                    {/* QR Code */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{ padding: 4, border: '1px solid #d1d5db', borderRadius: 6, background: '#fff' }}>
-                            <QRCodeSVG value={qrString} size={105} level="M" />
-                        </div>
-                    </div>
-                </div>
-
-            </div>{/* /print-container */}
+            </div>{/* /print-root-container */}
         </div>
     );
 });

@@ -38,7 +38,7 @@ const formatDate = (dateStr) => {
     }
 };
 
-const QuotationsPage = () => {
+const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     const navigate = useNavigate();
     const { hasPermission, isAdmin } = usePermission();
     const canCreate = isAdmin || hasPermission('sales.create');
@@ -73,11 +73,53 @@ const QuotationsPage = () => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [viewMode, setViewMode] = useState('table');
-    const [activeTab, setActiveTab] = useState('all');
+    const [activeTab, setActiveTab] = useState(initialTab || 'all');
     const [useSinhalaLanguage, setUseSinhalaLanguage] = useState(false);
     const [previewIncludeHeader, setPreviewIncludeHeader] = useState(true);
 
+    useEffect(() => {
+        if (initialTab) {
+            setActiveTab(initialTab);
+        }
+    }, [initialTab]);
+
     const printRef = useRef();
+    const directExportRef = useRef();
+    const [directExportDoc, setDirectExportDoc] = useState(null);
+
+    const handlePrintDocument = () => {
+        if (printRef.current) {
+            printElementAsPDF(printRef.current);
+        }
+    };
+
+    const handleDirectDownloadPDF = async (quote) => {
+        try {
+            toast.loading('Preparing Document PDF...', { id: 'pdf-direct-download' });
+            setDirectExportDoc(quote);
+            setTimeout(async () => {
+                try {
+                    if (directExportRef.current) {
+                        const docNumber = quote.quoteNumber || quote.quotationCode || 'document';
+                        const docType = quote.documentType || 'quotation';
+                        const fileName = `${docType}_${docNumber.replace(/[\/\\:]/g, '_')}.pdf`;
+                        await exportElementToPDF(directExportRef.current, fileName);
+                        toast.success('PDF downloaded successfully!', { id: 'pdf-direct-download' });
+                    } else {
+                        toast.error('Failed to generate PDF', { id: 'pdf-direct-download' });
+                    }
+                } catch (err) {
+                    console.error('PDF export error:', err);
+                    toast.error('Failed to download PDF', { id: 'pdf-direct-download' });
+                } finally {
+                    setDirectExportDoc(null);
+                }
+            }, 600);
+        } catch (e) {
+            toast.error('Error generating PDF', { id: 'pdf-direct-download' });
+            setDirectExportDoc(null);
+        }
+    };
 
     // Form inputs state
     const [formData, setFormData] = useState({
@@ -749,12 +791,17 @@ const QuotationsPage = () => {
             render: (r) => {
                 const isEst = r.documentType === 'estimate' || r.quoteNumber?.startsWith('EST') || r.quoteNumber?.includes('/EST/') || r.quotationCode?.includes('/EST/');
                 return (
-                    <div className="flex items-center gap-1.5">
+                    <button
+                        type="button"
+                        onClick={() => { setPreviewQuote(r); setIsPreviewOpen(true); }}
+                        className="flex items-center gap-1.5 hover:opacity-80 text-left transition group cursor-pointer"
+                        title="Click to View / Print Document"
+                    >
                         <span className={`px-1.5 py-0.5 text-[10px] font-black rounded uppercase tracking-wider ${isEst ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
                             {isEst ? 'EST' : 'QT'}
                         </span>
-                        <span className="font-mono font-bold text-xs text-gray-900">{r.quoteNumber || r.quotationCode}</span>
-                    </div>
+                        <span className="font-mono font-bold text-xs text-blue-700 group-hover:underline">{r.quoteNumber || r.quotationCode}</span>
+                    </button>
                 );
             }
         },
@@ -882,7 +929,7 @@ const QuotationsPage = () => {
                         )
                     )}
                     <button
-                        onClick={() => exportDocumentToPDF(r, r.documentType || 'quotation')}
+                        onClick={() => handleDirectDownloadPDF(r)}
                         className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded transition"
                         title="Download PDF"
                     >
@@ -911,20 +958,33 @@ const QuotationsPage = () => {
 
     return (
         <div className="space-y-6">
-            <PageHeader
-                title="Quotations & Estimates"
-                description="Manage vehicle body engineering quotations, insurance estimates & convert to invoices"
-                actions={canCreate && (
-                    <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" onClick={() => openForm(null, 'estimate')}>
-                            <Plus size={16} className="mr-1.5" /> New Estimate (JA/EST)
-                        </Button>
-                        <Button variant="primary" onClick={() => openForm(null, 'quotation')}>
-                            <Plus size={16} className="mr-1.5" /> New Quotation (JA/QT)
-                        </Button>
+            {!embedded ? (
+                <PageHeader
+                    title="Quotations & Estimates"
+                    description="Manage vehicle body engineering quotations, insurance estimates & convert to invoices"
+                    actions={canCreate && (
+                        <div className="flex flex-wrap gap-2">
+                            <Button variant="outline" onClick={() => openForm(null, 'estimate')}>
+                                <Plus size={16} className="mr-1.5" /> New Estimate (JA/EST)
+                            </Button>
+                            <Button variant="primary" onClick={() => openForm(null, 'quotation')}>
+                                <Plus size={16} className="mr-1.5" /> New Quotation (JA/QT)
+                            </Button>
+                        </div>
+                    )}
+                />
+            ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-xs mb-2">
+                    <div>
+                        <h2 className="text-base font-bold text-gray-900">
+                            {activeTab === 'estimate' ? 'Cost Estimates' : activeTab === 'quotation' ? 'Price Quotations' : 'Quotations & Estimates'}
+                        </h2>
+                        <p className="text-xs text-gray-500">
+                            {activeTab === 'estimate' ? 'Manage insurance & vehicle repair cost estimates' : 'Manage body engineering quotations & convert directly to invoice'}
+                        </p>
                     </div>
-                )}
-            />
+                </div>
+            )}
 
             {/* KPI Summary Banner (Matching Invoices Page aging/kpi summary) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1240,7 +1300,7 @@ const QuotationsPage = () => {
                                                 <Edit size={14} className="mr-1" /> Edit
                                             </Button>
                                         )}
-                                        <Button variant="outline" size="sm" onClick={() => exportDocumentToPDF(quote, quote.documentType || 'quotation')} title="Download PDF">
+                                        <Button variant="outline" size="sm" onClick={() => handleDirectDownloadPDF(quote)} title="Download PDF">
                                             <Download size={14} />
                                         </Button>
                                         <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setPreviewQuote(quote); setShareModalOpen(true); }} title="Share Quotation Link via SMS">
@@ -1662,6 +1722,9 @@ const QuotationsPage = () => {
                                                                     newItems[index].productName = pName;
                                                                     if (pSinhalaName) {
                                                                         newItems[index].productTranslation = pSinhalaName;
+                                                                    }
+                                                                    if (p.description) {
+                                                                        newItems[index].description = p.description;
                                                                     }
                                                                     newItems[index].unitPrice = pPrice;
                                                                     newItems[index].quantity = qty;
@@ -2461,6 +2524,20 @@ const QuotationsPage = () => {
 
             <ConfirmDialog isOpen={!!deleting} onClose={() => setDeleting(null)} onConfirm={handleDelete}
                 title="Delete Document" message={`Permanently remove ${deleting?.quoteNumber || deleting?.quotationCode}?`} />
+
+            {/* Offscreen print renderer for direct row/card PDF downloads */}
+            {directExportDoc && (
+                <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '210mm', opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
+                    <DocumentPrintView
+                        ref={directExportRef}
+                        document={directExportDoc}
+                        companyInfo={settings}
+                        useSinhalaLanguage={useSinhalaLanguage}
+                        hideToolbar={true}
+                        hideLetterheadHeader={false}
+                    />
+                </div>
+            )}
         </div>
     );
 };

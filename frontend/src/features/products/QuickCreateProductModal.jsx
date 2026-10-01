@@ -21,6 +21,7 @@ export default function QuickCreateProductModal({
     const [form, setForm] = useState({
         name: '',
         sinhalaName: '',
+        description: '',
         productType: defaultProductType,
         categoryId: '',
         unitOfMeasure: 'pcs',
@@ -66,6 +67,7 @@ export default function QuickCreateProductModal({
             const result = await createMutation.mutateAsync({
                 name: form.name,
                 sinhalaName: form.sinhalaName?.trim() || undefined,
+                description: form.description?.trim() || undefined,
                 productType: form.productType,
                 categoryId: form.categoryId || undefined,
                 unitOfMeasure: form.unitOfMeasure,
@@ -82,7 +84,7 @@ export default function QuickCreateProductModal({
             });
 
             setForm({
-                name: '', sinhalaName: '', productType: defaultProductType, categoryId: '',
+                name: '', sinhalaName: '', description: '', productType: defaultProductType, categoryId: '',
                 unitOfMeasure: 'pcs', basePrice: 0, purchasePrice: 0,
                 canBeSold: defaultProductType !== 'raw_material', canBePurchased: true,
             });
@@ -125,6 +127,19 @@ export default function QuickCreateProductModal({
                             placeholder="e.g., ලෑලි / මැරීන් ලෑලි"
                             value={form.sinhalaName}
                             onChange={(e) => setForm((f) => ({ ...f, sinhalaName: e.target.value }))}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Description / Specifications (විස්තරය / Specifications)
+                        </label>
+                        <textarea
+                            rows={2}
+                            placeholder="e.g., 3x3 Aluminium Patch, Waterproof Shutter Board, Custom specs..."
+                            value={form.description}
+                            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 leading-relaxed font-sans"
                         />
                     </div>
                 </div>

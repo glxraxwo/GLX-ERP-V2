@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Eye, FileText, AlertTriangle, CheckCircle, RefreshCw, Briefcase, FileCheck, Layers, RotateCcw, Calendar, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, Search, Eye, FileText, AlertTriangle, CheckCircle, RefreshCw, Briefcase, FileCheck, Layers, RotateCcw, Calendar, X, Receipt, ClipboardList } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -14,6 +14,7 @@ import Pagination from '../components/ui/Pagination';
 import EmptyState from '../components/ui/EmptyState';
 import { useInvoices, useAgingSummary } from '../features/invoices/useInvoices';
 import { useAuthStore } from '../store/authStore';
+import QuotationsPage from './QuotationsPage';
 import api from '../api/axios';
 
 const paymentStatusVariant = {
@@ -33,6 +34,22 @@ export default function InvoicesPage() {
     const { user } = useAuthStore();
     const { hasPermission, isAdmin } = usePermission();
     const canCreate = isAdmin || hasPermission('invoices.create') || ['admin', 'manager', 'accountant', 'sales_manager'].includes(user?.role);
+
+    const [searchParams, setSearchParams] = useSearchParams();
+    const tabFromUrl = searchParams.get('tab') || 'invoices';
+    const [masterTab, setMasterTab] = useState(tabFromUrl);
+
+    useEffect(() => {
+        const t = searchParams.get('tab');
+        if (t && ['invoices', 'quotations', 'estimates'].includes(t)) {
+            setMasterTab(t);
+        }
+    }, [searchParams]);
+
+    const handleTabChange = (tab) => {
+        setMasterTab(tab);
+        setSearchParams({ tab });
+    };
 
     // Quick Payment State
     const [selectedPayInvoice, setSelectedPayInvoice] = useState(null);
@@ -295,175 +312,234 @@ export default function InvoicesPage() {
     return (
         <div>
             <PageHeader
-                title="Invoices"
-                description="Bill customers and track outstanding payments"
+                title="Invoices, Quotes & Estimates"
+                description="Manage customer billing invoices, vehicle body quotations & repair cost estimates in one place"
                 actions={canCreate && (
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" onClick={() => navigate('/invoices/from-sales-order')}>
+                        <Button variant="outline" size="sm" onClick={() => navigate('/invoices/from-sales-order')}>
                             From Sales Order
                         </Button>
-                        <Button variant="primary" onClick={() => navigate('/invoices/new')}>
-                            <Plus size={16} className="mr-1.5" /> Add Invoice
+                        <Button variant="outline" size="sm" onClick={() => navigate('/invoices/new?type=estimate')}>
+                            <Plus size={15} className="mr-1" /> New Estimate
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => navigate('/invoices/new?type=quotation')}>
+                            <Plus size={15} className="mr-1" /> New Quotation
+                        </Button>
+                        <Button variant="primary" size="sm" onClick={() => navigate('/invoices/new?type=invoice')}>
+                            <Plus size={15} className="mr-1" /> Add Invoice
                         </Button>
                     </div>
                 )}
             />
 
-            {/* Aging summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-                {[
-                    { key: 'current', label: 'Current', color: 'bg-green-50 text-green-700 border-green-200' },
-                    { key: '1_30', label: '1-30 days', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-                    { key: '31_60', label: '31-60 days', color: 'bg-orange-50 text-orange-700 border-orange-200' },
-                    { key: '61_90', label: '61-90 days', color: 'bg-red-50 text-red-700 border-red-200' },
-                    { key: '90_plus', label: '90+ days', color: 'bg-purple-50 text-purple-700 border-purple-200' },
-                ].map((b) => (
-                    <button key={b.key}
-                        onClick={() => setFilters((f) => ({ ...f, agingBucket: f.agingBucket === b.key ? '' : b.key, page: 1 }))}
-                        className={`border rounded-lg p-3 text-left transition ${b.color} ${filters.agingBucket === b.key ? 'ring-2 ring-offset-1 ring-primary-500' : ''}`}>
-                        <p className="text-xs opacity-75">{b.label}</p>
-                        <p className="text-lg font-bold mt-1">{fmt(aging.buckets?.[b.key] || 0)}</p>
-                        <p className="text-xs opacity-60 mt-0.5">{aging.counts?.[b.key] || 0} invoices</p>
-                    </button>
-                ))}
+            {/* Master Navigation Tabs: Invoices | Quotations | Estimates */}
+            <div className="flex items-center gap-2 p-1.5 bg-gray-100 rounded-2xl border border-gray-200 mb-6 max-w-xl">
+                <button
+                    type="button"
+                    onClick={() => handleTabChange('invoices')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition flex items-center justify-center gap-2 ${
+                        masterTab === 'invoices'
+                            ? 'bg-white text-primary-700 shadow-sm border border-gray-200/60'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+                    }`}
+                >
+                    <Receipt size={16} />
+                    <span>Invoices</span>
+                    {total > 0 && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${masterTab === 'invoices' ? 'bg-primary-50 text-primary-700 border border-primary-200' : 'bg-gray-200 text-gray-600'}`}>
+                            {total}
+                        </span>
+                    )}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => handleTabChange('quotations')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition flex items-center justify-center gap-2 ${
+                        masterTab === 'quotations'
+                            ? 'bg-white text-blue-700 shadow-sm border border-gray-200/60'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+                    }`}
+                >
+                    <FileText size={16} />
+                    <span>Quotations</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => handleTabChange('estimates')}
+                    className={`flex-1 py-2 px-3 rounded-xl text-xs md:text-sm font-bold transition flex items-center justify-center gap-2 ${
+                        masterTab === 'estimates'
+                            ? 'bg-white text-amber-700 shadow-sm border border-gray-200/60'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'
+                    }`}
+                >
+                    <ClipboardList size={16} />
+                    <span>Estimates</span>
+                </button>
             </div>
 
-            <Card>
-                {/* Invoice Type & Status Filter Pills */}
-                <div className="flex overflow-x-auto flex-nowrap border-b border-gray-200 bg-white rounded-t-xl">
-                    <button
-                        onClick={() => setFilters((f) => ({ ...f, invoiceType: 'commercial', paymentStatus: '', page: 1 }))}
-                        className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
-                            filters.invoiceType === 'commercial' && !filters.paymentStatus
-                                ? 'border-primary-600 text-primary-600 bg-slate-50'
-                                : 'border-transparent text-gray-500 hover:text-slate-800 hover:bg-slate-50'
-                        }`}
-                    >
-                        Standard / Commercial
-                    </button>
-                    <button
-                        onClick={() => setFilters((f) => ({ ...f, invoiceType: 'commercial', paymentStatus: 'paid', page: 1 }))}
-                        className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
-                            filters.invoiceType === 'commercial' && filters.paymentStatus === 'paid'
-                                ? 'border-primary-600 text-primary-600 bg-slate-50'
-                                : 'border-transparent text-gray-500 hover:text-slate-800 hover:bg-slate-50'
-                        }`}
-                    >
-                        Fully Paid Invoices
-                    </button>
-                    <button
-                        onClick={() => setFilters((f) => ({ ...f, invoiceType: 'proforma', paymentStatus: '', page: 1 }))}
-                        className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
-                            filters.invoiceType === 'proforma'
-                                ? 'border-primary-600 text-primary-600 bg-slate-50'
-                                : 'border-transparent text-gray-500 hover:text-slate-800 hover:bg-slate-50'
-                        }`}
-                    >
-                        Proforma Invoices
-                    </button>
-                </div>
+            {masterTab === 'quotations' ? (
+                <QuotationsPage embedded={true} initialTab="quotation" />
+            ) : masterTab === 'estimates' ? (
+                <QuotationsPage embedded={true} initialTab="estimate" />
+            ) : (
+                <>
+                    {/* Aging summary */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+                        {[
+                            { key: 'current', label: 'Current', color: 'bg-green-50 text-green-700 border-green-200' },
+                            { key: '1_30', label: '1-30 days', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+                            { key: '31_60', label: '31-60 days', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+                            { key: '61_90', label: '61-90 days', color: 'bg-red-50 text-red-700 border-red-200' },
+                            { key: '90_plus', label: '90+ days', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+                        ].map((b) => (
+                            <button key={b.key}
+                                onClick={() => setFilters((f) => ({ ...f, agingBucket: f.agingBucket === b.key ? '' : b.key, page: 1 }))}
+                                className={`border rounded-lg p-3 text-left transition ${b.color} ${filters.agingBucket === b.key ? 'ring-2 ring-offset-1 ring-primary-500' : ''}`}>
+                                <p className="text-xs opacity-75">{b.label}</p>
+                                <p className="text-lg font-bold mt-1">{fmt(aging.buckets?.[b.key] || 0)}</p>
+                                <p className="text-xs opacity-60 mt-0.5">{aging.counts?.[b.key] || 0} invoices</p>
+                            </button>
+                        ))}
+                    </div>
 
-                <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row flex-wrap gap-2">
-                    <div className="relative flex-1 min-w-[200px]">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input type="text" placeholder="Search by invoice # or customer..."
-                            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-[16px] min-h-[44px]"
-                            value={filters.search}
-                            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))}
-                            onKeyDown={async (e) => {
-                                if (e.key === 'Enter') {
-                                    const searchVal = e.target.value.trim();
-                                    if (searchVal.toUpperCase().startsWith('INV-')) {
-                                        const found = invoices.find(inv => inv.invoiceNumber?.toUpperCase() === searchVal.toUpperCase());
-                                        if (found) {
-                                            navigate(`/invoices/${found._id}`);
-                                        } else {
-                                            try {
-                                                const res = await api.get(`/invoices?search=${searchVal}`);
-                                                const foundBack = res.data?.data?.find(inv => inv.invoiceNumber?.toUpperCase() === searchVal.toUpperCase());
-                                                if (foundBack) {
-                                                    navigate(`/invoices/${foundBack._id}`);
+                    <Card>
+                        {/* Invoice Type & Status Filter Pills */}
+                        <div className="flex overflow-x-auto flex-nowrap border-b border-gray-200 bg-white rounded-t-xl">
+                            <button
+                                onClick={() => setFilters((f) => ({ ...f, invoiceType: 'commercial', paymentStatus: '', page: 1 }))}
+                                className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
+                                    filters.invoiceType === 'commercial' && !filters.paymentStatus
+                                        ? 'border-primary-600 text-primary-600 bg-slate-50'
+                                        : 'border-transparent text-gray-500 hover:text-slate-800 hover:bg-slate-50'
+                                }`}
+                            >
+                                Standard / Commercial
+                            </button>
+                            <button
+                                onClick={() => setFilters((f) => ({ ...f, invoiceType: 'commercial', paymentStatus: 'paid', page: 1 }))}
+                                className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
+                                    filters.invoiceType === 'commercial' && filters.paymentStatus === 'paid'
+                                        ? 'border-primary-600 text-primary-600 bg-slate-50'
+                                        : 'border-transparent text-gray-500 hover:text-slate-800 hover:bg-slate-50'
+                                }`}
+                            >
+                                Fully Paid Invoices
+                            </button>
+                            <button
+                                onClick={() => setFilters((f) => ({ ...f, invoiceType: 'proforma', paymentStatus: '', page: 1 }))}
+                                className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
+                                    filters.invoiceType === 'proforma'
+                                        ? 'border-primary-600 text-primary-600 bg-slate-50'
+                                        : 'border-transparent text-gray-500 hover:text-slate-800 hover:bg-slate-50'
+                                }`}
+                            >
+                                Proforma Invoices
+                            </button>
+                        </div>
+
+                        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row flex-wrap gap-2">
+                            <div className="relative flex-1 min-w-[200px]">
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input type="text" placeholder="Search by invoice # or customer..."
+                                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-[16px] min-h-[44px]"
+                                    value={filters.search}
+                                    onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))}
+                                    onKeyDown={async (e) => {
+                                        if (e.key === 'Enter') {
+                                            const searchVal = e.target.value.trim();
+                                            if (searchVal.toUpperCase().startsWith('INV-')) {
+                                                const found = invoices.find(inv => inv.invoiceNumber?.toUpperCase() === searchVal.toUpperCase());
+                                                if (found) {
+                                                    navigate(`/invoices/${found._id}`);
+                                                } else {
+                                                    try {
+                                                        const res = await api.get(`/invoices?search=${searchVal}`);
+                                                        const foundBack = res.data?.data?.find(inv => inv.invoiceNumber?.toUpperCase() === searchVal.toUpperCase());
+                                                        if (foundBack) {
+                                                            navigate(`/invoices/${foundBack._id}`);
+                                                        }
+                                                    } catch (err) {
+                                                        console.error('Barcode fetch failed', err);
+                                                    }
                                                 }
-                                            } catch (err) {
-                                                console.error('Barcode fetch failed', err);
                                             }
                                         }
-                                    }
-                                }
-                            }} />
-                    </div>
-                    <div className="w-full sm:w-48">
-                        <Select placeholder="All Statuses"
-                            options={[
-                                { value: 'unpaid', label: 'Unpaid' },
-                                { value: 'partially_paid', label: 'Partially Paid' },
-                                { value: 'paid', label: 'Paid' },
-                                { value: 'overdue', label: 'Overdue' },
-                                { value: 'cancelled', label: 'Cancelled' },
-                            ]}
-                            value={filters.paymentStatus}
-                            onChange={(e) => setFilters((f) => ({ ...f, paymentStatus: e.target.value, page: 1 }))} />
-                    </div>
+                                    }} />
+                            </div>
+                            <div className="w-full sm:w-48">
+                                <Select placeholder="All Statuses"
+                                    options={[
+                                        { value: 'unpaid', label: 'Unpaid' },
+                                        { value: 'partially_paid', label: 'Partially Paid' },
+                                        { value: 'paid', label: 'Paid' },
+                                        { value: 'overdue', label: 'Overdue' },
+                                        { value: 'cancelled', label: 'Cancelled' },
+                                    ]}
+                                    value={filters.paymentStatus}
+                                    onChange={(e) => setFilters((f) => ({ ...f, paymentStatus: e.target.value, page: 1 }))} />
+                            </div>
 
-                    {/* Date-wise filter inputs */}
-                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1 min-h-[44px]">
-                        <Calendar size={15} className="text-gray-400 shrink-0" />
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-bold text-gray-500 uppercase leading-none">From Date</span>
-                            <input
-                                type="date"
-                                className="bg-transparent text-xs text-gray-800 focus:outline-none"
-                                value={filters.startDate || ''}
-                                onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value, page: 1 }))}
-                            />
+                            {/* Date-wise filter inputs */}
+                            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1 min-h-[44px]">
+                                <Calendar size={15} className="text-gray-400 shrink-0" />
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-bold text-gray-500 uppercase leading-none">From Date</span>
+                                    <input
+                                        type="date"
+                                        className="bg-transparent text-xs text-gray-800 focus:outline-none"
+                                        value={filters.startDate || ''}
+                                        onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value, page: 1 }))}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1 min-h-[44px]">
+                                <Calendar size={15} className="text-gray-400 shrink-0" />
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-bold text-gray-500 uppercase leading-none">To Date</span>
+                                    <input
+                                        type="date"
+                                        className="bg-transparent text-xs text-gray-800 focus:outline-none"
+                                        value={filters.endDate || ''}
+                                        onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value, page: 1 }))}
+                                    />
+                                </div>
+                            </div>
+                            {(filters.startDate || filters.endDate) && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setFilters((f) => ({ ...f, startDate: '', endDate: '', page: 1 }))}
+                                    className="text-xs text-red-600 border-red-200 hover:bg-red-50 flex items-center gap-1 self-center"
+                                    title="Clear date range"
+                                >
+                                    <X size={13} /> Clear Dates
+                                </Button>
+                            )}
+
+                            {filters.agingBucket && (
+                                <Button variant="outline" size="sm" onClick={() => setFilters((f) => ({ ...f, agingBucket: '', page: 1 }))}>
+                                    Clear aging filter
+                                </Button>
+                            )}
                         </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1 min-h-[44px]">
-                        <Calendar size={15} className="text-gray-400 shrink-0" />
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-bold text-gray-500 uppercase leading-none">To Date</span>
-                            <input
-                                type="date"
-                                className="bg-transparent text-xs text-gray-800 focus:outline-none"
-                                value={filters.endDate || ''}
-                                onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value, page: 1 }))}
-                            />
-                        </div>
-                    </div>
-                    {(filters.startDate || filters.endDate) && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setFilters((f) => ({ ...f, startDate: '', endDate: '', page: 1 }))}
-                            className="text-xs text-red-600 border-red-200 hover:bg-red-50 flex items-center gap-1 self-center"
-                            title="Clear date range"
-                        >
-                            <X size={13} /> Clear Dates
-                        </Button>
-                    )}
 
-                    {filters.agingBucket && (
-                        <Button variant="outline" size="sm" onClick={() => setFilters((f) => ({ ...f, agingBucket: '', page: 1 }))}>
-                            Clear aging filter
-                        </Button>
-                    )}
-                </div>
-
-                {isLoading ? (
-                    <div className="py-16 text-center text-gray-500">Loading...</div>
-                ) : invoices.length === 0 ? (
-                    <EmptyState icon={FileText} title="No invoices" description="Generate invoices from sales orders or create manual ones"
-                        action={canCreate && <Button variant="primary" onClick={() => navigate('/invoices/from-sales-order')}>
-                            Generate from Sales Order
-                        </Button>} />
-                ) : (
-                    <>
-                        <Table columns={columns} data={invoices} onRowClick={(r) => navigate(`/invoices/${r._id}`)} />
-                        <Pagination page={filters.page} totalPages={totalPages} total={total}
-                            onPageChange={(p) => setFilters((f) => ({ ...f, page: p }))} />
-                    </>
-                )}
-            </Card>
+                        {isLoading ? (
+                            <div className="py-16 text-center text-gray-500">Loading...</div>
+                        ) : invoices.length === 0 ? (
+                            <EmptyState icon={FileText} title="No invoices" description="Generate invoices from sales orders or create manual ones"
+                                action={canCreate && <Button variant="primary" onClick={() => navigate('/invoices/from-sales-order')}>
+                                    Generate from Sales Order
+                                </Button>} />
+                        ) : (
+                            <>
+                                <Table columns={columns} data={invoices} onRowClick={(r) => navigate(`/invoices/${r._id}`)} />
+                                <Pagination page={filters.page} totalPages={totalPages} total={total}
+                                    onPageChange={(p) => setFilters((f) => ({ ...f, page: p }))} />
+                            </>
+                        )}
+                    </Card>
+                </>
+            )}
 
             {/* CONVERT INVOICE MODAL */}
             {selectedConvertInvoice && (

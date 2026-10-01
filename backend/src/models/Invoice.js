@@ -75,9 +75,10 @@ const invoiceSchema = new mongoose.Schema({
     billerName: { type: String, default: '' },
     branch: { type: String, default: 'JA-ELA' },
 
-    // Photo Attachments (Number Plate photo & Lorry Body photo)
+    // Photo Attachments (Number Plate photo & Lorry Body photo & Damage Inspection photos)
     numberPlateImage: { type: String, default: '' },
     lorryBodyImage: { type: String, default: '' },
+    photos: [{ type: String }],
 
     // RMB Outside Body Dimensions & Warranty
     bodyDimensions: {
