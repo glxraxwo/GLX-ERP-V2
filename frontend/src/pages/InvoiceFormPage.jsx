@@ -118,6 +118,7 @@ export default function InvoiceFormPage() {
     const [isVehicleInfoOpen, setIsVehicleInfoOpen] = useState(false);
     const [isPhotosOpen, setIsPhotosOpen] = useState(false);
     const [isTermsOpen, setIsTermsOpen] = useState(false);
+    const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
 
     // Optional Vehicle details toggle for Invoice
     const [includeVehicleDetails, setIncludeVehicleDetails] = useState(false);
@@ -766,6 +767,38 @@ export default function InvoiceFormPage() {
 
                 {/* Inline Invoice / Quote Date & Expiry / Type Controls */}
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+                    {/* Vehicle & Photo details button (placed to the LEFT side of Date, highly visible) */}
+                    <button
+                        type="button"
+                        onClick={() => setIsVehicleModalOpen(true)}
+                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs select-none active:scale-95 ${
+                            vehicleNo || vehicleModel || insuranceCompany || jobCaption || numberPlateImage || lorryBodyImage || (photos && photos.length > 0)
+                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20 border border-blue-700'
+                                : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-2 border-blue-400 hover:border-blue-500 shadow-2xs'
+                        }`}
+                        title="Add or Edit Vehicle & Photo Details"
+                    >
+                        <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
+                            vehicleNo || vehicleModel || insuranceCompany || jobCaption || numberPlateImage || lorryBodyImage || (photos && photos.length > 0)
+                                ? 'bg-white/20 text-white'
+                                : 'bg-blue-600 text-white shadow-2xs'
+                        }`}>
+                            <Truck size={12} />
+                        </div>
+                        <span className="whitespace-nowrap font-semibold">
+                            {vehicleNo ? vehicleNo : '+ Vehicle & Photos'}
+                        </span>
+                        {((numberPlateImage ? 1 : 0) + (lorryBodyImage ? 1 : 0) + (photos?.length || 0)) > 0 && (
+                            <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-full ${
+                                vehicleNo
+                                    ? 'bg-amber-400 text-slate-900'
+                                    : 'bg-blue-600 text-white'
+                            }`}>
+                                {(numberPlateImage ? 1 : 0) + (lorryBodyImage ? 1 : 0) + (photos?.length || 0)}
+                            </span>
+                        )}
+                    </button>
+
                     <div className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100/80 transition-colors px-3 py-1.5 rounded-xl border border-gray-200/80">
                         <label className="text-xs font-bold text-gray-500 whitespace-nowrap">
                             {docType === 'invoice' ? 'Invoice Date:' : docType === 'quotation' ? 'Quote Date:' : 'Estimate Date:'}
@@ -856,325 +889,12 @@ export default function InvoiceFormPage() {
                         </>
                     ) : (
                         <>
-                            {/* 1. VEHICLE & OWNER INFORMATION Card (Collapsible) */}
-                            <div className="bg-slate-50 rounded-2xl border border-gray-200/90 shadow-xs transition-all overflow-hidden">
-                                <div
-                                    onClick={() => setIsVehicleInfoOpen(!isVehicleInfoOpen)}
-                                    className="p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-slate-100/70 select-none transition-colors"
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
-                                            <Truck size={15} />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
-                                                    Vehicle &amp; Owner Information
-                                                </span>
-                                                {vehicleNo && (
-                                                    <span className="font-mono text-[11px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
-                                                        {vehicleNo}
-                                                    </span>
-                                                )}
-                                                {selectedCustomer && (
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                                                        <CheckCircle2 size={11} /> {selectedCustomer.displayName || selectedCustomer.customerCode}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="text-[11px] text-gray-500 mt-0.5">
-                                                {isVehicleInfoOpen
-                                                    ? 'Click header to collapse vehicle details'
-                                                    : (vehicleNo || customerSearch)
-                                                        ? `${customerSearch || selectedCustomer?.displayName || 'Owner'} • ${vehicleNo || 'No plate'}`
-                                                        : 'Click to expand and enter vehicle number, owner, insurance & model'}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                        <div className="w-6 h-6 rounded-md bg-white border border-gray-200 text-gray-500 flex items-center justify-center">
-                                            {isVehicleInfoOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {isVehicleInfoOpen && (
-                                    <div className="px-5 pb-5 pt-1 space-y-4 border-t border-gray-200/60">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                                                    Vehicle Owner / Customer Name *
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                    value={customerSearch}
-                                                    placeholder="e.g. Mr. UPDK Dhanasekara"
-                                                    onChange={(e) => {
-                                                        setCustomerSearch(e.target.value);
-                                                        if (selectedCustomer) {
-                                                            setSelectedCustomer(null);
-                                                            setCustomerId('');
-                                                        }
-                                                    }}
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                                                    Vehicle Number (Plate No)
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white font-mono uppercase font-bold text-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                    value={vehicleNo}
-                                                    placeholder="e.g. WP DAI-1974"
-                                                    onChange={(e) => setVehicleNo(e.target.value.toUpperCase())}
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                                                    Insurance Company
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                    value={insuranceCompany}
-                                                    placeholder="e.g. Fairfirst Insurance Limited"
-                                                    onChange={(e) => setInsuranceCompany(e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                                                    Vehicle Model
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                    value={vehicleModel}
-                                                    placeholder="e.g. TATA / New Mahindra Bolero"
-                                                    onChange={(e) => setVehicleModel(e.target.value)}
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                                                    Job Caption
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                    value={jobCaption}
-                                                    placeholder="e.g. Accident Repair / Body Construction"
-                                                    onChange={(e) => setJobCaption(e.target.value)}
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-                                                    Contact Phone
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                                    value={customerPhone}
-                                                    placeholder="e.g. 0714193455"
-                                                    onChange={(e) => setCustomerPhone(e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* 2. PHOTO ATTACHMENTS (DISPLAYED ON PRINT & PDF) Card (Collapsible) */}
-                            <div className="bg-blue-50/50 rounded-2xl border border-blue-200/80 shadow-xs transition-all overflow-hidden">
-                                <div
-                                    onClick={() => setIsPhotosOpen(!isPhotosOpen)}
-                                    className="p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-blue-100/50 select-none transition-colors"
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
-                                            <ImageIcon size={15} />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="text-xs font-black text-blue-900 uppercase tracking-wide">
-                                                    Photo Attachments
-                                                </span>
-                                                <span className="text-[11px] text-blue-600/80 font-normal hidden sm:inline">
-                                                    (Displayed on Print &amp; PDF)
-                                                </span>
-                                                {((numberPlateImage ? 1 : 0) + (lorryBodyImage ? 1 : 0) + photos.length) > 0 && (
-                                                    <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs">
-                                                        {(numberPlateImage ? 1 : 0) + (lorryBodyImage ? 1 : 0) + photos.length} Photos
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="text-[11px] text-gray-500 mt-0.5">
-                                                {isPhotosOpen ? 'Click header to collapse photos' : 'Click to attach number plate, lorry body & inspection damage photos'}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                        <span className="text-xs font-bold text-blue-700 hidden sm:inline">
-                                            {isPhotosOpen ? 'Hide' : '+ Add Photos'}
-                                        </span>
-                                        <div className="w-6 h-6 rounded-md bg-white border border-blue-200 text-blue-700 flex items-center justify-center">
-                                            {isPhotosOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {isPhotosOpen && (
-                                    <div className="px-5 pb-5 pt-1 space-y-4 border-t border-blue-200/60">
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Number Plate Photo */}
-                                    <div className="bg-white p-3.5 rounded-xl border border-blue-200 space-y-2">
-                                        <label className="block text-xs font-bold text-gray-700 uppercase">Number Plate Photo</label>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            className="text-xs text-gray-500 w-full file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer"
-                                            onChange={(e) => handleImageUpload('numberPlateImage', e.target.files[0])}
-                                        />
-                                        {numberPlateImage ? (
-                                            <div className="relative border rounded-lg p-1 bg-gray-50">
-                                                <img src={numberPlateImage} alt="Number Plate Preview" className="h-24 object-contain mx-auto" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setNumberPlateImage('')}
-                                                    className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 shadow"
-                                                >
-                                                    <X size={12} />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <input
-                                                type="text"
-                                                placeholder="Or paste Image URL..."
-                                                className="w-full text-xs px-2.5 py-1.5 border rounded bg-gray-50"
-                                                value={numberPlateImage}
-                                                onChange={(e) => setNumberPlateImage(e.target.value)}
-                                            />
-                                        )}
-                                    </div>
-
-                                    {/* Lorry Body Photo */}
-                                    <div className="bg-white p-3.5 rounded-xl border border-blue-200 space-y-2">
-                                        <label className="block text-xs font-bold text-gray-700 uppercase">Lorry Body Photo</label>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            className="text-xs text-gray-500 w-full file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer"
-                                            onChange={(e) => handleImageUpload('lorryBodyImage', e.target.files[0])}
-                                        />
-                                        {lorryBodyImage ? (
-                                            <div className="relative border rounded-lg p-1 bg-gray-50">
-                                                <img src={lorryBodyImage} alt="Lorry Body Preview" className="h-24 object-contain mx-auto" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setLorryBodyImage('')}
-                                                    className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 shadow"
-                                                >
-                                                    <X size={12} />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <input
-                                                type="text"
-                                                placeholder="Or paste Image URL..."
-                                                className="w-full text-xs px-2.5 py-1.5 border rounded bg-gray-50"
-                                                value={lorryBodyImage}
-                                                onChange={(e) => setLorryBodyImage(e.target.value)}
-                                            />
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Additional Inspection Photos (Multiple Upload Allowed) */}
-                                <div className="bg-white p-4 rounded-xl border border-blue-200 space-y-3">
-                                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-800 uppercase">
-                                                Additional Vehicle &amp; Damage Photos (Upload Multiple)
-                                            </label>
-                                            <span className="text-[11px] text-gray-500">
-                                                Select multiple files at once to attach damage inspection, chassis, or repair progress photos.
-                                            </span>
-                                        </div>
-                                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100 self-start sm:self-auto">
-                                            {photos.length} photo{photos.length === 1 ? '' : 's'} added
-                                        </span>
-                                    </div>
-
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept="image/*"
-                                            className="text-xs text-gray-600 w-full file:mr-3 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-                                            onChange={(e) => {
-                                                handleMultiplePhotosUpload(e.target.files);
-                                                e.target.value = '';
-                                            }}
-                                        />
-                                        {photos.length > 0 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setPhotos([])}
-                                                className="text-[11px] text-red-600 hover:text-red-800 font-bold whitespace-nowrap px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded border border-red-200"
-                                            >
-                                                Clear All ({photos.length})
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {/* Gallery Preview of Additional Photos */}
-                                    {photos.length > 0 && (
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5 pt-2 border-t border-gray-100">
-                                            {photos.map((src, idx) => (
-                                                <div key={idx} className="relative group border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-24 flex items-center justify-center shadow-xs">
-                                                    <img src={src} alt={`Inspection Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                                                    <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removePhoto(idx)}
-                                                            className="bg-red-600 text-white rounded-full p-1.5 shadow hover:bg-red-700 transition"
-                                                            title="Remove Photo"
-                                                        >
-                                                            <X size={14} />
-                                                        </button>
-                                                    </div>
-                                                    <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                                                        #{idx + 1}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* 3. PARTS & LABOUR CHARGES (Items Card) */}
+                            {/* PARTS & LABOUR CHARGES (Items Card) */}
                             {renderItemsCard()}
 
-                            {/* 4. DOCUMENT TERMS & CONDITIONS Card (Collapsible) */}
+                            {/* DOCUMENT TERMS & CONDITIONS Card (Always Visible) */}
                             <div className="bg-slate-50 rounded-2xl border border-gray-200/90 shadow-xs transition-all overflow-hidden">
-                                <div
-                                    onClick={() => setIsTermsOpen(!isTermsOpen)}
-                                    className="p-4 sm:p-5 flex items-center justify-between cursor-pointer hover:bg-slate-100/70 select-none transition-colors"
-                                >
+                                <div className="p-4 sm:p-5 pb-3 flex items-center justify-between border-b border-gray-200/60">
                                     <div className="flex items-center gap-2.5">
                                         <div className="w-7 h-7 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0">
                                             <FileText size={15} />
@@ -1184,91 +904,80 @@ export default function InvoiceFormPage() {
                                                 Document Terms &amp; Conditions
                                             </span>
                                             <p className="text-[11px] text-gray-500 mt-0.5">
-                                                {isTermsOpen ? 'Click header to collapse terms' : 'Click to view & customize remarks, payment condition, validity & warranty'}
+                                                Customize remarks, payment condition, validity &amp; warranty
                                             </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                        <span className="text-xs font-bold text-slate-600 hidden sm:inline">
-                                            {isTermsOpen ? 'Hide' : '+ Edit Terms'}
-                                        </span>
-                                        <div className="w-6 h-6 rounded-md bg-white border border-gray-200 text-gray-500 flex items-center justify-center">
-                                            {isTermsOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                                         </div>
                                     </div>
                                 </div>
 
-                                {isTermsOpen && (
-                                    <div className="px-5 pb-5 pt-1 space-y-4 border-t border-gray-200/60">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
-                                                    Remarks
-                                                </label>
-                                                <textarea
-                                                    rows={2}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
-                                                    placeholder="Remarks to appear under line items..."
-                                                    value={remarks}
-                                                    onChange={(e) => setRemarks(e.target.value)}
-                                                />
-                                            </div>
+                                <div className="p-4 sm:p-5 space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                                Remarks
+                                            </label>
+                                            <textarea
+                                                rows={2}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
+                                                placeholder="Remarks to appear under line items..."
+                                                value={remarks}
+                                                onChange={(e) => setRemarks(e.target.value)}
+                                            />
+                                        </div>
 
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
-                                                    Condition of Payments
-                                                </label>
-                                                <textarea
-                                                    rows={2}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
-                                                    placeholder="e.g. a). 0% Advance Payment with the firm Order.&#10;b). Balance Payment on Completion of Work"
-                                                    value={conditionOfPayments}
-                                                    onChange={(e) => setConditionOfPayments(e.target.value)}
-                                                />
-                                            </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                                Condition of Payments
+                                            </label>
+                                            <textarea
+                                                rows={2}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
+                                                placeholder="e.g. a). 0% Advance Payment with the firm Order.&#10;b). Balance Payment on Completion of Work"
+                                                value={conditionOfPayments}
+                                                onChange={(e) => setConditionOfPayments(e.target.value)}
+                                            />
+                                        </div>
 
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
-                                                    Completion of Work
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
-                                                    placeholder="e.g. 4 to 6 working Days after the Order Confirmation."
-                                                    value={completionOfWork}
-                                                    onChange={(e) => setCompletionOfWork(e.target.value)}
-                                                />
-                                            </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                                Completion of Work
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
+                                                placeholder="e.g. 4 to 6 working Days after the Order Confirmation."
+                                                value={completionOfWork}
+                                                onChange={(e) => setCompletionOfWork(e.target.value)}
+                                            />
+                                        </div>
 
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
-                                                    Validity ({docTypeLabel})
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
-                                                    placeholder="e.g. 30 Working Days From the Issued Date.."
-                                                    value={validityQuotation}
-                                                    onChange={(e) => setValidityQuotation(e.target.value)}
-                                                />
-                                            </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                                Validity ({docTypeLabel})
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
+                                                placeholder="e.g. 30 Working Days From the Issued Date.."
+                                                value={validityQuotation}
+                                                onChange={(e) => setValidityQuotation(e.target.value)}
+                                            />
+                                        </div>
 
-                                            <div className="md:col-span-2">
-                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
-                                                    Warranty
-                                                </label>
-                                                <textarea
-                                                    rows={2}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
-                                                    placeholder="e.g. a). Please See the Description..&#10;b). Warranty Will be Issued with the Invoice."
-                                                    value={warrantyCondition}
-                                                    onChange={(e) => setWarrantyCondition(e.target.value)}
-                                                />
-                                            </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                                Warranty
+                                            </label>
+                                            <textarea
+                                                rows={2}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
+                                                placeholder="e.g. a). Please See the Description..&#10;b). Warranty Will be Issued with the Invoice."
+                                                value={warrantyCondition}
+                                                onChange={(e) => setWarrantyCondition(e.target.value)}
+                                            />
                                         </div>
                                     </div>
-                                )}
+                                </div>
                             </div>
 
                             {/* 5. Workshop Notes Card */}
@@ -1406,10 +1115,138 @@ export default function InvoiceFormPage() {
                         )}
                     </Card>
 
+                    {/* Vehicle & Photo Information Card (Right column) */}
+                    {(vehicleNo || vehicleModel || insuranceCompany || jobCaption || numberPlateImage || lorryBodyImage || (photos && photos.length > 0)) ? (
+                        <Card className="p-3.5 border-blue-100 shadow-sm bg-white">
+                            <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-2.5">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-6 h-6 rounded-md bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+                                        <Truck size={13} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-gray-900 leading-tight">Vehicle Details</h3>
+                                        <p className="text-[10px] text-gray-400">Attached vehicle &amp; photos</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsVehicleModalOpen(true)}
+                                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 flex items-center gap-1 transition"
+                                    >
+                                        <Edit2 size={10} /> Edit
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5 text-[11px]">
+                                {vehicleNo && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-gray-400 text-[10px] uppercase font-bold">Plate No:</span>
+                                        <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-xs">
+                                            {vehicleNo}
+                                        </span>
+                                    </div>
+                                )}
+                                {vehicleModel && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-gray-400 text-[10px] uppercase font-bold">Model:</span>
+                                        <span className="font-semibold text-gray-800 truncate max-w-[170px] text-right">{vehicleModel}</span>
+                                    </div>
+                                )}
+                                {insuranceCompany && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-gray-400 text-[10px] uppercase font-bold">Insurance:</span>
+                                        <span className="font-semibold text-gray-800 truncate max-w-[170px] text-right">{insuranceCompany}</span>
+                                    </div>
+                                )}
+                                {jobCaption && (
+                                    <div className="flex items-start justify-between gap-2">
+                                        <span className="text-gray-400 text-[10px] uppercase font-bold shrink-0">Job Caption:</span>
+                                        <span className="font-semibold text-gray-800 text-right line-clamp-2">{jobCaption}</span>
+                                    </div>
+                                )}
+
+                                {/* Photo Previews */}
+                                {((numberPlateImage ? 1 : 0) + (lorryBodyImage ? 1 : 0) + (photos?.length || 0)) > 0 && (
+                                    <div className="pt-2 border-t border-gray-100 space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1">
+                                                <ImageIcon size={11} /> Photos
+                                            </span>
+                                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                                                {(numberPlateImage ? 1 : 0) + (lorryBodyImage ? 1 : 0) + (photos?.length || 0)} attached
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-1.5 pt-1">
+                                            {numberPlateImage && (
+                                                <div 
+                                                    onClick={() => setIsVehicleModalOpen(true)}
+                                                    className="relative group h-12 rounded border border-gray-200 overflow-hidden bg-gray-50 cursor-pointer"
+                                                >
+                                                    <img src={numberPlateImage} alt="Plate" className="w-full h-full object-cover" />
+                                                    <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] text-center font-bold">Plate</span>
+                                                </div>
+                                            )}
+                                            {lorryBodyImage && (
+                                                <div 
+                                                    onClick={() => setIsVehicleModalOpen(true)}
+                                                    className="relative group h-12 rounded border border-gray-200 overflow-hidden bg-gray-50 cursor-pointer"
+                                                >
+                                                    <img src={lorryBodyImage} alt="Body" className="w-full h-full object-cover" />
+                                                    <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] text-center font-bold">Body</span>
+                                                </div>
+                                            )}
+                                            {photos?.slice(0, numberPlateImage && lorryBodyImage ? 2 : 3).map((p, i) => (
+                                                <div 
+                                                    key={i} 
+                                                    onClick={() => setIsVehicleModalOpen(true)}
+                                                    className="relative group h-12 rounded border border-gray-200 overflow-hidden bg-gray-50 cursor-pointer"
+                                                >
+                                                    <img src={p} alt={`Photo ${i+1}`} className="w-full h-full object-cover" />
+                                                    <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] text-center font-bold">#{i+1}</span>
+                                                </div>
+                                            ))}
+                                            {(photos?.length || 0) > (numberPlateImage && lorryBodyImage ? 2 : 3) && (
+                                                <div 
+                                                    onClick={() => setIsVehicleModalOpen(true)}
+                                                    className="h-12 rounded border border-blue-200 bg-blue-50 flex flex-col items-center justify-center text-blue-700 cursor-pointer hover:bg-blue-100 transition"
+                                                >
+                                                    <span className="text-xs font-black">+{(photos?.length || 0) - (numberPlateImage && lorryBodyImage ? 2 : 3)}</span>
+                                                    <span className="text-[8px] font-bold">more</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+                    ) : (
+                        <Card className="p-3 border-dashed border-gray-200 bg-gray-50/60 shadow-2xs">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-left">
+                                    <div className="w-6 h-6 rounded-md bg-gray-100 text-gray-500 flex items-center justify-center">
+                                        <Truck size={13} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-semibold text-gray-700">Vehicle Details</p>
+                                        <p className="text-[9px] text-gray-400">No vehicle/photos added</p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsVehicleModalOpen(true)}
+                                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-white hover:bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 transition shadow-2xs"
+                                >
+                                    + Add Details
+                                </button>
+                            </div>
+                        </Card>
+                    )}
+
                     {/* Summary Card (Invoice or Workshop Summary) */}
                     {docType === 'invoice' ? (
-                        <>
-                            <Card className="p-4">
+                        <Card className="p-4">
                             <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2.5 pb-2 border-b border-gray-100">Summary</h3>
                             <div className="space-y-2 text-xs">
                                 <div className="flex justify-between text-gray-600"><span>Subtotal</span><span className="font-mono text-gray-900 font-semibold">{fmt(totals.sub)}</span></div>
@@ -1461,7 +1298,7 @@ export default function InvoiceFormPage() {
                                                         const pct = Number(e.target.value);
                                                         setAdvancePercentage(pct);
                                                         setAdvanceAmount(+((totals.grand * pct) / 100).toFixed(2));
-                                                    }}
+                                                    }} 
                                                     className="w-14 px-1.5 py-0.5 border rounded text-right font-mono font-bold bg-white text-xs" 
                                                     placeholder="0"
                                                 />
@@ -1477,7 +1314,7 @@ export default function InvoiceFormPage() {
                                                         const amt = Number(e.target.value);
                                                         setAdvanceAmount(amt);
                                                         setAdvancePercentage(totals.grand > 0 ? +((amt / totals.grand) * 100).toFixed(1) : 0);
-                                                    }}
+                                                    }} 
                                                     className="w-24 px-1.5 py-0.5 border rounded text-right font-mono font-bold bg-white text-xs" 
                                                     placeholder="0.00"
                                                 />
@@ -1502,173 +1339,6 @@ export default function InvoiceFormPage() {
                                 Create Invoice
                             </Button>
                         </Card>
-
-                        {/* Vehicle & Workshop Details Card (Placed right below Summary Card) */}
-                        <div className={`rounded-2xl border transition-all overflow-hidden ${
-                            includeVehicleDetails
-                                ? 'bg-slate-50 border-blue-200/90 shadow-xs'
-                                : 'bg-white border-dashed border-gray-300 hover:border-blue-400 shadow-2xs'
-                        }`}>
-                            <div
-                                onClick={() => setIncludeVehicleDetails(!includeVehicleDetails)}
-                                className="p-3.5 flex items-center justify-between cursor-pointer select-none transition-colors hover:bg-slate-100/70"
-                            >
-                                <div className="flex items-center gap-2.5">
-                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                                        includeVehicleDetails ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-100 text-blue-700'
-                                    }`}>
-                                        <Truck size={14} />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
-                                                Vehicle Details
-                                            </span>
-                                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                                                Optional
-                                            </span>
-                                        </div>
-                                        <p className="text-[10px] text-gray-500 mt-0.5">
-                                            {includeVehicleDetails
-                                                ? (vehicleNo ? `Vehicle: ${vehicleNo}` : 'Details enabled')
-                                                : 'Click to add vehicle info (විකල්ප)'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                    <label
-                                        className="flex items-center gap-1.5 cursor-pointer bg-white px-2 py-1 rounded-md border border-gray-200 shadow-2xs hover:border-blue-400 transition"
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={includeVehicleDetails}
-                                            onChange={(e) => setIncludeVehicleDetails(e.target.checked)}
-                                            className="w-3.5 h-3.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                                        />
-                                        <span className="text-[11px] font-bold text-gray-700 select-none hidden sm:inline">
-                                            {includeVehicleDetails ? 'Included' : '+ Add'}
-                                        </span>
-                                    </label>
-                                    <div className="w-5 h-5 rounded bg-white border border-gray-200 text-gray-500 flex items-center justify-center">
-                                        {includeVehicleDetails ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {includeVehicleDetails && (
-                                <div className="p-3.5 pt-2 space-y-3 border-t border-gray-200/60 bg-white text-xs">
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">
-                                            Vehicle Number (Plate No)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white font-mono uppercase font-bold text-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                            value={vehicleNo}
-                                            placeholder="e.g. WP DAI-1974"
-                                            onChange={(e) => setVehicleNo(e.target.value.toUpperCase())}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">
-                                            Vehicle Model / Make
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                            value={vehicleModel}
-                                            placeholder="e.g. Isuzu Elf / Canter / Tata"
-                                            onChange={(e) => setVehicleModel(e.target.value)}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1">
-                                            Job Caption / Scope
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                            value={jobCaption}
-                                            placeholder="e.g. Accident Repair / Body Construction"
-                                            onChange={(e) => setJobCaption(e.target.value)}
-                                        />
-                                    </div>
-
-                                    {/* Photo Attachments Sub-section */}
-                                    <div className="pt-2 border-t border-gray-100">
-                                        <div
-                                            onClick={() => setIsPhotosOpen(!isPhotosOpen)}
-                                            className="flex items-center justify-between cursor-pointer py-1 text-[11px] text-blue-700 font-bold hover:underline select-none"
-                                        >
-                                            <span className="flex items-center gap-1.5">
-                                                <ImageIcon size={13} />
-                                                Photos ({(numberPlateImage ? 1 : 0) + (lorryBodyImage ? 1 : 0) + photos.length})
-                                            </span>
-                                            <span className="text-[10px] font-normal text-gray-500">
-                                                {isPhotosOpen ? 'Hide' : '+ Attach Photos'}
-                                            </span>
-                                        </div>
-
-                                        {isPhotosOpen && (
-                                            <div className="mt-2 space-y-2 bg-slate-50 p-2.5 rounded-lg border border-gray-200">
-                                                <div>
-                                                    <label className="block text-[10px] font-bold text-gray-600 mb-1">
-                                                        Plate Photo
-                                                    </label>
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        onChange={(e) => handleImageUpload('numberPlateImage', e.target.files[0])}
-                                                        className="text-[10px] file:mr-1.5 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                                    />
-                                                    {numberPlateImage && (
-                                                        <div className="mt-1.5 relative w-20 h-14 rounded border overflow-hidden">
-                                                            <img src={numberPlateImage} alt="Plate" className="w-full h-full object-cover" />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setNumberPlateImage('')}
-                                                                className="absolute top-0.5 right-0.5 p-0.5 bg-red-600 text-white rounded-full"
-                                                            >
-                                                                <X size={9} />
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-[10px] font-bold text-gray-600 mb-1">
-                                                        Vehicle / Body Photo
-                                                    </label>
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        onChange={(e) => handleImageUpload('lorryBodyImage', e.target.files[0])}
-                                                        className="text-[10px] file:mr-1.5 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                                    />
-                                                    {lorryBodyImage && (
-                                                        <div className="mt-1.5 relative w-20 h-14 rounded border overflow-hidden">
-                                                            <img src={lorryBodyImage} alt="Vehicle" className="w-full h-full object-cover" />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setLorryBodyImage('')}
-                                                                className="absolute top-0.5 right-0.5 p-0.5 bg-red-600 text-white rounded-full"
-                                                            >
-                                                                <X size={9} />
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        </>
                     ) : (
                         /* Workshop Summary Card (Quotation & Estimate - matches Image 2) */
                         <Card className="p-4 sticky top-4 shadow-sm border-gray-200">
@@ -2262,6 +1932,267 @@ export default function InvoiceFormPage() {
                                     Update Item #{editingIndex + 1}
                                 </Button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal: Vehicle & Photo Information */}
+            <Modal
+                isOpen={isVehicleModalOpen}
+                onClose={() => setIsVehicleModalOpen(false)}
+                title="Vehicle & Photo Details"
+                size="xl"
+            >
+                <div className="space-y-5 max-h-[78vh] overflow-y-auto px-1 pr-2">
+                    {/* Section 1: Vehicle Information */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                                <Truck size={14} />
+                            </div>
+                            <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                                Vehicle Information
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                                    Vehicle Number (Plate No)
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white font-mono uppercase font-bold text-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    value={vehicleNo}
+                                    placeholder="e.g. WP DAI-1974"
+                                    onChange={(e) => setVehicleNo(e.target.value.toUpperCase())}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                                    Vehicle Model
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    value={vehicleModel}
+                                    placeholder="e.g. TATA / New Mahindra Bolero"
+                                    onChange={(e) => setVehicleModel(e.target.value)}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                                    Insurance Company
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    value={insuranceCompany}
+                                    placeholder="e.g. Fairfirst Insurance Limited"
+                                    onChange={(e) => setInsuranceCompany(e.target.value)}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                                    Job Caption
+                                </label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    value={jobCaption}
+                                    placeholder="e.g. Accident Repair / Body Construction"
+                                    onChange={(e) => setJobCaption(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section 2: Photo Attachments */}
+                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-200/80 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                                    <ImageIcon size={14} />
+                                </div>
+                                <span className="text-xs font-black text-blue-900 uppercase tracking-wide">
+                                    Photo Attachments (Displayed on Print &amp; PDF)
+                                </span>
+                            </div>
+                            {((numberPlateImage ? 1 : 0) + (lorryBodyImage ? 1 : 0) + (photos?.length || 0)) > 0 && (
+                                <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                    {(numberPlateImage ? 1 : 0) + (lorryBodyImage ? 1 : 0) + (photos?.length || 0)} Photos Added
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Number Plate Photo */}
+                            <div className="bg-white p-3.5 rounded-xl border border-blue-200 space-y-2">
+                                <label className="block text-xs font-bold text-gray-700 uppercase">Number Plate Photo</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="text-xs text-gray-500 w-full file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer"
+                                    onChange={(e) => handleImageUpload('numberPlateImage', e.target.files[0])}
+                                />
+                                {numberPlateImage ? (
+                                    <div className="relative border rounded-lg p-1 bg-gray-50">
+                                        <img src={numberPlateImage} alt="Number Plate Preview" className="h-24 object-contain mx-auto" />
+                                        <button
+                                            type="button"
+                                            onClick={() => setNumberPlateImage('')}
+                                            className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 shadow"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        placeholder="Or paste Image URL..."
+                                        className="w-full text-xs px-2.5 py-1.5 border rounded bg-gray-50"
+                                        value={numberPlateImage}
+                                        onChange={(e) => setNumberPlateImage(e.target.value)}
+                                    />
+                                )}
+                            </div>
+
+                            {/* Lorry Body Photo */}
+                            <div className="bg-white p-3.5 rounded-xl border border-blue-200 space-y-2">
+                                <label className="block text-xs font-bold text-gray-700 uppercase">Lorry Body Photo</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="text-xs text-gray-500 w-full file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer"
+                                    onChange={(e) => handleImageUpload('lorryBodyImage', e.target.files[0])}
+                                />
+                                {lorryBodyImage ? (
+                                    <div className="relative border rounded-lg p-1 bg-gray-50">
+                                        <img src={lorryBodyImage} alt="Lorry Body Preview" className="h-24 object-contain mx-auto" />
+                                        <button
+                                            type="button"
+                                            onClick={() => setLorryBodyImage('')}
+                                            className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 shadow"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        placeholder="Or paste Image URL..."
+                                        className="w-full text-xs px-2.5 py-1.5 border rounded bg-gray-50"
+                                        value={lorryBodyImage}
+                                        onChange={(e) => setLorryBodyImage(e.target.value)}
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Additional Inspection Photos (Multiple Upload Allowed) */}
+                        <div className="bg-white p-4 rounded-xl border border-blue-200 space-y-3">
+                            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-800 uppercase">
+                                        Additional Vehicle &amp; Damage Photos (Upload Multiple)
+                                    </label>
+                                    <span className="text-[11px] text-gray-500">
+                                        Select multiple files at once to attach damage inspection, chassis, or repair progress photos.
+                                    </span>
+                                </div>
+                                <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100 self-start sm:self-auto">
+                                    {(photos?.length || 0)} photo{(photos?.length || 0) === 1 ? '' : 's'} added
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    className="text-xs text-gray-600 w-full file:mr-3 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                                    onChange={(e) => {
+                                        handleMultiplePhotosUpload(e.target.files);
+                                        e.target.value = '';
+                                    }}
+                                />
+                                {(photos?.length || 0) > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setPhotos([])}
+                                        className="text-[11px] text-red-600 hover:text-red-800 font-bold whitespace-nowrap px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded border border-red-200"
+                                    >
+                                        Clear All ({photos.length})
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Gallery Preview of Additional Photos */}
+                            {(photos?.length || 0) > 0 && (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5 pt-2 border-t border-gray-100">
+                                    {photos.map((src, idx) => (
+                                        <div key={idx} className="relative group border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-24 flex items-center justify-center shadow-xs">
+                                            <img src={src} alt={`Inspection Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removePhoto(idx)}
+                                                    className="bg-red-600 text-white rounded-full p-1.5 shadow hover:bg-red-700 transition"
+                                                    title="Remove Photo"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                            <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                                #{idx + 1}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setVehicleNo('');
+                                setVehicleModel('');
+                                setInsuranceCompany('');
+                                setJobCaption('');
+                                setNumberPlateImage('');
+                                setLorryBodyImage('');
+                                setPhotos([]);
+                            }}
+                            className="text-xs text-red-600 hover:text-red-800 font-semibold px-2 py-1 hover:bg-red-50 rounded transition"
+                        >
+                            Reset / Clear All
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsVehicleModalOpen(false)}
+                                className="px-4 py-2 rounded-lg text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsVehicleModalOpen(false);
+                                    toast.success('Vehicle details saved!');
+                                }}
+                                className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition shadow-sm flex items-center gap-1.5"
+                            >
+                                <CheckCircle2 size={14} />
+                                Done &amp; Save Details
+                            </button>
                         </div>
                     </div>
                 </div>
