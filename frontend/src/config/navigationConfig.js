@@ -91,17 +91,10 @@ export const NAVIGATION_CATEGORIES = [
                 category: 'inventory'
             },
             {
-                title: 'Categories',
-                path: '/categories',
+                title: 'Data Entry Manager',
+                path: '/data-entry-manager',
                 icon: FolderTree,
-                description: 'Organize raw materials and finished bodies into structured categories',
-                category: 'inventory'
-            },
-            {
-                title: 'Brands',
-                path: '/brands',
-                icon: Award,
-                description: 'Manage component suppliers, brands and manufacturer identities',
+                description: 'Fast 1-click management of Categories, Brands, Vehicle Models & Insurance Companies',
                 category: 'inventory'
             }
         ]

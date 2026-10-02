@@ -174,7 +174,9 @@ export const getQuotationById = asyncHandler(async (req, res) => {
         .populate('introducer', 'firstName lastName callingName employeeCode designation')
         .populate('biller', 'firstName lastName')
         .populate('items.product', 'name productCode uom basePrice sku')
-        .populate('createdBy', 'firstName lastName signature jobTitle');
+        .populate('createdBy', 'firstName lastName signature jobTitle')
+        .populate('updatedBy', 'firstName lastName username role email')
+        .populate('editHistory.editedBy', 'firstName lastName username role email');
 
     if (!quotation) {
         res.status(404);
@@ -248,6 +250,8 @@ export const updateQuotation = asyncHandler(async (req, res) => {
         editedAt: new Date(),
         editedBy: req.user._id,
         editedByName: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User',
+        userRole: req.user.role || 'user',
+        notes: req.body.editReason || req.body.notes || '',
     });
 
     await existing.save();
@@ -269,7 +273,16 @@ export const updateQuotation = asyncHandler(async (req, res) => {
         req
     });
 
-    res.json({ success: true, data: quotation });
+    const populated = await Quotation.findById(quotation._id)
+        .populate('customerId', 'displayName companyName primaryContact billingAddress introducer introducerName')
+        .populate('introducer', 'firstName lastName callingName employeeCode designation')
+        .populate('biller', 'firstName lastName')
+        .populate('items.product', 'name productCode uom basePrice sku')
+        .populate('createdBy', 'firstName lastName signature jobTitle')
+        .populate('updatedBy', 'firstName lastName username role email')
+        .populate('editHistory.editedBy', 'firstName lastName username role email');
+
+    res.json({ success: true, data: populated || quotation });
 });
 
 /**

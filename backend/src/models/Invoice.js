@@ -66,6 +66,8 @@ const invoiceSchema = new mongoose.Schema({
         editedAt: { type: Date, default: Date.now },
         editedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         editedByName: { type: String },
+        userRole: { type: String },
+        notes: { type: String },
     }],
 
     // Vehicle & Body engineering metadata

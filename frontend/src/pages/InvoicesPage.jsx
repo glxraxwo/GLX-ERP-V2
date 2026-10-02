@@ -4,6 +4,7 @@ import { Plus, Search, Eye, FileText, AlertTriangle, CheckCircle, RefreshCw, Bri
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
+import DocumentEditLogModal from '../components/common/DocumentEditLogModal';
 
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -72,6 +73,7 @@ export default function InvoicesPage() {
     const [convertDetails, setConvertDetails] = useState('');
     const [convertAdvance, setConvertAdvance] = useState('');
     const [isSubmittingConvert, setIsSubmittingConvert] = useState(false);
+    const [selectedLogDoc, setSelectedLogDoc] = useState(null);
 
     const [filters, setFilters] = useState({
         search: '', paymentStatus: '', agingBucket: '', invoiceType: 'commercial',
@@ -228,11 +230,17 @@ export default function InvoicesPage() {
                         <span className="font-mono text-xs font-bold text-gray-900">{r.invoiceNumber}</span>
                         {history.length > 0 && (
                             <div className="flex flex-col gap-0.5 mt-0.5">
-                                {history.map((eh, idx) => (
-                                    <span key={idx} className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-1 py-0.2 rounded font-mono w-max">
-                                        {formatEditItem(eh, idx + 1)}
-                                    </span>
-                                ))}
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedLogDoc(r);
+                                    }}
+                                    className="text-[10px] font-black text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-1 py-0.2 rounded font-mono w-max cursor-pointer transition text-left"
+                                    title="Click to view full revision history & audit log"
+                                >
+                                    {formatEditItem(history[history.length - 1], history.length)}
+                                </button>
                             </div>
                         )}
                     </div>
@@ -826,6 +834,12 @@ export default function InvoicesPage() {
                     </div>
                 </div>
             )}
+
+            <DocumentEditLogModal
+                isOpen={!!selectedLogDoc}
+                onClose={() => setSelectedLogDoc(null)}
+                document={selectedLogDoc}
+            />
         </div>
     );
 }

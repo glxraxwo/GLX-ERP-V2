@@ -4,6 +4,24 @@ import Category from '../models/Category.js';
 export const createCategory = asyncHandler(async (req, res) => {
     let { code, name } = req.body;
     if (name) name = name.trim();
+    if (!name) {
+        res.status(400);
+        throw new Error('Category name is required');
+    }
+
+    // Check if category already exists (case-insensitive)
+    const existing = await Category.findOne({
+        name: { $regex: new RegExp(`^${name}$`, 'i') },
+    });
+    if (existing) {
+        if (existing.deletedAt) {
+            existing.deletedAt = null;
+            existing.isActive = true;
+            await existing.save();
+        }
+        return res.status(200).json({ success: true, data: existing, message: 'Category already exists' });
+    }
+
     if (!code && name) {
         const clean = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
         const randomSuffix = Math.floor(100 + Math.random() * 900);

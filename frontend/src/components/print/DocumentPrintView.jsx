@@ -3,6 +3,11 @@ import { QRCodeSVG } from 'qrcode.react';
 import { getDocTranslation, translateCondition, defaultConditions } from '../../utils/documentTranslations';
 import { useAuthStore } from '../../store/authStore';
 import { getDocumentEditHistory, formatEditItem } from '../../utils/editHistoryUtils';
+import api from '../../api/axios';
+import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import ConfirmDialog from '../ui/ConfirmDialog';
+import DocumentEditLogModal from '../common/DocumentEditLogModal';
 
 /* ─── format helpers ─────────────────────────────────────────────────── */
 const fmt = (num, min = 2, max = 2) => {
@@ -66,6 +71,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     const [showPhotosInPrint, setShowPhotos] = useState(true);
     const [isQuickEdit, setIsQuickEdit]     = useState(false);
     const [editedValues, setEditedValues]   = useState({});
+    const [isEditLogOpen, setIsEditLogOpen] = useState(false);
 
     useEffect(() => {
         setShowLH(!hideLetterheadHeader);
@@ -141,6 +147,8 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     const docDate         = doc.date || doc.invoiceDate || doc.createdAt || new Date();
     const printTimestamp  = fmtPrintTs(new Date());
     const editHistoryList = getDocumentEditHistory(doc);
+    const latestEdit = editHistoryList.length > 0 ? editHistoryList[editHistoryList.length - 1] : null;
+    const latestEditNumber = editHistoryList.length;
 
     /* ── effective quick-edited meta ── */
     const customerNameVal    = editedValues.customerName !== undefined ? editedValues.customerName : customerName;
@@ -226,6 +234,51 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     });
 
     const hasEdits = Object.keys(editedValues).length > 0;
+    const qc = useQueryClient();
+    const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
+    const [isSavingTerms, setIsSavingTerms] = useState(false);
+
+    const handleSaveDocumentChanges = async () => {
+        setIsSavingTerms(true);
+        try {
+            if (isInvoice) {
+                if (currentUser?.role !== 'admin') {
+                    toast.error('Only administrators are authorized to save edits on invoices');
+                    setIsSaveConfirmOpen(false);
+                    return;
+                }
+                const updatePayload = {
+                    ...editedValues,
+                };
+                const { data: res } = await api.put(`/invoices/${doc._id}`, updatePayload);
+                toast.success(`Invoice ${docNumber} changes saved successfully!`);
+                qc.invalidateQueries({ queryKey: ['invoice', doc._id] });
+                qc.invalidateQueries({ queryKey: ['invoice'] });
+                qc.invalidateQueries({ queryKey: ['invoices'] });
+                if (res.data) {
+                    Object.assign(doc, res.data);
+                }
+            } else {
+                // Quotation / Estimate
+                const updatePayload = {
+                    ...editedValues,
+                };
+                const { data: res } = await api.put(`/crm/quotations/${doc._id}`, updatePayload);
+                toast.success(`${isEstimate ? 'Estimate' : 'Quotation'} ${docNumber} changes saved successfully!`);
+                qc.invalidateQueries({ queryKey: ['quotation', doc._id] });
+                qc.invalidateQueries({ queryKey: ['quotations'] });
+                if (res.data) {
+                    Object.assign(doc, res.data);
+                }
+            }
+            setEditedValues({});
+            setIsSaveConfirmOpen(false);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to save changes');
+        } finally {
+            setIsSavingTerms(false);
+        }
+    };
 
     /* ── inline print styles ── */
     const printStyles = `
@@ -344,23 +397,47 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                         </button>
 
                         {hasEdits && (
-                            <button
-                                type="button"
-                                onClick={() => setEditedValues({})}
-                                style={{
-                                    padding: '4px 9px',
-                                    borderRadius: 7,
-                                    fontWeight: 600,
-                                    fontSize: 11,
-                                    cursor: 'pointer',
-                                    background: '#fee2e2',
-                                    color: '#991b1b',
-                                    border: '1px solid #fca5a5'
-                                }}
-                                title="Reset all in-place edits to original"
-                            >
-                                ↺ Reset
-                            </button>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                <button
+                                    type="button"
+                                    disabled={isSavingTerms}
+                                    onClick={() => setIsSaveConfirmOpen(true)}
+                                    style={{
+                                        padding: '4px 11px',
+                                        borderRadius: 7,
+                                        fontWeight: 700,
+                                        fontSize: 11.5,
+                                        cursor: 'pointer',
+                                        background: '#16a34a',
+                                        color: '#fff',
+                                        border: '1px solid #15803d',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 5,
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.12)'
+                                    }}
+                                    title="Save modified terms & details to database"
+                                >
+                                    💾 {isSavingTerms ? 'Saving...' : 'Save Changes'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setEditedValues({})}
+                                    style={{
+                                        padding: '4px 9px',
+                                        borderRadius: 7,
+                                        fontWeight: 600,
+                                        fontSize: 11,
+                                        cursor: 'pointer',
+                                        background: '#fee2e2',
+                                        color: '#991b1b',
+                                        border: '1px solid #fca5a5'
+                                    }}
+                                    title="Reset all in-place edits to original"
+                                >
+                                    ↺ Reset
+                                </button>
+                            </div>
                         )}
 
                         {allPhotos.length > 0 && (
@@ -371,6 +448,29 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                 border: '1px solid #cbd5e1'
                             }}>
                                 📷 {showPhotosInPrint ? `Hide Photos (${allPhotos.length})` : `Show Photos (${allPhotos.length})`}
+                            </button>
+                        )}
+
+                        {editHistoryList.length > 0 && (
+                            <button 
+                                type="button" 
+                                onClick={() => setIsEditLogOpen(true)}
+                                style={{
+                                    padding: '4px 10px', 
+                                    borderRadius: 7, 
+                                    fontWeight: 700, 
+                                    fontSize: 11, 
+                                    cursor: 'pointer',
+                                    background: '#fef2f2', 
+                                    color: '#b91c1c',
+                                    border: '1px solid #fca5a5',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4
+                                }}
+                                title="View complete revision history & audit log"
+                            >
+                                📜 Edit Log ({editHistoryList.length})
                             </button>
                         )}
 
@@ -574,22 +674,22 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                         <span style={{ color: '#000' }}>&nbsp;&nbsp;{value}</span>
                                     </div>
                                 ))}
-                                {editHistoryList.length > 0 && (
+                                {latestEdit && (
                                     <div style={{ marginTop: 6, paddingTop: 4, borderTop: '1px dashed #fca5a5' }}>
-                                        {editHistoryList.map((eh, idx) => (
-                                            <div 
-                                                key={idx} 
-                                                style={{ 
-                                                    color: '#dc2626', 
-                                                    fontWeight: 800, 
-                                                    fontSize: 11.5, 
-                                                    lineHeight: 1.5,
-                                                    fontFamily: "'Consolas', 'Segoe UI Mono', monospace" 
-                                                }}
-                                            >
-                                                • {formatEditItem(eh, idx + 1)}
-                                            </div>
-                                        ))}
+                                        <div 
+                                            onClick={() => setIsEditLogOpen(true)}
+                                            style={{ 
+                                                color: '#dc2626', 
+                                                fontWeight: 800, 
+                                                fontSize: 11.5, 
+                                                lineHeight: 1.5,
+                                                fontFamily: "'Consolas', 'Segoe UI Mono', monospace",
+                                                cursor: 'pointer'
+                                            }}
+                                            title="Click to view complete revision history & audit log"
+                                        >
+                                            • {formatEditItem(latestEdit, latestEditNumber)}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -926,13 +1026,15 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                 <div style={{ textAlign: 'right', fontSize: 11, color: '#475569', lineHeight: 1.5 }}>
                                     <div><strong>{docNumberLabel}:</strong> {docNumber}</div>
                                     <div><strong>Date:</strong> {fmtDate(docDate)}</div>
-                                    {editHistoryList.length > 0 && (
+                                    {latestEdit && (
                                         <div style={{ marginTop: 2 }}>
-                                            {editHistoryList.map((eh, idx) => (
-                                                <div key={idx} style={{ color: '#dc2626', fontWeight: 800, fontSize: 10.5, fontFamily: "'Consolas', monospace" }}>
-                                                    • {formatEditItem(eh, idx + 1)}
-                                                </div>
-                                            ))}
+                                            <div 
+                                                onClick={() => setIsEditLogOpen(true)}
+                                                style={{ color: '#dc2626', fontWeight: 800, fontSize: 10.5, fontFamily: "'Consolas', monospace", cursor: 'pointer' }}
+                                                title="Click to view complete revision history & audit log"
+                                            >
+                                                • {formatEditItem(latestEdit, latestEditNumber)}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -1031,6 +1133,23 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                 )}
 
             </div>{/* /print-root-container */}
+
+            <ConfirmDialog
+                isOpen={isSaveConfirmOpen}
+                title={`Save Changes to ${docLabel} ${docNumber}`}
+                message={`Are you sure you want to save the modified Terms & Conditions / details to ${docLabel} ${docNumber}? This will be recorded in the revision history.`}
+                confirmLabel={isSavingTerms ? "Saving..." : "Confirm & Save"}
+                cancelLabel="Cancel"
+                confirmVariant="primary"
+                onConfirm={handleSaveDocumentChanges}
+                onClose={() => setIsSaveConfirmOpen(false)}
+            />
+
+            <DocumentEditLogModal
+                isOpen={isEditLogOpen}
+                onClose={() => setIsEditLogOpen(false)}
+                document={doc}
+            />
         </div>
     );
 });

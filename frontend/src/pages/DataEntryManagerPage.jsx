@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -43,6 +43,7 @@ export default function DataEntryManagerPage() {
     const [extraInput, setExtraInput] = useState(''); // Code or contact phone if needed
     const [searchText, setSearchText] = useState('');
     const [deletingItem, setDeletingItem] = useState(null);
+    const nameInputRef = useRef(null);
 
     // Queries
     const { data: categoriesData, isLoading: loadingCat } = useQuery({
@@ -159,23 +160,31 @@ export default function DataEntryManagerPage() {
         if (e) e.preventDefault();
         const trimmed = nameInput.trim();
         if (!trimmed) {
-            toast.error('Please enter a name');
+            toast.error(`Please enter a ${activeMeta.label.replace(/s$/, '').toLowerCase()} name`);
+            if (nameInputRef.current) nameInputRef.current.focus();
             return;
         }
 
-        if (activeTab === 'categories') {
-            await createCategoryMutation.mutateAsync({ name: trimmed });
-        } else if (activeTab === 'brands') {
-            await createBrandMutation.mutateAsync({ name: trimmed });
-        } else if (activeTab === 'vehicle-models') {
-            await createModelMutation.mutateAsync({ name: trimmed });
-        } else if (activeTab === 'insurance-companies') {
-            await createInsuranceMutation.mutateAsync({
-                name: trimmed,
-                contactPhone: extraInput.trim() || undefined
-            });
+        try {
+            if (activeTab === 'categories') {
+                await createCategoryMutation.mutateAsync({ name: trimmed });
+            } else if (activeTab === 'brands') {
+                await createBrandMutation.mutateAsync({ name: trimmed });
+            } else if (activeTab === 'vehicle-models') {
+                await createModelMutation.mutateAsync({ name: trimmed });
+            } else if (activeTab === 'insurance-companies') {
+                await createInsuranceMutation.mutateAsync({
+                    name: trimmed,
+                    contactPhone: extraInput.trim() || undefined
+                });
+            }
+            setNameInput('');
+            setExtraInput('');
+        } catch (err) {
+            // Error handled in mutation
         }
     };
+
 
     const confirmDelete = async () => {
         if (!deletingItem) return;
@@ -305,6 +314,7 @@ export default function DataEntryManagerPage() {
                         <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
                             <div className="flex-1 relative">
                                 <input
+                                    ref={nameInputRef}
                                     type="text"
                                     value={nameInput}
                                     onChange={(e) => setNameInput(e.target.value)}
@@ -330,7 +340,7 @@ export default function DataEntryManagerPage() {
                                         value={extraInput}
                                         onChange={(e) => setExtraInput(e.target.value)}
                                         placeholder="Contact Phone (Optional)"
-                                        className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs transition"
+                                        className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs transition"
                                         disabled={isSubmitting}
                                     />
                                 </div>
@@ -339,7 +349,7 @@ export default function DataEntryManagerPage() {
                             <Button
                                 type="submit"
                                 variant="primary"
-                                disabled={isSubmitting || !nameInput.trim()}
+                                loading={isSubmitting}
                                 className="shrink-0 flex items-center justify-center gap-1.5 px-5 py-2.5 shadow-xs"
                             >
                                 <Plus size={16} />

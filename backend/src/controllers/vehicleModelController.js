@@ -12,9 +12,14 @@ export const createVehicleModel = asyncHandler(async (req, res) => {
     // Check if already exists (case-insensitive)
     const existing = await VehicleModel.findOne({
         name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
-        deletedAt: null,
-    });
+    }).setOptions({ includeDeleted: true });
     if (existing) {
+        if (existing.deletedAt) {
+            existing.deletedAt = null;
+            existing.isActive = true;
+            if (description) existing.description = description.trim();
+            await existing.save();
+        }
         return res.status(200).json({ success: true, data: existing, message: 'Vehicle model already exists' });
     }
 

@@ -22,6 +22,8 @@ export const useInvoice = (id) => useQuery({
     queryKey: ['invoice', id],
     queryFn: () => invoicesApi.getById(id),
     enabled: !!id,
+    refetchOnMount: 'always',
+    staleTime: 0,
 });
 
 export const useCreateInvoice = () => {

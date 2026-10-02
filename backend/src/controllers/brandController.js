@@ -2,7 +2,32 @@ import asyncHandler from 'express-async-handler';
 import Brand from '../models/Brand.js';
 
 export const createBrand = asyncHandler(async (req, res) => {
-    const brand = await Brand.create({ ...req.body, createdBy: req.user._id });
+    let { name, code } = req.body;
+    if (name) name = name.trim();
+    if (!name) {
+        res.status(400);
+        throw new Error('Brand name is required');
+    }
+
+    const existing = await Brand.findOne({
+        name: { $regex: new RegExp(`^${name}$`, 'i') },
+    });
+    if (existing) {
+        if (existing.deletedAt) {
+            existing.deletedAt = null;
+            existing.isActive = true;
+            await existing.save();
+        }
+        return res.status(200).json({ success: true, data: existing, message: 'Brand already exists' });
+    }
+
+    if (!code) {
+        const clean = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+        const randomSuffix = Math.floor(100 + Math.random() * 900);
+        code = clean ? `${clean}_${randomSuffix}` : `BRD_${randomSuffix}`;
+    }
+
+    const brand = await Brand.create({ ...req.body, name, code, createdBy: req.user._id });
     res.status(201).json({ success: true, data: brand });
 });
 

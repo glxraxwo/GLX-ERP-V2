@@ -12,9 +12,15 @@ export const createInsuranceCompany = asyncHandler(async (req, res) => {
     // Check if already exists (case-insensitive)
     const existing = await InsuranceCompany.findOne({
         name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
-        deletedAt: null,
-    });
+    }).setOptions({ includeDeleted: true });
     if (existing) {
+        if (existing.deletedAt) {
+            existing.deletedAt = null;
+            existing.isActive = true;
+            if (contactPhone) existing.contactPhone = contactPhone.trim();
+            if (code) existing.code = code.trim().toUpperCase();
+            await existing.save();
+        }
         return res.status(200).json({ success: true, data: existing, message: 'Insurance company already exists' });
     }
 

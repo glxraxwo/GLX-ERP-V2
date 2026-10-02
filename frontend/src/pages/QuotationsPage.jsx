@@ -25,6 +25,7 @@ import { getApiUrl } from '../api/config';
 import { translateText, detectLanguage } from '../utils/translationService';
 import { usePermission } from '../hooks/usePermission';
 import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
+import DocumentEditLogModal from '../components/common/DocumentEditLogModal';
 
 const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
 
@@ -84,6 +85,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     const [activeTab, setActiveTab] = useState(initialTab || 'all');
     const [useSinhalaLanguage, setUseSinhalaLanguage] = useState(false);
     const [previewIncludeHeader, setPreviewIncludeHeader] = useState(true);
+    const [selectedLogDoc, setSelectedLogDoc] = useState(null);
 
     useEffect(() => {
         if (initialTab) {
@@ -889,11 +891,17 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         </button>
                         {history.length > 0 && (
                             <div className="flex flex-col gap-0.5 mt-1">
-                                {history.map((eh, idx) => (
-                                    <span key={idx} className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.2 rounded font-mono w-max">
-                                        {formatEditItem(eh, idx + 1)}
-                                    </span>
-                                ))}
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedLogDoc(r);
+                                    }}
+                                    className="text-[10px] font-black text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-1.5 py-0.2 rounded font-mono w-max cursor-pointer transition text-left"
+                                    title="Click to view full revision history & audit log"
+                                >
+                                    {formatEditItem(history[history.length - 1], history.length)}
+                                </button>
                             </div>
                         )}
                     </div>
@@ -1354,11 +1362,14 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                             const h = getDocumentEditHistory(quote);
                                             return h.length > 0 ? (
                                                 <div className="flex flex-wrap gap-1 mt-2">
-                                                    {h.map((eh, idx) => (
-                                                        <span key={idx} className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded font-mono">
-                                                            {formatEditItem(eh, idx + 1)}
-                                                        </span>
-                                                    ))}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedLogDoc(quote)}
+                                                        className="text-[10px] font-black text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-1.5 py-0.5 rounded font-mono cursor-pointer transition text-left"
+                                                        title="Click to view full revision history & audit log"
+                                                    >
+                                                        {formatEditItem(h[h.length - 1], h.length)}
+                                                    </button>
                                                 </div>
                                             ) : null;
                                         })()}
@@ -2737,6 +2748,12 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     />
                 </div>
             )}
+
+            <DocumentEditLogModal
+                isOpen={!!selectedLogDoc}
+                onClose={() => setSelectedLogDoc(null)}
+                document={selectedLogDoc}
+            />
         </div>
     );
 };

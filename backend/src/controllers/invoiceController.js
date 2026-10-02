@@ -439,6 +439,8 @@ export const getInvoiceById = asyncHandler(async (req, res) => {
         .populate('salesOrderIds', 'orderNumber orderDate')
         .populate('salesRepId', 'firstName lastName')
         .populate('createdBy', 'firstName lastName signature jobTitle')
+        .populate('updatedBy', 'firstName lastName username role email')
+        .populate('editHistory.editedBy', 'firstName lastName username role email')
         .populate('cancelledBy', 'firstName lastName');
     if (!invoice) { res.status(404); throw new Error('Invoice not found'); }
     res.json({ success: true, data: invoice });
@@ -632,6 +634,8 @@ export const updateInvoice = asyncHandler(async (req, res) => {
         editedAt: new Date(),
         editedBy: req.user._id,
         editedByName: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'Admin',
+        userRole: req.user.role || 'admin',
+        notes: req.body.editReason || req.body.notes || '',
     });
 
     invoice.updatedBy = req.user._id;
@@ -652,7 +656,9 @@ export const updateInvoice = asyncHandler(async (req, res) => {
 
     const populated = await Invoice.findById(invoice._id)
         .populate('customerId', 'displayName customerCode')
-        .populate('salesOrderIds', 'orderNumber');
+        .populate('salesOrderIds', 'orderNumber')
+        .populate('editHistory.editedBy', 'firstName lastName username role email')
+        .populate('updatedBy', 'firstName lastName username role email');
 
     res.json({ success: true, data: populated });
 });

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Ban, Printer, Receipt, Download, CheckCircle, RefreshCw, Briefcase, FileCheck, FileText, RotateCcw, Eye, Edit } from 'lucide-react';
+import { ArrowLeft, Send, Ban, Printer, Receipt, Download, CheckCircle, RefreshCw, Briefcase, FileCheck, FileText, RotateCcw, Eye, Edit, History } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
+import DocumentEditLogModal from '../components/common/DocumentEditLogModal';
 
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -39,6 +40,7 @@ export default function InvoiceDetailPage() {
     const [action, setAction] = useState(null);
     const [reason, setReason] = useState('');
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+    const [isEditLogOpen, setIsEditLogOpen] = useState(false);
 
     const { data, isLoading } = useInvoice(id);
     const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -247,8 +249,8 @@ export default function InvoiceDetailPage() {
     return (
         <div>
             <PageHeader
-                title={<span className="flex items-center gap-3">
-                    {isProforma ? `Proforma Invoice ${inv.invoiceNumber}` : `Invoice ${inv.invoiceNumber}`}
+                title={<span className="inline-flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <span className="break-all">{isProforma ? `Proforma Invoice ${inv.invoiceNumber}` : `Invoice ${inv.invoiceNumber}`}</span>
                     <Badge variant={paymentStatusVariant[inv.paymentStatus]}>{inv.paymentStatus.replace('_', ' ')}</Badge>
                     {inv.daysPastDue > 0 && <Badge variant="danger">{inv.daysPastDue}d overdue</Badge>}
                 </span>}
@@ -257,37 +259,38 @@ export default function InvoiceDetailPage() {
                         <div>Issued {fmtDate(inv.invoiceDate)} · Due {fmtDate(inv.dueDate)}</div>
                         {editHistoryList.length > 0 && (
                             <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                                {editHistoryList.map((eh, idx) => (
-                                    <span 
-                                        key={idx} 
-                                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-black text-red-700 bg-red-100 border border-red-300 font-mono shadow-2xs"
-                                    >
-                                        <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
-                                        {formatEditItem(eh, idx + 1)}
-                                    </span>
-                                ))}
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsEditLogOpen(true)}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-black text-red-700 bg-red-100 hover:bg-red-200 border border-red-300 font-mono shadow-2xs transition cursor-pointer"
+                                    title="Click to view full revision and edit audit log"
+                                >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+                                    {formatEditItem(editHistoryList[editHistoryList.length - 1], editHistoryList.length)}
+                                    <span className="text-[10px] text-red-600 font-sans font-medium underline ml-1">View Log</span>
+                                </button>
                             </div>
                         )}
                     </div>
                 }
                 actions={
-                    <div className="flex flex-wrap items-center gap-2 max-w-full">
-                        <Button variant="outline" size="sm" onClick={() => navigate('/invoices')}>
-                            <ArrowLeft size={14} className="mr-1" /> Back
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                        <Button variant="outline" size="sm" onClick={() => navigate('/invoices')} title="Back to Invoices">
+                            <ArrowLeft size={14} className="sm:mr-1" /> <span className="hidden sm:inline">Back</span>
                         </Button>
 
-                        {/* Admin Only Invoice Edit Action */}
-                        {user?.role === 'admin' && (
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => navigate(`/invoices/new?edit=${inv._id}`)}
-                                className="border-red-300 text-red-700 bg-red-50/70 hover:bg-red-100 font-bold"
-                                title="Admin Only: Edit this invoice"
-                            >
-                                <Edit size={14} className="mr-1" /> Edit (Admin)
-                            </Button>
-                        )}
+                        {/* View Revision & Edit Audit Log Action */}
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setIsEditLogOpen(true)}
+                            className="border-slate-300 text-slate-700 bg-white hover:bg-slate-50 font-semibold"
+                            title="View complete document edit history and audit log"
+                        >
+                            <History size={14} className="sm:mr-1 text-slate-500" />
+                            <span className="hidden sm:inline">Edit Log {editHistoryList.length > 0 && `(${editHistoryList.length})`}</span>
+                            {editHistoryList.length > 0 && <span className="sm:hidden ml-0.5 text-[10px] font-bold text-slate-600">{editHistoryList.length}</span>}
+                        </Button>
 
                         {/* Interactive A4 Preview & Edit Modal Launcher */}
                         <Button 
@@ -297,7 +300,7 @@ export default function InvoiceDetailPage() {
                             className="border-blue-300 text-blue-700 bg-blue-50/60 hover:bg-blue-100 font-bold"
                             title="Interactive A4 Print Preview with Dynamic Language Switcher and Quick Edit"
                         >
-                            <Eye size={14} className="mr-1" /> Preview &amp; Edit
+                            <Eye size={14} className="sm:mr-1" /> <span className="hidden sm:inline">Preview &amp; Edit</span>
                         </Button>
 
                         {/* With Header / Without Header Mode Selector */}
@@ -305,18 +308,18 @@ export default function InvoiceDetailPage() {
                             <button
                                 type="button"
                                 onClick={() => setIncludeHeader(true)}
-                                className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 ${includeHeader ? 'bg-blue-600 text-white font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
+                                className={`px-1.5 sm:px-2.5 py-1 rounded-md transition-all flex items-center gap-1 ${includeHeader ? 'bg-blue-600 text-white font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
                                 title="Print / Download with company letterhead header"
                             >
-                                With Header
+                                <span className="hidden sm:inline">With</span> Header
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setIncludeHeader(false)}
-                                className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 ${!includeHeader ? 'bg-amber-600 text-white font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
+                                className={`px-1.5 sm:px-2.5 py-1 rounded-md transition-all flex items-center gap-1 ${!includeHeader ? 'bg-amber-600 text-white font-bold shadow-xs' : 'text-gray-600 hover:text-gray-900'}`}
                                 title="Print / Download without header (For pre-printed letterhead paper)"
                             >
-                                Without Header
+                                No Header
                             </button>
                         </div>
 
@@ -327,11 +330,10 @@ export default function InvoiceDetailPage() {
                             className={!includeHeader ? 'border-amber-300 bg-amber-50/50 text-amber-900' : ''}
                             title={includeHeader ? 'Print with Header' : 'Print without Header (Pre-printed Paper)'}
                         >
-                            <Printer size={14} className="mr-1" /> Print
-                            {!includeHeader && <span className="ml-1 text-[10px] text-amber-700 font-bold">(No Header)</span>}
+                            <Printer size={14} className="sm:mr-1" /> <span className="hidden sm:inline">Print</span>
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => setShareModalOpen(true)}>
-                            <Send size={14} className="mr-1" /> SMS
+                        <Button variant="outline" size="sm" onClick={() => setShareModalOpen(true)} title="Send via SMS">
+                            <Send size={14} className="sm:mr-1" /> <span className="hidden sm:inline">SMS</span>
                         </Button>
                         <Button 
                             variant="outline" 
@@ -340,8 +342,7 @@ export default function InvoiceDetailPage() {
                             className={!includeHeader ? 'border-amber-300 bg-amber-50/50 text-amber-900' : ''}
                             title={includeHeader ? 'Download PDF with Header' : 'Download PDF without Header'}
                         >
-                            <Download size={14} className="mr-1" /> PDF
-                            {!includeHeader && <span className="ml-1 text-[10px] text-amber-700 font-bold">(No Header)</span>}
+                            <Download size={14} className="sm:mr-1" /> <span className="hidden sm:inline">PDF</span>
                         </Button>
                         {inv.balanceDue > 0 && inv.paymentStatus !== 'cancelled' && (
                             <Button variant="primary" size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" onClick={() => {
@@ -351,8 +352,8 @@ export default function InvoiceDetailPage() {
                                 setQuickPayReference('');
                                 setQuickPayNotes('');
                                 setIsQuickPayOpen(true);
-                            }}>
-                                <CheckCircle size={14} className="mr-1" /> Pay / Record Payment
+                            }} title="Record Payment">
+                                <CheckCircle size={14} className="sm:mr-1" /> <span className="hidden sm:inline">Pay / Record Payment</span>
                             </Button>
                         )}
                         <Button
@@ -366,8 +367,9 @@ export default function InvoiceDetailPage() {
                                 setConvertAdvance('');
                                 setIsConvertOpen(true);
                             }}
+                            title="Convert Invoice"
                         >
-                            <RefreshCw size={14} className="mr-1" /> Convert
+                            <RefreshCw size={14} className="sm:mr-1" /> <span className="hidden sm:inline">Convert</span>
                         </Button>
                         <Button
                             variant="outline"
@@ -379,11 +381,11 @@ export default function InvoiceDetailPage() {
                             }}
                             title="Revert Invoice back to Quotation Draft format (Admin Password Required)"
                         >
-                            <RotateCcw size={14} className="mr-1" /> Revert (Admin)
+                            <RotateCcw size={14} className="sm:mr-1" /> <span className="hidden sm:inline">Revert</span>
                         </Button>
                         {actions.map((a) => (
-                            <Button key={a.label} variant={a.variant} size="sm" onClick={() => setAction(a)}>
-                                <a.icon size={14} className="mr-1" /> {a.label}
+                            <Button key={a.label} variant={a.variant} size="sm" onClick={() => setAction(a)} title={a.label}>
+                                <a.icon size={14} className="sm:mr-1" /> <span className="hidden sm:inline">{a.label}</span>
                             </Button>
                         ))}
                     </div>
@@ -900,6 +902,12 @@ export default function InvoiceDetailPage() {
                     </div>
                 </div>
             )}
+
+            <DocumentEditLogModal
+                isOpen={isEditLogOpen}
+                onClose={() => setIsEditLogOpen(false)}
+                document={inv}
+            />
         </div>
     );
 }

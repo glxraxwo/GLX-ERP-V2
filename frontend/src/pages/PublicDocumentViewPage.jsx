@@ -258,13 +258,12 @@ export default function PublicDocumentViewPage() {
                                     <h2 className="text-sm font-black text-slate-900 font-mono mt-1">{docNumber}</h2>
                                     {(() => {
                                         const history = getDocumentEditHistory(doc);
-                                        return history.length > 0 ? (
+                                        const latest = history.length > 0 ? history[history.length - 1] : null;
+                                        return latest ? (
                                             <div className="flex flex-wrap gap-1 mt-1.5">
-                                                {history.map((eh, idx) => (
-                                                    <span key={idx} className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded font-mono">
-                                                        {formatEditItem(eh, idx + 1)}
-                                                    </span>
-                                                ))}
+                                                <span className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded font-mono">
+                                                    {formatEditItem(latest, history.length)}
+                                                </span>
                                             </div>
                                         ) : null;
                                     })()}

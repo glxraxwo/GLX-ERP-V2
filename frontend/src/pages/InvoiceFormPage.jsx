@@ -70,7 +70,7 @@ export default function InvoiceFormPage() {
                 navigate('/invoices');
                 return;
             }
-            api.get(`/invoices/${editInvoiceId}`)
+            api.get(`/invoices/${editInvoiceId}?_t=${Date.now()}`)
                 .then(res => {
                     const inv = res.data?.data;
                     if (!inv) return;
@@ -618,6 +618,12 @@ export default function InvoiceFormPage() {
                         return;
                     }
                     const { data: res } = await api.put(`/invoices/${editInvoiceId}`, invoicePayload);
+                    if (res?.data) {
+                        queryClient.setQueryData(['invoice', editInvoiceId], res);
+                    }
+                    await queryClient.invalidateQueries({ queryKey: ['invoice'] });
+                    await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+                    await queryClient.invalidateQueries({ queryKey: ['invoicesAging'] });
                     toast.success(`Invoice ${existingInvoice?.invoiceNumber || ''} updated successfully!`);
                     navigate(`/invoices/${editInvoiceId}`);
                 } else {
@@ -955,11 +961,9 @@ export default function InvoiceFormPage() {
                             const h = getDocumentEditHistory(existingInvoice);
                             return h.length > 0 ? (
                                 <div className="flex flex-wrap items-center gap-1 border-l border-blue-200 pl-2">
-                                    {h.map((eh, idx) => (
-                                        <span key={idx} className="text-[10px] font-black text-red-600 bg-red-100/90 border border-red-300 px-1.5 py-0.5 rounded font-mono">
-                                            {formatEditItem(eh, idx + 1)}
-                                        </span>
-                                    ))}
+                                    <span className="text-[10px] font-black text-red-600 bg-red-100/90 border border-red-300 px-1.5 py-0.5 rounded font-mono">
+                                        {formatEditItem(h[h.length - 1], h.length)}
+                                    </span>
                                 </div>
                             ) : null;
                         })()}
