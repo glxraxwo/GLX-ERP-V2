@@ -22,7 +22,18 @@ const fmtTime = (dateStr) => {
     if (!dateStr) return '';
     try {
         const d = new Date(dateStr);
-        return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+        if (isNaN(d.getTime())) return '';
+        // If date was saved as UTC midnight (00:00:00), it's a date-only field with no time
+        if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+            return '';
+        }
+        return d.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Colombo'
+        });
     } catch { return ''; }
 };
 
@@ -227,6 +238,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                 border: 1px solid #e2e8f0;
                 margin-bottom: 24px;
                 box-sizing: border-box;
+                min-width: 760px !important;
             }
         }
         @media print {
@@ -552,7 +564,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                     ) : branchVal],
                                     [t.date || 'Date', <>
                                         <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmtDate(docDate)}</span>
-                                        {fmtTime(docDate) && <><br/><span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 11.5 }}>{fmtTime(docDate)}</span></>}
+                                        {fmtTime(doc.createdAt) && <><br/><span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 11.5 }}>{fmtTime(doc.createdAt)}</span></>}
                                     </>],
                                 ].map(([label, value]) => (
                                     <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 12.5 }}>
