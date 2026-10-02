@@ -1223,23 +1223,14 @@ export default function InvoiceFormPage() {
                         </Card>
                     ) : (
                         <Card className="p-3 border-dashed border-gray-200 bg-gray-50/60 shadow-2xs">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-left">
-                                    <div className="w-6 h-6 rounded-md bg-gray-100 text-gray-500 flex items-center justify-center">
-                                        <Truck size={13} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[11px] font-semibold text-gray-700">Vehicle Details</p>
-                                        <p className="text-[9px] text-gray-400">No vehicle/photos added</p>
-                                    </div>
+                            <div className="flex items-center gap-2 text-left">
+                                <div className="w-6 h-6 rounded-md bg-gray-100 text-gray-500 flex items-center justify-center">
+                                    <Truck size={13} />
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsVehicleModalOpen(true)}
-                                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-white hover:bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 transition shadow-2xs"
-                                >
-                                    + Add Details
-                                </button>
+                                <div>
+                                    <p className="text-[11px] font-semibold text-gray-700">Vehicle Details</p>
+                                    <p className="text-[9px] text-gray-400">No vehicle/photos added</p>
+                                </div>
                             </div>
                         </Card>
                     )}
