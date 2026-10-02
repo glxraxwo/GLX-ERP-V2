@@ -2,6 +2,7 @@ import React, { forwardRef, useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getDocTranslation, translateCondition, defaultConditions } from '../../utils/documentTranslations';
 import { useAuthStore } from '../../store/authStore';
+import { getDocumentEditHistory, formatEditItem } from '../../utils/editHistoryUtils';
 
 /* ─── format helpers ─────────────────────────────────────────────────── */
 const fmt = (num, min = 2, max = 2) => {
@@ -139,6 +140,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     const branch          = doc.branch    || 'JA-ELA';
     const docDate         = doc.date || doc.invoiceDate || doc.createdAt || new Date();
     const printTimestamp  = fmtPrintTs(new Date());
+    const editHistoryList = getDocumentEditHistory(doc);
 
     /* ── effective quick-edited meta ── */
     const customerNameVal    = editedValues.customerName !== undefined ? editedValues.customerName : customerName;
@@ -572,6 +574,24 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                         <span style={{ color: '#000' }}>&nbsp;&nbsp;{value}</span>
                                     </div>
                                 ))}
+                                {editHistoryList.length > 0 && (
+                                    <div style={{ marginTop: 6, paddingTop: 4, borderTop: '1px dashed #fca5a5' }}>
+                                        {editHistoryList.map((eh, idx) => (
+                                            <div 
+                                                key={idx} 
+                                                style={{ 
+                                                    color: '#dc2626', 
+                                                    fontWeight: 800, 
+                                                    fontSize: 11.5, 
+                                                    lineHeight: 1.5,
+                                                    fontFamily: "'Consolas', 'Segoe UI Mono', monospace" 
+                                                }}
+                                            >
+                                                • {formatEditItem(eh, idx + 1)}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -906,6 +926,15 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                 <div style={{ textAlign: 'right', fontSize: 11, color: '#475569', lineHeight: 1.5 }}>
                                     <div><strong>{docNumberLabel}:</strong> {docNumber}</div>
                                     <div><strong>Date:</strong> {fmtDate(docDate)}</div>
+                                    {editHistoryList.length > 0 && (
+                                        <div style={{ marginTop: 2 }}>
+                                            {editHistoryList.map((eh, idx) => (
+                                                <div key={idx} style={{ color: '#dc2626', fontWeight: 800, fontSize: 10.5, fontFamily: "'Consolas', monospace" }}>
+                                                    • {formatEditItem(eh, idx + 1)}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

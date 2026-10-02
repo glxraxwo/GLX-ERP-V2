@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, Eye, FileText, AlertTriangle, CheckCircle, RefreshCw, Briefcase, FileCheck, Layers, RotateCcw, Calendar, X, Receipt, ClipboardList } from 'lucide-react';
+import { Plus, Search, Eye, FileText, AlertTriangle, CheckCircle, RefreshCw, Briefcase, FileCheck, Layers, RotateCcw, Calendar, X, Receipt, ClipboardList, Edit } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
 
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -219,8 +220,24 @@ export default function InvoicesPage() {
 
     const columns = [
         {
-            key: 'invoiceNumber', label: 'Invoice #', width: '120px',
-            render: (r) => <span className="font-mono text-xs">{r.invoiceNumber}</span>,
+            key: 'invoiceNumber', label: 'Invoice #', width: '130px',
+            render: (r) => {
+                const history = getDocumentEditHistory(r);
+                return (
+                    <div>
+                        <span className="font-mono text-xs font-bold text-gray-900">{r.invoiceNumber}</span>
+                        {history.length > 0 && (
+                            <div className="flex flex-col gap-0.5 mt-0.5">
+                                {history.map((eh, idx) => (
+                                    <span key={idx} className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-1 py-0.2 rounded font-mono w-max">
+                                        {formatEditItem(eh, idx + 1)}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            },
         },
         { key: 'invoiceDate', label: 'Date', render: (r) => fmtDate(r.invoiceDate) },
         {
@@ -300,6 +317,18 @@ export default function InvoicesPage() {
                     >
                         <RotateCcw size={12} /> Revert
                     </button>
+                    {user?.role === 'admin' && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/invoices/new?edit=${r._id}`);
+                            }}
+                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                            title="Edit Invoice (Admin Only)"
+                        >
+                            <Edit size={16} />
+                        </button>
+                    )}
                     <button onClick={() => navigate(`/invoices/${r._id}`)}
                         className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded">
                         <Eye size={16} />

@@ -135,11 +135,11 @@ export default function QuickCreateProductModal({
                             Description / Specifications (විස්තරය / Specifications)
                         </label>
                         <textarea
-                            rows={2}
+                            rows={8}
                             placeholder="e.g., 3x3 Aluminium Patch, Waterproof Shutter Board, Custom specs..."
                             value={form.description}
                             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 leading-relaxed font-sans"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 leading-relaxed font-sans min-h-[160px]"
                         />
                     </div>
                 </div>

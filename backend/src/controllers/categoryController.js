@@ -2,8 +2,17 @@ import asyncHandler from 'express-async-handler';
 import Category from '../models/Category.js';
 
 export const createCategory = asyncHandler(async (req, res) => {
+    let { code, name } = req.body;
+    if (name) name = name.trim();
+    if (!code && name) {
+        const clean = name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+        const randomSuffix = Math.floor(100 + Math.random() * 900);
+        code = clean ? `${clean}_${randomSuffix}` : `CAT_${randomSuffix}`;
+    }
     const category = await Category.create({
         ...req.body,
+        name,
+        code,
         createdBy: req.user._id,
     });
     res.status(201).json({ success: true, data: category });

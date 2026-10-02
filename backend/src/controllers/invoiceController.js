@@ -7,6 +7,7 @@ import SalesOrder from '../models/SalesOrder.js';
 import Warehouse from '../models/Warehouse.js';
 import { decreaseStock } from '../services/stockService.js';
 import { getNextSequence } from '../models/Counter.js';
+import { createAuditLog } from '../utils/auditLogger.js';
 
 export const deductStockForInvoice = async (invoice, userId) => {
     if (invoice.invoiceType === 'proforma') return; // Proforma NEVER impacts stock
@@ -524,6 +525,136 @@ export const changeInvoiceStatus = asyncHandler(async (req, res) => {
     await updateCustomerBalance(invoice.customerId);
 
     res.json({ success: true, data: invoice });
+});
+
+/**
+ * PUT /api/invoices/:id
+ * Update invoice - ADMIN ONLY
+ */
+export const updateInvoice = asyncHandler(async (req, res) => {
+    if (req.user.role !== 'admin') {
+        res.status(403);
+        throw new Error('Only administrators are authorized to edit invoices');
+    }
+
+    const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) {
+        res.status(404);
+        throw new Error('Invoice not found');
+    }
+
+    const {
+        customerId, items, dueDate, customerName, customerPhone,
+        invoiceDate, invoiceType, notes, remarks,
+        conditionOfPayments, completionOfWork, validityQuotation, warrantyCondition,
+        vehicleNo, vehicleModel, insuranceCompany, vehicleOwner, jobCaption,
+        salesRep, branch, numberPlateImage, lorryBodyImage, photos,
+        bodyDimensions, specifications, warrantyInfo,
+        advancePercentage, advanceAmount, showAdvanceOnInvoice,
+        discountPercent, shippingCost, otherCharges,
+    } = req.body;
+
+    // Handle customer update if provided
+    if (customerId) {
+        const customer = await Customer.findById(customerId);
+        if (customer) {
+            invoice.customerId = customer._id;
+            invoice.customerSnapshot = {
+                name: customer.displayName || customerName || invoice.customerSnapshot?.name,
+                code: customer.customerCode || '',
+                taxRegistrationNumber: customer.taxRegistrationNumber || '',
+                contactName: customer.primaryContact?.phone || customerPhone || customer.primaryContact?.name || '',
+            };
+            invoice.billingAddress = customer.billingAddress;
+        }
+    } else if (customerName) {
+        invoice.customerSnapshot = {
+            ...invoice.customerSnapshot,
+            name: customerName,
+            contactName: customerPhone || invoice.customerSnapshot?.contactName,
+        };
+    }
+
+    if (items && Array.isArray(items)) {
+        invoice.items = items.map(item => ({
+            productId: item.productId || item.product || undefined,
+            productCode: item.productCode,
+            productName: item.productName || item.name,
+            productTranslation: item.productTranslation,
+            description: item.description,
+            quantity: Number(item.quantity) || 1,
+            unitOfMeasure: item.unitOfMeasure || 'pcs',
+            unitPrice: Number(item.unitPrice) || 0,
+            discount: Number(item.discount) || 0,
+            taxRate: Number(item.taxRate) || 0,
+            taxable: item.taxable !== false,
+        }));
+    }
+
+    if (invoiceDate) invoice.invoiceDate = invoiceDate;
+    if (dueDate) invoice.dueDate = dueDate;
+    if (invoiceType) invoice.invoiceType = invoiceType;
+    if (notes !== undefined) invoice.notes = notes;
+    if (remarks !== undefined) invoice.remarks = remarks;
+    if (conditionOfPayments !== undefined) invoice.conditionOfPayments = conditionOfPayments;
+    if (completionOfWork !== undefined) invoice.completionOfWork = completionOfWork;
+    if (validityQuotation !== undefined) invoice.validityQuotation = validityQuotation;
+    if (warrantyCondition !== undefined) invoice.warrantyCondition = warrantyCondition;
+    if (vehicleNo !== undefined) invoice.vehicleNo = vehicleNo;
+    if (vehicleModel !== undefined) invoice.vehicleModel = vehicleModel;
+    if (insuranceCompany !== undefined) invoice.insuranceCompany = insuranceCompany;
+    if (vehicleOwner !== undefined) invoice.vehicleOwner = vehicleOwner;
+    if (jobCaption !== undefined) invoice.jobCaption = jobCaption;
+    if (salesRep !== undefined) invoice.salesRep = salesRep;
+    if (branch !== undefined) invoice.branch = branch;
+    if (numberPlateImage !== undefined) invoice.numberPlateImage = numberPlateImage;
+    if (lorryBodyImage !== undefined) invoice.lorryBodyImage = lorryBodyImage;
+    if (photos !== undefined) invoice.photos = photos;
+    if (bodyDimensions !== undefined) invoice.bodyDimensions = bodyDimensions;
+    if (specifications !== undefined) invoice.specifications = specifications;
+    if (warrantyInfo !== undefined) invoice.warrantyInfo = warrantyInfo;
+    if (advancePercentage !== undefined) invoice.advancePercentage = Number(advancePercentage) || 0;
+    if (advanceAmount !== undefined) invoice.advanceAmount = Number(advanceAmount) || 0;
+    if (showAdvanceOnInvoice !== undefined) invoice.showAdvanceOnInvoice = Boolean(showAdvanceOnInvoice);
+    if (discountPercent !== undefined) invoice.discountPercent = Number(discountPercent) || 0;
+    if (shippingCost !== undefined) invoice.shippingCost = Number(shippingCost) || 0;
+    if (otherCharges !== undefined) invoice.otherCharges = Number(otherCharges) || 0;
+
+    // Track edit count & edit history in sequence
+    const currentEditCount = (invoice.editCount || 0) + 1;
+    invoice.editCount = currentEditCount;
+
+    if (!Array.isArray(invoice.editHistory)) {
+        invoice.editHistory = [];
+    }
+    invoice.editHistory.push({
+        editNumber: currentEditCount,
+        editedAt: new Date(),
+        editedBy: req.user._id,
+        editedByName: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'Admin',
+    });
+
+    invoice.updatedBy = req.user._id;
+
+    await invoice.save();
+
+    if (invoice.customerId) {
+        await updateCustomerBalance(invoice.customerId);
+    }
+
+    createAuditLog({
+        action: 'update',
+        module: 'finance',
+        documentId: invoice._id,
+        description: `Admin updated invoice ${invoice.invoiceNumber} (Edit #${currentEditCount})`,
+        req
+    });
+
+    const populated = await Invoice.findById(invoice._id)
+        .populate('customerId', 'displayName customerCode')
+        .populate('salesOrderIds', 'orderNumber');
+
+    res.json({ success: true, data: populated });
 });
 
 /**

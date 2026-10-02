@@ -3,7 +3,7 @@ import {
     createInvoice, createFromSalesOrder, getInvoices, getInvoiceById,
     getAgingSummary, changeInvoiceStatus, deleteInvoice,
     convertProformaToCommercial, convertInvoiceToProforma, convertInvoiceToProject,
-    revertInvoiceConversion
+    revertInvoiceConversion, updateInvoice
 } from '../controllers/invoiceController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/permissionMiddleware.js';
@@ -66,6 +66,7 @@ router.post(
 router
     .route('/:id')
     .get(requirePermission('invoices.view'), getInvoiceById)
+    .put(requirePermission('invoices.edit'), updateInvoice)
     .delete(requirePermission('invoices.view'), deleteInvoice);
 
 router.patch(

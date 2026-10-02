@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Ban, Printer, Receipt, Download, CheckCircle, RefreshCw, Briefcase, FileCheck, FileText, RotateCcw, Eye } from 'lucide-react';
+import { ArrowLeft, Send, Ban, Printer, Receipt, Download, CheckCircle, RefreshCw, Briefcase, FileCheck, FileText, RotateCcw, Eye, Edit } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
+import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
 
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -241,6 +242,7 @@ export default function InvoiceDetailPage() {
     };
 
     const isProforma = inv.invoiceType === 'proforma' || (inv.invoiceNumber && (inv.invoiceNumber.startsWith('PI') || inv.invoiceNumber.includes('/PI/')));
+    const editHistoryList = getDocumentEditHistory(inv);
 
     return (
         <div>
@@ -250,12 +252,42 @@ export default function InvoiceDetailPage() {
                     <Badge variant={paymentStatusVariant[inv.paymentStatus]}>{inv.paymentStatus.replace('_', ' ')}</Badge>
                     {inv.daysPastDue > 0 && <Badge variant="danger">{inv.daysPastDue}d overdue</Badge>}
                 </span>}
-                description={`Issued ${fmtDate(inv.invoiceDate)} · Due ${fmtDate(inv.dueDate)}`}
+                description={
+                    <div>
+                        <div>Issued {fmtDate(inv.invoiceDate)} · Due {fmtDate(inv.dueDate)}</div>
+                        {editHistoryList.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                {editHistoryList.map((eh, idx) => (
+                                    <span 
+                                        key={idx} 
+                                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-black text-red-700 bg-red-100 border border-red-300 font-mono shadow-2xs"
+                                    >
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+                                        {formatEditItem(eh, idx + 1)}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                }
                 actions={
                     <div className="flex flex-wrap items-center gap-2 max-w-full">
                         <Button variant="outline" size="sm" onClick={() => navigate('/invoices')}>
                             <ArrowLeft size={14} className="mr-1" /> Back
                         </Button>
+
+                        {/* Admin Only Invoice Edit Action */}
+                        {user?.role === 'admin' && (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => navigate(`/invoices/new?edit=${inv._id}`)}
+                                className="border-red-300 text-red-700 bg-red-50/70 hover:bg-red-100 font-bold"
+                                title="Admin Only: Edit this invoice"
+                            >
+                                <Edit size={14} className="mr-1" /> Edit (Admin)
+                            </Button>
+                        )}
 
                         {/* Interactive A4 Preview & Edit Modal Launcher */}
                         <Button 

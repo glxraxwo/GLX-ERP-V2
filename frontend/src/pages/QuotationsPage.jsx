@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import {
     Plus, FileText, Trash2, Send,
     MapPin, Clock, X, ShoppingCart, Edit, Eye, Download, Search, Image as ImageIcon, Printer, CheckCircle, RotateCcw, Briefcase,
-    Calendar, LayoutList, LayoutGrid, XCircle, Ban
+    Calendar, LayoutList, LayoutGrid, XCircle, Ban, Sparkles, Save, AlertCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -15,6 +15,8 @@ import Table from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
 import PageHeader from '../components/ui/PageHeader';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import CreatableCombobox from '../components/ui/CreatableCombobox';
+import { masterDataApi } from '../features/masterData/masterDataApi';
 import { useSettings } from '../features/settings/useSettings';
 import DocumentPrintView from '../components/print/DocumentPrintView';
 import ShareDocumentSmsModal from '../components/ShareDocumentSmsModal';
@@ -22,6 +24,7 @@ import { exportDocumentToPDF, exportElementToPDF, printDocumentAsPDF, printEleme
 import { getApiUrl } from '../api/config';
 import { translateText, detectLanguage } from '../utils/translationService';
 import { usePermission } from '../hooks/usePermission';
+import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
 
 const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
 
@@ -51,6 +54,11 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     const [customers, setCustomers] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [users, setUsers] = useState([]);
+    const [vehicleModels, setVehicleModels] = useState([]);
+    const [insuranceCompanies, setInsuranceCompanies] = useState([]);
+    const [nextQuoteNumber, setNextQuoteNumber] = useState('');
+    const [initialQuoteTerms, setInitialQuoteTerms] = useState(null);
+    const [isConfirmQuoteTermsOpen, setIsConfirmQuoteTermsOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -300,9 +308,55 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         }
     };
 
+    const fetchVehicleAndInsuranceData = async () => {
+        try {
+            const [vRes, iRes] = await Promise.all([
+                masterDataApi.getVehicleModels().catch(() => ({ data: [] })),
+                masterDataApi.getInsuranceCompanies().catch(() => ({ data: [] }))
+            ]);
+            setVehicleModels(vRes.data || []);
+            setInsuranceCompanies(iRes.data || []);
+        } catch (error) {
+            console.error('Failed to load vehicle models or insurance companies', error);
+        }
+    };
+
+    const vehicleModelOptions = useMemo(() => {
+        return (vehicleModels || []).map(m => ({ value: m.name, label: m.name }));
+    }, [vehicleModels]);
+
+    const insuranceCompanyOptions = useMemo(() => {
+        return (insuranceCompanies || []).map(c => ({ value: c.name, label: c.name }));
+    }, [insuranceCompanies]);
+
+    const handleCreateVehicleModel = async (name) => {
+        try {
+            const res = await masterDataApi.createVehicleModel({ name });
+            fetchVehicleAndInsuranceData();
+            toast.success(`Vehicle model "${name}" saved to master data!`);
+            return res?.data;
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to save vehicle model');
+            throw err;
+        }
+    };
+
+    const handleCreateInsuranceCompany = async (name) => {
+        try {
+            const res = await masterDataApi.createInsuranceCompany({ name });
+            fetchVehicleAndInsuranceData();
+            toast.success(`Insurance company "${name}" saved to master data!`);
+            return res?.data;
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to save insurance company');
+            throw err;
+        }
+    };
+
     useEffect(() => {
         fetchQuotations();
         fetchData();
+        fetchVehicleAndInsuranceData();
     }, []);
 
     const calculateTotals = (items, extraDiscount = 0, tax = 0, laborCost = 0, advanceAmount = 0) => {
@@ -501,8 +555,37 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 notes: ''
             });
         }
+
+        setInitialQuoteTerms({
+            conditionOfPayments: quote ? (quote.conditionOfPayments || '') : 'a). 0% Advance Payment with the firm Order.\nb). Balance Payment on Completion of Work',
+            completionOfWork: quote ? (quote.completionOfWork || '') : '4 to 6 working Days after the Order Confirmation.',
+            validityQuotation: quote ? (quote.validityQuotation || '') : '30 Working Days From the Issued Date..',
+            warrantyCondition: quote ? (quote.warrantyCondition || quote.warrantyInfo || '') : 'a). Please See the Description..\nb). Warranty Will be Issued with the Invoice.',
+            remarks: quote ? (quote.remarks || quote.notes || '') : '',
+        });
+
+        // Preload next auto sequence candidate if creating new
+        if (!quote) {
+            masterDataApi.getNextDocumentNumber(defaultType)
+                .then(res => setNextQuoteNumber(res?.nextNumber || ''))
+                .catch(() => {});
+        } else {
+            setNextQuoteNumber(quote.quoteNumber || quote.quotationCode || '');
+        }
+
         setIsFormOpen(true);
     };
+
+    const isQuoteTermsModified = useMemo(() => {
+        if (!initialQuoteTerms) return false;
+        return (
+            (formData.conditionOfPayments || '') !== (initialQuoteTerms.conditionOfPayments || '') ||
+            (formData.completionOfWork || '') !== (initialQuoteTerms.completionOfWork || '') ||
+            (formData.validityQuotation || '') !== (initialQuoteTerms.validityQuotation || '') ||
+            (formData.warrantyCondition || '') !== (initialQuoteTerms.warrantyCondition || '') ||
+            (formData.remarks || '') !== (initialQuoteTerms.remarks || '')
+        );
+    }, [initialQuoteTerms, formData.conditionOfPayments, formData.completionOfWork, formData.validityQuotation, formData.warrantyCondition, formData.remarks]);
 
     const editIdFromUrl = searchParams.get('edit') || '';
     const previewIdFromUrl = searchParams.get('preview') || '';
@@ -790,18 +873,30 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
             width: '140px',
             render: (r) => {
                 const isEst = r.documentType === 'estimate' || r.quoteNumber?.startsWith('EST') || r.quoteNumber?.includes('/EST/') || r.quotationCode?.includes('/EST/');
+                const history = getDocumentEditHistory(r);
                 return (
-                    <button
-                        type="button"
-                        onClick={() => { setPreviewQuote(r); setIsPreviewOpen(true); }}
-                        className="flex items-center gap-1.5 hover:opacity-80 text-left transition group cursor-pointer"
-                        title="Click to View / Print Document"
-                    >
-                        <span className={`px-1.5 py-0.5 text-[10px] font-black rounded uppercase tracking-wider ${isEst ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
-                            {isEst ? 'EST' : 'QT'}
-                        </span>
-                        <span className="font-mono font-bold text-xs text-blue-700 group-hover:underline">{r.quoteNumber || r.quotationCode}</span>
-                    </button>
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => { setPreviewQuote(r); setIsPreviewOpen(true); }}
+                            className="flex items-center gap-1.5 hover:opacity-80 text-left transition group cursor-pointer"
+                            title="Click to View / Print Document"
+                        >
+                            <span className={`px-1.5 py-0.5 text-[10px] font-black rounded uppercase tracking-wider ${isEst ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
+                                {isEst ? 'EST' : 'QT'}
+                            </span>
+                            <span className="font-mono font-bold text-xs text-blue-700 group-hover:underline">{r.quoteNumber || r.quotationCode}</span>
+                        </button>
+                        {history.length > 0 && (
+                            <div className="flex flex-col gap-0.5 mt-1">
+                                {history.map((eh, idx) => (
+                                    <span key={idx} className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.2 rounded font-mono w-max">
+                                        {formatEditItem(eh, idx + 1)}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 );
             }
         },
@@ -1255,6 +1350,19 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                             </div>
                                         )}
 
+                                        {(() => {
+                                            const h = getDocumentEditHistory(quote);
+                                            return h.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {h.map((eh, idx) => (
+                                                        <span key={idx} className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded font-mono">
+                                                            {formatEditItem(eh, idx + 1)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ) : null;
+                                        })()}
+
                                         <div className="flex items-center justify-between mt-3">
                                             <div className="text-xl font-black text-gray-900 font-mono">
                                                 {fmt(quote.grandTotal || quote.totalAmount || 0)}
@@ -1370,28 +1478,42 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                             <button
                                 type="button"
                                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.documentType === 'quotation' ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                                onClick={() => setFormData(prev => ({ ...prev, documentType: 'quotation' }))}
+                                onClick={() => {
+                                    setFormData(prev => ({ ...prev, documentType: 'quotation' }));
+                                    if (!editing) {
+                                        masterDataApi.getNextDocumentNumber('quotation')
+                                            .then(res => setNextQuoteNumber(res?.nextNumber || ''))
+                                            .catch(() => {});
+                                    }
+                                }}
                             >
                                 Quotation (JA/QT/...)
                             </button>
                             <button
                                 type="button"
                                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.documentType === 'estimate' ? 'bg-amber-600 text-white shadow' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                                onClick={() => setFormData(prev => ({ ...prev, documentType: 'estimate' }))}
+                                onClick={() => {
+                                    setFormData(prev => ({ ...prev, documentType: 'estimate' }));
+                                    if (!editing) {
+                                        masterDataApi.getNextDocumentNumber('estimate')
+                                            .then(res => setNextQuoteNumber(res?.nextNumber || ''))
+                                            .catch(() => {});
+                                    }
+                                }}
                             >
                                 Estimate (JA/EST/...)
                             </button>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="text-right">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase block">Ref / Quote No.</label>
-                                <input 
-                                    type="text" 
-                                    className="px-2.5 py-1 border border-gray-300 rounded-lg font-mono font-bold text-sm text-gray-800 bg-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                    placeholder="e.g. JA/QT/915 (or auto)"
-                                    value={formData.quoteNumber}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, quoteNumber: e.target.value }))}
-                                />
+
+                        {/* Auto-Generated Document ID Display */}
+                        <div className="flex items-center bg-white border border-gray-200/90 px-3.5 py-1.5 rounded-xl shadow-2xs">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider leading-none">
+                                    {formData.documentType === 'estimate' ? 'Estimate ID' : 'Quotation ID'}
+                                </span>
+                                <span className="font-mono font-bold text-xs text-gray-900 mt-0.5">
+                                    {editing ? (formData.quoteNumber || editing.quoteNumber || editing.quotationCode) : (nextQuoteNumber || 'Generating...')}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -1425,26 +1547,30 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Insurance Company</label>
-                                <input 
-                                    type="text"
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
+                                <CreatableCombobox
+                                    label="Insurance Company"
+                                    allowFreeText={true}
+                                    options={insuranceCompanyOptions}
                                     value={formData.insuranceCompany}
                                     placeholder="e.g. Fairfirst Insurance Limited"
-                                    onChange={(e) => handleFormChange('insuranceCompany', e.target.value)}
+                                    onChange={(val) => handleFormChange('insuranceCompany', val)}
+                                    onCreate={handleCreateInsuranceCompany}
+                                    createLabel="+ Save New Insurance Company"
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Vehicle Model</label>
-                                <input 
-                                    type="text"
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
+                                <CreatableCombobox
+                                    label="Vehicle Model"
+                                    allowFreeText={true}
+                                    options={vehicleModelOptions}
                                     value={formData.vehicleModel}
                                     placeholder="e.g. TATA / New Mahindra Bolero"
-                                    onChange={(e) => handleFormChange('vehicleModel', e.target.value)}
+                                    onChange={(val) => handleFormChange('vehicleModel', val)}
+                                    onCreate={handleCreateVehicleModel}
+                                    createLabel="+ Save New Vehicle Model"
                                 />
                             </div>
 
@@ -1756,17 +1882,10 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     </div>
                                     <input 
                                         type="text" 
-                                        className="w-full px-3 py-1 border border-dashed border-gray-300 rounded-lg text-xs bg-slate-50 text-blue-700 mt-1 font-calibri"
-                                        placeholder="Translation (Sinhala/Tamil)"
-                                        value={item.productTranslation || ''}
-                                        onChange={(e) => handleItemChange(index, 'productTranslation', e.target.value)}
-                                    />
-                                    <textarea 
-                                        rows={3} 
-                                        className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white text-gray-800 mt-1 font-calibri leading-relaxed focus:outline-none focus:ring-1 focus:ring-primary-500"
-                                        placeholder="Detailed Specifications (multiline e.g. *** Roof 3 x 3 Aluminium Patch *** or bullet points: 01. Waterproof Shutter Board...)"
-                                        value={item.description || ''}
-                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                        className="w-full px-3 py-1 border border-dashed border-gray-300 rounded-lg text-xs bg-slate-50 text-blue-700 mt-1 font-calibri" 
+                                        placeholder="Translation (Sinhala/Tamil)" 
+                                        value={item.productTranslation || ''} 
+                                        onChange={(e) => handleItemChange(index, 'productTranslation', e.target.value)} 
                                     />
                                 </div>
 
@@ -1798,7 +1917,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     <input 
                                         type="number" 
                                         step="any" 
-                                        placeholder="0.00"
+                                        placeholder="0.00" 
                                         className="w-full px-2 py-1.5 border border-red-200 rounded-lg text-sm bg-white font-mono text-red-600 placeholder-red-300" 
                                         value={item.discount || ''} 
                                         onChange={e => handleItemChange(index, 'discount', e.target.value)} 
@@ -1824,6 +1943,23 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         <X size={18} />
                                     </button>
                                 </div>
+
+                                {/* Full-width 15-line Description Area */}
+                                <div className="col-span-12 pt-2 border-t border-gray-200/70 mt-1">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="text-[10px] font-bold text-gray-600 uppercase">
+                                            Detailed Description / Specifications (Scope of Work)
+                                        </label>
+                                        <span className="text-[10px] text-gray-400">Multiline description (15 lines visible)</span>
+                                    </div>
+                                    <textarea 
+                                        rows={15} 
+                                        className="w-full p-3 border border-gray-300 rounded-lg text-xs bg-white text-gray-800 font-calibri leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 min-h-[290px] resize-y"
+                                        placeholder="Detailed Specifications (multiline e.g.&#10;01. Waterproof Shutter Board replacement&#10;02. Aluminium corrugated sheet fitting&#10;03. 2K Polyurethane primer coat&#10;04. Subframe chassis anti-rust coating...)"
+                                        value={item.description || ''}
+                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                    />
+                                </div>
                             </div>
                         ))}
                         </div>
@@ -1831,7 +1967,49 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
                     {/* Quotation / Invoice Terms & Conditions Settings */}
                     <div className="bg-slate-50 p-4 rounded-xl border border-gray-200 space-y-4">
-                        <span className="text-xs font-black text-slate-700 uppercase tracking-wide">Document Terms & Conditions</span>
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200/60 pb-2">
+                            <div>
+                                <span className="text-xs font-black text-slate-700 uppercase tracking-wide">Document Terms &amp; Conditions</span>
+                                <p className="text-[11px] text-gray-500 mt-0.5">Customize payment conditions, work completion, validity &amp; warranty</p>
+                            </div>
+
+                            {/* Appears ONLY when Terms & Conditions are modified */}
+                            {isQuoteTermsModified && (
+                                <div className="flex items-center gap-2 animate-in fade-in">
+                                    <span className="text-[11px] font-semibold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-md flex items-center gap-1 border border-amber-200">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                                        Modified
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                remarks: initialQuoteTerms.remarks,
+                                                conditionOfPayments: initialQuoteTerms.conditionOfPayments,
+                                                completionOfWork: initialQuoteTerms.completionOfWork,
+                                                validityQuotation: initialQuoteTerms.validityQuotation,
+                                                warrantyCondition: initialQuoteTerms.warrantyCondition,
+                                            }));
+                                            toast('Terms changes reverted', { icon: '↩️' });
+                                        }}
+                                        className="px-2.5 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 rounded-lg transition"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <Button
+                                        type="button"
+                                        variant="primary"
+                                        size="sm"
+                                        onClick={() => setIsConfirmQuoteTermsOpen(true)}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs px-3 py-1.5"
+                                    >
+                                        <Save size={13} className="mr-1" />
+                                        Save Terms &amp; Conditions
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -2524,6 +2702,27 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
             <ConfirmDialog isOpen={!!deleting} onClose={() => setDeleting(null)} onConfirm={handleDelete}
                 title="Delete Document" message={`Permanently remove ${deleting?.quoteNumber || deleting?.quotationCode}?`} />
+
+            <ConfirmDialog
+                isOpen={isConfirmQuoteTermsOpen}
+                title="Save Terms & Conditions Changes?"
+                message="Are you sure you want to apply and save these updated Terms and Conditions for this document?"
+                confirmText="Yes, Save"
+                cancelText="Cancel"
+                variant="primary"
+                onConfirm={() => {
+                    setInitialQuoteTerms({
+                        remarks: formData.remarks || '',
+                        conditionOfPayments: formData.conditionOfPayments || '',
+                        completionOfWork: formData.completionOfWork || '',
+                        validityQuotation: formData.validityQuotation || '',
+                        warrantyCondition: formData.warrantyCondition || '',
+                    });
+                    setIsConfirmQuoteTermsOpen(false);
+                    toast.success('Terms & Conditions confirmed and updated!');
+                }}
+                onClose={() => setIsConfirmQuoteTermsOpen(false)}
+            />
 
             {/* Offscreen print renderer for direct row/card PDF downloads */}
             {directExportDoc && (

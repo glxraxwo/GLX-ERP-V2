@@ -61,6 +61,12 @@ const invoiceSchema = new mongoose.Schema({
     sourceDocumentId: { type: mongoose.Schema.Types.ObjectId },
     sourceDocumentCode: { type: String },
     editCount: { type: Number, default: 0 },
+    editHistory: [{
+        editNumber: { type: Number },
+        editedAt: { type: Date, default: Date.now },
+        editedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        editedByName: { type: String },
+    }],
 
     // Vehicle & Body engineering metadata
     insuranceCompany: { type: String, default: '' },

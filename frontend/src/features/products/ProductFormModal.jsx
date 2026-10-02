@@ -7,24 +7,52 @@ import {
     Sparkles, Package, DollarSign, Barcode as BarcodeIcon, 
     AlertTriangle, ShieldAlert, Tag, CheckCircle2, Layers, Info
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
+import CreatableCombobox from '../../components/ui/CreatableCombobox';
 import { productFormSchema } from './productSchemas';
 import { useCategories, useBrands, useUoms, useCreateProduct, useUpdateProduct } from './useProducts';
 import { productsApi } from './productsApi';
+import { masterDataApi } from '../masterData/masterDataApi';
 import { generateSinhalaProductName } from '../../utils/translationService';
 
 export default function ProductFormModal({ isOpen, onClose, product = null, forceProductType = null }) {
     const isEdit = !!product;
+    const qc = useQueryClient();
 
     const { data: categoriesData } = useCategories();
     const { data: brandsData } = useBrands();
     const { data: uomsData } = useUoms();
     const createProduct = useCreateProduct();
     const updateProduct = useUpdateProduct();
+
+    const handleCreateCategory = async (name) => {
+        try {
+            const res = await masterDataApi.createCategory({ name });
+            qc.invalidateQueries({ queryKey: ['categories'] });
+            toast.success(`Category "${name}" created!`);
+            return res?.data;
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to create category');
+            throw err;
+        }
+    };
+
+    const handleCreateBrand = async (name) => {
+        try {
+            const res = await masterDataApi.createBrand({ name });
+            qc.invalidateQueries({ queryKey: ['brands'] });
+            toast.success(`Brand "${name}" created!`);
+            return res?.data;
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to create brand');
+            throw err;
+        }
+    };
 
     const {
         register,
@@ -351,13 +379,17 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <Select
+                            <CreatableCombobox
                                 label="Material Category *"
                                 required
                                 disabled={forceProductType === 'raw_material'}
                                 error={errors.categoryId?.message}
                                 options={categoryOptions}
-                                {...register('categoryId')}
+                                value={watch('categoryId')}
+                                onChange={(val) => setValue('categoryId', val, { shouldValidate: true })}
+                                onCreate={handleCreateCategory}
+                                createLabel="+ Create Category"
+                                placeholder="Select or type new category..."
                             />
                             <Select
                                 label="Inventory Product Type *"
@@ -392,12 +424,15 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                                 options={uomOptions}
                                 {...register('unitOfMeasure')}
                             />
-                            <Select
+                            <CreatableCombobox
                                 label="Product Brand"
-                                options={brandOptions}
-                                placeholder="Select Brand"
                                 error={errors.brandId?.message}
-                                {...register('brandId')}
+                                options={brandOptions}
+                                value={watch('brandId')}
+                                onChange={(val) => setValue('brandId', val, { shouldValidate: true })}
+                                onCreate={handleCreateBrand}
+                                createLabel="+ Create Brand"
+                                placeholder="Select or type new brand..."
                             />
                         </div>
                     </div>
@@ -599,9 +634,11 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
 
                         <div>
                             <Textarea
-                                label="Description & Technical Specs"
-                                rows={2}
-                                placeholder="Optional specifications, dimensions, material grade or description..."
+                                label="Description & Technical Specs (විස්තරය / Specifications)"
+                                rows={15}
+                                className="font-mono text-sm"
+                                style={{ minHeight: '340px' }}
+                                placeholder="Specifications, dimensions, material grade, technical descriptions, or product notes (up to 15+ lines)..."
                                 error={errors.description?.message}
                                 {...register('description')}
                             />

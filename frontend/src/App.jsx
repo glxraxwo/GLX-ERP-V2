@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 import ProductsPage from './pages/ProductsPage';
 import CategoriesPage from './pages/CategoriesPage';
 import BrandsPage from './pages/BrandsPage';
+import DataEntryManagerPage from './pages/DataEntryManagerPage';
 import CustomersPage from './pages/CustomersPage';
 import SalesOrdersPage from './pages/SalesOrdersPage';
 import SalesOrderFormPage from './pages/SalesOrderFormPage';
@@ -155,8 +156,9 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/products" element={<ProtectedRoute requiredAnyPermission={['products.view', 'inventory.view', 'sales.view', 'dashboard.view']}><ProductsPage /></ProtectedRoute>} />
         <Route path="/barcode-generator" element={<ProtectedRoute requiredAnyPermission={['products.view', 'inventory.view', 'sales.view', 'dashboard.view']}><BarcodeGeneratorPage /></ProtectedRoute>} />
-        <Route path="/categories" element={<ProtectedRoute requiredAnyPermission={['products.view', 'inventory.view', 'sales.view', 'dashboard.view']}><CategoriesPage /></ProtectedRoute>} />
-        <Route path="/brands" element={<ProtectedRoute requiredAnyPermission={['products.view', 'inventory.view', 'sales.view', 'dashboard.view']}><BrandsPage /></ProtectedRoute>} />
+        <Route path="/data-entry-manager" element={<ProtectedRoute requiredAnyPermission={['products.view', 'inventory.view', 'sales.view', 'dashboard.view']}><DataEntryManagerPage /></ProtectedRoute>} />
+        <Route path="/categories" element={<Navigate to="/data-entry-manager?tab=categories" replace />} />
+        <Route path="/brands" element={<Navigate to="/data-entry-manager?tab=brands" replace />} />
         <Route path="/customers" element={<ProtectedRoute requiredPermission="customers.view"><CustomersPage /></ProtectedRoute>} />
         <Route path="/sales-orders" element={<ProtectedRoute requiredPermission="sales.view"><SalesOrdersPage /></ProtectedRoute>} />
         <Route path="/sales-orders/new" element={<ProtectedRoute requiredPermission="sales.create"><SalesOrderFormPage /></ProtectedRoute>} />

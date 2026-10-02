@@ -50,6 +50,12 @@ const quotationSchema = new mongoose.Schema({
 
     version: { type: Number, default: 1 },
     editCount: { type: Number, default: 0 },
+    editHistory: [{
+        editNumber: { type: Number },
+        editedAt: { type: Date, default: Date.now },
+        editedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        editedByName: { type: String },
+    }],
     items: [{
         product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', set: v => v === '' || !v ? undefined : v },
         productName: { type: String },

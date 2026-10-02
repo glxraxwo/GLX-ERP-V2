@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import { createServer } from 'http';
 import dotenv from 'dotenv';
 import cors from 'cors';
@@ -67,6 +68,8 @@ import './services/autoBackupService.js'; // Initialize automated backup listene
 import { initCertificationAlerts } from './services/certificationAlertService.js';
 import gatePassRoutes from './routes/gatePassRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
+import vehicleModelRoutes from './routes/vehicleModelRoutes.js';
+import insuranceCompanyRoutes from './routes/insuranceCompanyRoutes.js';
 
 import { seedDefaults } from './utils/seedDefaults.js';
 
@@ -273,6 +276,8 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/finance/fixed-assets', fixedAssetRoutes);
 app.use('/api/finance/bank-accounts', bankAccountRoutes);
 app.use('/api/production/machines', machineRoutes);
+app.use('/api/vehicle-models', vehicleModelRoutes);
+app.use('/api/insurance-companies', insuranceCompanyRoutes);
 
 
 
@@ -344,6 +349,46 @@ app.get('/api/documents/:id/download-pdf', protect, asyncHandler(async (req, res
     }
     
     res.download(filePath, filename);
+}));
+
+// Next document ID endpoint (read-only candidate generation for UI visibility)
+app.get('/api/documents/next-number', protect, asyncHandler(async (req, res) => {
+    const { type } = req.query; // 'invoice' | 'proforma' | 'quotation' | 'estimate'
+    let prefix = 'JA/INV';
+    let seqKey = 'invoice';
+    let modelName = 'Invoice';
+    let fieldName = 'invoiceNumber';
+
+    if (type === 'proforma') {
+        prefix = 'JA/PI';
+        seqKey = 'proforma_invoice';
+        modelName = 'Invoice';
+        fieldName = 'invoiceNumber';
+    } else if (type === 'quotation') {
+        prefix = 'JA/QT';
+        seqKey = 'quotation';
+        modelName = 'Quotation';
+        fieldName = 'quotationCode';
+    } else if (type === 'estimate') {
+        prefix = 'JA/EST';
+        seqKey = 'estimate';
+        modelName = 'Quotation';
+        fieldName = 'quotationCode';
+    }
+
+    const { default: Counter } = await import('./models/Counter.js');
+    const counter = await Counter.findById(seqKey);
+    let currentSeq = counter ? counter.sequence : 1000;
+    let nextSeq = currentSeq + 1;
+    let candidate = `${prefix}/${nextSeq}`;
+
+    const Model = mongoose.model(modelName);
+    while (await Model.findOne({ [fieldName]: candidate })) {
+        nextSeq++;
+        candidate = `${prefix}/${nextSeq}`;
+    }
+
+    res.json({ success: true, nextNumber: candidate });
 }));
 
 // Health check endpoint

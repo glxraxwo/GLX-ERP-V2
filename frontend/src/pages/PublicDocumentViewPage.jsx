@@ -4,6 +4,7 @@ import axios from 'axios';
 import DocumentPrintView from '../components/print/DocumentPrintView';
 import { exportElementToPDF } from '../utils/dataExport';
 import { getApiUrl } from '../api/config';
+import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
 import { 
     Download, Printer, FileText, CheckCircle2, Phone, MapPin, 
     Calendar, User, Truck, ShieldCheck, Clock, ExternalLink, 
@@ -255,6 +256,18 @@ export default function PublicDocumentViewPage() {
                                         {docDisplayTitle}
                                     </span>
                                     <h2 className="text-sm font-black text-slate-900 font-mono mt-1">{docNumber}</h2>
+                                    {(() => {
+                                        const history = getDocumentEditHistory(doc);
+                                        return history.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1 mt-1.5">
+                                                {history.map((eh, idx) => (
+                                                    <span key={idx} className="text-[10px] font-black text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded font-mono">
+                                                        {formatEditItem(eh, idx + 1)}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : null;
+                                    })()}
                                 </div>
                                 <div className="text-right text-[11px] text-slate-500">
                                     <div className="flex items-center gap-1 justify-end font-medium">
@@ -322,6 +335,11 @@ export default function PublicDocumentViewPage() {
                                                     </span>
                                                 )}
                                             </div>
+                                            {item.description && item.description !== name && (
+                                                <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 text-[11px] text-slate-600 whitespace-pre-line leading-relaxed font-sans bg-white/70 p-2 rounded-lg border border-slate-100">
+                                                    {item.description}
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}

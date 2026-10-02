@@ -15,14 +15,19 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
 import SearchableSelect from '../components/ui/SearchableSelect';
+import CreatableCombobox from '../components/ui/CreatableCombobox';
 import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
 
 import { customersApi } from '../features/customers/customersApi';
 import { productsApi } from '../features/products/productsApi';
+import { masterDataApi } from '../features/masterData/masterDataApi';
 import { useCreateInvoice } from '../features/invoices/useInvoices';
 import Modal from '../components/ui/Modal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import api from '../api/axios';
+import { useAuthStore } from '../store/authStore';
+import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
 
 const defaultItemState = {
     productId: '',
@@ -43,6 +48,9 @@ export default function InvoiceFormPage() {
     const queryClient = useQueryClient();
     const createMutation = useCreateInvoice();
     const [searchParams, setSearchParams] = useSearchParams();
+    const { user } = useAuthStore();
+    const editInvoiceId = searchParams.get('edit');
+    const [existingInvoice, setExistingInvoice] = useState(null);
 
     // Document Type: 'invoice' | 'quotation' | 'estimate'
     const initialDocType = searchParams.get('type') || 'invoice';
@@ -54,6 +62,79 @@ export default function InvoiceFormPage() {
             setDocType(t);
         }
     }, [searchParams]);
+
+    useEffect(() => {
+        if (editInvoiceId) {
+            if (user && user.role !== 'admin') {
+                toast.error('Only administrators are authorized to edit invoices');
+                navigate('/invoices');
+                return;
+            }
+            api.get(`/invoices/${editInvoiceId}`)
+                .then(res => {
+                    const inv = res.data?.data;
+                    if (!inv) return;
+                    setExistingInvoice(inv);
+                    setDocType('invoice');
+                    if (inv.invoiceType) setInvoiceType(inv.invoiceType);
+                    if (inv.invoiceDate) setInvoiceDate(new Date(inv.invoiceDate).toISOString().split('T')[0]);
+                    if (inv.dueDate) setDueDate(new Date(inv.dueDate).toISOString().split('T')[0]);
+
+                    if (inv.customerId) {
+                        setCustomerId(inv.customerId?._id || inv.customerId);
+                        setSelectedCustomer(inv.customerId);
+                    }
+                    if (inv.customerSnapshot?.name) setCustomerSearch(inv.customerSnapshot.name);
+                    if (inv.customerSnapshot?.contactName) setCustomerPhone(inv.customerSnapshot.contactName);
+                    if (inv.billingAddress?.line1) setCustomerAddress(inv.billingAddress.line1);
+
+                    if (inv.vehicleNo || inv.vehicleModel || inv.insuranceCompany || inv.numberPlateImage || inv.lorryBodyImage || (inv.photos && inv.photos.length > 0)) {
+                        setIncludeVehicleDetails(true);
+                    }
+                    if (inv.vehicleNo) setVehicleNo(inv.vehicleNo);
+                    if (inv.vehicleModel) setVehicleModel(inv.vehicleModel);
+                    if (inv.insuranceCompany) setInsuranceCompany(inv.insuranceCompany);
+                    if (inv.jobCaption) setJobCaption(inv.jobCaption);
+                    if (inv.numberPlateImage) setNumberPlateImage(inv.numberPlateImage);
+                    if (inv.lorryBodyImage) setLorryBodyImage(inv.lorryBodyImage);
+                    if (inv.photos) setPhotos(inv.photos);
+
+                    if (inv.remarks) setRemarks(inv.remarks);
+                    if (inv.conditionOfPayments) setConditionOfPayments(inv.conditionOfPayments);
+                    if (inv.completionOfWork) setCompletionOfWork(inv.completionOfWork);
+                    if (inv.validityQuotation) setValidityQuotation(inv.validityQuotation);
+                    if (inv.warrantyCondition) setWarrantyCondition(inv.warrantyCondition);
+
+                    if (inv.showAdvanceOnInvoice || (inv.advanceAmount > 0)) {
+                        setShowAdvance(true);
+                        setAdvancePercentage(inv.advancePercentage || 0);
+                        setAdvanceAmount(inv.advanceAmount || 0);
+                    }
+                    if (inv.shippingCost) setShippingCost(inv.shippingCost);
+                    if (inv.notes) setNotes(inv.notes);
+                    if (inv.paymentInstructions) setPaymentInstructions(inv.paymentInstructions);
+
+                    if (Array.isArray(inv.items) && inv.items.length > 0) {
+                        setItems(inv.items.map(it => ({
+                            productId: it.productId?._id || it.productId || '',
+                            productCode: it.productCode || '',
+                            productName: it.productName || '',
+                            productTranslation: it.productTranslation || '',
+                            description: it.description || '',
+                            quantity: it.quantity || 1,
+                            unitOfMeasure: it.unitOfMeasure || 'pcs',
+                            unitPrice: it.unitPrice || 0,
+                            discount: it.discount || 0,
+                            taxRate: it.taxRate || 0,
+                            taxable: it.taxable !== false,
+                        })));
+                    }
+                })
+                .catch(() => {
+                    toast.error('Failed to load invoice for editing');
+                });
+        }
+    }, [editInvoiceId, user, navigate]);
 
     const docTypeLabel = docType === 'estimate' ? 'Estimate' : docType === 'quotation' ? 'Quotation' : 'Invoice';
     const docTypeLower = docTypeLabel.toLowerCase();
@@ -177,6 +258,84 @@ export default function InvoiceFormPage() {
             return data.data || [];
         }
     });
+
+    const { data: vehicleModelsData } = useQuery({
+        queryKey: ['vehicle-models', 'all'],
+        queryFn: () => masterDataApi.getVehicleModels(),
+    });
+    const { data: insuranceData } = useQuery({
+        queryKey: ['insurance-companies', 'all'],
+        queryFn: () => masterDataApi.getInsuranceCompanies(),
+    });
+
+    const vehicleModelOptions = useMemo(() => {
+        const list = Array.isArray(vehicleModelsData?.data) ? vehicleModelsData.data : (Array.isArray(vehicleModelsData) ? vehicleModelsData : []);
+        return list.map(m => ({ value: m.name, label: m.name }));
+    }, [vehicleModelsData]);
+
+    const insuranceCompanyOptions = useMemo(() => {
+        const list = Array.isArray(insuranceData?.data) ? insuranceData.data : (Array.isArray(insuranceData) ? insuranceData : []);
+        return list.map(c => ({ value: c.name, label: c.name }));
+    }, [insuranceData]);
+
+    const handleCreateVehicleModel = async (name) => {
+        try {
+            const res = await masterDataApi.createVehicleModel({ name });
+            queryClient.invalidateQueries({ queryKey: ['vehicle-models'] });
+            toast.success(`Vehicle model "${name}" saved to master data!`);
+            return res?.data;
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to save vehicle model');
+            throw err;
+        }
+    };
+
+    const handleCreateInsuranceCompany = async (name) => {
+        try {
+            const res = await masterDataApi.createInsuranceCompany({ name });
+            queryClient.invalidateQueries({ queryKey: ['insurance-companies'] });
+            toast.success(`Insurance company "${name}" saved to master data!`);
+            return res?.data;
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to save insurance company');
+            throw err;
+        }
+    };
+
+    const { data: nextNumberData } = useQuery({
+        queryKey: ['next-document-number', docType, invoiceType],
+        queryFn: () => masterDataApi.getNextDocumentNumber(
+            docType === 'invoice' ? (invoiceType === 'proforma' ? 'proforma' : 'invoice') : docType
+        ),
+    });
+    const autoGeneratedDocId = nextNumberData?.nextNumber || '';
+
+    // Terms & Conditions Change Tracking
+    const [initialTerms, setInitialTerms] = useState(null);
+    const [isConfirmTermsModalOpen, setIsConfirmTermsModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (!initialTerms) {
+            setInitialTerms({
+                remarks,
+                conditionOfPayments,
+                completionOfWork,
+                validityQuotation,
+                warrantyCondition,
+            });
+        }
+    }, [initialTerms, remarks, conditionOfPayments, completionOfWork, validityQuotation, warrantyCondition]);
+
+    const isTermsModified = useMemo(() => {
+        if (!initialTerms) return false;
+        return (
+            remarks !== initialTerms.remarks ||
+            conditionOfPayments !== initialTerms.conditionOfPayments ||
+            completionOfWork !== initialTerms.completionOfWork ||
+            validityQuotation !== initialTerms.validityQuotation ||
+            warrantyCondition !== initialTerms.warrantyCondition
+        );
+    }, [initialTerms, remarks, conditionOfPayments, completionOfWork, validityQuotation, warrantyCondition]);
 
     const employees = Array.isArray(employeesData) ? employeesData : [];
     const users = Array.isArray(usersData) ? usersData : [];
@@ -404,7 +563,7 @@ export default function InvoiceFormPage() {
         setIsSubmittingDoc(true);
         try {
             if (docType === 'invoice') {
-                const result = await createMutation.mutateAsync({
+                const invoicePayload = {
                     customerId: customerId || undefined,
                     customerName: finalCustomerName,
                     customerPhone: customerPhone || undefined,
@@ -435,19 +594,37 @@ export default function InvoiceFormPage() {
                     advanceAmount: showAdvance ? (+advanceAmount || 0) : 0,
                     showAdvanceOnInvoice: showAdvance,
                     notes: notes || undefined,
+                    remarks: remarks || undefined,
+                    conditionOfPayments: conditionOfPayments || undefined,
+                    completionOfWork: completionOfWork || undefined,
+                    validityQuotation: validityQuotation || undefined,
+                    warrantyCondition: warrantyCondition || undefined,
                     paymentInstructions: paymentInstructions || undefined,
-                    status: 'approved',
+                    status: existingInvoice?.status || 'approved',
                     // Vehicle & Workshop metadata (included only when enabled)
                     vehicleNo: includeVehicleDetails ? (vehicleNo.trim() || undefined) : undefined,
                     vehicleModel: includeVehicleDetails ? (vehicleModel.trim() || undefined) : undefined,
                     vehicleOwner: includeVehicleDetails ? (finalCustomerName || undefined) : undefined,
+                    insuranceCompany: includeVehicleDetails ? (insuranceCompany.trim() || undefined) : undefined,
                     jobCaption: includeVehicleDetails ? (jobCaption.trim() || undefined) : undefined,
                     numberPlateImage: includeVehicleDetails ? (numberPlateImage || undefined) : undefined,
                     lorryBodyImage: includeVehicleDetails ? (lorryBodyImage || undefined) : undefined,
                     photos: includeVehicleDetails ? photos : [],
-                });
-                toast.success('Invoice created successfully!');
-                navigate(`/invoices/${result.data._id}`);
+                };
+
+                if (editInvoiceId) {
+                    if (user?.role !== 'admin') {
+                        toast.error('Only administrators are authorized to edit invoices');
+                        return;
+                    }
+                    const { data: res } = await api.put(`/invoices/${editInvoiceId}`, invoicePayload);
+                    toast.success(`Invoice ${existingInvoice?.invoiceNumber || ''} updated successfully!`);
+                    navigate(`/invoices/${editInvoiceId}`);
+                } else {
+                    const result = await createMutation.mutateAsync(invoicePayload);
+                    toast.success('Invoice created successfully!');
+                    navigate(`/invoices/${result.data._id}`);
+                }
             } else {
                 // docType === 'quotation' || docType === 'estimate'
                 const quotePayload = {
@@ -763,6 +940,30 @@ export default function InvoiceFormPage() {
                             Estimate
                         </button>
                     </div>
+
+                    {/* Auto-Generated or Existing Document ID Display */}
+                    <div className="flex flex-wrap items-center gap-2 bg-blue-50/80 border border-blue-200/90 px-3.5 py-1.5 rounded-xl shadow-2xs">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider leading-none">
+                                {existingInvoice ? (existingInvoice.invoiceType === 'proforma' ? 'Editing Proforma' : 'Editing Invoice') : docType === 'invoice' ? (invoiceType === 'proforma' ? 'Proforma ID' : 'Invoice ID') : docType === 'estimate' ? 'Estimate ID' : 'Quotation ID'}
+                            </span>
+                            <span className="font-mono font-bold text-xs text-blue-950 mt-0.5">
+                                {existingInvoice ? existingInvoice.invoiceNumber : (docType !== 'invoice' && quoteNumber.trim() ? quoteNumber : (autoGeneratedDocId || 'Generating...'))}
+                            </span>
+                        </div>
+                        {existingInvoice && (() => {
+                            const h = getDocumentEditHistory(existingInvoice);
+                            return h.length > 0 ? (
+                                <div className="flex flex-wrap items-center gap-1 border-l border-blue-200 pl-2">
+                                    {h.map((eh, idx) => (
+                                        <span key={idx} className="text-[10px] font-black text-red-600 bg-red-100/90 border border-red-300 px-1.5 py-0.5 rounded font-mono">
+                                            {formatEditItem(eh, idx + 1)}
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : null;
+                        })()}
+                    </div>
                 </div>
 
                 {/* Inline Invoice / Quote Date & Expiry / Type Controls */}
@@ -825,20 +1026,7 @@ export default function InvoiceFormPage() {
                         </div>
                     )}
 
-                    {docType !== 'invoice' && (
-                        <div className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100/80 transition-colors px-3 py-1.5 rounded-xl border border-gray-200/80">
-                            <label className="text-xs font-bold text-gray-500 whitespace-nowrap">
-                                Ref / Quote No:
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="e.g. JA/QT/915 (or auto)"
-                                value={quoteNumber}
-                                onChange={(e) => setQuoteNumber(e.target.value)}
-                                className="bg-transparent border-0 text-xs font-mono font-bold text-gray-800 focus:outline-none focus:ring-0 p-0 placeholder-gray-400 w-36"
-                            />
-                        </div>
-                    )}
+
 
                     {docType === 'invoice' && (
                         <div className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100/80 transition-colors px-3 py-1.5 rounded-xl border border-gray-200/80">
@@ -894,7 +1082,7 @@ export default function InvoiceFormPage() {
 
                             {/* DOCUMENT TERMS & CONDITIONS Card (Always Visible) */}
                             <div className="bg-slate-50 rounded-2xl border border-gray-200/90 shadow-xs transition-all overflow-hidden">
-                                <div className="p-4 sm:p-5 pb-3 flex items-center justify-between border-b border-gray-200/60">
+                                <div className="p-4 sm:p-5 pb-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-200/60">
                                     <div className="flex items-center gap-2.5">
                                         <div className="w-7 h-7 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0">
                                             <FileText size={15} />
@@ -908,6 +1096,40 @@ export default function InvoiceFormPage() {
                                             </p>
                                         </div>
                                     </div>
+
+                                    {/* Appears ONLY when Terms & Conditions are modified */}
+                                    {isTermsModified && (
+                                        <div className="flex items-center gap-2 animate-in fade-in">
+                                            <span className="text-[11px] font-semibold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-md flex items-center gap-1 border border-amber-200">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                                                Modified
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setRemarks(initialTerms.remarks);
+                                                    setConditionOfPayments(initialTerms.conditionOfPayments);
+                                                    setCompletionOfWork(initialTerms.completionOfWork);
+                                                    setValidityQuotation(initialTerms.validityQuotation);
+                                                    setWarrantyCondition(initialTerms.warrantyCondition);
+                                                    toast('Terms changes reverted', { icon: '↩️' });
+                                                }}
+                                                className="px-2.5 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 rounded-lg transition"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <Button
+                                                type="button"
+                                                variant="primary"
+                                                size="sm"
+                                                onClick={() => setIsConfirmTermsModalOpen(true)}
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs px-3 py-1.5"
+                                            >
+                                                <Save size={13} className="mr-1" />
+                                                Save Terms &amp; Conditions
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="p-4 sm:p-5 space-y-4">
@@ -1746,13 +1968,13 @@ export default function InvoiceFormPage() {
                                 Detailed Description / Specifications
                             </label>
                             <span className="text-[11px] text-gray-400">
-                                Multiline scope of work
+                                Multiline scope of work (15 lines visible)
                             </span>
                         </div>
                         <textarea
-                            rows={3}
-                            className="w-full p-3 border border-gray-300 rounded-lg text-xs leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors font-sans placeholder:text-gray-400"
-                            placeholder="Specifications or repair scope (e.g. 01. Side shutter replacement&#10;02. Waterproof rubber bead fitting...)"
+                            rows={15}
+                            className="w-full p-3.5 border border-gray-300 rounded-lg text-xs leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors font-sans placeholder:text-gray-400 min-h-[290px] resize-y"
+                            placeholder="Specifications or repair scope (e.g.&#10;01. Side shutter replacement&#10;02. Waterproof rubber bead fitting&#10;03. Aluminium corrugated sheet fitting&#10;04. Subframe reinforcement...)"
                             value={modalItem.description || ''}
                             onChange={(e) => updateModalItem('description', e.target.value)}
                         />
@@ -1962,28 +2184,28 @@ export default function InvoiceFormPage() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-                                    Vehicle Model
-                                </label>
-                                <input
-                                    type="text"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                <CreatableCombobox
+                                    label="Vehicle Model"
+                                    allowFreeText={true}
+                                    options={vehicleModelOptions}
                                     value={vehicleModel}
                                     placeholder="e.g. TATA / New Mahindra Bolero"
-                                    onChange={(e) => setVehicleModel(e.target.value)}
+                                    onChange={(val) => setVehicleModel(val)}
+                                    onCreate={handleCreateVehicleModel}
+                                    createLabel="+ Save New Vehicle Model"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-                                    Insurance Company
-                                </label>
-                                <input
-                                    type="text"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                <CreatableCombobox
+                                    label="Insurance Company"
+                                    allowFreeText={true}
+                                    options={insuranceCompanyOptions}
                                     value={insuranceCompany}
                                     placeholder="e.g. Fairfirst Insurance Limited"
-                                    onChange={(e) => setInsuranceCompany(e.target.value)}
+                                    onChange={(val) => setInsuranceCompany(val)}
+                                    onCreate={handleCreateInsuranceCompany}
+                                    createLabel="+ Save New Insurance Company"
                                 />
                             </div>
 
@@ -2188,6 +2410,27 @@ export default function InvoiceFormPage() {
                     </div>
                 </div>
             </Modal>
+
+            <ConfirmDialog
+                isOpen={isConfirmTermsModalOpen}
+                title="Save Terms & Conditions Changes?"
+                message="Are you sure you want to apply and save these updated Terms and Conditions for this document?"
+                confirmLabel="Yes, Save"
+                cancelLabel="Cancel"
+                confirmVariant="primary"
+                onConfirm={() => {
+                    setInitialTerms({
+                        remarks,
+                        conditionOfPayments,
+                        completionOfWork,
+                        validityQuotation,
+                        warrantyCondition,
+                    });
+                    setIsConfirmTermsModalOpen(false);
+                    toast.success('Terms & Conditions confirmed and updated successfully!');
+                }}
+                onClose={() => setIsConfirmTermsModalOpen(false)}
+            />
         </div>
     );
 }

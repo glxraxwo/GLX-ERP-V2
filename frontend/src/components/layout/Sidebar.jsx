@@ -9,7 +9,7 @@ import {
     ChevronDown, ChevronRight, CheckSquare, ClipboardCheck, BadgeCheck,
     PackageCheck, CreditCard, Tag, Mail, Sparkles, Home, Search, Scale,
     Plus, ArrowLeftRight, Sliders, LineChart, PieChart, TrendingUp, UserCheck,
-    MapPin, Download, Barcode, LogOut, ArrowDownToLine, ArrowUpFromLine
+    MapPin, Download, Barcode, LogOut, ArrowDownToLine, ArrowUpFromLine, Database
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -36,8 +36,7 @@ const menuGroups = [
         items: [
             { label: 'Products', icon: Package, path: '/products' },
             { label: 'Barcode Generator', icon: Barcode, path: '/barcode-generator' },
-            { label: 'Categories', icon: FolderTree, path: '/categories' },
-            { label: 'Brands', icon: Award, path: '/brands' },
+            { label: 'Data Entry Manager', icon: Database, path: '/data-entry-manager' },
             { label: 'Stock Overview', icon: Boxes, path: '/stock' },
         ],
     },

@@ -235,9 +235,20 @@ export const updateQuotation = asyncHandler(async (req, res) => {
     }
 
     Object.assign(existing, req.body);
-    existing.editCount = (existing.editCount || 0) + 1;
+    const newEditCount = (existing.editCount || 0) + 1;
+    existing.editCount = newEditCount;
     existing.version = (existing.version || 1) + 1;
     existing.updatedBy = req.user._id;
+
+    if (!Array.isArray(existing.editHistory)) {
+        existing.editHistory = [];
+    }
+    existing.editHistory.push({
+        editNumber: newEditCount,
+        editedAt: new Date(),
+        editedBy: req.user._id,
+        editedByName: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.username || 'User',
+    });
 
     await existing.save();
     const quotation = existing;
