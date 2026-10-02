@@ -110,6 +110,8 @@ app.use(helmet({
 app.use(cors({
     origin: function (origin, callback) {
         const defaultOrigins = [
+            'https://manage.glxgroup.lk',
+            'http://manage.glxgroup.lk',
             'https://manage-v1.glxgroup.lk',
             'https://glx-raxwo.netlify.app',
             'https://glx-4a76.onrender.com',
@@ -353,13 +355,32 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// Serve static uploaded files (employee docs, vehicle photos, etc.)
+const candidateUploadPaths = [
+    path.resolve('uploads'),
+    path.join(__dirname, '../../uploads'),
+    path.join(__dirname, '../uploads'),
+];
+const uploadsPath = candidateUploadPaths.find(p => fs.existsSync(p)) || path.resolve('uploads');
+if (!fs.existsSync(uploadsPath)) {
+    fs.mkdirSync(uploadsPath, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsPath));
+
 // Serve static files in production (React build)
-const frontendDistPath = path.join(__dirname, '../../frontend/dist');
-if (fs.existsSync(frontendDistPath)) {
+const candidateDistPaths = [
+    path.join(__dirname, '../../frontend/dist'),
+    path.resolve('frontend/dist'),
+    path.resolve('dist'),
+    path.resolve('../frontend/dist'),
+];
+const frontendDistPath = candidateDistPaths.find(p => fs.existsSync(p));
+
+if (frontendDistPath) {
     app.use(express.static(frontendDistPath));
     app.get('/*splat', (req, res, next) => {
-        // Skip for API routes so they can reach notFound/errorHandler
-        if (req.originalUrl.startsWith('/api')) {
+        // Skip for API routes and uploads so they can reach notFound/errorHandler
+        if (req.originalUrl.startsWith('/api') || req.originalUrl.startsWith('/uploads')) {
             return next();
         }
         res.sendFile(path.join(frontendDistPath, 'index.html'));
