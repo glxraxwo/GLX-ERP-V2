@@ -12,6 +12,10 @@ const quotationSchema = new mongoose.Schema({
     customerEmail: { type: String },
     customerPhone: { type: String },
     customerAddress: { type: String },
+    vatNumber: { type: String, default: '' },
+    brNumber: { type: String, default: '' },
+    idNumber: { type: String, default: '' },
+    whatsappNum: { type: String, default: '' },
     
     // Vehicle & Body engineering metadata
     insuranceCompany: { type: String, default: '' },

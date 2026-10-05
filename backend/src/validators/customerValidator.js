@@ -39,6 +39,7 @@ export const createCustomerSchema = z.object({
 
     businessRegistrationNumber: z.string().optional(),
     taxRegistrationNumber: z.string().optional(),
+    idNumber: z.string().optional(),
     industry: z.string().optional(),
 
     primaryContact: z.object({

@@ -86,7 +86,14 @@ export default function InvoiceFormPage() {
                     }
                     if (inv.customerSnapshot?.name) setCustomerSearch(inv.customerSnapshot.name);
                     if (inv.customerSnapshot?.contactName) setCustomerPhone(inv.customerSnapshot.contactName);
-                    if (inv.billingAddress?.line1) setCustomerAddress(inv.billingAddress.line1);
+                    if (inv.customerPhone) setCustomerPhone(inv.customerPhone);
+                    if (inv.customerEmail) setCustomerEmail(inv.customerEmail);
+                    if (inv.customerAddress || inv.billingAddress?.line1) setCustomerAddress(inv.customerAddress || inv.billingAddress?.line1);
+                    if (inv.whatsappNum || inv.customerSnapshot?.whatsappNum) setCustomerWhatsapp(inv.whatsappNum || inv.customerSnapshot?.whatsappNum);
+                    if (inv.vatNumber || inv.customerSnapshot?.vatNumber || inv.customerSnapshot?.taxRegistrationNumber) setCustomerVatNumber(inv.vatNumber || inv.customerSnapshot?.vatNumber || inv.customerSnapshot?.taxRegistrationNumber);
+                    if (inv.brNumber || inv.customerSnapshot?.brNumber) setCustomerBrNumber(inv.brNumber || inv.customerSnapshot?.brNumber);
+                    if (inv.idNumber || inv.customerSnapshot?.idNumber) setCustomerIdNumber(inv.idNumber || inv.customerSnapshot?.idNumber);
+                    if (inv.salesRep || inv.customerSnapshot?.salesRep) setCustomerSalesRep(inv.salesRep || inv.customerSnapshot?.salesRep);
 
                     if (inv.vehicleNo || inv.vehicleModel || inv.insuranceCompany || inv.numberPlateImage || inv.lorryBodyImage || (inv.photos && inv.photos.length > 0)) {
                         setIncludeVehicleDetails(true);
@@ -150,16 +157,26 @@ export default function InvoiceFormPage() {
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
+    const [customerWhatsapp, setCustomerWhatsapp] = useState('');
+    const [customerVatNumber, setCustomerVatNumber] = useState('');
+    const [customerBrNumber, setCustomerBrNumber] = useState('');
+    const [customerIdNumber, setCustomerIdNumber] = useState('');
+    const [customerSalesRep, setCustomerSalesRep] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
 
     // Temporary fields for Add Customer Modal
-    const [custModalTab, setCustModalTab] = useState('existing'); // 'existing' | 'manual'
+    const [custModalTab, setCustModalTab] = useState('existing'); // 'existing' | 'direct'
     const [tempCustSearch, setTempCustSearch] = useState('');
     const [tempCustName, setTempCustName] = useState('');
     const [tempCustPhone, setTempCustPhone] = useState('');
     const [tempCustEmail, setTempCustEmail] = useState('');
+    const [tempCustWhatsapp, setTempCustWhatsapp] = useState('');
+    const [tempCustVatNumber, setTempCustVatNumber] = useState('');
+    const [tempCustBrNumber, setTempCustBrNumber] = useState('');
     const [tempCustAddress, setTempCustAddress] = useState('');
+    const [tempCustIdNumber, setTempCustIdNumber] = useState('');
+    const [tempCustSalesRep, setTempCustSalesRep] = useState('');
     const [modalItem, setModalItem] = useState(defaultItemState);
 
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
@@ -357,6 +374,13 @@ export default function InvoiceFormPage() {
         setCustomerId(cust._id);
         setCustomerSearch(cust.displayName || cust.companyName || '');
         setCustomerPhone(cust.primaryContact?.phone || cust.billingAddress?.phone || '');
+        setCustomerEmail(cust.primaryContact?.email || '');
+        setCustomerAddress(cust.billingAddress?.line1 || cust.primaryAddress?.line1 || '');
+        setCustomerWhatsapp(cust.primaryContact?.mobile || cust.primaryContact?.phone || cust.whatsappNumber || '');
+        setCustomerVatNumber(cust.taxRegistrationNumber || '');
+        setCustomerBrNumber(cust.businessRegistrationNumber || '');
+        setCustomerIdNumber(cust.idNumber || '');
+        setCustomerSalesRep(cust.assignedSalesRep?._id || cust.assignedSalesRep || '');
         if (cust.introducer) {
             setIntroducer(cust.introducer);
             setIntroducerName(cust.introducerName || '');
@@ -365,6 +389,36 @@ export default function InvoiceFormPage() {
             setIntroducerName('');
         }
         setIsCustomerDropdownOpen(false);
+    };
+
+    const openCustomerModal = () => {
+        setTempCustSearch('');
+        if (selectedCustomer) {
+            setCustModalTab('existing');
+        } else if (customerSearch.trim()) {
+            setCustModalTab('direct');
+            setTempCustName(customerSearch);
+            setTempCustPhone(customerPhone);
+            setTempCustEmail(customerEmail);
+            setTempCustAddress(customerAddress);
+            setTempCustWhatsapp(customerWhatsapp);
+            setTempCustVatNumber(customerVatNumber);
+            setTempCustBrNumber(customerBrNumber);
+            setTempCustIdNumber(customerIdNumber);
+            setTempCustSalesRep(customerSalesRep);
+        } else {
+            setCustModalTab('existing');
+            setTempCustName('');
+            setTempCustPhone('');
+            setTempCustEmail('');
+            setTempCustAddress('');
+            setTempCustWhatsapp('');
+            setTempCustVatNumber('');
+            setTempCustBrNumber('');
+            setTempCustIdNumber('');
+            setTempCustSalesRep('');
+        }
+        setIsAddCustomerModalOpen(true);
     };
 
     const modalCustomerSuggestions = useMemo(() => {
@@ -385,17 +439,56 @@ export default function InvoiceFormPage() {
         toast.success(`Customer "${cust.displayName || cust.companyName}" added to ${docTypeLower}!`);
     };
 
-    const handleApplyManualCustomer = () => {
+    const handleApplyManualCustomer = async () => {
         if (!tempCustName.trim()) {
-            toast.error('Customer name is required');
+            toast.error('Customer Name is required');
             return;
         }
-        setSelectedCustomer(null);
-        setCustomerId('');
-        setCustomerSearch(tempCustName.trim());
-        setCustomerPhone(tempCustPhone.trim());
-        setCustomerEmail(tempCustEmail.trim());
-        setCustomerAddress(tempCustAddress.trim());
+
+        let savedCustomer = null;
+        try {
+            const payload = {
+                displayName: tempCustName.trim(),
+                companyName: tempCustName.trim(),
+                businessRegistrationNumber: tempCustBrNumber.trim() || undefined,
+                taxRegistrationNumber: tempCustVatNumber.trim() || undefined,
+                idNumber: tempCustIdNumber.trim() || undefined,
+                primaryContact: {
+                    name: tempCustName.trim(),
+                    phone: tempCustPhone.trim() || undefined,
+                    mobile: tempCustWhatsapp.trim() || undefined,
+                    email: tempCustEmail.trim() || undefined,
+                },
+                billingAddress: {
+                    line1: tempCustAddress.trim() || undefined,
+                },
+                assignedSalesRep: tempCustSalesRep || undefined,
+            };
+            const { data: res } = await api.post('/customers', payload);
+            if (res?.data) {
+                savedCustomer = res.data;
+                await queryClient.invalidateQueries({ queryKey: ['customers'] });
+            }
+        } catch (err) {
+            console.warn('Customer DB registration notice:', err?.response?.data?.message || err.message);
+        }
+
+        if (savedCustomer) {
+            handleSelectCustomer(savedCustomer);
+        } else {
+            setSelectedCustomer(null);
+            setCustomerId('');
+            setCustomerSearch(tempCustName.trim());
+            setCustomerPhone(tempCustPhone.trim());
+            setCustomerEmail(tempCustEmail.trim());
+            setCustomerAddress(tempCustAddress.trim());
+            setCustomerWhatsapp(tempCustWhatsapp.trim());
+            setCustomerVatNumber(tempCustVatNumber.trim());
+            setCustomerBrNumber(tempCustBrNumber.trim());
+            setCustomerIdNumber(tempCustIdNumber.trim());
+            setCustomerSalesRep(tempCustSalesRep);
+        }
+
         setIsAddCustomerModalOpen(false);
         toast.success(`Customer "${tempCustName.trim()}" added to ${docTypeLower}!`);
     };
@@ -569,6 +662,22 @@ export default function InvoiceFormPage() {
                     customerPhone: customerPhone || undefined,
                     customerEmail: customerEmail || undefined,
                     customerAddress: customerAddress || (selectedCustomer?.primaryAddress?.line1 ? `${selectedCustomer.primaryAddress.line1}${selectedCustomer.primaryAddress.city ? ', ' + selectedCustomer.primaryAddress.city : ''}` : undefined),
+                    whatsappNum: customerWhatsapp || undefined,
+                    vatNumber: customerVatNumber || undefined,
+                    brNumber: customerBrNumber || undefined,
+                    idNumber: customerIdNumber || undefined,
+                    salesRep: customerSalesRep || undefined,
+                    customerSnapshot: {
+                        name: finalCustomerName,
+                        code: selectedCustomer?.customerCode,
+                        taxRegistrationNumber: customerVatNumber || selectedCustomer?.taxRegistrationNumber,
+                        contactName: finalCustomerName,
+                        vatNumber: customerVatNumber || undefined,
+                        brNumber: customerBrNumber || undefined,
+                        idNumber: customerIdNumber || undefined,
+                        whatsappNum: customerWhatsapp || undefined,
+                        salesRep: customerSalesRep || undefined,
+                    },
                     invoiceType,
                     invoiceDate,
                     items: items.map((i) => {
@@ -644,6 +753,11 @@ export default function InvoiceFormPage() {
                     customerAddress: customerAddress || (selectedCustomer?.primaryAddress?.line1
                         ? `${selectedCustomer.primaryAddress.line1}${selectedCustomer.primaryAddress.city ? ', ' + selectedCustomer.primaryAddress.city : ''}`
                         : undefined),
+                    whatsappNum: customerWhatsapp || undefined,
+                    vatNumber: customerVatNumber || undefined,
+                    brNumber: customerBrNumber || undefined,
+                    idNumber: customerIdNumber || undefined,
+                    salesRep: customerSalesRep || undefined,
                     date: invoiceDate,
                     expiryDate: dueDate || undefined,
                     vehicleNo: vehicleNo || undefined,
@@ -734,30 +848,17 @@ export default function InvoiceFormPage() {
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs"
                 >
                     <Plus size={14} className="mr-1" />
-                    + Add Item
+                    Add Item
                 </Button>
             </div>
 
             {items.length === 0 ? (
-                <div className="text-center py-12 px-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                <div className="text-center py-10 px-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
                     <PackagePlus size={36} className="mx-auto text-emerald-500/60 mb-2" />
                     <p className="text-sm font-bold text-gray-700">No items added to {docTypeLower}</p>
                     <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                        Click the button below to add catalog products or custom repair work items with descriptions.
+                        Use the <strong className="text-emerald-700 font-semibold">"+ Add Item"</strong> button above to add catalog products or custom repair work items with descriptions.
                     </p>
-                    <Button
-                        type="button"
-                        variant="primary"
-                        onClick={() => {
-                            setEditingIndex(null);
-                            setModalItem(defaultItemState);
-                            setIsAddItemModalOpen(true);
-                        }}
-                        className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
-                    >
-                        <Plus size={16} className="mr-1.5" />
-                        + Add Item to {docTypeLabel}
-                    </Button>
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -811,7 +912,7 @@ export default function InvoiceFormPage() {
                                             </div>
 
                                             {item.description && (
-                                                <p className="text-xs text-gray-600 mt-1 whitespace-pre-line bg-gray-50 p-2 rounded border border-gray-100">
+                                                <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap break-words bg-gray-50 p-2 rounded border border-gray-100 max-h-[22.5em] overflow-y-auto">
                                                     {item.description}
                                                 </p>
                                             )}
@@ -1266,20 +1367,46 @@ export default function InvoiceFormPage() {
                                     </div>
                                 )}
 
-                                {selectedCustomer?.primaryContact?.email && (
+                                {(customerWhatsapp || selectedCustomer?.primaryContact?.mobile) && (
                                     <div className="flex items-center gap-1.5 text-gray-700">
-                                        <Mail size={11} className="text-blue-500 shrink-0" />
-                                        <span className="truncate text-[10px]">{selectedCustomer.primaryContact.email}</span>
+                                        <span className="text-[10px] text-emerald-600 font-bold shrink-0">WA:</span>
+                                        <span className="font-semibold font-mono text-xs">
+                                            {customerWhatsapp || selectedCustomer?.primaryContact?.mobile}
+                                        </span>
                                     </div>
                                 )}
 
-                                {(selectedCustomer?.primaryAddress?.line1 || selectedCustomer?.billingAddress?.line1) && (
+                                {(customerEmail || selectedCustomer?.primaryContact?.email) && (
+                                    <div className="flex items-center gap-1.5 text-gray-700">
+                                        <Mail size={11} className="text-blue-500 shrink-0" />
+                                        <span className="truncate text-[10px]">{customerEmail || selectedCustomer?.primaryContact?.email}</span>
+                                    </div>
+                                )}
+
+                                {(customerVatNumber || selectedCustomer?.taxRegistrationNumber || customerBrNumber || selectedCustomer?.businessRegistrationNumber) && (
+                                    <div className="flex flex-wrap gap-2 text-[10px] text-gray-600 pt-0.5">
+                                        {(customerVatNumber || selectedCustomer?.taxRegistrationNumber) && (
+                                            <span>VAT: <strong className="font-mono text-gray-800">{customerVatNumber || selectedCustomer?.taxRegistrationNumber}</strong></span>
+                                        )}
+                                        {(customerBrNumber || selectedCustomer?.businessRegistrationNumber) && (
+                                            <span>BR: <strong className="font-mono text-gray-800">{customerBrNumber || selectedCustomer?.businessRegistrationNumber}</strong></span>
+                                        )}
+                                    </div>
+                                )}
+
+                                {(customerIdNumber || selectedCustomer?.idNumber) && (
+                                    <div className="text-[10px] text-gray-600">
+                                        ID: <strong className="font-mono text-gray-800">{customerIdNumber || selectedCustomer?.idNumber}</strong>
+                                    </div>
+                                )}
+
+                                {(customerAddress || selectedCustomer?.primaryAddress?.line1 || selectedCustomer?.billingAddress?.line1) && (
                                     <div className="flex items-start gap-1.5 text-gray-600 text-[10px]">
                                         <MapPin size={11} className="text-blue-500 shrink-0 mt-0.5" />
                                         <span className="truncate">
-                                            {[
-                                                selectedCustomer.primaryAddress?.line1 || selectedCustomer.billingAddress?.line1,
-                                                selectedCustomer.primaryAddress?.city || selectedCustomer.billingAddress?.city
+                                            {customerAddress || [
+                                                selectedCustomer?.primaryAddress?.line1 || selectedCustomer?.billingAddress?.line1,
+                                                selectedCustomer?.primaryAddress?.city || selectedCustomer?.billingAddress?.city
                                             ].filter(Boolean).join(', ')}
                                         </span>
                                     </div>
@@ -1307,7 +1434,7 @@ export default function InvoiceFormPage() {
                                 <div className="pt-1.5 border-t border-gray-100 flex gap-1.5">
                                     <button
                                         type="button"
-                                        onClick={() => setIsAddCustomerModalOpen(true)}
+                                        onClick={openCustomerModal}
                                         className="flex-1 text-center text-[10px] text-blue-600 hover:text-blue-800 py-0.5 bg-blue-50 hover:bg-blue-100 rounded font-semibold transition"
                                     >
                                         + Change / New
@@ -1319,6 +1446,13 @@ export default function InvoiceFormPage() {
                                             setCustomerId('');
                                             setCustomerSearch('');
                                             setCustomerPhone('');
+                                            setCustomerEmail('');
+                                            setCustomerAddress('');
+                                            setCustomerWhatsapp('');
+                                            setCustomerVatNumber('');
+                                            setCustomerBrNumber('');
+                                            setCustomerIdNumber('');
+                                            setCustomerSalesRep('');
                                         }}
                                         className="text-center text-[10px] text-gray-500 hover:text-red-600 px-2 py-0.5 border border-dashed border-gray-200 hover:border-red-200 rounded transition"
                                     >
@@ -1332,7 +1466,7 @@ export default function InvoiceFormPage() {
                                 <p className="text-[11px] font-semibold text-gray-600">No Customer Selected</p>
                                 <button
                                     type="button"
-                                    onClick={() => setIsAddCustomerModalOpen(true)}
+                                    onClick={openCustomerModal}
                                     className="mt-1.5 text-[11px] font-bold text-primary-600 hover:text-primary-700 bg-white hover:bg-primary-50 px-2.5 py-1 rounded-md border border-primary-200 transition inline-flex items-center gap-1 shadow-2xs"
                                 >
                                     <UserPlus size={12} /> + Add Customer
@@ -1703,32 +1837,31 @@ export default function InvoiceFormPage() {
                 size="lg"
             >
                 <div className="space-y-4">
-                    {/* Tabs: Choose between Existing System Customer or Walk-in / Direct Customer */}
-                    <div className="flex border-b border-gray-200">
-                        <button
-                            type="button"
-                            onClick={() => setCustModalTab('existing')}
-                            className={`pb-2.5 px-4 text-xs font-bold transition border-b-2 flex items-center gap-2 ${
-                                custModalTab === 'existing'
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-800'
-                            }`}
-                        >
-                            <Building size={14} />
-                            Select Existing Customer
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setCustModalTab('manual')}
-                            className={`pb-2.5 px-4 text-xs font-bold transition border-b-2 flex items-center gap-2 ${
-                                custModalTab === 'manual'
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-800'
-                            }`}
-                        >
-                            <User size={14} />
-                            Walk-in / Direct Customer
-                        </button>
+                    {/* Radios: Select Ex Customer vs Direct Customer */}
+                    <div className="flex items-center gap-6 py-2 px-1 border-b border-gray-200">
+                        <label className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-gray-800 cursor-pointer select-none">
+                            <input
+                                type="radio"
+                                name="customerModalSource"
+                                value="existing"
+                                checked={custModalTab === 'existing'}
+                                onChange={() => setCustModalTab('existing')}
+                                className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <span>Select Ex Customer</span>
+                        </label>
+
+                        <label className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-gray-800 cursor-pointer select-none">
+                            <input
+                                type="radio"
+                                name="customerModalSource"
+                                value="direct"
+                                checked={custModalTab === 'direct'}
+                                onChange={() => setCustModalTab('direct')}
+                                className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <span>Direct Customer</span>
+                        </label>
                     </div>
 
                     {custModalTab === 'existing' ? (
@@ -1748,7 +1881,7 @@ export default function InvoiceFormPage() {
                             <div className="max-h-80 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100 bg-gray-50/40">
                                 {modalCustomerSuggestions.length === 0 ? (
                                     <div className="text-center py-8 text-gray-500 text-xs">
-                                        No matching customers found. You can switch to the &quot;Walk-in / Direct Customer&quot; tab to enter details directly.
+                                        No matching customers found. You can switch to &quot;Direct Customer&quot; above to enter details directly.
                                     </div>
                                 ) : (
                                     modalCustomerSuggestions.map((c) => {
@@ -1813,61 +1946,134 @@ export default function InvoiceFormPage() {
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-3">
-                            <p className="text-xs text-gray-500 bg-blue-50/50 p-2.5 rounded-lg border border-blue-100">
-                                Enter the customer details for this {docTypeLower}. This will attach them directly to this {docTypeLower} without creating a permanent record in the customer database.
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-3.5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                {/* Row 1: Customer Name & Phone Num */}
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
                                         Customer Name <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="text"
-                                        placeholder="e.g. Kasun Perera / ABC Logistics"
+                                        placeholder="Customer Name"
                                         value={tempCustName}
                                         onChange={(e) => setTempCustName(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                         autoFocus
                                     />
                                 </div>
+
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                                        Phone Number
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        Phone Num
                                     </label>
                                     <input
                                         type="text"
-                                        placeholder="e.g. 0771234567"
+                                        placeholder="Phone Num"
                                         value={tempCustPhone}
                                         onChange={(e) => setTempCustPhone(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                                {/* Row 2: Email & WhatsApp Num */}
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                                        Email Address (Optional)
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        Email
                                     </label>
                                     <input
                                         type="email"
-                                        placeholder="e.g. customer@example.com"
+                                        placeholder="Email Address"
                                         value={tempCustEmail}
                                         onChange={(e) => setTempCustEmail(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                 </div>
+
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                                        Billing / Contact Address (Optional)
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        WhatsApp Num
                                     </label>
                                     <input
                                         type="text"
-                                        placeholder="e.g. 123 Colombo Road, Kandy"
+                                        placeholder="WhatsApp Num"
+                                        value={tempCustWhatsapp}
+                                        onChange={(e) => setTempCustWhatsapp(e.target.value)}
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    />
+                                </div>
+
+                                {/* Row 3: VAT Number & BR Number */}
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        VAT Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="VAT Number"
+                                        value={tempCustVatNumber}
+                                        onChange={(e) => setTempCustVatNumber(e.target.value)}
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        BR Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="BR Number"
+                                        value={tempCustBrNumber}
+                                        onChange={(e) => setTempCustBrNumber(e.target.value)}
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    />
+                                </div>
+
+                                {/* Row 4: Billing Address (Wide - Full width across 2 columns) */}
+                                <div className="sm:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        Billing Address
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Billing Address"
                                         value={tempCustAddress}
                                         onChange={(e) => setTempCustAddress(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
+                                </div>
+
+                                {/* Row 5: ID Number & Sales Rep */}
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        ID Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="ID Number (NIC / Passport)"
+                                        value={tempCustIdNumber}
+                                        onChange={(e) => setTempCustIdNumber(e.target.value)}
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        Sales Rep
+                                    </label>
+                                    <select
+                                        value={tempCustSalesRep}
+                                        onChange={(e) => setTempCustSalesRep(e.target.value)}
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    >
+                                        <option value="">-- Select Sales Rep (Optional) --</option>
+                                        {users.map((u) => (
+                                            <option key={u._id} value={u._id}>
+                                                {u.firstName} {u.lastName || ''} {u.role ? `(${u.role})` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 
@@ -1883,7 +2089,7 @@ export default function InvoiceFormPage() {
                                     type="button"
                                     variant="primary"
                                     onClick={handleApplyManualCustomer}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs"
                                 >
                                     <UserPlus size={15} className="mr-1.5" />
                                     Add Customer to {docTypeLabel}
@@ -1903,7 +2109,7 @@ export default function InvoiceFormPage() {
                     setModalItem(defaultItemState);
                 }}
                 title={editingIndex !== null ? `Edit Item #${editingIndex + 1}` : `Add Item to ${docTypeLabel}`}
-                size="xl"
+                size="2xl"
             >
                 <div className="space-y-4">
                     {/* Catalog Product Selection - Quick Fill Card */}
@@ -1965,94 +2171,82 @@ export default function InvoiceFormPage() {
                         </div>
                     </div>
 
-                    {/* Detailed Specifications / Multiline Description */}
-                    <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                            <label className="block text-xs font-bold text-gray-700">
-                                Detailed Description / Specifications
-                            </label>
-                            <span className="text-[11px] text-gray-400">
-                                Multiline scope of work (15 lines visible)
-                            </span>
-                        </div>
-                        <textarea
-                            rows={15}
-                            className="w-full p-3.5 border border-gray-300 rounded-lg text-xs leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors font-sans placeholder:text-gray-400 min-h-[290px] resize-y"
-                            placeholder="Specifications or repair scope (e.g.&#10;01. Side shutter replacement&#10;02. Waterproof rubber bead fitting&#10;03. Aluminium corrugated sheet fitting&#10;04. Subframe reinforcement...)"
-                            value={modalItem.description || ''}
-                            onChange={(e) => updateModalItem('description', e.target.value)}
-                        />
-                    </div>
-
-                    {/* Pricing, Quantity & Calculations Card */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 space-y-3.5">
-                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                            <Calculator size={13} className="text-slate-600" />
-                            Pricing & Calculations
+                    {/* Side-by-side Grid: Description (Left) & Pricing Panel (Right) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                        {/* Left Column: Detailed Specifications / Multiline Description */}
+                        <div className="lg:col-span-7 flex flex-col">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs font-bold text-gray-700">
+                                    Detailed Description / Specifications
+                                </label>
+                                <span className="text-[11px] text-gray-400">
+                                    Multiline scope of work (15 lines visible)
+                                </span>
+                            </div>
+                            <textarea
+                                rows={15}
+                                className="w-full p-3.5 border border-gray-300 rounded-lg text-xs leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors font-sans placeholder:text-gray-400 min-h-[280px] resize-y"
+                                placeholder="Specifications or repair scope (e.g.&#10;01. Side shutter replacement&#10;02. Waterproof rubber bead fitting&#10;03. Aluminium corrugated sheet fitting&#10;04. Subframe reinforcement...)"
+                                value={modalItem.description || ''}
+                                onChange={(e) => updateModalItem('description', e.target.value)}
+                            />
                         </div>
 
-                        {/* 4 Financial Inputs */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Quantity <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    step="any"
-                                    min="0.01"
-                                    value={modalItem.quantity}
-                                    onChange={(e) => updateModalItem('quantity', e.target.value)}
-                                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                                />
+                        {/* Right Column: Pricing, Quantity & Calculations Card */}
+                        <div className="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 space-y-3">
+                            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <Calculator size={13} className="text-slate-600" />
+                                Pricing &amp; Calculations
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Unit of Measure
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="pcs / set / kg"
-                                    value={modalItem.unitOfMeasure || 'pcs'}
-                                    onChange={(e) => updateModalItem('unitOfMeasure', e.target.value)}
-                                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                                />
+                            {/* Financial Inputs */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        Quantity <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        min="0.01"
+                                        value={modalItem.quantity}
+                                        onChange={(e) => updateModalItem('quantity', e.target.value)}
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        Unit Price (LKR) <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={modalItem.unitPrice}
+                                        onChange={(e) => updateModalItem('unitPrice', e.target.value)}
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    />
+                                </div>
+
+                                <div className="sm:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                        Discount / Unit (LKR)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="0.00"
+                                        value={modalItem.discount || ''}
+                                        onChange={(e) => updateModalItem('discount', e.target.value)}
+                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono font-semibold text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition-colors"
+                                    />
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Unit Price (LKR) <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={modalItem.unitPrice}
-                                    onChange={(e) => updateModalItem('unitPrice', e.target.value)}
-                                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Discount / Unit (LKR)
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    placeholder="0.00"
-                                    value={modalItem.discount || ''}
-                                    onChange={(e) => updateModalItem('discount', e.target.value)}
-                                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono font-semibold text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition-colors"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Tax Switch & Live Line Total Bar */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-200">
-                            <div className="flex items-center gap-3">
+                            {/* Tax Switch */}
+                            <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-slate-200">
                                 <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none">
                                     <input
                                         type="checkbox"
@@ -2080,21 +2274,22 @@ export default function InvoiceFormPage() {
                             </div>
 
                             {/* Line Total Badge */}
-                            <div className="flex items-center justify-between sm:justify-end gap-3 bg-white px-3.5 py-2 rounded-lg border border-slate-200 shadow-2xs">
-                                <div className="text-right">
+                            <div className="flex items-center justify-between gap-3 bg-white px-3.5 py-2.5 rounded-lg border border-slate-200 shadow-2xs">
+                                <div>
                                     <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Line Total</div>
-                                    <div className="text-base font-extrabold font-mono text-emerald-700">
-                                        {fmt(
-                                            Math.max(
-                                                0,
-                                                (+modalItem.quantity || 0) * (+modalItem.unitPrice || 0) -
-                                                    Math.min(
-                                                        (+modalItem.quantity || 0) * (+modalItem.unitPrice || 0),
-                                                        (+modalItem.discount || 0) * (+modalItem.quantity || 0)
-                                                    )
-                                            ) * (1 + (modalItem.taxable ? (+modalItem.taxRate || 0) / 100 : 0))
-                                        )}
-                                    </div>
+                                    <div className="text-xs text-slate-500 font-medium">Calculated amount</div>
+                                </div>
+                                <div className="text-lg font-extrabold font-mono text-emerald-700">
+                                    {fmt(
+                                        Math.max(
+                                            0,
+                                            (+modalItem.quantity || 0) * (+modalItem.unitPrice || 0) -
+                                                Math.min(
+                                                    (+modalItem.quantity || 0) * (+modalItem.unitPrice || 0),
+                                                    (+modalItem.discount || 0) * (+modalItem.quantity || 0)
+                                                )
+                                        ) * (1 + (modalItem.taxable ? (+modalItem.taxRate || 0) / 100 : 0))
+                                    )}
                                 </div>
                             </div>
                         </div>

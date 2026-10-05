@@ -77,6 +77,10 @@ const invoiceSchema = new mongoose.Schema({
     vehicleModel: { type: String, default: '' },
     jobCaption: { type: String, default: '' },
     salesRep: { type: String, default: '' },
+    vatNumber: { type: String, default: '' },
+    brNumber: { type: String, default: '' },
+    idNumber: { type: String, default: '' },
+    whatsappNum: { type: String, default: '' },
     introducer: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
     introducerName: { type: String, default: '' },
     biller: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -112,6 +116,11 @@ const invoiceSchema = new mongoose.Schema({
         code: String,
         taxRegistrationNumber: String,
         contactName: String,
+        vatNumber: String,
+        brNumber: String,
+        idNumber: String,
+        whatsappNum: String,
+        salesRep: String,
     },
 
     // Addresses (snapshot)
