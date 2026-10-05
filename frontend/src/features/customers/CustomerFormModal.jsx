@@ -1,45 +1,36 @@
-import { useState, useEffect } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
 
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
-import Textarea from '../../components/ui/Textarea';
-import { customerFormSchema } from './customerSchemas';
 import { useCreateCustomer, useUpdateCustomer } from './useCustomers';
-import { useEmployees } from '../hr/useHr';
-import { useQuery } from '@tanstack/react-query';
 import { usersApi } from '../users/usersApi';
 
-const tabs = [
-    { id: 'basic', label: 'Basic Info' },
-    { id: 'addresses', label: 'Addresses' },
-    { id: 'commercial', label: 'Commercial' },
-    { id: 'contacts', label: 'Contacts' },
-];
-
-const emptyAddress = {
-    label: '', line1: '', line2: '', city: '', state: '',
-    country: 'Sri Lanka', postalCode: '', phone: '',
-    deliveryInstructions: '', isDefault: false,
-};
-
-const emptyContact = {
-    name: '', designation: '', email: '', phone: '',
-    role: 'other', isPrimary: false,
-};
+const customerSimpleSchema = z.object({
+    displayName: z.string().trim().min(1, 'Customer name is required').max(100),
+    phone: z.string().optional().or(z.literal('')),
+    email: z.string().trim().refine(val => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+        message: 'Invalid email address',
+    }).optional().or(z.literal('')),
+    whatsappNumber: z.string().optional().or(z.literal('')),
+    taxRegistrationNumber: z.string().optional().or(z.literal('')),
+    businessRegistrationNumber: z.string().optional().or(z.literal('')),
+    billingAddress: z.string().optional().or(z.literal('')),
+    idNumber: z.string().optional().or(z.literal('')),
+    assignedSalesRep: z.string().optional().or(z.literal('')),
+});
 
 export default function CustomerFormModal({ isOpen, onClose, customer = null }) {
-    const [activeTab, setActiveTab] = useState('basic');
     const isEdit = !!customer;
 
-    const { data: employeesData } = useEmployees({ limit: 200 });
     const { data: usersData } = useQuery({
-        queryKey: ['users', 'sales_reps'],
-        queryFn: () => usersApi.list({ role: 'sales_rep', isActive: true }),
+        queryKey: ['users', 'active'],
+        queryFn: () => usersApi.list({ isActive: true, limit: 500 }),
         staleTime: 5 * 60 * 1000,
     });
 
@@ -47,117 +38,84 @@ export default function CustomerFormModal({ isOpen, onClose, customer = null }) 
     const updateMutation = useUpdateCustomer();
 
     const {
-        register, handleSubmit, reset, control, watch,
+        register,
+        handleSubmit,
+        reset,
         formState: { errors },
     } = useForm({
-        resolver: zodResolver(customerFormSchema),
+        resolver: zodResolver(customerSimpleSchema),
         defaultValues: {
-            customerType: 'company',
-            businessType: 'retailer',
-            status: 'active',
-            paymentTermsType: 'cod',
-            creditDays: 0,
-            creditLimit: 0,
-            defaultDiscountPercent: 0,
-            shippingAddresses: [{ ...emptyAddress, isDefault: true }],
-            contacts: [],
-            billingAddress: { ...emptyAddress, isDefault: true },
+            displayName: '',
+            phone: '',
+            email: '',
+            whatsappNumber: '',
+            taxRegistrationNumber: '',
+            businessRegistrationNumber: '',
+            billingAddress: '',
+            idNumber: '',
+            assignedSalesRep: '',
         },
     });
-
-    const customerType = watch('customerType');
-    const paymentType = watch('paymentTermsType');
-
-    const {
-        fields: shippingFields,
-        append: appendShipping,
-        remove: removeShipping,
-    } = useFieldArray({ control, name: 'shippingAddresses' });
-
-    const {
-        fields: contactFields,
-        append: appendContact,
-        remove: removeContact,
-    } = useFieldArray({ control, name: 'contacts' });
 
     useEffect(() => {
         if (isOpen && customer) {
             reset({
-                customerType: customer.customerType || 'company',
-                businessType: customer.businessType || 'retailer',
-                companyName: customer.companyName || '',
-                displayName: customer.displayName || '',
-                firstName: customer.firstName || '',
-                lastName: customer.lastName || '',
+                displayName: customer.displayName || customer.companyName || '',
+                phone: customer.primaryContact?.phone || '',
+                email: customer.primaryContact?.email || '',
+                whatsappNumber: customer.whatsappNumber || customer.primaryContact?.mobile || '',
                 taxRegistrationNumber: customer.taxRegistrationNumber || '',
                 businessRegistrationNumber: customer.businessRegistrationNumber || '',
-                industry: customer.industry || '',
-                primaryContact: customer.primaryContact || {},
-                billingAddress: customer.billingAddress || { ...emptyAddress, isDefault: true },
-                shippingAddresses: customer.shippingAddresses?.length
-                    ? customer.shippingAddresses
-                    : [{ ...emptyAddress, isDefault: true }],
-                contacts: customer.contacts || [],
+                billingAddress: customer.billingAddress?.line1 || (typeof customer.billingAddress === 'string' ? customer.billingAddress : ''),
+                idNumber: customer.idNumber || '',
                 assignedSalesRep: customer.assignedSalesRep?._id || customer.assignedSalesRep || '',
-                introducer: customer.introducer?._id || customer.introducer || '',
-                introducerName: customer.introducerName || '',
-                paymentTermsType: customer.paymentTerms?.type || 'cod',
-                creditDays: customer.paymentTerms?.creditDays || 0,
-                creditLimit: customer.paymentTerms?.creditLimit || 0,
-                defaultDiscountPercent: customer.defaultDiscountPercent || 0,
-                status: customer.status || 'active',
-                notes: customer.notes || '',
             });
         } else if (isOpen && !customer) {
             reset({
-                customerType: 'company',
-                businessType: 'retailer',
-                status: 'active',
-                paymentTermsType: 'cod',
-                creditDays: 0,
-                creditLimit: 0,
-                defaultDiscountPercent: 0,
-                shippingAddresses: [{ ...emptyAddress, isDefault: true }],
-                contacts: [],
-                billingAddress: { ...emptyAddress, isDefault: true },
-                introducer: '',
-                introducerName: '',
+                displayName: '',
+                phone: '',
+                email: '',
+                whatsappNumber: '',
+                taxRegistrationNumber: '',
+                businessRegistrationNumber: '',
+                billingAddress: '',
+                idNumber: '',
+                assignedSalesRep: '',
             });
         }
-        setActiveTab('basic');
     }, [isOpen, customer, reset]);
 
     const onSubmit = async (data) => {
-        const empList = employeesData?.data || [];
-        const selEmp = empList.find(e => e._id === data.introducer);
-        const introducerName = selEmp ? `${selEmp.firstName} ${selEmp.lastName || ''}`.trim() : (data.introducerName || undefined);
-
+        const trimmedName = data.displayName.trim();
         const payload = {
-            customerType: data.customerType,
-            businessType: data.businessType,
-            companyName: data.companyName || undefined,
-            displayName: data.displayName,
-            firstName: data.firstName || undefined,
-            lastName: data.lastName || undefined,
-            taxRegistrationNumber: data.taxRegistrationNumber || undefined,
-            businessRegistrationNumber: data.businessRegistrationNumber || undefined,
-            industry: data.industry || undefined,
-            primaryContact: data.primaryContact,
-            billingAddress: data.billingAddress,
-            shippingAddresses: data.shippingAddresses?.filter((a) => a.line1),
-            contacts: data.contacts?.filter((c) => c.name),
-            assignedSalesRep: data.assignedSalesRep || undefined,
-            introducer: data.introducer || undefined,
-            introducerName,
-            paymentTerms: {
-                type: data.paymentTermsType,
-                creditDays: data.creditDays || 0,
-                creditLimit: data.creditLimit || 0,
+            displayName: trimmedName,
+            companyName: isEdit ? (customer?.companyName || trimmedName) : trimmedName,
+            taxRegistrationNumber: data.taxRegistrationNumber?.trim() || undefined,
+            businessRegistrationNumber: data.businessRegistrationNumber?.trim() || undefined,
+            idNumber: data.idNumber?.trim() || undefined,
+            whatsappNumber: data.whatsappNumber?.trim() || undefined,
+            assignedSalesRep: data.assignedSalesRep || (isEdit ? null : undefined),
+            primaryContact: {
+                ...(customer?.primaryContact || {}),
+                name: trimmedName,
+                phone: data.phone?.trim() || undefined,
+                email: data.email?.trim() || undefined,
+                mobile: data.whatsappNumber?.trim() || undefined,
             },
-            defaultDiscountPercent: data.defaultDiscountPercent || 0,
-            status: data.status,
-            notes: data.notes || undefined,
+            billingAddress: data.billingAddress?.trim() ? {
+                ...(customer?.billingAddress || {}),
+                line1: data.billingAddress.trim(),
+                country: customer?.billingAddress?.country || 'Sri Lanka',
+                isDefault: true,
+            } : (isEdit ? { ...(customer?.billingAddress || {}), line1: '' } : undefined),
         };
+
+        if (!isEdit) {
+            payload.customerType = 'company';
+            payload.businessType = 'retailer';
+            payload.status = 'active';
+            payload.paymentTerms = { type: 'cod', creditDays: 0, creditLimit: 0 };
+        }
 
         try {
             if (isEdit) {
@@ -169,13 +127,10 @@ export default function CustomerFormModal({ isOpen, onClose, customer = null }) 
         } catch { }
     };
 
-    const repOptions = (usersData?.data || []).map((u) => ({
+    const userList = Array.isArray(usersData?.data) ? usersData.data : (Array.isArray(usersData) ? usersData : []);
+    const repOptions = userList.map((u) => ({
         value: u._id,
-        label: `${u.firstName} ${u.lastName}`,
-    }));
-    const introducerOptions = (employeesData?.data || []).map((e) => ({
-        value: e._id,
-        label: `${e.firstName} ${e.lastName || ''} (${e.employeeCode || e.callingName || 'Staff'})`,
+        label: `${u.firstName} ${u.lastName || ''} ${u.role ? `(${u.role})` : ''}`.trim(),
     }));
 
     const isLoading = createMutation.isPending || updateMutation.isPending;
@@ -184,302 +139,110 @@ export default function CustomerFormModal({ isOpen, onClose, customer = null }) 
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={isEdit ? `Edit Customer — ${customer?.customerCode}` : 'New Customer'}
-            size="xl"
+            title={isEdit ? `Edit Customer — ${customer?.customerCode || customer?.displayName}` : 'Add Customer'}
+            size="lg"
         >
             <form onSubmit={handleSubmit(onSubmit)}>
-                <div className="border-b border-gray-200">
-                    <div className="flex gap-1 px-6">
-                        {tabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                type="button"
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`px-4 py-3 text-sm font-medium border-b-2 transition ${activeTab === tab.id
-                                        ? 'border-primary-600 text-primary-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                                    }`}
-                            >
-                                {tab.label}
-                            </button>
-                        ))}
+                <div className="p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Row 1: Customer Name & Phone Num */}
+                        <div>
+                            <Input
+                                label="Customer Name"
+                                required
+                                placeholder="Customer Name"
+                                error={errors.displayName?.message}
+                                {...register('displayName')}
+                                autoFocus
+                            />
+                        </div>
+
+                        <div>
+                            <Input
+                                label="Phone Num"
+                                placeholder="Phone Num"
+                                error={errors.phone?.message}
+                                {...register('phone')}
+                            />
+                        </div>
+
+                        {/* Row 2: Email & WhatsApp Num */}
+                        <div>
+                            <Input
+                                label="Email"
+                                type="email"
+                                placeholder="Email Address"
+                                error={errors.email?.message}
+                                {...register('email')}
+                            />
+                        </div>
+
+                        <div>
+                            <Input
+                                label="WhatsApp Num"
+                                placeholder="WhatsApp Num"
+                                error={errors.whatsappNumber?.message}
+                                {...register('whatsappNumber')}
+                            />
+                        </div>
+
+                        {/* Row 3: VAT Number & BR Number */}
+                        <div>
+                            <Input
+                                label="VAT Number"
+                                placeholder="VAT Number"
+                                error={errors.taxRegistrationNumber?.message}
+                                {...register('taxRegistrationNumber')}
+                            />
+                        </div>
+
+                        <div>
+                            <Input
+                                label="BR Number"
+                                placeholder="BR Number"
+                                error={errors.businessRegistrationNumber?.message}
+                                {...register('businessRegistrationNumber')}
+                            />
+                        </div>
+
+                        {/* Row 4: Billing Address (Wide - Full width across 2 columns) */}
+                        <div className="sm:col-span-2">
+                            <Input
+                                label="Billing Address"
+                                placeholder="Billing Address"
+                                error={errors.billingAddress?.message}
+                                {...register('billingAddress')}
+                            />
+                        </div>
+
+                        {/* Row 5: ID Number & Sales Rep */}
+                        <div>
+                            <Input
+                                label="ID Number"
+                                placeholder="ID Number (NIC / Passport)"
+                                error={errors.idNumber?.message}
+                                {...register('idNumber')}
+                            />
+                        </div>
+
+                        <div>
+                            <Select
+                                label="Sales Rep"
+                                placeholder="-- Select Sales Rep (Optional) --"
+                                options={repOptions}
+                                error={errors.assignedSalesRep?.message}
+                                {...register('assignedSalesRep')}
+                            />
+                        </div>
                     </div>
                 </div>
 
-                <div className="p-6">
-                    {activeTab === 'basic' && (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <Select
-                                    label="Customer Type" required
-                                    options={[
-                                        { value: 'company', label: 'Company' },
-                                        { value: 'individual', label: 'Individual' },
-                                    ]}
-                                    error={errors.customerType?.message}
-                                    {...register('customerType')}
-                                />
-                                <Select
-                                    label="Business Type" required
-                                    options={[
-                                        { value: 'wholesaler', label: 'Wholesaler' },
-                                        { value: 'retailer', label: 'Retailer' },
-                                        { value: 'distributor', label: 'Distributor' },
-                                        { value: 'reseller', label: 'Reseller' },
-                                        { value: 'end_user', label: 'End User' },
-                                        { value: 'other', label: 'Other' },
-                                    ]}
-                                    error={errors.businessType?.message}
-                                    {...register('businessType')}
-                                />
-                            </div>
-
-                            {customerType === 'company' ? (
-                                <Input label="Company Name" error={errors.companyName?.message} {...register('companyName')} />
-                            ) : (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Input label="First Name" {...register('firstName')} />
-                                    <Input label="Last Name" {...register('lastName')} />
-                                </div>
-                            )}
-
-                            <Input
-                                label="Display Name" required
-                                placeholder="Short name to show in lists"
-                                error={errors.displayName?.message}
-                                {...register('displayName')}
-                            />
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input
-                                    label="Tax Registration Number (VAT)"
-                                    error={errors.taxRegistrationNumber?.message}
-                                    {...register('taxRegistrationNumber')}
-                                />
-                                <Input
-                                    label="Business Registration Number"
-                                    {...register('businessRegistrationNumber')}
-                                />
-                            </div>
-
-                            <Input label="Industry" {...register('industry')} />
-
-                            <div className="grid grid-cols-1">
-                                <Select
-                                    label="Assigned Sales Rep"
-                                    placeholder="-- Unassigned --"
-                                    options={repOptions}
-                                    {...register('assignedSalesRep')}
-                                />
-                            </div>
-
-                            <Select
-                                label="Introducer (Staff / Agent)"
-                                placeholder="-- Select Introducer Employee --"
-                                options={introducerOptions}
-                                {...register('introducer')}
-                            />
-
-                            <Select
-                                label="Status" required
-                                options={[
-                                    { value: 'active', label: 'Active' },
-                                    { value: 'inactive', label: 'Inactive' },
-                                    { value: 'prospect', label: 'Prospect' },
-                                    { value: 'on_hold', label: 'On Hold' },
-                                    { value: 'blacklisted', label: 'Blacklisted' },
-                                ]}
-                                {...register('status')}
-                            />
-
-                            <div className="pt-4 border-t">
-                                <h4 className="text-sm font-semibold text-gray-700 mb-3">Primary Contact</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Input label="Name" {...register('primaryContact.name')} />
-                                    <Input label="Email" type="email" error={errors.primaryContact?.email?.message} {...register('primaryContact.email')} />
-                                    <Input label="Phone" {...register('primaryContact.phone')} />
-                                    <Input label="Mobile" {...register('primaryContact.mobile')} />
-                                </div>
-                            </div>
-
-                            <Textarea label="Notes" rows={3} {...register('notes')} />
-                        </div>
-                    )}
-
-                    {activeTab === 'addresses' && (
-                        <div className="space-y-6">
-                            <div>
-                                <h4 className="text-sm font-semibold text-gray-700 mb-3">Billing Address</h4>
-                                <div className="space-y-3">
-                                    <Input label="Address Line 1" {...register('billingAddress.line1')} />
-                                    <Input label="Address Line 2" {...register('billingAddress.line2')} />
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <Input label="City" {...register('billingAddress.city')} />
-                                        <Input label="State/Province" {...register('billingAddress.state')} />
-                                        <Input label="Postal Code" {...register('billingAddress.postalCode')} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <Input label="Country" {...register('billingAddress.country')} />
-                                        <Input label="Phone" {...register('billingAddress.phone')} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="pt-4 border-t">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h4 className="text-sm font-semibold text-gray-700">Shipping Addresses</h4>
-                                    <Button
-                                        type="button" variant="outline" size="sm"
-                                        onClick={() => appendShipping(emptyAddress)}
-                                    >
-                                        <Plus size={14} className="mr-1" /> Add Address
-                                    </Button>
-                                </div>
-
-                                {shippingFields.map((field, index) => (
-                                    <div key={field.id} className="border border-gray-200 rounded-lg p-4 mb-3">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-medium text-gray-700">
-                                                Shipping Address {index + 1}
-                                            </span>
-                                            {shippingFields.length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeShipping(index)}
-                                                    className="text-red-600 hover:bg-red-50 p-1 rounded"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            )}
-                                        </div>
-                                        <div className="space-y-3">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <Input label="Label" placeholder="Main Shop, Warehouse..." {...register(`shippingAddresses.${index}.label`)} />
-                                                <div className="flex items-end gap-2 pb-2">
-                                                    <input type="checkbox" id={`ship-default-${index}`} {...register(`shippingAddresses.${index}.isDefault`)} />
-                                                    <label htmlFor={`ship-default-${index}`} className="text-sm text-gray-700">Default shipping address</label>
-                                                </div>
-                                            </div>
-                                            <Input label="Address Line 1" {...register(`shippingAddresses.${index}.line1`)} />
-                                            <div className="grid grid-cols-3 gap-4">
-                                                <Input label="City" {...register(`shippingAddresses.${index}.city`)} />
-                                                <Input label="Postal Code" {...register(`shippingAddresses.${index}.postalCode`)} />
-                                                <Input label="Phone" {...register(`shippingAddresses.${index}.phone`)} />
-                                            </div>
-                                            <Input label="Delivery Instructions" {...register(`shippingAddresses.${index}.deliveryInstructions`)} />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'commercial' && (
-                        <div className="space-y-4">
-                            <Select
-                                label="Payment Terms" required
-                                options={[
-                                    { value: 'advance', label: 'Advance (pay before delivery)' },
-                                    { value: 'cod', label: 'COD (pay on delivery)' },
-                                    { value: 'credit', label: 'Credit (pay later)' },
-                                ]}
-                                {...register('paymentTermsType')}
-                            />
-
-                            {paymentType === 'credit' && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Input label="Credit Days" type="number" {...register('creditDays')} />
-                                    <Input label="Credit Limit (LKR)" type="number" step="0.01" {...register('creditLimit')} />
-                                </div>
-                            )}
-
-                            <Input
-                                label="Default Discount Percent (%)"
-                                type="number" step="0.01"
-                                error={errors.defaultDiscountPercent?.message}
-                                {...register('defaultDiscountPercent')}
-                            />
-
-                            {isEdit && customer?.creditStatus && (
-                                <div className="bg-gray-50 rounded-lg p-4 mt-4">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Current Credit Status</h4>
-                                    <div className="grid grid-cols-3 gap-4 text-sm">
-                                        <div>
-                                            <p className="text-gray-500">Outstanding</p>
-                                            <p className="font-medium">LKR {customer.creditStatus.currentBalance?.toLocaleString() || 0}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-500">Available</p>
-                                            <p className="font-medium text-green-600">LKR {customer.creditStatus.availableCredit?.toLocaleString() || 0}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-500">Overdue</p>
-                                            <p className={`font-medium ${customer.creditStatus.isOverdue ? 'text-red-600' : ''}`}>
-                                                LKR {customer.creditStatus.overdueAmount?.toLocaleString() || 0}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {activeTab === 'contacts' && (
-                        <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <h4 className="text-sm font-semibold text-gray-700">Additional Contacts</h4>
-                                <Button type="button" variant="outline" size="sm" onClick={() => appendContact(emptyContact)}>
-                                    <Plus size={14} className="mr-1" /> Add Contact
-                                </Button>
-                            </div>
-
-                            {contactFields.length === 0 ? (
-                                <p className="text-sm text-gray-500 py-8 text-center">
-                                    No additional contacts. Click "Add Contact" to include people like accounts or logistics staff.
-                                </p>
-                            ) : (
-                                contactFields.map((field, index) => (
-                                    <div key={field.id} className="border border-gray-200 rounded-lg p-4 mb-3">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-medium text-gray-700">Contact {index + 1}</span>
-                                            <button type="button" onClick={() => removeContact(index)} className="text-red-600 hover:bg-red-50 p-1 rounded">
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <Input label="Name" {...register(`contacts.${index}.name`)} />
-                                            <Input label="Designation" {...register(`contacts.${index}.designation`)} />
-                                            <Input label="Email" type="email" error={errors.contacts?.[index]?.email?.message} {...register(`contacts.${index}.email`)} />
-                                            <Input label="Phone" {...register(`contacts.${index}.phone`)} />
-                                            <Select
-                                                label="Role"
-                                                options={[
-                                                    { value: 'owner', label: 'Owner' },
-                                                    { value: 'purchasing', label: 'Purchasing' },
-                                                    { value: 'accounts', label: 'Accounts' },
-                                                    { value: 'logistics', label: 'Logistics' },
-                                                    { value: 'other', label: 'Other' },
-                                                ]}
-                                                {...register(`contacts.${index}.role`)}
-                                            />
-                                            <div className="flex items-end pb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <input type="checkbox" id={`contact-primary-${index}`} {...register(`contacts.${index}.isPrimary`)} />
-                                                    <label htmlFor={`contact-primary-${index}`} className="text-sm text-gray-700">Primary contact</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 bg-gray-50">
-                    <Button variant="outline" type="button" onClick={onClose} disabled={isLoading}>Cancel</Button>
+                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 rounded-b-lg">
+                    <Button variant="outline" type="button" onClick={onClose} disabled={isLoading}>
+                        Cancel
+                    </Button>
                     <Button type="submit" variant="primary" loading={isLoading}>
-                        {isEdit ? 'Update Customer' : 'Create Customer'}
+                        {isEdit ? 'Update Customer' : 'Add Customer'}
                     </Button>
                 </div>
             </form>

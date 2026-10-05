@@ -61,6 +61,11 @@ export const getCustomers = asyncHandler(async (req, res) => {
             { companyName: { $regex: search, $options: 'i' } },
             { customerCode: { $regex: search, $options: 'i' } },
             { 'primaryContact.phone': { $regex: search, $options: 'i' } },
+            { 'primaryContact.email': { $regex: search, $options: 'i' } },
+            { whatsappNumber: { $regex: search, $options: 'i' } },
+            { idNumber: { $regex: search, $options: 'i' } },
+            { taxRegistrationNumber: { $regex: search, $options: 'i' } },
+            { businessRegistrationNumber: { $regex: search, $options: 'i' } },
         ];
     }
     if (status) filter.status = status;

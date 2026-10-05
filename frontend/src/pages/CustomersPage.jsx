@@ -52,9 +52,15 @@ export default function CustomersPage() {
 
     const exportColumns = [
         { header: 'Code', dataKey: 'customerCode' },
-        { header: 'Name', dataKey: 'displayName' },
+        { header: 'Customer Name', dataKey: 'displayName' },
         { header: 'Phone', dataKey: 'phone' },
+        { header: 'WhatsApp', dataKey: 'whatsappNumber' },
         { header: 'Email', dataKey: 'email' },
+        { header: 'VAT Number', dataKey: 'taxRegistrationNumber' },
+        { header: 'BR Number', dataKey: 'businessRegistrationNumber' },
+        { header: 'ID Number', dataKey: 'idNumber' },
+        { header: 'Billing Address', dataKey: 'billingAddress' },
+        { header: 'Sales Rep', dataKey: 'salesRep' },
         { header: 'Balance (LKR)', dataKey: 'balance' },
         { header: 'Status', dataKey: 'status' },
     ];
@@ -70,108 +76,154 @@ export default function CustomersPage() {
         ...c,
         phone: c.primaryContact?.phone || '—',
         email: c.primaryContact?.email || '—',
+        whatsappNumber: c.whatsappNumber || c.primaryContact?.mobile || '—',
+        taxRegistrationNumber: c.taxRegistrationNumber || '—',
+        businessRegistrationNumber: c.businessRegistrationNumber || '—',
+        idNumber: c.idNumber || '—',
+        billingAddress: c.billingAddress?.line1 || (typeof c.billingAddress === 'string' ? c.billingAddress : '—'),
+        salesRep: c.assignedSalesRep ? `${c.assignedSalesRep.firstName} ${c.assignedSalesRep.lastName || ''}`.trim() : '—',
         balance: c.creditStatus?.currentBalance || 0,
     }));
-
-
 
     const formatMoney = (n) => new Intl.NumberFormat('en-LK').format(n || 0);
 
     const columns = [
         {
-            key: 'customerCode', label: 'Code', width: '110px',
-            render: (r) => <span className="font-mono text-xs">{r.customerCode}</span>,
+            key: 'customerCode', label: 'Code', width: '90px',
+            render: (r) => <span className="font-mono text-xs font-semibold text-gray-700 dark:text-gray-300">{r.customerCode}</span>,
         },
         {
             key: 'displayName', label: 'Customer',
             render: (r) => (
                 <div>
-                    <p className="font-medium text-gray-900 flex items-center gap-2">
+                    <p className="font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-1.5">
                         {r.displayName}
                         {r.creditStatus?.onCreditHold && (
-                            <span title="On credit hold"><Ban size={14} className="text-red-500" /></span>
+                            <span title="On credit hold"><Ban size={13} className="text-red-500" /></span>
                         )}
                         {r.creditStatus?.isOverdue && (
-                            <span title="Overdue"><AlertTriangle size={14} className="text-amber-500" /></span>
+                            <span title="Overdue"><AlertTriangle size={13} className="text-amber-500" /></span>
                         )}
                     </p>
                     {r.companyName && r.companyName !== r.displayName && (
-                        <p className="text-xs text-gray-500">{r.companyName}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-slate-400">{r.companyName}</p>
                     )}
                 </div>
             ),
         },
         {
-            key: 'introducer', label: 'Introducer',
+            key: 'phone', label: 'Phone',
             render: (r) => (
-                <span className="text-xs text-gray-700 font-medium">
-                    {r.introducerName || (r.introducer ? `${r.introducer.firstName || ''} ${r.introducer.lastName || ''}`.trim() : '—')}
+                <span className="font-mono text-xs text-gray-800 dark:text-slate-200">
+                    {r.primaryContact?.phone || '—'}
                 </span>
             ),
         },
         {
-            key: 'contact', label: 'Contact',
-            render: (r) => (
-                <div className="text-xs">
-                    {r.primaryContact?.name && <p>{r.primaryContact.name}</p>}
-                    {r.primaryContact?.phone && <p className="text-gray-500">{r.primaryContact.phone}</p>}
-                </div>
-            ),
-        },
-        {
-            key: 'paymentTerms', label: 'Terms',
+            key: 'whatsapp', label: 'WhatsApp',
             render: (r) => {
-                const t = r.paymentTerms?.type;
-                if (t === 'credit') return <Badge variant="info">{r.paymentTerms.creditDays}d credit</Badge>;
-                if (t === 'advance') return <Badge variant="warning">Advance</Badge>;
-                return <Badge>COD</Badge>;
+                const num = r.whatsappNumber || r.primaryContact?.mobile;
+                return num ? (
+                    <span className="font-mono text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                        {num}
+                    </span>
+                ) : <span className="text-gray-400 text-xs">—</span>;
             },
         },
         {
-            key: 'creditStatus', label: 'Outstanding',
+            key: 'email', label: 'Email',
+            render: (r) => (
+                <span className="text-xs text-gray-600 dark:text-slate-400">
+                    {r.primaryContact?.email || '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'vatBr', label: 'VAT / BR',
+            render: (r) => {
+                const vat = r.taxRegistrationNumber;
+                const br = r.businessRegistrationNumber;
+                if (!vat && !br) return <span className="text-gray-400 text-xs">—</span>;
+                return (
+                    <div className="text-xs space-y-0.5 font-mono">
+                        {vat && <p className="text-gray-800 dark:text-slate-200"><span className="text-gray-400 text-[10px] font-sans">VAT: </span>{vat}</p>}
+                        {br && <p className="text-gray-600 dark:text-slate-400"><span className="text-gray-400 text-[10px] font-sans">BR: </span>{br}</p>}
+                    </div>
+                );
+            },
+        },
+        {
+            key: 'billingAddress', label: 'Address',
+            render: (r) => {
+                const addr = r.billingAddress?.line1 || (typeof r.billingAddress === 'string' ? r.billingAddress : '');
+                return addr ? (
+                    <span className="text-xs text-gray-700 dark:text-slate-300 max-w-[180px] truncate block" title={addr}>
+                        {addr}
+                    </span>
+                ) : <span className="text-gray-400 text-xs">—</span>;
+            },
+        },
+        {
+            key: 'idNumber', label: 'ID Number',
+            render: (r) => (
+                <span className="font-mono text-xs text-gray-700 dark:text-slate-300">
+                    {r.idNumber || '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'assignedSalesRep', label: 'Sales Rep',
+            render: (r) => (
+                <span className="text-xs font-medium text-gray-800 dark:text-slate-200">
+                    {r.assignedSalesRep ? `${r.assignedSalesRep.firstName} ${r.assignedSalesRep.lastName || ''}`.trim() : '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'creditStatus', label: 'Outstanding', align: 'right',
             render: (r) => {
                 const bal = r.creditStatus?.currentBalance || 0;
                 if (bal === 0) return <span className="text-gray-400 text-xs">—</span>;
                 return (
-                    <span className={r.creditStatus.isOverdue ? 'text-red-600 font-medium' : 'text-gray-900'}>
+                    <span className={`font-mono text-xs ${r.creditStatus?.isOverdue ? 'text-red-600 font-semibold' : 'text-gray-900 dark:text-slate-100 font-medium'}`}>
                         LKR {formatMoney(bal)}
                     </span>
                 );
             },
         },
         {
-            key: 'status', label: 'Status',
+            key: 'status', label: 'Status', align: 'center',
             render: (r) => <Badge variant={statusVariant[r.status]}>{r.status}</Badge>,
         },
         {
-            key: 'actions', label: 'Actions', width: '140px',
+            key: 'actions', label: 'Actions', width: '120px', align: 'center',
             render: (r) => (
-                <div className="flex gap-1">
+                <div className="flex items-center justify-center gap-1">
                     {canHoldCredit && (
                         <button
                             onClick={(e) => { e.stopPropagation(); setTogglingHold(r); setHoldReason(''); }}
-                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded"
+                            className="p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 rounded transition"
                             title={r.creditStatus?.onCreditHold ? 'Remove credit hold' : 'Place on credit hold'}
                         >
-                            {r.creditStatus?.onCreditHold ? <CheckCircle size={16} className="text-green-600" /> : <Ban size={16} />}
+                            {r.creditStatus?.onCreditHold ? <CheckCircle size={15} className="text-green-600" /> : <Ban size={15} />}
                         </button>
                     )}
                     {canManage && (
                         <button
                             onClick={(e) => { e.stopPropagation(); setEditing(r); setIsFormOpen(true); }}
-                            className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded"
+                            className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 rounded transition"
                             title="Edit"
                         >
-                            <Edit size={16} />
+                            <Edit size={15} />
                         </button>
                     )}
                     {canDelete && (
                         <button
                             onClick={(e) => { e.stopPropagation(); setDeleting(r); }}
-                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-slate-700 rounded transition"
                             title="Delete"
                         >
-                            <Trash2 size={16} />
+                            <Trash2 size={15} />
                         </button>
                     )}
                 </div>
@@ -225,7 +277,7 @@ export default function CustomersPage() {
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Search by name, code, or phone..."
+                            placeholder="Search by name, code, phone, ID, VAT..."
                             className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-500 text-[16px] min-h-[44px]"
                             value={filters.search}
                             onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))}

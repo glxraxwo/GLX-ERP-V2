@@ -75,6 +75,7 @@ const customerSchema = new mongoose.Schema(
         businessRegistrationNumber: { type: String, trim: true },
         taxRegistrationNumber: { type: String, trim: true }, // VAT number
         idNumber: { type: String, trim: true }, // NIC / ID number
+        whatsappNumber: { type: String, trim: true },
         industry: { type: String, trim: true },
 
         // Primary contact

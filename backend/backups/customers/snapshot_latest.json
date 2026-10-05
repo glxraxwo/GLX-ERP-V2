@@ -1,9 +1,9 @@
 [
   {
-    "_id": "6a9fb2cfb662762ed708e08f",
+    "_id": "6ab0ba32eb32ce8ca6b38f6b",
     "customerType": "company",
     "businessType": "retailer",
-    "displayName": "Achala",
+    "displayName": "GUNASENA",
     "tags": [],
     "paymentTerms": {
       "type": "cod",
@@ -25,49 +25,2563 @@
       "totalPaidAmount": 0
     },
     "status": "active",
-    "createdBy": "6a9fa685abcebd26ef20cb1e",
+    "createdBy": "6ab0b053a583eb406285ad22",
     "deletedAt": null,
     "contacts": [],
     "shippingAddresses": [],
-    "createdAt": "2026-09-08T07:01:35.327Z",
-    "updatedAt": "2026-09-08T15:10:00.695Z",
+    "createdAt": "2026-09-21T05:01:38.765Z",
+    "updatedAt": "2026-09-21T08:36:05.962Z",
     "customerCode": "CUST-1",
     "__v": 0,
     "phone": "—"
   },
   {
-    "_id": "6aa0438b2bcccb1c6e4ed49b",
-    "customerType": "company",
-    "businessType": "retailer",
-    "displayName": "ARPICO",
-    "tags": [],
-    "primaryContact": {
-      "name": "",
-      "email": "",
-      "phone": "",
-      "mobile": ""
+    "_id": "6ab37d0e3f92acae7f21414d",
+    "customerCode": "JA/CST/1",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
     },
-    "contacts": [],
     "billingAddress": {
-      "label": "",
-      "line1": "",
-      "line2": "",
-      "city": "",
-      "state": "",
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
       "country": "Sri Lanka",
-      "postalCode": "",
-      "phone": "",
-      "deliveryInstructions": "",
-      "isDefault": true,
-      "_id": "6aa0438b2bcccb1c6e4ed49c"
+      "isDefault": false,
+      "_id": "6ab6260359507fb65a5dd07f"
+    },
+    "businessRegistrationNumber": "821570859v",
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:33.514Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Asanka Thilakrathne",
+    "firstName": "Mr.Asanka",
+    "lastName": "Thilakrathne",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Asanka Thilakrathne",
+      "phone": "0716666888",
+      "mobile": "-",
+      "email": "aa.asanka@gmail.com"
     },
     "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:42:59.686Z",
+    "phone": "0716666888"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f21414e",
+    "deletedAt": null,
+    "customerCode": "JA/CST/2",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260359507fb65a5dd080"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:33.623Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "MR.FAZAL",
+    "firstName": "MR.FAZAL",
+    "lastName": "",
     "paymentTerms": {
-      "type": "advance",
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "MR.FAZAL",
+      "phone": "0777751784"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:42:59.773Z",
+    "phone": "0777751784"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f21414f",
+    "customerCode": "JA/CST/3",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Kotugoda Gurugewatta",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260359507fb65a5dd081"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:33.689Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Sarath (Pest Control)",
+    "firstName": "Mr.Sarath",
+    "lastName": "(Pest Control)",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Sarath (Pest Control)",
+      "phone": "0712388898"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:42:59.839Z",
+    "phone": "0712388898"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f214150",
+    "customerCode": "JA/CST/4",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Muthugala Road Bihalpola Nakkawatta",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260a59507fb65a5dd0b4"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:33.762Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "company",
+    "defaultDiscountPercent": 0,
+    "displayName": "SAP Super Mart (Pvt) Ltd",
+    "firstName": "Mr.Famik",
+    "lastName": "Hasan",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "SAP Super Mart (Pvt) Ltd",
+      "phone": "0372280205"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:06.249Z",
+    "companyName": "SAP Super Mart (Pvt) Ltd",
+    "phone": "0372280205"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f214151",
+    "customerCode": "JA/CST/6",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Welisara",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd09e"
+    },
+    "businessType": "retailer",
+    "companyName": "FREIGHT LINKS INTERNATIONAL (PTE) LTD",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:33.842Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "BEN FOOD",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "BEN FOOD",
+      "phone": "0777561562"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.612Z",
+    "firstName": "BEN",
+    "lastName": "FOOD",
+    "phone": "0777561562"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f214152",
+    "customerCode": "JA/CST/7",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "No.38 Station Road Wattala",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260459507fb65a5dd084"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:33.913Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Lanka Ice Group Of Companies",
+    "firstName": "Lanka",
+    "lastName": "Ice Group Of Companies",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Lanka Ice Group Of Companies",
+      "phone": "0775960759"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:00.068Z",
+    "phone": "0775960759"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f214153",
+    "customerCode": "JA/CST/8",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260a59507fb65a5dd0b3"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:33.982Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Hasitha",
+    "firstName": "Mr.Hasitha",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Hasitha",
+      "phone": "0713393000"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:06.141Z",
+    "phone": "0713393000"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f214154",
+    "customerCode": "JA/CST/9",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd098"
+    },
+    "businessType": "retailer",
+    "companyName": "SINHAGIRI (Pvt) Ltd",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.051Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "company",
+    "defaultDiscountPercent": 0,
+    "displayName": "SINHAGIRI (Pvt) Ltd",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "SINHAGIRI (Pvt) Ltd",
+      "phone": "0711834314"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.179Z",
+    "phone": "0711834314"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f214155",
+    "deletedAt": null,
+    "customerCode": "JA/CST/10",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ekala",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260459507fb65a5dd088"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.196Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Kalinga",
+    "firstName": "Mr.Kalinga",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Kalinga",
+      "phone": "0773918156"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:00.350Z",
+    "phone": "0773918156"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f214156",
+    "customerCode": "JA/CST/12",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ragama",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260459507fb65a5dd089"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.276Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Priyantha",
+    "firstName": "Mr.Priyantha",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Priyantha",
+      "phone": "0773832156"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:00.447Z",
+    "phone": "0773832156"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f214157",
+    "customerCode": "JA/CST/13",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ekala",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260459507fb65a5dd08a"
+    },
+    "businessType": "retailer",
+    "companyName": "APL (Pvt) Ltd",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.352Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "company",
+    "defaultDiscountPercent": 0,
+    "displayName": "APL (Pvt) Ltd",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "APL (Pvt) Ltd",
+      "phone": "0772862621"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:00.522Z",
+    "phone": "0772862621"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f214158",
+    "customerCode": "JA/CST/14",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ekala..",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260459507fb65a5dd08b"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.423Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.W.A.Dayananda",
+    "firstName": "Mr.W.A.Dayananda",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.W.A.Dayananda",
+      "phone": "0772014562"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:00.587Z",
+    "phone": "0772014562"
+  },
+  {
+    "_id": "6ab37d0e3f92acae7f214159",
+    "deletedAt": null,
+    "customerCode": "JA/CST/15",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "No.310 Nivasipura Kotugoda",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260459507fb65a5dd08c"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.492Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Duminda De Silava",
+    "firstName": "Mr.Duminda",
+    "lastName": "De Silava",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Duminda De Silava",
+      "phone": "0772715189",
+      "email": "dumindads@gmail.com"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:00.653Z",
+    "phone": "0772715189"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f21415a",
+    "customerCode": "JA/CST/16",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Bandaragama",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260459507fb65a5dd08d"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.567Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Asitha",
+    "firstName": "Mr.Asitha",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Asitha",
+      "phone": "0763272244"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:00.717Z",
+    "phone": "0763272244"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f21415b",
+    "customerCode": "JA/CST/17",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ganemulla",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260559507fb65a5dd08e"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.637Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Chaminda Sepala",
+    "firstName": "Mr.Chaminda",
+    "lastName": "Sepala",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Chaminda Sepala",
+      "phone": "0715206223"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:01.643Z",
+    "phone": "0715206223"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f21415c",
+    "customerCode": "JA/CST/18",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Gampaha",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260659507fb65a5dd08f"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.709Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Lakshan Udayanga",
+    "firstName": "Mr.Lakshan",
+    "lastName": "Udayanga",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Lakshan Udayanga",
+      "phone": "0770143706"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:02.121Z",
+    "phone": "0770143706"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f21415d",
+    "customerCode": "JA/CST/19",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Jayasiripura Pathana",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260759507fb65a5dd090"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.784Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Bala Suprabaniam",
+    "firstName": "Mr.Bala",
+    "lastName": "Suprabaniam",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Bala Suprabaniam",
+      "phone": "0769075555"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:03.453Z",
+    "phone": "0769075555"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f21415e",
+    "deletedAt": null,
+    "customerCode": "JA/CST/20",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260759507fb65a5dd091"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.858Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Jayathissa",
+    "firstName": "Mr.Jayathissa",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Jayathissa",
+      "phone": "0717872818"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:03.672Z",
+    "phone": "0717872818"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f21415f",
+    "deletedAt": null,
+    "customerCode": "JA/CST/21",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "No.95 Minuwangoda Road Ekala . JaEla",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260759507fb65a5dd092"
+    },
+    "businessType": "retailer",
+    "companyName": "MRK Associates (Pvt) Ltd",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:34.932Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "company",
+    "defaultDiscountPercent": 0,
+    "displayName": "MRK Associates (Pvt) Ltd",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "MRK Associates (Pvt) Ltd",
+      "phone": "0770106960"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:03.737Z",
+    "phone": "0770106960"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f214160",
+    "customerCode": "JA/CST/24",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "No.14 Station Road Wattala",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260759507fb65a5dd093"
+    },
+    "businessType": "retailer",
+    "companyName": "Qualitea Ceylon (Pvt) Ltd",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:35.002Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "company",
+    "defaultDiscountPercent": 0,
+    "displayName": "Qualitea Ceylon (Pvt) Ltd",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Qualitea Ceylon (Pvt) Ltd",
+      "phone": "0777387888"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:03.802Z",
+    "phone": "0777387888"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f214161",
+    "deletedAt": null,
+    "customerCode": "JA/CST/25",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Kandana",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260759507fb65a5dd094"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:35.070Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "TWS Lanka",
+    "firstName": "TWS",
+    "lastName": "Lanka",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "TWS Lanka",
+      "phone": "0703717504"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:03.887Z",
+    "phone": "0703717504"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f214162",
+    "customerCode": "JA/CST/26",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Moratuwa",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260759507fb65a5dd095"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:35.139Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Prasanna Priyadasa",
+    "firstName": "Mr.Prasanna",
+    "lastName": "Priyadasa",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Prasanna Priyadasa",
+      "phone": "0714222332"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:03.952Z",
+    "phone": "0714222332"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f214163",
+    "deletedAt": null,
+    "customerCode": "JA/CST/27",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd096"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:35.217Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Freight Link",
+    "firstName": "Freight",
+    "lastName": "Link",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Freight Link",
+      "phone": "0777598661"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.021Z",
+    "phone": "0777598661"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f214164",
+    "deletedAt": null,
+    "customerCode": "JA/CST/28",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "No.281 Weligampitiya Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd097"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:35.283Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "SUBANI DISTRIBUTORS",
+    "firstName": "SUBANI",
+    "lastName": "DISTRIBUTORS",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "SUBANI DISTRIBUTORS",
+      "phone": "0771072387"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.106Z",
+    "phone": "0771072387"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f214165",
+    "customerCode": "JA/CST/29",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd099"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:35.432Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "360 Ja-Ela",
+    "firstName": "360",
+    "lastName": "Ja-Ela",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "360 Ja-Ela",
+      "phone": "0761678144"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.281Z",
+    "phone": "0761678144"
+  },
+  {
+    "_id": "6ab37d0f3f92acae7f214166",
+    "deletedAt": null,
+    "customerCode": "JA/CST/30",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "ATG WATHUPITIWALA",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd09a"
+    },
+    "businessType": "retailer",
+    "companyName": "ATG HAND CARE (PVT) LTD",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:35.516Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "company",
+    "defaultDiscountPercent": 0,
+    "displayName": "ATG HAND CARE (PVT) LTD",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "ATG HAND CARE (PVT) LTD",
+      "phone": "0773664314"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.346Z",
+    "phone": "0773664314"
+  },
+  {
+    "_id": "6ab37d103f92acae7f214167",
+    "deletedAt": null,
+    "customerCode": "JA/CST/31",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Bangadeniya",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd09b"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:35.597Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Ariyasena",
+    "firstName": "Mr.Ariyasena",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Ariyasena",
+      "phone": "0713176261"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.410Z",
+    "phone": "0713176261"
+  },
+  {
+    "_id": "6ab37d103f92acae7f214168",
+    "deletedAt": null,
+    "customerCode": "JA/CST/32",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Malsiripura",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd09c"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:35.673Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Naleesh",
+    "firstName": "Mr.Naleesh",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Naleesh",
+      "phone": "0752477217"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.477Z",
+    "phone": "0752477217"
+  },
+  {
+    "_id": "6ab37d103f92acae7f214169",
+    "customerCode": "JA/CST/36",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Yakkala",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd09f"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:35.886Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Anura",
+    "firstName": "Mr.Anura",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Anura",
+      "phone": "0715295270"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.683Z",
+    "phone": "0715295270"
+  },
+  {
+    "_id": "6ab37d103f92acae7f21416a",
+    "customerCode": "JA/CST/37",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Kobeyigane - Welpothuwa",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd0a0"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:35.951Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Haneefa",
+    "firstName": "Mr.Haneefa",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Haneefa",
+      "phone": "0775015969"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.757Z",
+    "phone": "0775015969"
+  },
+  {
+    "_id": "6ab37d103f92acae7f21416b",
+    "customerCode": "JA/CST/39",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd0a1"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.021Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.SMD Fernando",
+    "firstName": "Mr.SMD",
+    "lastName": "Fernando",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.SMD Fernando",
+      "phone": "0726038180"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.823Z",
+    "phone": "0726038180"
+  },
+  {
+    "_id": "6ab37d103f92acae7f21416c",
+    "customerCode": "JA/CST/40",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Waligampitiya",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd0a2"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.092Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Janaka",
+    "firstName": "Mr.Janaka",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Janaka",
+      "phone": "0713643056"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.897Z",
+    "phone": "0713643056"
+  },
+  {
+    "_id": "6ab37d103f92acae7f21416d",
+    "deletedAt": null,
+    "customerCode": "JA/CST/41",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Dankotuwa",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260859507fb65a5dd0a3"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.177Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "BRITISH AGENCIES",
+    "firstName": "BRITISH",
+    "lastName": "AGENCIES",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "BRITISH AGENCIES",
+      "phone": "0714541285"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:04.972Z",
+    "phone": "0714541285"
+  },
+  {
+    "_id": "6ab37d103f92acae7f21416e",
+    "deletedAt": null,
+    "customerCode": "JA/CST/44",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "mawathagama",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0a4"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.250Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Ruwan Samarasinghe",
+    "firstName": "Mr.Ruwan",
+    "lastName": "Samarasinghe",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Ruwan Samarasinghe",
+      "phone": "0785217095"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.052Z",
+    "phone": "0785217095"
+  },
+  {
+    "_id": "6ab37d103f92acae7f21416f",
+    "customerCode": "JA/CST/45",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "No.6 Cargo Vilage Katunayeka",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0a6"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.400Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.MML Bandara (Dart Global)",
+    "firstName": "Mr.MML",
+    "lastName": "Bandara (Dart Global)",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.MML Bandara (Dart Global)",
+      "phone": "0773667885"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.191Z",
+    "phone": "0773667885"
+  },
+  {
+    "_id": "6ab37d103f92acae7f214170",
+    "deletedAt": null,
+    "customerCode": "JA/CST/46",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Seeduwa",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0a7"
+    },
+    "businessType": "retailer",
+    "companyName": "Ceylon Agro Industries",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.472Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "company",
+    "defaultDiscountPercent": 0,
+    "displayName": "Ceylon Agro Industries",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Ceylon Agro Industries",
+      "phone": "0775302328"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.262Z",
+    "phone": "0775302328"
+  },
+  {
+    "_id": "6ab37d103f92acae7f214171",
+    "customerCode": "JA/CST/47",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Kotugoda",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0a8"
+    },
+    "businessType": "retailer",
+    "companyName": "KOTUGODA TRANSPORT (Pvt) Ltd",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.538Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "company",
+    "defaultDiscountPercent": 0,
+    "displayName": "KOTUGODA TRANSPORT (Pvt) Ltd",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "KOTUGODA TRANSPORT (Pvt) Ltd",
+      "phone": "0719453554"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.338Z",
+    "phone": "0719453554"
+  },
+  {
+    "_id": "6ab37d113f92acae7f214172",
+    "customerCode": "JA/CST/48",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0a9"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.603Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Asela Fernando",
+    "firstName": "Mr.Asela",
+    "lastName": "Fernando",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Asela Fernando",
+      "phone": "0773971017"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.404Z",
+    "phone": "0773971017"
+  },
+  {
+    "_id": "6ab37d113f92acae7f214173",
+    "customerCode": "JA/CST/49",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "kudahakapola",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0aa"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.673Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Nishantha",
+    "firstName": "Mr.Nishantha",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Nishantha",
+      "phone": "0778623821"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.467Z",
+    "phone": "0778623821"
+  },
+  {
+    "_id": "6ab37d113f92acae7f214174",
+    "customerCode": "JA/CST/50",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "No.498 Galle Road Colombo 03",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0ab"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.741Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "ABANS PLC",
+    "firstName": "ABANS",
+    "lastName": "PLC",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "ABANS PLC",
+      "phone": "0115775000"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.541Z",
+    "phone": "0115775000"
+  },
+  {
+    "_id": "6ab37d113f92acae7f214175",
+    "deletedAt": null,
+    "customerCode": "JA/CST/51",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Kelinkanda , Agalawatta",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0ac"
+    },
+    "businessRegistrationNumber": "763004490V",
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.807Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.PVK Keerthi",
+    "firstName": "Mr.PVK",
+    "lastName": "Keerthi",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.PVK Keerthi",
+      "phone": "0717471980"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.621Z",
+    "phone": "0717471980"
+  },
+  {
+    "_id": "6ab37d113f92acae7f214176",
+    "customerCode": "JA/CST/52",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "aswetegrht",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0ad"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.878Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "saman",
+    "firstName": "saman",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "saman",
+      "phone": "0715555888"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.694Z",
+    "phone": "0715555888"
+  },
+  {
+    "_id": "6ab37d113f92acae7f214177",
+    "customerCode": "JA/CST/53",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Horana",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0ae"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:36.943Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "BAMBARAKELLY Estate",
+    "firstName": "BAMBARAKELLY",
+    "lastName": "Estate",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "BAMBARAKELLY Estate",
+      "phone": "0702128702"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.757Z",
+    "phone": "0702128702"
+  },
+  {
+    "_id": "6ab37d113f92acae7f214178",
+    "customerCode": "JA/CST/54",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "No.320/7-1/2 Gallle Road Colombo 03",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0af"
+    },
+    "businessType": "retailer",
+    "companyName": "Dinlanka Logistics (Pvt) Ltd",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:37.012Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "company",
+    "defaultDiscountPercent": 0,
+    "displayName": "Dinlanka Logistics (Pvt) Ltd",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Dinlanka Logistics (Pvt) Ltd",
+      "phone": "0776312365"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.827Z",
+    "phone": "0776312365"
+  },
+  {
+    "_id": "6ab37d113f92acae7f214179",
+    "deletedAt": null,
+    "customerCode": "JA/CST/22",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0b0"
+    },
+    "businessType": "retailer",
+    "companyName": "Esquel Sri Lanak (Pvt) Ltd",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:37.079Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "company",
+    "defaultDiscountPercent": 0,
+    "displayName": "Esquel Sri Lanak (Pvt) Ltd",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Esquel Sri Lanak (Pvt) Ltd",
+      "phone": "0761247396"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.901Z",
+    "phone": "0761247396"
+  },
+  {
+    "_id": "6ab37d113f92acae7f21417a",
+    "customerCode": "JA/CST/34",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260959507fb65a5dd0b1"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:37.152Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Channa",
+    "firstName": "Mr.Channa",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Channa",
+      "phone": "0777737649"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:05.982Z",
+    "phone": "0777737649"
+  },
+  {
+    "_id": "6ab37d113f92acae7f21417b",
+    "deletedAt": null,
+    "customerCode": "JA/CST/38",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Nivasipura",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260a59507fb65a5dd0b2"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:37.222Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr. Shanaka Sumanaweera",
+    "firstName": "Mr.",
+    "lastName": "Shanaka Sumanaweera",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr. Shanaka Sumanaweera",
+      "phone": "0762324563"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-27T16:10:10.093Z",
+    "phone": "0762324563"
+  },
+  {
+    "_id": "6ab37d113f92acae7f21417c",
+    "customerCode": "JA/CST/23",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Ja-Ela",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260a59507fb65a5dd0b5"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:37.437Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "SKY CARGO",
+    "firstName": "SKY",
+    "lastName": "CARGO",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "SKY CARGO",
+      "phone": "0760991378"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-28T13:40:18.196Z",
+    "phone": "0760991378"
+  },
+  {
+    "_id": "6ab37d113f92acae7f21417d",
+    "customerCode": "JA/CST/33",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Batagama",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260a59507fb65a5dd0b6"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:37.506Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Haral",
+    "firstName": "Mr.Haral",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Haral",
+      "phone": "0772408683"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:06.397Z",
+    "phone": "0772408683"
+  },
+  {
+    "_id": "6ab37d123f92acae7f21417e",
+    "customerCode": "JA/CST/35",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Makadura Road Badalgama.",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260a59507fb65a5dd0b7"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:37.576Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "TEX LANKA",
+    "firstName": "TEX",
+    "lastName": "LANKA",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "TEX LANKA",
+      "phone": "0768104488"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:06.466Z",
+    "phone": "0768104488"
+  },
+  {
+    "_id": "6ab37d123f92acae7f21417f",
+    "customerCode": "JA/CST/42",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Wattala",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260a59507fb65a5dd0b8"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:37.647Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "ROYAL FERNITURE",
+    "firstName": "ROYAL",
+    "lastName": "FERNITURE",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "ROYAL FERNITURE",
+      "phone": "0773558517"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:06.562Z",
+    "phone": "0773558517"
+  },
+  {
+    "_id": "6ab37d123f92acae7f214180",
+    "customerCode": "JA/CST/5",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "No.484/5 Nigambo Road Mabole Wattala",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260a59507fb65a5dd0b9"
+    },
+    "businessType": "retailer",
+    "companyName": "POLY CREATIONS (PVT) LTD",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:37.715Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "company",
+    "defaultDiscountPercent": 0,
+    "displayName": "POLY CREATIONS (PVT) LTD",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "POLY CREATIONS (PVT) LTD",
+      "phone": "0771050694"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-25T07:43:06.639Z",
+    "phone": "0771050694"
+  },
+  {
+    "_id": "6ab37d123f92acae7f214181",
+    "customerCode": "JA/CST/11",
+    "deletedAt": null,
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Moratuwa",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260a59507fb65a5dd0ba"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:37.788Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 0,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Maxxi Kamal",
+    "firstName": "Mr.Maxxi",
+    "lastName": "Kamal",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Maxxi Kamal",
+      "phone": "0785708299"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-27T16:20:07.467Z",
+    "phone": "0785708299"
+  },
+  {
+    "_id": "6ab37d123f92acae7f214182",
+    "deletedAt": null,
+    "customerCode": "JA/CST/43",
+    "__v": 0,
+    "analytics": {
+      "totalOrderValue": 0,
+      "totalOrders": 0,
+      "totalPaidAmount": 0
+    },
+    "billingAddress": {
+      "line1": "Udammita",
+      "city": "JA-ELA",
+      "country": "Sri Lanka",
+      "isDefault": false,
+      "_id": "6ab6260a59507fb65a5dd0bb"
+    },
+    "businessType": "retailer",
+    "contacts": [],
+    "createdAt": "2026-09-23T07:17:37.857Z",
+    "creditStatus": {
+      "availableCredit": 0,
+      "currentBalance": 736002,
+      "daysPastDue": 0,
+      "isOverdue": false,
+      "onCreditHold": false,
+      "overdueAmount": 0
+    },
+    "customerType": "individual",
+    "defaultDiscountPercent": 0,
+    "displayName": "Mr.Wasantha",
+    "firstName": "Mr.Wasantha",
+    "lastName": "",
+    "paymentTerms": {
+      "type": "credit",
+      "creditDays": 30
+    },
+    "primaryContact": {
+      "name": "Mr.Wasantha",
+      "phone": "0772015017"
+    },
+    "shippingAddresses": [],
+    "status": "active",
+    "tags": [],
+    "updatedAt": "2026-09-28T13:58:13.191Z",
+    "phone": "0772015017"
+  },
+  {
+    "_id": "6ab9ff52773050647b81ef6a",
+    "customerType": "company",
+    "businessType": "retailer",
+    "displayName": "Walk-in Customer",
+    "tags": [],
+    "paymentTerms": {
+      "type": "cod",
       "creditDays": 0,
       "creditLimit": 0
     },
-    "defaultDiscountPercent": 20,
+    "defaultDiscountPercent": 0,
     "creditStatus": {
       "currentBalance": 0,
       "overdueAmount": 0,
@@ -82,12 +2596,276 @@
       "totalPaidAmount": 0
     },
     "status": "active",
-    "createdBy": "6a9fa685abcebd26ef20cb1e",
     "deletedAt": null,
-    "createdAt": "2026-09-08T17:19:07.753Z",
-    "updatedAt": "2026-09-08T17:19:07.753Z",
-    "customerCode": "CUST-2",
+    "contacts": [],
+    "shippingAddresses": [],
+    "createdAt": "2026-09-28T05:46:58.151Z",
+    "updatedAt": "2026-09-28T13:35:11.315Z",
+    "customerCode": "CUST-4",
     "__v": 0,
     "phone": "—"
+  },
+  {
+    "_id": "6aba04956adb8d19955c2a53",
+    "customerType": "company",
+    "businessType": "retailer",
+    "companyName": "Shenal",
+    "displayName": "Shenal",
+    "tags": [],
+    "paymentTerms": {
+      "type": "cod",
+      "creditDays": 0,
+      "creditLimit": 0
+    },
+    "defaultDiscountPercent": 0,
+    "creditStatus": {
+      "currentBalance": 0,
+      "overdueAmount": 0,
+      "availableCredit": 0,
+      "isOverdue": false,
+      "daysPastDue": 0,
+      "onCreditHold": false
+    },
+    "analytics": {
+      "totalOrders": 0,
+      "totalOrderValue": 0,
+      "totalPaidAmount": 0
+    },
+    "status": "active",
+    "createdBy": "6ab0b053a583eb406285ad22",
+    "deletedAt": null,
+    "contacts": [],
+    "shippingAddresses": [],
+    "createdAt": "2026-09-28T06:09:25.680Z",
+    "updatedAt": "2026-09-28T06:09:25.680Z",
+    "customerCode": "CUST-5",
+    "__v": 0,
+    "phone": "—"
+  },
+  {
+    "_id": "6aba6fce0f08c16ac139ee7e",
+    "customerType": "company",
+    "businessType": "retailer",
+    "companyName": "jAYALATH",
+    "displayName": "jAYALATH",
+    "tags": [],
+    "paymentTerms": {
+      "type": "cod",
+      "creditDays": 0,
+      "creditLimit": 0
+    },
+    "defaultDiscountPercent": 0,
+    "creditStatus": {
+      "currentBalance": 0,
+      "overdueAmount": 0,
+      "availableCredit": 0,
+      "isOverdue": false,
+      "daysPastDue": 0,
+      "onCreditHold": false
+    },
+    "analytics": {
+      "totalOrders": 0,
+      "totalOrderValue": 0,
+      "totalPaidAmount": 0
+    },
+    "status": "active",
+    "createdBy": "6ab0b053a583eb406285ad22",
+    "deletedAt": null,
+    "contacts": [],
+    "shippingAddresses": [],
+    "createdAt": "2026-09-28T13:46:54.754Z",
+    "updatedAt": "2026-09-28T14:18:44.202Z",
+    "customerCode": "CUST-7",
+    "__v": 0,
+    "phone": "—"
+  },
+  {
+    "_id": "6aba75840f08c16ac139f941",
+    "customerType": "company",
+    "businessType": "retailer",
+    "companyName": "DFG",
+    "displayName": "DFG",
+    "tags": [],
+    "paymentTerms": {
+      "type": "cod",
+      "creditDays": 0,
+      "creditLimit": 0
+    },
+    "defaultDiscountPercent": 0,
+    "creditStatus": {
+      "currentBalance": 0,
+      "overdueAmount": 0,
+      "availableCredit": 0,
+      "isOverdue": false,
+      "daysPastDue": 0,
+      "onCreditHold": false
+    },
+    "analytics": {
+      "totalOrders": 0,
+      "totalOrderValue": 0,
+      "totalPaidAmount": 0
+    },
+    "status": "active",
+    "createdBy": "6ab0b053a583eb406285ad22",
+    "deletedAt": null,
+    "contacts": [],
+    "shippingAddresses": [],
+    "createdAt": "2026-09-28T14:11:16.906Z",
+    "updatedAt": "2026-09-28T14:11:16.906Z",
+    "customerCode": "CUST-8",
+    "__v": 0,
+    "phone": "—"
+  },
+  {
+    "_id": "6aba77c00f08c16ac139fe6f",
+    "customerType": "company",
+    "businessType": "retailer",
+    "companyName": "chalana",
+    "displayName": "chalana",
+    "tags": [],
+    "paymentTerms": {
+      "type": "cod",
+      "creditDays": 0,
+      "creditLimit": 0
+    },
+    "defaultDiscountPercent": 0,
+    "creditStatus": {
+      "currentBalance": 0,
+      "overdueAmount": 0,
+      "availableCredit": 0,
+      "isOverdue": false,
+      "daysPastDue": 0,
+      "onCreditHold": false
+    },
+    "analytics": {
+      "totalOrders": 0,
+      "totalOrderValue": 0,
+      "totalPaidAmount": 0
+    },
+    "status": "active",
+    "createdBy": "6ab0b053a583eb406285ad22",
+    "deletedAt": null,
+    "contacts": [],
+    "shippingAddresses": [],
+    "createdAt": "2026-09-28T14:20:48.187Z",
+    "updatedAt": "2026-09-28T14:20:48.187Z",
+    "customerCode": "CUST-9",
+    "__v": 0,
+    "phone": "—"
+  },
+  {
+    "_id": "6aba789d0f08c16ac139ffd6",
+    "customerType": "company",
+    "businessType": "retailer",
+    "companyName": "fgh",
+    "displayName": "fgh",
+    "tags": [],
+    "paymentTerms": {
+      "type": "cod",
+      "creditDays": 0,
+      "creditLimit": 0
+    },
+    "defaultDiscountPercent": 0,
+    "creditStatus": {
+      "currentBalance": 0,
+      "overdueAmount": 0,
+      "availableCredit": 0,
+      "isOverdue": false,
+      "daysPastDue": 0,
+      "onCreditHold": false
+    },
+    "analytics": {
+      "totalOrders": 0,
+      "totalOrderValue": 0,
+      "totalPaidAmount": 0
+    },
+    "status": "active",
+    "createdBy": "6ab0b053a583eb406285ad22",
+    "deletedAt": null,
+    "contacts": [],
+    "shippingAddresses": [],
+    "createdAt": "2026-09-28T14:24:29.434Z",
+    "updatedAt": "2026-09-28T14:24:29.434Z",
+    "customerCode": "CUST-10",
+    "__v": 0,
+    "phone": "—"
+  },
+  {
+    "_id": "6aba79440f08c16ac13a0950",
+    "customerType": "company",
+    "businessType": "retailer",
+    "companyName": "GLX RAXWO",
+    "displayName": "GLX RAXWO",
+    "tags": [],
+    "paymentTerms": {
+      "type": "cod",
+      "creditDays": 0,
+      "creditLimit": 0
+    },
+    "defaultDiscountPercent": 0,
+    "creditStatus": {
+      "currentBalance": 8000,
+      "overdueAmount": 8000,
+      "availableCredit": 0,
+      "isOverdue": true,
+      "daysPastDue": 0,
+      "onCreditHold": false
+    },
+    "analytics": {
+      "totalOrders": 0,
+      "totalOrderValue": 0,
+      "totalPaidAmount": 0
+    },
+    "status": "active",
+    "createdBy": "6ab0b053a583eb406285ad22",
+    "deletedAt": null,
+    "contacts": [],
+    "shippingAddresses": [],
+    "createdAt": "2026-09-28T14:27:16.526Z",
+    "updatedAt": "2026-09-30T10:38:16.609Z",
+    "customerCode": "CUST-11",
+    "__v": 0,
+    "phone": "—"
+  },
+  {
+    "_id": "6abeac08853fc00367196318",
+    "customerType": "company",
+    "businessType": "retailer",
+    "companyName": "dilum vishvajith",
+    "displayName": "dilum vishvajith",
+    "tags": [],
+    "primaryContact": {
+      "email": "dilumvishvajith18@gmail.com",
+      "phone": "0772268608"
+    },
+    "paymentTerms": {
+      "type": "cod",
+      "creditDays": 0,
+      "creditLimit": 0
+    },
+    "defaultDiscountPercent": 0,
+    "creditStatus": {
+      "currentBalance": 19400,
+      "overdueAmount": 0,
+      "availableCredit": 0,
+      "isOverdue": false,
+      "daysPastDue": 0,
+      "onCreditHold": false
+    },
+    "analytics": {
+      "totalOrders": 0,
+      "totalOrderValue": 0,
+      "totalPaidAmount": 0
+    },
+    "status": "active",
+    "createdBy": "6ab0b053a583eb406285ad22",
+    "deletedAt": null,
+    "contacts": [],
+    "shippingAddresses": [],
+    "createdAt": "2026-10-01T18:52:56.030Z",
+    "updatedAt": "2026-10-02T16:11:03.370Z",
+    "customerCode": "CUST-12",
+    "__v": 0,
+    "phone": "0772268608"
   }
 ]

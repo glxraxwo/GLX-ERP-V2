@@ -25,14 +25,16 @@ const contactSchema = z.object({
 });
 
 export const customerFormSchema = z.object({
-    customerType: z.enum(['company', 'individual']),
-    businessType: z.enum(['wholesaler', 'retailer', 'distributor', 'reseller', 'end_user', 'other']),
+    customerType: z.enum(['company', 'individual']).optional().default('company'),
+    businessType: z.enum(['wholesaler', 'retailer', 'distributor', 'reseller', 'end_user', 'other']).optional().default('retailer'),
     companyName: z.string().max(200).optional().or(z.literal('')),
-    displayName: z.string().min(1, 'Display name is required').max(100),
+    displayName: z.string().min(1, 'Customer name is required').max(100),
     firstName: z.string().optional().or(z.literal('')),
     lastName: z.string().optional().or(z.literal('')),
     taxRegistrationNumber: z.string().optional().or(z.literal('')),
     businessRegistrationNumber: z.string().optional().or(z.literal('')),
+    idNumber: z.string().optional().or(z.literal('')),
+    whatsappNumber: z.string().optional().or(z.literal('')),
     industry: z.string().optional().or(z.literal('')),
 
     primaryContact: z.object({
@@ -50,11 +52,11 @@ export const customerFormSchema = z.object({
     introducer: z.string().optional().or(z.literal('')),
     introducerName: z.string().optional().or(z.literal('')),
 
-    paymentTermsType: z.enum(['advance', 'cod', 'credit']),
+    paymentTermsType: z.enum(['advance', 'cod', 'credit']).optional().default('cod'),
     creditDays: z.coerce.number().min(0).optional(),
     creditLimit: z.coerce.number().min(0).optional(),
     defaultDiscountPercent: z.coerce.number().min(0).max(100).optional(),
 
-    status: z.enum(['active', 'inactive', 'blacklisted', 'on_hold', 'prospect']),
+    status: z.enum(['active', 'inactive', 'blacklisted', 'on_hold', 'prospect']).optional().default('active'),
     notes: z.string().max(2000).optional().or(z.literal('')),
 });

@@ -326,6 +326,14 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
             table.print-table {
                 background-color: transparent !important;
                 background: transparent !important;
+                table-layout: fixed !important;
+                width: 100% !important;
+            }
+            .print-container table td,
+            .print-page table td,
+            table.print-table td {
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
             }
             .print-container table tbody tr,
             .print-page table tbody tr,
@@ -551,7 +559,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                         margin: '0 auto',
                         display: 'flex',
                         flexDirection: 'column',
-                        justifyContent: 'space-between'
+                        justifyContent: 'flex-start'
                     }}
                 >
                     <div>
@@ -696,19 +704,25 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                         </div>
 
                         {/* ── ITEMS TABLE ── */}
-                        <table className="no-zebra print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, marginBottom: 4, background: 'transparent' }}>
+                        <table className="no-zebra print-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 12.5, marginBottom: 4, background: 'transparent' }}>
+                            <colgroup>
+                                <col style={{ width: 'auto' }} />
+                                <col style={{ width: 95 }} />
+                                <col style={{ width: 55 }} />
+                                <col style={{ width: 105 }} />
+                            </colgroup>
                             <thead>
                                 <tr style={{ background: 'transparent' }}>
                                     <th style={{ padding: '6px 4px 6px 0', textAlign: 'left',   fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#000', background: 'transparent' }}>
                                         {t.description || 'DESCRIPTION'}
                                     </th>
-                                    <th style={{ padding: '6px 8px', textAlign: 'right',  fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 95, color: '#000', background: 'transparent' }}>
+                                    <th style={{ padding: '6px 8px', textAlign: 'right',  fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 95, color: '#000', background: 'transparent', whiteSpace: 'nowrap' }}>
                                         {t.rate || 'RATE'}
                                     </th>
-                                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 55, color: '#000', background: 'transparent' }}>
+                                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 55, color: '#000', background: 'transparent', whiteSpace: 'nowrap' }}>
                                         {t.qty || 'QTY'}
                                     </th>
-                                    <th style={{ padding: '6px 0 6px 8px', textAlign: 'right',  fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 105, color: '#000', background: 'transparent' }}>
+                                    <th style={{ padding: '6px 0 6px 8px', textAlign: 'right',  fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 105, color: '#000', background: 'transparent', whiteSpace: 'nowrap' }}>
                                         {t.amount || 'AMOUNT'}
                                     </th>
                                 </tr>
@@ -738,36 +752,37 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                     return (
                                         <React.Fragment key={idx}>
                                             <tr style={{ verticalAlign: 'top', background: 'transparent' }}>
-                                                <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent' }}>
-                                                    <div style={{ fontWeight: 500, color: '#000' }}>
+                                                <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                                    <div style={{ fontWeight: 500, color: '#000', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                                         <span>{title}</span>
                                                         {subtitle && (
                                                             <span style={{ 
                                                                 color: lang === 'si' ? '#475569' : '#047857', 
                                                                 fontWeight: 600, 
                                                                 fontSize: 12,
-                                                                marginLeft: 6
+                                                                marginLeft: 6,
+                                                                wordBreak: 'break-word'
                                                             }}>
                                                                 ({subtitle})
                                                             </span>
                                                         )}
                                                     </div>
                                                     {descExtra && (
-                                                        <div style={{ whiteSpace: 'pre-wrap', fontSize: 12, color: '#333', marginTop: 1 }}>
+                                                        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', fontSize: 12, color: '#333', marginTop: 1 }}>
                                                             {descExtra}
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent' }}>{fmt(rate)}</td>
-                                                <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent' }}>{qty}</td>
-                                                <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent' }}>{fmt(grossAmt)}</td>
+                                                <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>{fmt(rate)}</td>
+                                                <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>{qty}</td>
+                                                <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>{fmt(grossAmt)}</td>
                                             </tr>
                                             {(discAmt > 0 || effDiscRate > 0) && (
                                                 <tr style={{ color: '#dc2626', background: 'transparent' }}>
-                                                    <td style={{ paddingBottom: 6, paddingRight: 4, color: '#dc2626', fontSize: 12, fontWeight: 500, background: 'transparent' }}>Discount</td>
-                                                    <td style={{ textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 8px 6px', color: '#dc2626', fontSize: 12, background: 'transparent' }}>-{fmt(effDiscRate)}</td>
-                                                    <td style={{ textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 8px 6px', color: '#dc2626', fontSize: 12, background: 'transparent' }}>{qty}</td>
-                                                    <td style={{ textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 0 6px 8px', color: '#dc2626', fontSize: 12, background: 'transparent' }}>-{fmt(discAmt)}</td>
+                                                    <td style={{ paddingBottom: 6, paddingRight: 4, color: '#dc2626', fontSize: 12, fontWeight: 500, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>Discount</td>
+                                                    <td style={{ textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 8px 6px', color: '#dc2626', fontSize: 12, background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>-{fmt(effDiscRate)}</td>
+                                                    <td style={{ textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 8px 6px', color: '#dc2626', fontSize: 12, background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>{qty}</td>
+                                                    <td style={{ textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 0 6px 8px', color: '#dc2626', fontSize: 12, background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>-{fmt(discAmt)}</td>
                                                 </tr>
                                             )}
                                         </React.Fragment>
@@ -776,10 +791,10 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
 
                                 {laborCost > 0 && (
                                     <tr style={{ verticalAlign: 'top', background: 'transparent' }}>
-                                        <td style={{ padding: '6px 4px 2px 0', fontWeight: 500, color: '#000', background: 'transparent' }}>Labor Charge / Workmanship</td>
-                                        <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent' }}>{fmt(laborCost)}</td>
-                                        <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent' }}>1</td>
-                                        <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent' }}>{fmt(laborCost)}</td>
+                                        <td style={{ padding: '6px 4px 2px 0', fontWeight: 500, color: '#000', background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>Labor Charge / Workmanship</td>
+                                        <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>{fmt(laborCost)}</td>
+                                        <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>1</td>
+                                        <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>{fmt(laborCost)}</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -912,8 +927,8 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                         </div>
                     </div>
 
-                    {/* ── FOOTER: Signature (left) + QR Code (right) (100% matches media_1790881963777.png) ── */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, marginTop: 'auto', pageBreakInside: 'avoid' }}>
+                    {/* ── FOOTER: Signature (left) + QR Code (right) (Directly below Warranty / Details) ── */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, marginTop: 20, pageBreakInside: 'avoid' }}>
                         {/* Signature block */}
                         <div>
                             <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 2, color: '#000' }}>

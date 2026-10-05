@@ -473,7 +473,7 @@ export default function InvoiceDetailPage() {
                                                 <p className="font-medium text-sm text-gray-900">{item.productName}</p>
                                                 {item.productTranslation && <p className="text-xs text-blue-600 font-medium">{item.productTranslation}</p>}
                                                 {item.productCode && <p className="text-xs text-gray-500 font-mono">{item.productCode}</p>}
-                                                {item.description && <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{item.description}</p>}
+                                                {item.description && <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{item.description}</p>}
                                             </td>
                                             <td className="px-4 py-3 text-right text-sm">{item.quantity} {item.unitOfMeasure || ''}</td>
                                             <td className="px-4 py-3 text-right text-sm">{fmt(item.unitPrice)}</td>
