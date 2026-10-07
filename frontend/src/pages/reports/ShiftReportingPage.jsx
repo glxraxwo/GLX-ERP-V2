@@ -76,19 +76,19 @@ export default function ShiftReportingPage() {
                         <Factory size={14} /> Production Yield Aggregates
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div className="bg-white p-3 rounded-lg border border-purple-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-purple-100 dark:border-purple-900/50">
                             <span className="text-gray-500 text-xs block">Input Weight</span>
                             <span className="text-lg font-black text-purple-900">{prod.inputKg.toLocaleString()} kg</span>
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-purple-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-purple-100 dark:border-purple-900/50">
                             <span className="text-gray-500 text-xs block">Output Weight</span>
                             <span className="text-lg font-black text-purple-900">{prod.outputKg.toLocaleString()} kg</span>
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-purple-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-purple-100 dark:border-purple-900/50">
                             <span className="text-gray-500 text-xs block">Yield Efficiency</span>
                             <span className="text-lg font-black text-purple-900">{prod.efficiency}%</span>
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-purple-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-purple-100 dark:border-purple-900/50">
                             <span className="text-gray-500 text-xs block">Firewood Consumed</span>
                             <span className="text-lg font-black text-purple-900">{prod.woodKg.toLocaleString()} kg</span>
                         </div>
@@ -101,21 +101,21 @@ export default function ShiftReportingPage() {
                         <Users size={14} /> HR, Payroll & Wage Contributions
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-2">
-                        <div className="bg-white p-3 rounded-lg border border-pink-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-pink-100 dark:border-pink-900/50">
                             <span className="text-gray-500 text-xs block">Present Workers</span>
                             <span className="text-lg font-black text-pink-900">{hr.presentCount}</span>
                             <span className="text-[10px] text-gray-400 block mt-0.5">{hr.permanentCount} Perm / {hr.traineeCount} Trainee</span>
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-pink-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-pink-100 dark:border-pink-900/50">
                             <span className="text-gray-500 text-xs block">Overtime Work</span>
                             <span className="text-lg font-black text-pink-900">{hr.overtimeHours} hrs</span>
                             <span className="text-[10px] text-gray-400 block mt-0.5">Capped by monthly cutoffs</span>
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-pink-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-pink-100 dark:border-pink-900/50">
                             <span className="text-gray-500 text-xs block">EPF Contribution (8%)</span>
                             <span className="text-lg font-black text-pink-900">{fmtLKR(hr.epfContribution)}</span>
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-pink-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-pink-100 dark:border-pink-900/50">
                             <span className="text-gray-500 text-xs block">ETF Contribution (3%)</span>
                             <span className="text-lg font-black text-pink-900">{fmtLKR(hr.etfContribution)}</span>
                         </div>
@@ -132,26 +132,26 @@ export default function ShiftReportingPage() {
                         <Truck size={14} /> Logistics Tracker & Trips Log
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
-                        <div className="bg-white p-3 rounded-lg border border-sky-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-sky-100 dark:border-sky-900/50">
                             <span className="text-gray-500 text-xs block">Logged Trips</span>
                             <span className="text-lg font-black text-sky-900">{log.tripsCount} trips</span>
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-sky-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-sky-100 dark:border-sky-900/50">
                             <span className="text-gray-500 text-xs block">Total Distance</span>
                             <span className="text-lg font-black text-sky-900">{log.distanceKm} km</span>
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-sky-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-sky-100 dark:border-sky-900/50">
                             <span className="text-gray-500 text-xs block">Fuel Consumed</span>
                             <span className="text-lg font-black text-sky-900">{log.fuelConsumed} L</span>
                         </div>
-                        <div className="bg-white p-3 rounded-lg border border-sky-100">
+                        <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-sky-100 dark:border-sky-900/50">
                             <span className="text-gray-500 text-xs block">Fuel & Trip Cost</span>
                             <span className="text-lg font-black text-sky-900">{fmtLKR(log.cost)}</span>
                         </div>
                     </div>
 
                     {/* Transported Items list */}
-                    <div className="bg-white rounded-lg border border-sky-100 p-4">
+                    <div className="bg-white dark:bg-[#111F33] rounded-lg border border-sky-100 dark:border-sky-900/50 p-4">
                         <span className="text-gray-600 text-xs font-bold block mb-2">Transported Items List</span>
                         {log.items.length === 0 ? (
                             <p className="text-xs text-gray-400 italic">No cargo logged for this shift.</p>
@@ -236,7 +236,7 @@ export default function ShiftReportingPage() {
             </Card>
 
             {isLoading ? (
-                <div className="py-12 text-center text-gray-500 bg-white rounded-xl border">
+                <div className="py-12 text-center text-gray-500 dark:text-slate-400 bg-white dark:bg-[#111F33] rounded-xl border border-gray-200 dark:border-slate-800">
                     Loading shift-wise aggregates...
                 </div>
             ) : reportData ? (
@@ -280,7 +280,7 @@ export default function ShiftReportingPage() {
                     )}
                 </div>
             ) : (
-                <div className="py-12 text-center text-gray-500 bg-white rounded-xl border">
+                <div className="py-12 text-center text-gray-500 dark:text-slate-400 bg-white dark:bg-[#111F33] rounded-xl border border-gray-200 dark:border-slate-800">
                     No operations logs found in the selected range
                 </div>
             )}

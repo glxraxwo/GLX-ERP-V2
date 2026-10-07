@@ -319,10 +319,10 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                         <Package size={18} />
                     </div>
                     <div>
-                        <div className="text-base font-bold text-gray-900">
+                        <div className="text-base font-bold text-gray-900 dark:text-white">
                             {isEdit ? `Edit Product — ${product?.productCode || product?.name}` : 'Create New Product / Material'}
                         </div>
-                        <div className="text-xs text-gray-500 font-normal">
+                        <div className="text-xs text-gray-500 dark:text-slate-400 font-normal">
                             Configure item details, barcode, pricing, and minimum stock alert thresholds
                         </div>
                     </div>
@@ -331,13 +331,13 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
             size="2xl"
         >
             <form onSubmit={handleSubmit(onSubmit, onInvalid)}>
-                <div className="p-6 space-y-6 max-h-[82vh] overflow-y-auto bg-gray-50/50">
+                <div className="p-6 space-y-6 max-h-[82vh] overflow-y-auto bg-gray-50/50 dark:bg-slate-950/40">
                     
                     {/* SECTION 1: BASIC INFORMATION */}
-                    <div className="bg-white p-5 rounded-xl border border-gray-200/80 shadow-xs space-y-4">
-                        <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                            <Tag size={16} className="text-blue-600" />
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                    <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-gray-200/80 dark:border-slate-700 shadow-xs space-y-4">
+                        <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-slate-800">
+                            <Tag size={16} className="text-blue-600 dark:text-blue-400" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-slate-200">
                                 1. Basic Information (මූලික විස්තර)
                             </h3>
                         </div>
@@ -352,14 +352,14 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                             />
                             <div className="space-y-1">
                                 <div className="flex justify-between items-center">
-                                    <label className="block text-xs font-semibold text-gray-700">
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300">
                                         Sinhala Name (සිංහල නම)
                                     </label>
                                     <button
                                         type="button"
                                         onClick={handleAutoGenerateSinhala}
                                         disabled={isGeneratingSinhala}
-                                        className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-md flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                                        className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-md flex items-center gap-1.5 transition cursor-pointer shadow-xs"
                                         title="Auto-generate Sinhala name (උදා: Plywood -> ලෑලි)"
                                     >
                                         <Sparkles size={13} className={isGeneratingSinhala ? 'animate-spin' : 'text-emerald-600'} />
@@ -369,7 +369,7 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                                 <input
                                     type="text"
                                     placeholder="e.g. ලෑලි 12mm, ලොරි කෝනර් බ්‍රැකට්"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans shadow-xs transition"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans shadow-xs transition"
                                     {...register('sinhalaName')}
                                 />
                                 {errors.sinhalaName && (
@@ -438,10 +438,10 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                     </div>
 
                     {/* SECTION 2: CODES & BARCODE IDENTIFICATION */}
-                    <div className="bg-white p-5 rounded-xl border border-gray-200/80 shadow-xs space-y-4">
-                        <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                            <BarcodeIcon size={16} className="text-indigo-600" />
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                    <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-gray-200/80 dark:border-slate-700 shadow-xs space-y-4">
+                        <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-slate-800">
+                            <BarcodeIcon size={16} className="text-indigo-600 dark:text-indigo-400" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-slate-200">
                                 2. Codes & Identification (කේත සහ තීරු කේතය)
                             </h3>
                         </div>
@@ -472,14 +472,14 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
 
                         <div className="space-y-1">
                             <div className="flex justify-between items-center">
-                                <label className="text-xs font-semibold text-gray-700">Barcode Number (තීරු කේතය)</label>
+                                <label className="text-xs font-semibold text-gray-700 dark:text-slate-300">Barcode Number (තීරු කේතය)</label>
                                 <button
                                     type="button"
                                     onClick={() => {
                                         const generatedBarcode = 'BC' + Math.floor(100000000000 + Math.random() * 900000000000);
                                         setValue('barcode', generatedBarcode, { shouldValidate: true, shouldDirty: true });
                                     }}
-                                    className="text-[11px] font-bold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 shadow-xs"
+                                    className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 hover:text-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 shadow-xs"
                                 >
                                     ⚡ Auto-Generate Barcode
                                 </button>
@@ -487,7 +487,7 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                             <input
                                 type="text"
                                 placeholder="Scan or enter barcode number"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-xs transition"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 shadow-xs transition"
                                 {...register('barcode')}
                             />
                             {errors.barcode?.message && <p className="text-xs text-red-500">{errors.barcode.message}</p>}
@@ -495,15 +495,15 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                     </div>
 
                     {/* SECTION 3: PRICING & STOCK CONTROL (WITH MINIMUM QUANTITY ALERT) */}
-                    <div className="bg-white p-5 rounded-xl border border-gray-200/80 shadow-xs space-y-4">
-                        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                    <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-gray-200/80 dark:border-slate-700 shadow-xs space-y-4">
+                        <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-800">
                             <div className="flex items-center gap-2">
-                                <DollarSign size={16} className="text-emerald-600" />
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                                <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" />
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-slate-200">
                                     3. Pricing & Stock Thresholds (මිල සහ තොග සීමා)
                                 </h3>
                             </div>
-                            <span className="text-[11px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center gap-1">
+                            <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800 flex items-center gap-1">
                                 <AlertTriangle size={12} /> Low Stock Alert Active
                             </span>
                         </div>
@@ -553,8 +553,8 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                             {/* Minimum Quantity / Reorder Level */}
                             <div className="space-y-1">
                                 <div className="flex items-center justify-between">
-                                    <label className="block text-xs font-bold text-amber-900 flex items-center gap-1">
-                                        <AlertTriangle size={13} className="text-amber-600" />
+                                    <label className="block text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1">
+                                        <AlertTriangle size={13} className="text-amber-600 dark:text-amber-400" />
                                         <span>Min Qty / Alert Level (අවම තොගය) *</span>
                                     </label>
                                 </div>
@@ -563,10 +563,10 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                                     min="0"
                                     step="1"
                                     placeholder="e.g. 10"
-                                    className="w-full px-3 py-2 border-2 border-amber-300/80 rounded-lg text-sm bg-amber-50/40 font-semibold text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 transition shadow-xs"
+                                    className="w-full px-3 py-2 border-2 border-amber-300/80 dark:border-amber-700/80 rounded-lg text-sm bg-amber-50/40 dark:bg-amber-950/20 font-semibold text-gray-900 dark:text-amber-100 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200 dark:focus:ring-amber-800 transition shadow-xs"
                                     {...register('reorderLevel')}
                                 />
-                                <p className="text-[11px] text-amber-700 flex items-center gap-1">
+                                <p className="text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1">
                                     <Info size={11} /> මෙම ප්‍රමාණයට වඩා තොගය අඩු වුවහොත් Low Stock පිටුවේ පෙන්වයි.
                                 </p>
                                 {errors.reorderLevel?.message && (
@@ -576,8 +576,8 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
 
                             {/* Critical Safety Stock Level */}
                             <div className="space-y-1">
-                                <label className="block text-xs font-semibold text-red-900 flex items-center gap-1">
-                                    <ShieldAlert size={13} className="text-red-500" />
+                                <label className="block text-xs font-semibold text-red-900 dark:text-red-300 flex items-center gap-1">
+                                    <ShieldAlert size={13} className="text-red-500 dark:text-red-400" />
                                     <span>Critical Min Stock (ආරක්ෂිත අවමය)</span>
                                 </label>
                                 <input
@@ -585,10 +585,10 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                                     min="0"
                                     step="1"
                                     placeholder="e.g. 5"
-                                    className="w-full px-3 py-2 border border-red-200 rounded-lg text-sm bg-red-50/30 text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-200 transition shadow-xs"
+                                    className="w-full px-3 py-2 border border-red-200 dark:border-red-900/60 rounded-lg text-sm bg-red-50/30 dark:bg-red-950/20 text-gray-900 dark:text-red-100 focus:outline-none focus:ring-2 focus:ring-red-200 dark:focus:ring-red-800 transition shadow-xs"
                                     {...register('minimumLevel')}
                                 />
-                                <p className="text-[11px] text-gray-500">Critical Red alert threshold</p>
+                                <p className="text-[11px] text-gray-500 dark:text-slate-400">Critical Red alert threshold</p>
                                 {errors.minimumLevel?.message && (
                                     <p className="text-xs text-red-500">{errors.minimumLevel.message}</p>
                                 )}
@@ -597,35 +597,35 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                     </div>
 
                     {/* SECTION 4: OPERATIONAL CONFIGURATION & DESCRIPTION */}
-                    <div className="bg-white p-5 rounded-xl border border-gray-200/80 shadow-xs space-y-4">
-                        <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                            <Layers size={16} className="text-purple-600" />
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                    <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-gray-200/80 dark:border-slate-700 shadow-xs space-y-4">
+                        <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-slate-800">
+                            <Layers size={16} className="text-purple-600 dark:text-purple-400" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-slate-200">
                                 4. Configuration & Description (සැකසුම් සහ විස්තර)
                             </h3>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                            <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-700 cursor-pointer select-none">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 bg-gray-50 dark:bg-slate-900/50 rounded-lg border border-gray-100 dark:border-slate-800">
+                            <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-700 dark:text-slate-300 cursor-pointer select-none">
                                 <input 
                                     type="checkbox" 
-                                    className="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer" 
+                                    className="w-4 h-4 rounded text-blue-600 border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-blue-500 cursor-pointer" 
                                     {...register('canBeSold')} 
                                 />
                                 <span>Can be sold (විකිණිය හැක)</span>
                             </label>
-                            <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-700 cursor-pointer select-none">
+                            <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-700 dark:text-slate-300 cursor-pointer select-none">
                                 <input 
                                     type="checkbox" 
-                                    className="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer" 
+                                    className="w-4 h-4 rounded text-blue-600 border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-blue-500 cursor-pointer" 
                                     {...register('canBePurchased')} 
                                 />
                                 <span>Can be purchased (මිලදී ගත හැක)</span>
                             </label>
-                            <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-700 cursor-pointer select-none">
+                            <label className="flex items-center gap-2.5 text-xs font-semibold text-gray-700 dark:text-slate-300 cursor-pointer select-none">
                                 <input 
                                     type="checkbox" 
-                                    className="w-4 h-4 rounded text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer" 
+                                    className="w-4 h-4 rounded text-blue-600 border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-blue-500 cursor-pointer" 
                                     {...register('canBeManufactured')} 
                                 />
                                 <span>Can be manufactured (නිෂ්පාදනය කළ හැක)</span>
@@ -647,9 +647,9 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-                    <div className="text-xs text-gray-500 flex items-center gap-1.5">
-                        <CheckCircle2 size={14} className="text-emerald-600" />
+                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#111F33] rounded-b-xl">
+                    <div className="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
                         <span>Changes will update real-time stock levels and alert trackers</span>
                     </div>
                     <div className="flex items-center gap-2.5">

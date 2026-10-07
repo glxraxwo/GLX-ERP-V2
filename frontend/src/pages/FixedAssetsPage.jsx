@@ -116,7 +116,7 @@ export default function FixedAssetsPage() {
                     <p className="text-sm text-gray-500">Track capital asset purchases, installments, and outstanding balances</p>
                 </div>
                 <div className="flex flex-wrap gap-2 sm:gap-3">
-                    <button onClick={fetchAssets} className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+                    <button onClick={fetchAssets} className="p-2 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition">
                         <RefreshCw size={16} className="text-gray-500" />
                     </button>
                     {canManage && (
@@ -149,8 +149,8 @@ export default function FixedAssetsPage() {
             </div>
 
             {/* Asset Table */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+            <div className="bg-white dark:bg-[#111F33] rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-[#132238]/60">
                     <h4 className="font-bold text-gray-800 text-sm">Asset Register & Balances</h4>
                 </div>
                 <div className="overflow-x-auto">
@@ -179,7 +179,7 @@ export default function FixedAssetsPage() {
                                 </tr>
                             ) : (
                                 assets.map((asset) => (
-                                    <tr key={asset._id} className="hover:bg-gray-50/50 transition">
+                                    <tr key={asset._id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition border-b border-gray-100 dark:border-slate-800/60">
                                         <td className="p-4">{format(new Date(asset.purchaseDate), 'yyyy-MM-dd')}</td>
                                         <td className="p-4 font-bold text-gray-900">{asset.name}</td>
                                         <td className="p-4">{asset.category}</td>
@@ -228,7 +228,7 @@ export default function FixedAssetsPage() {
             {/* Asset Modal */}
             {isAssetModalOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+                    <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b">
                             <h3 className="text-lg font-bold text-gray-900">📋 Register Fixed Asset</h3>
                             <button onClick={() => setIsAssetModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -264,7 +264,7 @@ export default function FixedAssetsPage() {
                             </div>
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setIsAssetModalOpen(false)}
-                                    className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50">Cancel</button>
+                                    className="px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200">Cancel</button>
                                 <button type="submit" disabled={saving}
                                     className="px-6 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 disabled:opacity-50">
                                     {saving ? 'Registering...' : 'Register Asset'}
@@ -278,7 +278,7 @@ export default function FixedAssetsPage() {
             {/* Payment Modal / Detail Modal */}
             {isPaymentModalOpen && selectedAsset && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+                    <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
                         <div className="flex items-center justify-between p-6 border-b flex-shrink-0">
                             <div>
                                 <h3 className="text-lg font-bold text-gray-900">{selectedAsset.name}</h3>
@@ -304,7 +304,7 @@ export default function FixedAssetsPage() {
 
                             {/* Payment Form */}
                             {canManage && selectedAsset.balanceDue > 0 && (
-                                <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+                                <div className="border border-gray-200 dark:border-slate-700 rounded-xl p-4 bg-gray-50/50 dark:bg-slate-900/60">
                                     <h4 className="text-xs font-bold text-gray-700 uppercase mb-3 flex items-center gap-1">
                                         <PlusCircle size={14} className="text-primary-600" /> Record Installment Payment
                                     </h4>
@@ -313,24 +313,24 @@ export default function FixedAssetsPage() {
                                             <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Payment Amount (LKR) *</label>
                                             <input type="number" value={newPayment.amount} onChange={e => setNewPayment(p => ({ ...p, amount: e.target.value }))}
                                                 required min="1" max={selectedAsset.balanceDue} placeholder="e.g. 50000"
-                                                className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none" />
+                                                className="w-full px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none" />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Payment Date *</label>
                                             <input type="date" value={newPayment.date} onChange={e => setNewPayment(p => ({ ...p, date: e.target.value }))}
-                                                required className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none" />
+                                                required className="w-full px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none" />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Reference No.</label>
                                             <input value={newPayment.reference} onChange={e => setNewPayment(p => ({ ...p, reference: e.target.value }))}
                                                 placeholder="e.g. CHQ 11252"
-                                                className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none" />
+                                                className="w-full px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none" />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Notes / Description</label>
                                             <input value={newPayment.notes} onChange={e => setNewPayment(p => ({ ...p, notes: e.target.value }))}
                                                 placeholder="e.g. First installment check"
-                                                className="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none" />
+                                                className="w-full px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none" />
                                         </div>
                                         <div className="col-span-1 sm:col-span-2 flex justify-end pt-2">
                                             <button type="submit" disabled={saving}
@@ -345,7 +345,7 @@ export default function FixedAssetsPage() {
                             {/* Payment Ledger */}
                             <div className="space-y-3">
                                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Installment History</h4>
-                                <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden bg-white">
+                                <div className="divide-y divide-gray-100 dark:divide-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-[#111F33]">
                                     {selectedAsset.payments?.length === 0 ? (
                                         <p className="p-6 text-center text-sm text-gray-400 italic bg-gray-50/25">No payments recorded yet</p>
                                     ) : (
@@ -372,7 +372,7 @@ export default function FixedAssetsPage() {
                             </div>
                         </div>
                         
-                        <div className="p-4 border-t bg-gray-50 flex justify-end flex-shrink-0">
+                        <div className="p-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#0E1A2B] flex justify-end flex-shrink-0">
                             <button onClick={() => { setIsPaymentModalOpen(false); setSelectedAsset(null); }}
                                 className="px-5 py-2 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-100">
                                 Close Window

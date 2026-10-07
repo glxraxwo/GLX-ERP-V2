@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -179,6 +179,19 @@ export default function InvoiceFormPage() {
     const [tempCustSalesRep, setTempCustSalesRep] = useState('');
     const [modalItem, setModalItem] = useState(defaultItemState);
 
+    // Keyboard navigation refs for Add Item modal (C# fast desktop style)
+    const catalogSelectTriggerRef = useRef(null);
+    const productNameInputRef = useRef(null);
+    const productTranslationInputRef = useRef(null);
+    const descriptionInputRef = useRef(null);
+    const quantityInputRef = useRef(null);
+    const unitPriceInputRef = useRef(null);
+    const discountInputRef = useRef(null);
+    const taxableInputRef = useRef(null);
+    const taxRateInputRef = useRef(null);
+    const addAnotherBtnRef = useRef(null);
+    const addItemBtnRef = useRef(null);
+
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [dueDate, setDueDate] = useState('');
     const [invoiceType, setInvoiceType] = useState('standard');
@@ -224,6 +237,44 @@ export default function InvoiceFormPage() {
     const [showAdvance, setShowAdvance] = useState(false);
     const [advancePercentage, setAdvancePercentage] = useState(0);
     const [advanceAmount, setAdvanceAmount] = useState(0);
+
+    // Global keyboard shortcut: F2 or Insert to open Add Item modal
+    useEffect(() => {
+        const handleGlobalKeyDown = (e) => {
+            if ((e.key === 'F2' || (e.key === 'Insert' && !e.shiftKey)) && !isAddItemModalOpen && !isAddCustomerModalOpen && !isVehicleModalOpen) {
+                e.preventDefault();
+                setEditingIndex(null);
+                setModalItem(defaultItemState);
+                setIsAddItemModalOpen(true);
+            }
+        };
+        window.addEventListener('keydown', handleGlobalKeyDown);
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    }, [isAddItemModalOpen, isAddCustomerModalOpen, isVehicleModalOpen]);
+
+    // Auto-focus first input when Add Item modal opens
+    useEffect(() => {
+        if (isAddItemModalOpen) {
+            const timer = setTimeout(() => {
+                if (editingIndex !== null) {
+                    productNameInputRef.current?.focus();
+                    productNameInputRef.current?.select();
+                } else {
+                    catalogSelectTriggerRef.current?.focus();
+                }
+            }, 80);
+            return () => clearTimeout(timer);
+        }
+    }, [isAddItemModalOpen, editingIndex]);
+
+    // Helper to safely focus and select input element
+    const focusAndSelect = (element) => {
+        if (!element) return;
+        element.focus();
+        if (element.select && typeof element.select === 'function') {
+            element.select();
+        }
+    };
 
     const handleImageUpload = (field, file) => {
         if (!file) return;
@@ -549,12 +600,15 @@ export default function InvoiceFormPage() {
     const handleAddItemFromModal = (addAnother = false) => {
         if (!modalItem.productName || !modalItem.productName.trim()) {
             toast.error('Item Name is required');
-            return;
+            productNameInputRef.current?.focus();
+            return false;
         }
         const q = +modalItem.quantity;
         if (!q || q <= 0) {
             toast.error('Quantity must be greater than 0');
-            return;
+            quantityInputRef.current?.focus();
+            quantityInputRef.current?.select();
+            return false;
         }
 
         if (editingIndex !== null) {
@@ -567,13 +621,19 @@ export default function InvoiceFormPage() {
             setEditingIndex(null);
             setModalItem(defaultItemState);
             setIsAddItemModalOpen(false);
+            return true;
         } else {
             setItems((prev) => [...prev, { ...modalItem }]);
             toast.success(`Item #${items.length + 1} "${modalItem.productName}" added to ${docTypeLower}!`);
             setModalItem(defaultItemState);
             if (!addAnother) {
                 setIsAddItemModalOpen(false);
+            } else {
+                setTimeout(() => {
+                    catalogSelectTriggerRef.current?.focus();
+                }, 60);
             }
+            return true;
         }
     };
 
@@ -816,21 +876,21 @@ export default function InvoiceFormPage() {
 
     const renderItemsCard = () => (
         <Card className="p-6">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-slate-700/60">
                 <div>
-                    <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-2">
                         <span>{docType === 'invoice' ? 'Invoice Items' : `${docTypeLabel} Items`}</span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
                             docType === 'estimate'
-                                ? 'bg-amber-100 text-amber-800'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/70 dark:text-amber-200 dark:border-amber-700/70'
                                 : docType === 'quotation'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-primary-100 text-primary-800'
+                                ? 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/70 dark:text-blue-200 dark:border-blue-700/70'
+                                : 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/70 dark:text-blue-200 dark:border-blue-700/70'
                         }`}>
                             {items.length} {items.length === 1 ? 'item' : 'items'}
                         </span>
                     </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                         {docType === 'invoice'
                             ? 'Items added to this invoice. Click "+ Add Item" to add items one by one.'
                             : `Parts, materials & charge items added to this ${docTypeLower}. Click "+ Add Item" to add.`}
@@ -846,21 +906,17 @@ export default function InvoiceFormPage() {
                         setIsAddItemModalOpen(true);
                     }}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs"
+                    title="Press F2 anywhere to quickly add item"
                 >
                     <Plus size={14} className="mr-1" />
-                    Add Item
+                    <span>Add Item</span>
+                    <kbd className="ml-1.5 px-1.5 py-0.5 bg-emerald-800/40 rounded text-[10px] font-mono border border-emerald-400/40 font-bold">
+                        F2
+                    </kbd>
                 </Button>
             </div>
 
-            {items.length === 0 ? (
-                <div className="text-center py-10 px-4 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
-                    <PackagePlus size={36} className="mx-auto text-emerald-500/60 mb-2" />
-                    <p className="text-sm font-bold text-gray-700">No items added to {docTypeLower}</p>
-                    <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                        Use the <strong className="text-emerald-700 font-semibold">"+ Add Item"</strong> button above to add catalog products or custom repair work items with descriptions.
-                    </p>
-                </div>
-            ) : (
+            {items.length === 0 ? null : (
                 <div className="space-y-3">
                     {items.map((item, idx) => {
                         const q = +item.quantity || 0;
@@ -878,57 +934,57 @@ export default function InvoiceFormPage() {
                                 key={idx}
                                 className={`border rounded-xl p-4 transition ${
                                     isBeingEdited
-                                        ? 'border-emerald-500 bg-emerald-50/30 ring-1 ring-emerald-500'
-                                        : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-xs'
+                                        ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/30 ring-1 ring-emerald-500'
+                                        : 'border-gray-200 dark:border-slate-700/80 bg-white dark:bg-[#16253b] hover:border-gray-300 dark:hover:border-slate-600 hover:shadow-xs'
                                 }`}
                             >
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex items-start gap-3 flex-1 min-w-0">
-                                        <span className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                                        <span className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5 border ${
                                             isBeingEdited
-                                                ? 'bg-emerald-600 text-white'
-                                                : 'bg-primary-100 text-primary-800'
+                                                ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                                                : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/80 dark:text-blue-200 dark:border-blue-700/70'
                                         }`}>
                                             {idx + 1}
                                         </span>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                                                <span className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide">
                                                     Item #{idx + 1}
                                                 </span>
-                                                <h4 className="text-sm font-bold text-gray-900 truncate">
+                                                <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate">
                                                     {item.productName}
                                                 </h4>
                                                 {item.productTranslation && (
-                                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded font-sans">
+                                                    <span className="text-xs text-gray-500 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded font-sans">
                                                         {item.productTranslation}
                                                     </span>
                                                 )}
                                                 {item.productCode && (
-                                                    <span className="text-[11px] font-mono text-gray-400">
+                                                    <span className="text-[11px] font-mono text-gray-400 dark:text-slate-500">
                                                         ({item.productCode})
                                                     </span>
                                                 )}
                                             </div>
 
                                             {item.description && (
-                                                <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap break-words bg-gray-50 p-2 rounded border border-gray-100 max-h-[22.5em] overflow-y-auto">
+                                                <p className="text-xs text-gray-600 dark:text-slate-300 mt-1 whitespace-pre-wrap break-words bg-gray-50 dark:bg-slate-900/60 p-2 rounded border border-gray-100 dark:border-slate-800 max-h-[22.5em] overflow-y-auto">
                                                     {item.description}
                                                 </p>
                                             )}
 
-                                            <div className="flex items-center gap-3 sm:gap-4 mt-2 text-xs text-gray-500 flex-wrap">
+                                            <div className="flex items-center gap-3 sm:gap-4 mt-2 text-xs text-gray-500 dark:text-slate-400 flex-wrap">
                                                 <span>
-                                                    Qty: <strong className="text-gray-800 font-mono">{item.quantity}</strong> {item.unitOfMeasure || 'pcs'}
+                                                    Qty: <strong className="text-gray-800 dark:text-slate-200 font-mono">{item.quantity}</strong> {item.unitOfMeasure || 'pcs'}
                                                 </span>
                                                 <span>•</span>
                                                 <span>
-                                                    Unit Price: <strong className="text-gray-800 font-mono">{fmt(item.unitPrice)}</strong>
+                                                    Unit Price: <strong className="text-gray-800 dark:text-slate-200 font-mono">{fmt(item.unitPrice)}</strong>
                                                 </span>
                                                 {d > 0 && (
                                                     <>
                                                         <span>•</span>
-                                                        <span className="text-red-600 font-mono">
+                                                        <span className="text-red-600 dark:text-red-400 font-mono">
                                                             Disc: -{fmt(lDisc)}
                                                         </span>
                                                     </>
@@ -945,8 +1001,8 @@ export default function InvoiceFormPage() {
 
                                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                                         <div className="text-right">
-                                            <span className="text-xs text-gray-400 block">Total</span>
-                                            <span className="text-base font-bold text-gray-900 font-mono">
+                                            <span className="text-xs text-gray-400 dark:text-slate-500 block">Total</span>
+                                            <span className="text-base font-bold text-gray-900 dark:text-white font-mono">
                                                 {fmt(lTot)}
                                             </span>
                                         </div>
@@ -957,7 +1013,7 @@ export default function InvoiceFormPage() {
                                                 className={`p-1.5 rounded text-xs flex items-center gap-1 font-medium transition ${
                                                     isBeingEdited
                                                         ? 'bg-emerald-100 text-emerald-700'
-                                                        : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                                                        : 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50'
                                                 }`}
                                                 title="Edit item"
                                             >
@@ -967,7 +1023,7 @@ export default function InvoiceFormPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveItem(idx)}
-                                                className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded text-xs flex items-center gap-1 font-medium transition"
+                                                className="p-1.5 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/50 rounded text-xs flex items-center gap-1 font-medium transition"
                                                 title="Remove item"
                                             >
                                                 <Trash2 size={14} />
@@ -1006,17 +1062,17 @@ export default function InvoiceFormPage() {
             />
 
             {/* Document Type Switcher Banner & Inline Date/Type Controls */}
-            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200/90 shadow-xs mb-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
+            <div className="bg-white dark:bg-[#111F33] p-3.5 sm:p-4 rounded-2xl border border-gray-200/90 dark:border-slate-700/80 shadow-xs mb-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider hidden sm:inline">Type:</span>
-                    <div className="inline-flex p-1 bg-gray-100 rounded-xl border border-gray-200/80 w-full sm:w-auto">
+                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider hidden sm:inline">Type:</span>
+                    <div className="inline-flex p-1 bg-gray-100 dark:bg-slate-800/80 rounded-xl border border-gray-200/80 dark:border-slate-700 w-full sm:w-auto">
                         <button
                             type="button"
                             onClick={() => { setDocType('invoice'); setSearchParams({ type: 'invoice' }); }}
                             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
                                 docType === 'invoice'
-                                    ? 'bg-white text-primary-700 shadow-sm border border-gray-200/60'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-blue-600 text-white shadow-sm dark:bg-blue-600 dark:text-white'
+                                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50'
                             }`}
                         >
                             <Receipt size={14} />
@@ -1027,8 +1083,8 @@ export default function InvoiceFormPage() {
                             onClick={() => { setDocType('quotation'); setSearchParams({ type: 'quotation' }); }}
                             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
                                 docType === 'quotation'
-                                    ? 'bg-white text-blue-700 shadow-sm border border-gray-200/60'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-blue-600 text-white shadow-sm dark:bg-blue-600 dark:text-white'
+                                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50'
                             }`}
                         >
                             <FileText size={14} />
@@ -1039,8 +1095,8 @@ export default function InvoiceFormPage() {
                             onClick={() => { setDocType('estimate'); setSearchParams({ type: 'estimate' }); }}
                             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
                                 docType === 'estimate'
-                                    ? 'bg-white text-amber-700 shadow-sm border border-gray-200/60'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-amber-600 text-white shadow-sm dark:bg-amber-600 dark:text-white'
+                                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50'
                             }`}
                         >
                             <ClipboardList size={14} />
@@ -1049,20 +1105,20 @@ export default function InvoiceFormPage() {
                     </div>
 
                     {/* Auto-Generated or Existing Document ID Display */}
-                    <div className="flex flex-wrap items-center gap-2 bg-blue-50/80 border border-blue-200/90 px-3.5 py-1.5 rounded-xl shadow-2xs">
+                    <div className="flex flex-wrap items-center gap-2 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/90 dark:border-blue-800/60 px-3.5 py-1.5 rounded-xl shadow-2xs">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider leading-none">
+                            <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider leading-none">
                                 {existingInvoice ? (existingInvoice.invoiceType === 'proforma' ? 'Editing Proforma' : 'Editing Invoice') : docType === 'invoice' ? (invoiceType === 'proforma' ? 'Proforma ID' : 'Invoice ID') : docType === 'estimate' ? 'Estimate ID' : 'Quotation ID'}
                             </span>
-                            <span className="font-mono font-bold text-xs text-blue-950 mt-0.5">
+                            <span className="font-mono font-bold text-xs text-blue-950 dark:text-blue-100 mt-0.5">
                                 {existingInvoice ? existingInvoice.invoiceNumber : (docType !== 'invoice' && quoteNumber.trim() ? quoteNumber : (autoGeneratedDocId || 'Generating...'))}
                             </span>
                         </div>
                         {existingInvoice && (() => {
                             const h = getDocumentEditHistory(existingInvoice);
                             return h.length > 0 ? (
-                                <div className="flex flex-wrap items-center gap-1 border-l border-blue-200 pl-2">
-                                    <span className="text-[10px] font-black text-red-600 bg-red-100/90 border border-red-300 px-1.5 py-0.5 rounded font-mono">
+                                <div className="flex flex-wrap items-center gap-1 border-l border-blue-200 dark:border-blue-800 pl-2">
+                                    <span className="text-[10px] font-black text-red-600 dark:text-red-400 bg-red-100/90 dark:bg-red-950/60 border border-red-300 dark:border-red-800 px-1.5 py-0.5 rounded font-mono">
                                         {formatEditItem(h[h.length - 1], h.length)}
                                     </span>
                                 </div>
@@ -1080,7 +1136,7 @@ export default function InvoiceFormPage() {
                         className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs select-none active:scale-95 ${
                             vehicleNo || vehicleModel || insuranceCompany || jobCaption || numberPlateImage || lorryBodyImage || (photos && photos.length > 0)
                                 ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20 border border-blue-700'
-                                : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-2 border-blue-400 hover:border-blue-500 shadow-2xs'
+                                : 'bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-2 border-blue-400 dark:border-blue-700 shadow-2xs'
                         }`}
                         title="Add or Edit Vehicle & Photo Details"
                     >
@@ -1105,41 +1161,39 @@ export default function InvoiceFormPage() {
                         )}
                     </button>
 
-                    <div className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100/80 transition-colors px-3 py-1.5 rounded-xl border border-gray-200/80">
-                        <label className="text-xs font-bold text-gray-500 whitespace-nowrap">
+                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/80 hover:bg-gray-100/80 dark:hover:bg-slate-700/80 transition-colors px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-slate-700">
+                        <label className="text-xs font-bold text-gray-500 dark:text-slate-400 whitespace-nowrap">
                             {docType === 'invoice' ? 'Invoice Date:' : docType === 'quotation' ? 'Quote Date:' : 'Estimate Date:'}
                         </label>
                         <input
                             type="date"
                             value={invoiceDate}
                             onChange={(e) => setInvoiceDate(e.target.value)}
-                            className="bg-transparent border-0 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-0 p-0 cursor-pointer"
+                            className="bg-transparent border-0 text-xs font-semibold text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-0 p-0 cursor-pointer"
                         />
                     </div>
 
                     {docType !== 'invoice' && (
-                        <div className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100/80 transition-colors px-3 py-1.5 rounded-xl border border-gray-200/80">
-                            <label className="text-xs font-bold text-gray-500 whitespace-nowrap">
+                        <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/80 hover:bg-gray-100/80 dark:hover:bg-slate-700/80 transition-colors px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-slate-700">
+                            <label className="text-xs font-bold text-gray-500 dark:text-slate-400 whitespace-nowrap">
                                 Valid Until:
                             </label>
                             <input
                                 type="date"
                                 value={dueDate}
                                 onChange={(e) => setDueDate(e.target.value)}
-                                className="bg-transparent border-0 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-0 p-0 cursor-pointer"
+                                className="bg-transparent border-0 text-xs font-semibold text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-0 p-0 cursor-pointer"
                             />
                         </div>
                     )}
 
-
-
                     {docType === 'invoice' && (
-                        <div className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100/80 transition-colors px-3 py-1.5 rounded-xl border border-gray-200/80">
-                            <label className="text-xs font-bold text-gray-500 whitespace-nowrap">Type:</label>
+                        <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/80 hover:bg-gray-100/80 dark:hover:bg-slate-700/80 transition-colors px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-slate-700">
+                            <label className="text-xs font-bold text-gray-500 dark:text-slate-400 whitespace-nowrap">Type:</label>
                             <select
                                 value={invoiceType}
                                 onChange={(e) => setInvoiceType(e.target.value)}
-                                className="bg-transparent border-0 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-0 p-0 cursor-pointer pr-2"
+                                className="bg-transparent border-0 text-xs font-semibold text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-0 p-0 cursor-pointer pr-2 [&>option]:bg-white [&>option]:dark:bg-slate-900 [&>option]:text-gray-900 [&>option]:dark:text-white"
                             >
                                 <option value="standard">Standard</option>
                                 <option value="proforma">Proforma</option>
@@ -1161,7 +1215,7 @@ export default function InvoiceFormPage() {
 
                             {/* Invoice Notes & Terms Card */}
                             <Card className="p-6">
-                                <h3 className="text-sm font-semibold text-gray-700 mb-4">Notes & Terms</h3>
+                                <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">Notes & Terms</h3>
                                 <div className="space-y-4">
                                     <Textarea
                                         label="Invoice Notes"
@@ -1186,17 +1240,17 @@ export default function InvoiceFormPage() {
                             {renderItemsCard()}
 
                             {/* DOCUMENT TERMS & CONDITIONS Card (Always Visible) */}
-                            <div className="bg-slate-50 rounded-2xl border border-gray-200/90 shadow-xs transition-all overflow-hidden">
-                                <div className="p-4 sm:p-5 pb-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-200/60">
+                            <div className="bg-slate-50 dark:bg-[#111F33] rounded-2xl border border-gray-200/90 dark:border-slate-700/80 shadow-xs transition-all overflow-hidden">
+                                <div className="p-4 sm:p-5 pb-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-200/60 dark:border-slate-700/60">
                                     <div className="flex items-center gap-2.5">
-                                        <div className="w-7 h-7 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0">
+                                        <div className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center flex-shrink-0">
                                             <FileText size={15} />
                                         </div>
                                         <div>
-                                            <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                                            <span className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wide">
                                                 Document Terms &amp; Conditions
                                             </span>
-                                            <p className="text-[11px] text-gray-500 mt-0.5">
+                                            <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
                                                 Customize remarks, payment condition, validity &amp; warranty
                                             </p>
                                         </div>
@@ -1205,7 +1259,7 @@ export default function InvoiceFormPage() {
                                     {/* Appears ONLY when Terms & Conditions are modified */}
                                     {isTermsModified && (
                                         <div className="flex items-center gap-2 animate-in fade-in">
-                                            <span className="text-[11px] font-semibold text-amber-700 bg-amber-100/90 px-2 py-0.5 rounded-md flex items-center gap-1 border border-amber-200">
+                                            <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100/90 dark:bg-amber-950/60 px-2 py-0.5 rounded-md flex items-center gap-1 border border-amber-200 dark:border-amber-800">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
                                                 Modified
                                             </span>
@@ -1219,7 +1273,7 @@ export default function InvoiceFormPage() {
                                                     setWarrantyCondition(initialTerms.warrantyCondition);
                                                     toast('Terms changes reverted', { icon: '↩️' });
                                                 }}
-                                                className="px-2.5 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 rounded-lg transition"
+                                                className="px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/60 dark:hover:bg-slate-800 rounded-lg transition"
                                             >
                                                 Cancel
                                             </button>
@@ -1240,12 +1294,12 @@ export default function InvoiceFormPage() {
                                 <div className="p-4 sm:p-5 space-y-4">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                            <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 uppercase mb-1">
                                                 Remarks
                                             </label>
                                             <textarea
                                                 rows={2}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-1 focus:ring-primary-500 outline-none"
                                                 placeholder="Remarks to appear under line items..."
                                                 value={remarks}
                                                 onChange={(e) => setRemarks(e.target.value)}
@@ -1253,12 +1307,12 @@ export default function InvoiceFormPage() {
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                            <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 uppercase mb-1">
                                                 Condition of Payments
                                             </label>
                                             <textarea
                                                 rows={2}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-1 focus:ring-primary-500 outline-none"
                                                 placeholder="e.g. a). 0% Advance Payment with the firm Order.&#10;b). Balance Payment on Completion of Work"
                                                 value={conditionOfPayments}
                                                 onChange={(e) => setConditionOfPayments(e.target.value)}
@@ -1266,12 +1320,12 @@ export default function InvoiceFormPage() {
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                            <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 uppercase mb-1">
                                                 Completion of Work
                                             </label>
                                             <input
                                                 type="text"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-1 focus:ring-primary-500 outline-none"
                                                 placeholder="e.g. 4 to 6 working Days after the Order Confirmation."
                                                 value={completionOfWork}
                                                 onChange={(e) => setCompletionOfWork(e.target.value)}
@@ -1279,12 +1333,12 @@ export default function InvoiceFormPage() {
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                            <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 uppercase mb-1">
                                                 Validity ({docTypeLabel})
                                             </label>
                                             <input
                                                 type="text"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-1 focus:ring-primary-500 outline-none"
                                                 placeholder="e.g. 30 Working Days From the Issued Date.."
                                                 value={validityQuotation}
                                                 onChange={(e) => setValidityQuotation(e.target.value)}
@@ -1292,12 +1346,12 @@ export default function InvoiceFormPage() {
                                         </div>
 
                                         <div className="md:col-span-2">
-                                            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">
+                                            <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 uppercase mb-1">
                                                 Warranty
                                             </label>
                                             <textarea
                                                 rows={2}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-primary-500 outline-none"
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-1 focus:ring-primary-500 outline-none"
                                                 placeholder="e.g. a). Please See the Description..&#10;b). Warranty Will be Issued with the Invoice."
                                                 value={warrantyCondition}
                                                 onChange={(e) => setWarrantyCondition(e.target.value)}
@@ -1309,7 +1363,7 @@ export default function InvoiceFormPage() {
 
                             {/* 5. Workshop Notes Card */}
                             <Card className="p-6">
-                                <h3 className="text-sm font-semibold text-gray-700 mb-4">Notes &amp; Internal Reference</h3>
+                                <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">Notes &amp; Internal Reference</h3>
                                 <Textarea
                                     rows={4}
                                     value={notes}
@@ -1324,42 +1378,53 @@ export default function InvoiceFormPage() {
                 {/* Right Column: Customer Details (Top) & Summary (Bottom, Sticky) */}
                 <div className="lg:col-span-1 space-y-4">
                     {/* Customer Details Box placed directly ABOVE Summary */}
-                    <Card className="p-3.5 border-blue-100 shadow-sm bg-white">
-                        <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-2.5">
+                    <Card className="p-3.5 border-blue-100 dark:border-slate-700/80 shadow-sm">
+                        <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-700/60 mb-2.5">
                             <div className="flex items-center gap-1.5">
-                                <div className="w-6 h-6 rounded-md bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+                                <div className="w-6 h-6 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold">
                                     <User size={13} />
                                 </div>
                                 <div>
-                                    <h3 className="text-xs font-bold text-gray-900 leading-tight">Customer Details</h3>
-                                    <p className="text-[10px] text-gray-400">Selected client profile</p>
+                                    <h3 className="text-xs font-bold text-gray-900 dark:text-white leading-tight">Customer Details</h3>
+                                    <p className="text-[10px] text-gray-400 dark:text-slate-400">Selected client profile</p>
                                 </div>
                             </div>
-                            {selectedCustomer ? (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-0.5">
-                                    <CheckCircle2 size={10} /> {selectedCustomer.customerCode || 'Registered'}
-                                </span>
-                            ) : customerSearch.trim() ? (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                                    Manual Customer
-                                </span>
-                            ) : null}
+                            <div className="flex items-center gap-1.5">
+                                {selectedCustomer ? (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-0.5">
+                                        <CheckCircle2 size={10} /> {selectedCustomer.customerCode || 'Registered'}
+                                    </span>
+                                ) : customerSearch.trim() ? (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                        Manual Customer
+                                    </span>
+                                ) : null}
+                                <button
+                                    type="button"
+                                    onClick={openCustomerModal}
+                                    className="text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 px-2.5 py-1 rounded-lg transition inline-flex items-center gap-1 shadow-xs cursor-pointer"
+                                    title="Add / Select Customer"
+                                >
+                                    <UserPlus size={12} className="text-white" />
+                                    <span>+ Add Customer</span>
+                                </button>
+                            </div>
                         </div>
 
                         {selectedCustomer || customerSearch.trim() ? (
                             <div className="space-y-1.5 text-[11px]">
                                 <div>
-                                    <span className="text-gray-400 block text-[9px] uppercase font-bold tracking-wider">Customer Name</span>
-                                    <p className="font-bold text-gray-900 text-xs truncate">
+                                    <span className="text-gray-400 dark:text-slate-400 block text-[9px] uppercase font-bold tracking-wider">Customer Name</span>
+                                    <p className="font-bold text-gray-900 dark:text-white text-xs truncate">
                                         {selectedCustomer?.displayName || selectedCustomer?.companyName || customerSearch}
                                     </p>
                                     {selectedCustomer?.legalName && selectedCustomer.legalName !== selectedCustomer.displayName && (
-                                        <p className="text-[10px] text-gray-500 truncate">{selectedCustomer.legalName}</p>
+                                        <p className="text-[10px] text-gray-500 dark:text-slate-400 truncate">{selectedCustomer.legalName}</p>
                                     )}
                                 </div>
 
                                 {(customerPhone || selectedCustomer?.primaryContact?.phone || selectedCustomer?.billingAddress?.phone) && (
-                                    <div className="flex items-center gap-1.5 text-gray-700">
+                                    <div className="flex items-center gap-1.5 text-gray-700 dark:text-slate-300">
                                         <Phone size={11} className="text-blue-500 shrink-0" />
                                         <span className="font-semibold font-mono text-xs">
                                             {customerPhone || selectedCustomer?.primaryContact?.phone || selectedCustomer?.billingAddress?.phone}
@@ -1368,8 +1433,8 @@ export default function InvoiceFormPage() {
                                 )}
 
                                 {(customerWhatsapp || selectedCustomer?.primaryContact?.mobile) && (
-                                    <div className="flex items-center gap-1.5 text-gray-700">
-                                        <span className="text-[10px] text-emerald-600 font-bold shrink-0">WA:</span>
+                                    <div className="flex items-center gap-1.5 text-gray-700 dark:text-slate-300">
+                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold shrink-0">WA:</span>
                                         <span className="font-semibold font-mono text-xs">
                                             {customerWhatsapp || selectedCustomer?.primaryContact?.mobile}
                                         </span>
@@ -1377,31 +1442,31 @@ export default function InvoiceFormPage() {
                                 )}
 
                                 {(customerEmail || selectedCustomer?.primaryContact?.email) && (
-                                    <div className="flex items-center gap-1.5 text-gray-700">
+                                    <div className="flex items-center gap-1.5 text-gray-700 dark:text-slate-300">
                                         <Mail size={11} className="text-blue-500 shrink-0" />
                                         <span className="truncate text-[10px]">{customerEmail || selectedCustomer?.primaryContact?.email}</span>
                                     </div>
                                 )}
 
                                 {(customerVatNumber || selectedCustomer?.taxRegistrationNumber || customerBrNumber || selectedCustomer?.businessRegistrationNumber) && (
-                                    <div className="flex flex-wrap gap-2 text-[10px] text-gray-600 pt-0.5">
+                                    <div className="flex flex-wrap gap-2 text-[10px] text-gray-600 dark:text-slate-400 pt-0.5">
                                         {(customerVatNumber || selectedCustomer?.taxRegistrationNumber) && (
-                                            <span>VAT: <strong className="font-mono text-gray-800">{customerVatNumber || selectedCustomer?.taxRegistrationNumber}</strong></span>
+                                            <span>VAT: <strong className="font-mono text-gray-800 dark:text-slate-200">{customerVatNumber || selectedCustomer?.taxRegistrationNumber}</strong></span>
                                         )}
                                         {(customerBrNumber || selectedCustomer?.businessRegistrationNumber) && (
-                                            <span>BR: <strong className="font-mono text-gray-800">{customerBrNumber || selectedCustomer?.businessRegistrationNumber}</strong></span>
+                                            <span>BR: <strong className="font-mono text-gray-800 dark:text-slate-200">{customerBrNumber || selectedCustomer?.businessRegistrationNumber}</strong></span>
                                         )}
                                     </div>
                                 )}
 
                                 {(customerIdNumber || selectedCustomer?.idNumber) && (
-                                    <div className="text-[10px] text-gray-600">
-                                        ID: <strong className="font-mono text-gray-800">{customerIdNumber || selectedCustomer?.idNumber}</strong>
+                                    <div className="text-[10px] text-gray-600 dark:text-slate-400">
+                                        ID: <strong className="font-mono text-gray-800 dark:text-slate-200">{customerIdNumber || selectedCustomer?.idNumber}</strong>
                                     </div>
                                 )}
 
                                 {(customerAddress || selectedCustomer?.primaryAddress?.line1 || selectedCustomer?.billingAddress?.line1) && (
-                                    <div className="flex items-start gap-1.5 text-gray-600 text-[10px]">
+                                    <div className="flex items-start gap-1.5 text-gray-600 dark:text-slate-400 text-[10px]">
                                         <MapPin size={11} className="text-blue-500 shrink-0 mt-0.5" />
                                         <span className="truncate">
                                             {customerAddress || [
@@ -1413,9 +1478,9 @@ export default function InvoiceFormPage() {
                                 )}
 
                                 {selectedCustomer?.paymentTerms && (
-                                    <div className="pt-1.5 border-t border-gray-100 flex items-center justify-between text-[10px]">
-                                        <span className="text-gray-500">Payment Terms:</span>
-                                        <span className="font-bold text-gray-800 uppercase">
+                                    <div className="pt-1.5 border-t border-gray-100 dark:border-slate-700/60 flex items-center justify-between text-[10px]">
+                                        <span className="text-gray-500 dark:text-slate-400">Payment Terms:</span>
+                                        <span className="font-bold text-gray-800 dark:text-slate-200 uppercase">
                                             {selectedCustomer.paymentTerms.type || 'Cash'}
                                             {selectedCustomer.paymentTerms.creditDays ? ` (${selectedCustomer.paymentTerms.creditDays}d)` : ''}
                                         </span>
@@ -1424,18 +1489,18 @@ export default function InvoiceFormPage() {
 
                                 {selectedCustomer?.currentBalance !== undefined && (
                                     <div className="flex items-center justify-between text-[10px]">
-                                        <span className="text-gray-500">Outstanding:</span>
-                                        <span className={`font-bold ${selectedCustomer.currentBalance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                        <span className="text-gray-500 dark:text-slate-400">Outstanding:</span>
+                                        <span className={`font-bold ${selectedCustomer.currentBalance > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                             {fmt(selectedCustomer.currentBalance)}
                                         </span>
                                     </div>
                                 )}
 
-                                <div className="pt-1.5 border-t border-gray-100 flex gap-1.5">
+                                <div className="pt-1.5 border-t border-gray-100 dark:border-slate-700/60 flex gap-1.5">
                                     <button
                                         type="button"
                                         onClick={openCustomerModal}
-                                        className="flex-1 text-center text-[10px] text-blue-600 hover:text-blue-800 py-0.5 bg-blue-50 hover:bg-blue-100 rounded font-semibold transition"
+                                        className="flex-1 text-center text-[10px] text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 py-0.5 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded font-semibold transition"
                                     >
                                         + Change / New
                                     </button>
@@ -1454,45 +1519,42 @@ export default function InvoiceFormPage() {
                                             setCustomerIdNumber('');
                                             setCustomerSalesRep('');
                                         }}
-                                        className="text-center text-[10px] text-gray-500 hover:text-red-600 px-2 py-0.5 border border-dashed border-gray-200 hover:border-red-200 rounded transition"
+                                        className="text-center text-[10px] text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 px-2 py-0.5 border border-dashed border-gray-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-800 rounded transition"
                                     >
                                         Clear
                                     </button>
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center py-2.5 px-2 bg-gray-50/80 rounded-lg border border-dashed border-gray-200">
-                                <User size={18} className="mx-auto text-gray-300 mb-0.5" />
-                                <p className="text-[11px] font-semibold text-gray-600">No Customer Selected</p>
-                                <button
-                                    type="button"
-                                    onClick={openCustomerModal}
-                                    className="mt-1.5 text-[11px] font-bold text-primary-600 hover:text-primary-700 bg-white hover:bg-primary-50 px-2.5 py-1 rounded-md border border-primary-200 transition inline-flex items-center gap-1 shadow-2xs"
-                                >
-                                    <UserPlus size={12} /> + Add Customer
-                                </button>
+                            <div
+                                onClick={openCustomerModal}
+                                className="text-center py-3 px-2 bg-gray-50/80 dark:bg-slate-800/40 rounded-lg border border-dashed border-gray-200 dark:border-slate-700 cursor-pointer hover:bg-gray-100/80 dark:hover:bg-slate-800/70 transition"
+                                title="Click to select or create customer"
+                            >
+                                <User size={18} className="mx-auto text-gray-400 dark:text-slate-500 mb-0.5" />
+                                <p className="text-[11px] font-semibold text-gray-500 dark:text-slate-400">No Customer Selected</p>
                             </div>
                         )}
                     </Card>
 
                     {/* Vehicle & Photo Information Card (Right column) */}
                     {(vehicleNo || vehicleModel || insuranceCompany || jobCaption || numberPlateImage || lorryBodyImage || (photos && photos.length > 0)) ? (
-                        <Card className="p-3.5 border-blue-100 shadow-sm bg-white">
-                            <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-2.5">
+                        <Card className="p-3.5 border-blue-100 dark:border-slate-700/80 shadow-sm">
+                            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-slate-700/60 mb-2.5">
                                 <div className="flex items-center gap-1.5">
-                                    <div className="w-6 h-6 rounded-md bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+                                    <div className="w-6 h-6 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold">
                                         <Truck size={13} />
                                     </div>
                                     <div>
-                                        <h3 className="text-xs font-bold text-gray-900 leading-tight">Vehicle Details</h3>
-                                        <p className="text-[10px] text-gray-400">Attached vehicle &amp; photos</p>
+                                        <h3 className="text-xs font-bold text-gray-900 dark:text-white leading-tight">Vehicle Details</h3>
+                                        <p className="text-[10px] text-gray-400 dark:text-slate-400">Attached vehicle &amp; photos</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <button
                                         type="button"
                                         onClick={() => setIsVehicleModalOpen(true)}
-                                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 flex items-center gap-1 transition"
+                                        className="text-[10px] font-bold text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 flex items-center gap-1 transition"
                                     >
                                         <Edit2 size={10} /> Edit
                                     </button>
@@ -1502,39 +1564,39 @@ export default function InvoiceFormPage() {
                             <div className="space-y-1.5 text-[11px]">
                                 {vehicleNo && (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-400 text-[10px] uppercase font-bold">Plate No:</span>
-                                        <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 text-xs">
+                                        <span className="text-gray-400 dark:text-slate-400 text-[10px] uppercase font-bold">Plate No:</span>
+                                        <span className="font-mono font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800/60 text-xs">
                                             {vehicleNo}
                                         </span>
                                     </div>
                                 )}
                                 {vehicleModel && (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-400 text-[10px] uppercase font-bold">Model:</span>
-                                        <span className="font-semibold text-gray-800 truncate max-w-[170px] text-right">{vehicleModel}</span>
+                                        <span className="text-gray-400 dark:text-slate-400 text-[10px] uppercase font-bold">Model:</span>
+                                        <span className="font-semibold text-gray-800 dark:text-slate-200 truncate max-w-[170px] text-right">{vehicleModel}</span>
                                     </div>
                                 )}
                                 {insuranceCompany && (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-400 text-[10px] uppercase font-bold">Insurance:</span>
-                                        <span className="font-semibold text-gray-800 truncate max-w-[170px] text-right">{insuranceCompany}</span>
+                                        <span className="text-gray-400 dark:text-slate-400 text-[10px] uppercase font-bold">Insurance:</span>
+                                        <span className="font-semibold text-gray-800 dark:text-slate-200 truncate max-w-[170px] text-right">{insuranceCompany}</span>
                                     </div>
                                 )}
                                 {jobCaption && (
                                     <div className="flex items-start justify-between gap-2">
-                                        <span className="text-gray-400 text-[10px] uppercase font-bold shrink-0">Job Caption:</span>
-                                        <span className="font-semibold text-gray-800 text-right line-clamp-2">{jobCaption}</span>
+                                        <span className="text-gray-400 dark:text-slate-400 text-[10px] uppercase font-bold shrink-0">Job Caption:</span>
+                                        <span className="font-semibold text-gray-800 dark:text-slate-200 text-right line-clamp-2">{jobCaption}</span>
                                     </div>
                                 )}
 
                                 {/* Photo Previews */}
                                 {((numberPlateImage ? 1 : 0) + (lorryBodyImage ? 1 : 0) + (photos?.length || 0)) > 0 && (
-                                    <div className="pt-2 border-t border-gray-100 space-y-1.5">
+                                    <div className="pt-2 border-t border-gray-100 dark:border-slate-700/60 space-y-1.5">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1">
+                                            <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase flex items-center gap-1">
                                                 <ImageIcon size={11} /> Photos
                                             </span>
-                                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded">
                                                 {(numberPlateImage ? 1 : 0) + (lorryBodyImage ? 1 : 0) + (photos?.length || 0)} attached
                                             </span>
                                         </div>
@@ -1542,7 +1604,7 @@ export default function InvoiceFormPage() {
                                             {numberPlateImage && (
                                                 <div 
                                                     onClick={() => setIsVehicleModalOpen(true)}
-                                                    className="relative group h-12 rounded border border-gray-200 overflow-hidden bg-gray-50 cursor-pointer"
+                                                    className="relative group h-12 rounded border border-gray-200 dark:border-slate-700 overflow-hidden bg-gray-50 dark:bg-slate-800 cursor-pointer"
                                                 >
                                                     <img src={numberPlateImage} alt="Plate" className="w-full h-full object-cover" />
                                                     <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] text-center font-bold">Plate</span>
@@ -1551,7 +1613,7 @@ export default function InvoiceFormPage() {
                                             {lorryBodyImage && (
                                                 <div 
                                                     onClick={() => setIsVehicleModalOpen(true)}
-                                                    className="relative group h-12 rounded border border-gray-200 overflow-hidden bg-gray-50 cursor-pointer"
+                                                    className="relative group h-12 rounded border border-gray-200 dark:border-slate-700 overflow-hidden bg-gray-50 dark:bg-slate-800 cursor-pointer"
                                                 >
                                                     <img src={lorryBodyImage} alt="Body" className="w-full h-full object-cover" />
                                                     <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] text-center font-bold">Body</span>
@@ -1561,7 +1623,7 @@ export default function InvoiceFormPage() {
                                                 <div 
                                                     key={i} 
                                                     onClick={() => setIsVehicleModalOpen(true)}
-                                                    className="relative group h-12 rounded border border-gray-200 overflow-hidden bg-gray-50 cursor-pointer"
+                                                    className="relative group h-12 rounded border border-gray-200 dark:border-slate-700 overflow-hidden bg-gray-50 dark:bg-slate-800 cursor-pointer"
                                                 >
                                                     <img src={p} alt={`Photo ${i+1}`} className="w-full h-full object-cover" />
                                                     <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] text-center font-bold">#{i+1}</span>
@@ -1570,7 +1632,7 @@ export default function InvoiceFormPage() {
                                             {(photos?.length || 0) > (numberPlateImage && lorryBodyImage ? 2 : 3) && (
                                                 <div 
                                                     onClick={() => setIsVehicleModalOpen(true)}
-                                                    className="h-12 rounded border border-blue-200 bg-blue-50 flex flex-col items-center justify-center text-blue-700 cursor-pointer hover:bg-blue-100 transition"
+                                                    className="h-12 rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 flex flex-col items-center justify-center text-blue-700 dark:text-blue-300 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/60 transition"
                                                 >
                                                     <span className="text-xs font-black">+{(photos?.length || 0) - (numberPlateImage && lorryBodyImage ? 2 : 3)}</span>
                                                     <span className="text-[8px] font-bold">more</span>
@@ -1582,14 +1644,14 @@ export default function InvoiceFormPage() {
                             </div>
                         </Card>
                     ) : (
-                        <Card className="p-3 border-dashed border-gray-200 bg-gray-50/60 shadow-2xs">
+                        <Card className="p-3 border-dashed border-gray-200 dark:border-slate-700 bg-gray-50/60 dark:bg-slate-800/40 shadow-2xs">
                             <div className="flex items-center gap-2 text-left">
-                                <div className="w-6 h-6 rounded-md bg-gray-100 text-gray-500 flex items-center justify-center">
+                                <div className="w-6 h-6 rounded-md bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 flex items-center justify-center">
                                     <Truck size={13} />
                                 </div>
                                 <div>
-                                    <p className="text-[11px] font-semibold text-gray-700">Vehicle Details</p>
-                                    <p className="text-[9px] text-gray-400">No vehicle/photos added</p>
+                                    <p className="text-[11px] font-semibold text-gray-700 dark:text-slate-300">Vehicle Details</p>
+                                    <p className="text-[9px] text-gray-400 dark:text-slate-500">No vehicle/photos added</p>
                                 </div>
                             </div>
                         </Card>
@@ -1598,28 +1660,23 @@ export default function InvoiceFormPage() {
                     {/* Summary Card (Invoice or Workshop Summary) */}
                     {docType === 'invoice' ? (
                         <Card className="p-4">
-                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2.5 pb-2 border-b border-gray-100">Summary</h3>
+                            <h3 className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wide mb-2.5 pb-2 border-b border-gray-100 dark:border-slate-700/60">Summary</h3>
                             <div className="space-y-2 text-xs">
-                                <div className="flex justify-between text-gray-600"><span>Subtotal</span><span className="font-mono text-gray-900 font-semibold">{fmt(totals.sub)}</span></div>
+                                <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Subtotal</span><span className="font-mono text-gray-900 dark:text-white font-semibold">{fmt(totals.sub)}</span></div>
                                 {totals.discount > 0 && (
-                                    <div className="flex justify-between text-red-600 font-medium">
+                                    <div className="flex justify-between text-red-600 dark:text-red-400 font-medium">
                                         <span>Discount</span>
                                         <span className="font-mono font-bold">-{fmt(totals.discount)}</span>
                                     </div>
                                 )}
-                                <div className="flex justify-between text-gray-600"><span>Tax</span><span className="font-mono">{fmt(totals.tax)}</span></div>
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className="text-gray-600">Shipping</span>
-                                    <input type="number" step="0.01" min="0" value={shippingCost} onChange={(e) => setShippingCost(e.target.value)}
-                                        className="w-24 px-2 py-0.5 border border-gray-300 rounded text-xs text-right font-mono" />
-                                </div>
-                                <div className="flex justify-between pt-2 border-t font-bold text-xs">
-                                    <span>Total</span><span className="text-primary-600 font-extrabold text-sm font-mono">{fmt(totals.grand)}</span>
+                                <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Tax</span><span className="font-mono text-gray-900 dark:text-white">{fmt(totals.tax)}</span></div>
+                                <div className="flex justify-between pt-2 border-t border-gray-100 dark:border-slate-700/60 font-bold text-xs text-gray-900 dark:text-white">
+                                    <span>Total</span><span className="text-blue-600 dark:text-blue-400 font-extrabold text-sm font-mono">{fmt(totals.grand)}</span>
                                 </div>
 
                                 {/* Optional Advance Payment */}
-                                <div className="pt-2 border-t space-y-1.5">
-                                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-gray-700">
+                                <div className="pt-2 border-t border-gray-100 dark:border-slate-700/60 space-y-1.5">
+                                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-gray-700 dark:text-slate-300">
                                         <input 
                                             type="checkbox" 
                                             checked={showAdvance} 
@@ -1630,14 +1687,14 @@ export default function InvoiceFormPage() {
                                                     setAdvanceAmount(0);
                                                 }
                                             }} 
-                                            className="rounded text-primary-600 h-3.5 w-3.5"
+                                            className="rounded text-blue-600 h-3.5 w-3.5"
                                         />
                                         <span>Add Advance Payment (Optional)</span>
                                     </label>
 
                                     {showAdvance && (
-                                        <div className="bg-emerald-50/70 p-2 rounded-lg border border-emerald-200 space-y-1.5 text-[11px]">
-                                            <div className="flex justify-between items-center">
+                                        <div className="bg-emerald-50/70 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-200 dark:border-emerald-800/60 space-y-1.5 text-[11px]">
+                                            <div className="flex justify-between items-center text-gray-700 dark:text-slate-300">
                                                 <span>Advance %:</span>
                                                 <input 
                                                     type="number" 
@@ -1650,11 +1707,11 @@ export default function InvoiceFormPage() {
                                                         setAdvancePercentage(pct);
                                                         setAdvanceAmount(+((totals.grand * pct) / 100).toFixed(2));
                                                     }} 
-                                                    className="w-14 px-1.5 py-0.5 border rounded text-right font-mono font-bold bg-white text-xs" 
+                                                    className="w-14 px-1.5 py-0.5 border border-emerald-300 dark:border-emerald-700 rounded text-right font-mono font-bold bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-xs" 
                                                     placeholder="0"
                                                 />
                                             </div>
-                                            <div className="flex justify-between items-center">
+                                            <div className="flex justify-between items-center text-gray-700 dark:text-slate-300">
                                                 <span>Advance LKR:</span>
                                                 <input 
                                                     type="number" 
@@ -1666,11 +1723,11 @@ export default function InvoiceFormPage() {
                                                         setAdvanceAmount(amt);
                                                         setAdvancePercentage(totals.grand > 0 ? +((amt / totals.grand) * 100).toFixed(1) : 0);
                                                     }} 
-                                                    className="w-24 px-1.5 py-0.5 border rounded text-right font-mono font-bold bg-white text-xs" 
+                                                    className="w-24 px-1.5 py-0.5 border border-emerald-300 dark:border-emerald-700 rounded text-right font-mono font-bold bg-white dark:bg-slate-900 text-gray-900 dark:text-white text-xs" 
                                                     placeholder="0.00"
                                                 />
                                             </div>
-                                            <div className="flex justify-between items-center font-bold text-emerald-800 pt-1 border-t border-emerald-200">
+                                            <div className="flex justify-between items-center font-bold text-emerald-800 dark:text-emerald-300 pt-1 border-t border-emerald-200 dark:border-emerald-800/60">
                                                 <span>Balance Due:</span>
                                                 <span className="font-mono">{fmt(Math.max(0, totals.grand - (advanceAmount || 0)))}</span>
                                             </div>
@@ -1692,21 +1749,21 @@ export default function InvoiceFormPage() {
                         </Card>
                     ) : (
                         /* Workshop Summary Card (Quotation & Estimate - matches Image 2) */
-                        <Card className="p-4 sticky top-4 shadow-sm border-gray-200">
-                            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2.5 pb-2 border-b border-gray-100">Summary</h3>
+                        <Card className="p-4 sticky top-4 shadow-sm border-gray-200 dark:border-slate-700/80">
+                            <h3 className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wide mb-2.5 pb-2 border-b border-gray-100 dark:border-slate-700/60">Summary</h3>
                             <div className="space-y-2 text-xs">
-                                <div className="flex justify-between items-center text-gray-600">
+                                <div className="flex justify-between items-center text-gray-600 dark:text-slate-300">
                                     <span>Items Subtotal</span>
-                                    <span className="font-mono text-gray-900 font-bold">{fmt(totals.sub)}</span>
+                                    <span className="font-mono text-gray-900 dark:text-white font-bold">{fmt(totals.sub)}</span>
                                 </div>
 
-                                <div className="flex justify-between items-center text-gray-700">
+                                <div className="flex justify-between items-center text-gray-700 dark:text-slate-300">
                                     <span>Labor Cost / Workmanship</span>
                                     <input
                                         type="number"
                                         min="0"
                                         step="0.01"
-                                        className="w-24 px-2 py-0.5 border border-gray-300 rounded text-right font-mono text-xs bg-white text-emerald-700 font-bold focus:ring-1 focus:ring-emerald-500 outline-none"
+                                        className="w-24 px-2 py-0.5 border border-gray-300 dark:border-slate-600 rounded text-right font-mono text-xs bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 font-bold focus:ring-1 focus:ring-emerald-500 outline-none"
                                         value={laborCost || ''}
                                         placeholder="0.00"
                                         onChange={(e) => setLaborCost(Number(e.target.value))}
@@ -1714,27 +1771,27 @@ export default function InvoiceFormPage() {
                                 </div>
 
                                 {totals.discount > 0 && (
-                                    <div className="flex justify-between items-center text-red-600 font-medium">
+                                    <div className="flex justify-between items-center text-red-600 dark:text-red-400 font-medium">
                                         <span>Total Discounts</span>
                                         <span className="font-mono font-bold">-{fmt(totals.discount)}</span>
                                     </div>
                                 )}
 
                                 {totals.tax > 0 && (
-                                    <div className="flex justify-between items-center text-gray-600">
+                                    <div className="flex justify-between items-center text-gray-600 dark:text-slate-300">
                                         <span>Tax</span>
-                                        <span className="font-mono font-bold">{fmt(totals.tax)}</span>
+                                        <span className="font-mono font-bold text-gray-900 dark:text-white">{fmt(totals.tax)}</span>
                                     </div>
                                 )}
 
-                                <div className="flex justify-between items-center pt-2 border-t border-gray-200 font-bold text-gray-900 text-xs">
+                                <div className="flex justify-between items-center pt-2 border-t border-gray-200 dark:border-slate-700/60 font-bold text-gray-900 dark:text-white text-xs">
                                     <span>Grand Total</span>
-                                    <span className="font-mono text-blue-800 text-sm font-extrabold">{fmt(totals.grand)}</span>
+                                    <span className="font-mono text-blue-800 dark:text-blue-300 text-sm font-extrabold">{fmt(totals.grand)}</span>
                                 </div>
 
                                 {/* Optional Advance Payment */}
-                                <div className="pt-2 border-t border-gray-200 space-y-2">
-                                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-gray-700 select-none">
+                                <div className="pt-2 border-t border-gray-200 dark:border-slate-700/60 space-y-2">
+                                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-gray-700 dark:text-slate-300 select-none">
                                         <input
                                             type="checkbox"
                                             checked={showAdvance}
@@ -1754,10 +1811,10 @@ export default function InvoiceFormPage() {
 
                                     {showAdvance && (
                                         <div className="space-y-2 pt-0.5">
-                                            <div className="space-y-1.5 p-2 bg-emerald-50/60 rounded-lg border border-emerald-200">
-                                                <div className="flex justify-between items-center text-xs text-gray-700">
+                                            <div className="space-y-1.5 p-2 bg-emerald-50/60 dark:bg-emerald-950/40 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
+                                                <div className="flex justify-between items-center text-xs text-gray-700 dark:text-slate-300">
                                                     <span className="flex items-center gap-1 text-[11px]">
-                                                        Advance (%) <span className="text-[10px] text-gray-400 font-normal">Auto-calc</span>
+                                                        Advance (%) <span className="text-[10px] text-gray-400 dark:text-slate-500 font-normal">Auto-calc</span>
                                                     </span>
                                                     <div className="flex items-center gap-1">
                                                         <input
@@ -1766,7 +1823,7 @@ export default function InvoiceFormPage() {
                                                             max="100"
                                                             step="any"
                                                             placeholder="0"
-                                                            className="w-16 px-1.5 py-0.5 border rounded text-right font-mono text-xs bg-white text-emerald-800 font-bold border-emerald-300 focus:outline-none"
+                                                            className="w-16 px-1.5 py-0.5 border rounded text-right font-mono text-xs bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 font-bold border-emerald-300 dark:border-emerald-700 focus:outline-none"
                                                             value={advancePercentage || ''}
                                                             onChange={(e) => {
                                                                 const pct = Number(e.target.value);
@@ -1777,17 +1834,17 @@ export default function InvoiceFormPage() {
                                                                 setConditionOfPayments(cond);
                                                             }}
                                                         />
-                                                        <span className="font-bold text-gray-400 text-[11px]">%</span>
+                                                        <span className="font-bold text-gray-400 dark:text-slate-500 text-[11px]">%</span>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex justify-between items-center text-xs text-gray-700">
+                                                <div className="flex justify-between items-center text-xs text-gray-700 dark:text-slate-300">
                                                     <span className="text-[11px]">Advance Amount (LKR)</span>
                                                     <input
                                                         type="number"
                                                         min="0"
                                                         step="0.01"
-                                                        className="w-24 px-1.5 py-0.5 border rounded text-right font-mono text-xs bg-white text-emerald-800 font-bold border-emerald-300 focus:outline-none"
+                                                        className="w-24 px-1.5 py-0.5 border rounded text-right font-mono text-xs bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 font-bold border-emerald-300 dark:border-emerald-700 focus:outline-none"
                                                         value={advanceAmount || ''}
                                                         placeholder="0.00"
                                                         onChange={(e) => {
@@ -1802,7 +1859,7 @@ export default function InvoiceFormPage() {
                                                 </div>
                                             </div>
 
-                                            <div className="flex justify-between items-center font-bold text-amber-900 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
+                                            <div className="flex justify-between items-center font-bold text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800/60">
                                                 <span className="text-[11px]">Balance Due</span>
                                                 <span className="font-mono text-xs font-black">
                                                     {fmt(Math.max(0, totals.grand - (advanceAmount || 0)))}
@@ -1838,8 +1895,8 @@ export default function InvoiceFormPage() {
             >
                 <div className="space-y-4">
                     {/* Radios: Select Ex Customer vs Direct Customer */}
-                    <div className="flex items-center gap-6 py-2 px-1 border-b border-gray-200">
-                        <label className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-gray-800 cursor-pointer select-none">
+                    <div className="flex items-center gap-6 py-2 px-1 border-b border-gray-200 dark:border-slate-700">
+                        <label className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-gray-800 dark:text-slate-200 cursor-pointer select-none">
                             <input
                                 type="radio"
                                 name="customerModalSource"
@@ -1851,7 +1908,7 @@ export default function InvoiceFormPage() {
                             <span>Select Ex Customer</span>
                         </label>
 
-                        <label className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-gray-800 cursor-pointer select-none">
+                        <label className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-gray-800 dark:text-slate-200 cursor-pointer select-none">
                             <input
                                 type="radio"
                                 name="customerModalSource"
@@ -1867,20 +1924,20 @@ export default function InvoiceFormPage() {
                     {custModalTab === 'existing' ? (
                         <div className="space-y-3">
                             <div className="relative">
-                                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400" />
                                 <input
                                     type="text"
                                     placeholder="Search customer by name, phone number, or code..."
                                     value={tempCustSearch}
                                     onChange={(e) => setTempCustSearch(e.target.value)}
-                                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                    className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                                     autoFocus
                                 />
                             </div>
 
-                            <div className="max-h-80 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100 bg-gray-50/40">
+                            <div className="max-h-80 overflow-y-auto border border-gray-200 dark:border-slate-700 rounded-xl divide-y divide-gray-100 dark:divide-slate-800 bg-gray-50/40 dark:bg-slate-800/40">
                                 {modalCustomerSuggestions.length === 0 ? (
-                                    <div className="text-center py-8 text-gray-500 text-xs">
+                                    <div className="text-center py-8 text-gray-500 dark:text-slate-400 text-xs">
                                         No matching customers found. You can switch to &quot;Direct Customer&quot; above to enter details directly.
                                     </div>
                                 ) : (
@@ -1891,33 +1948,33 @@ export default function InvoiceFormPage() {
                                             <div
                                                 key={c._id}
                                                 onClick={() => handleApplyExistingCustomer(c)}
-                                                className={`p-3 hover:bg-blue-50/80 cursor-pointer transition flex items-center justify-between gap-3 ${
-                                                    isSelected ? 'bg-blue-50/90 border-l-4 border-blue-600' : ''
+                                                className={`p-3 hover:bg-blue-50/80 dark:hover:bg-slate-800/80 cursor-pointer transition flex items-center justify-between gap-3 ${
+                                                    isSelected ? 'bg-blue-50/90 dark:bg-blue-950/70 border-l-4 border-blue-600' : ''
                                                 }`}
                                             >
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-2">
-                                                        <h4 className="text-xs font-bold text-gray-900 truncate">
+                                                        <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate">
                                                             {c.displayName || c.companyName}
                                                         </h4>
-                                                        <span className="text-[10px] font-mono px-1.5 py-0.2 bg-gray-100 text-gray-600 rounded">
+                                                        <span className="text-[10px] font-mono px-1.5 py-0.2 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 rounded">
                                                             {c.customerCode}
                                                         </span>
                                                         {isSelected && (
-                                                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 rounded flex items-center gap-0.5">
+                                                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 rounded flex items-center gap-0.5">
                                                                 <CheckCircle2 size={10} /> Currently Selected
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-500">
+                                                    <div className="flex items-center gap-3 mt-1 text-[11px] text-gray-500 dark:text-slate-400">
                                                         {phone && (
                                                             <span className="flex items-center gap-1 font-mono">
-                                                                <Phone size={11} className="text-gray-400" /> {phone}
+                                                                <Phone size={11} className="text-gray-400 dark:text-slate-400" /> {phone}
                                                             </span>
                                                         )}
                                                         {c.primaryContact?.email && (
                                                             <span className="flex items-center gap-1 truncate">
-                                                                <Mail size={11} className="text-gray-400" /> {c.primaryContact.email}
+                                                                <Mail size={11} className="text-gray-400 dark:text-slate-400" /> {c.primaryContact.email}
                                                             </span>
                                                         )}
                                                     </div>
@@ -1935,7 +1992,7 @@ export default function InvoiceFormPage() {
                                                         e.stopPropagation();
                                                         handleApplyExistingCustomer(c);
                                                     }}
-                                                    className="bg-white hover:bg-blue-600 hover:text-white border-blue-300 text-blue-700 text-xs shrink-0"
+                                                    className="bg-white dark:bg-slate-800 hover:bg-blue-600 hover:text-white border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs shrink-0"
                                                 >
                                                     Select for {docTypeLabel}
                                                 </Button>
@@ -1950,7 +2007,7 @@ export default function InvoiceFormPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 {/* Row 1: Customer Name & Phone Num */}
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         Customer Name <span className="text-red-500">*</span>
                                     </label>
                                     <input
@@ -1958,13 +2015,13 @@ export default function InvoiceFormPage() {
                                         placeholder="Customer Name"
                                         value={tempCustName}
                                         onChange={(e) => setTempCustName(e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                         autoFocus
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         Phone Num
                                     </label>
                                     <input
@@ -1972,13 +2029,13 @@ export default function InvoiceFormPage() {
                                         placeholder="Phone Num"
                                         value={tempCustPhone}
                                         onChange={(e) => setTempCustPhone(e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                 </div>
 
                                 {/* Row 2: Email & WhatsApp Num */}
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         Email
                                     </label>
                                     <input
@@ -1986,12 +2043,12 @@ export default function InvoiceFormPage() {
                                         placeholder="Email Address"
                                         value={tempCustEmail}
                                         onChange={(e) => setTempCustEmail(e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         WhatsApp Num
                                     </label>
                                     <input
@@ -1999,13 +2056,13 @@ export default function InvoiceFormPage() {
                                         placeholder="WhatsApp Num"
                                         value={tempCustWhatsapp}
                                         onChange={(e) => setTempCustWhatsapp(e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                 </div>
 
                                 {/* Row 3: VAT Number & BR Number */}
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         VAT Number
                                     </label>
                                     <input
@@ -2013,12 +2070,12 @@ export default function InvoiceFormPage() {
                                         placeholder="VAT Number"
                                         value={tempCustVatNumber}
                                         onChange={(e) => setTempCustVatNumber(e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-mono text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         BR Number
                                     </label>
                                     <input
@@ -2026,13 +2083,13 @@ export default function InvoiceFormPage() {
                                         placeholder="BR Number"
                                         value={tempCustBrNumber}
                                         onChange={(e) => setTempCustBrNumber(e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-mono text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                 </div>
 
                                 {/* Row 4: Billing Address (Wide - Full width across 2 columns) */}
                                 <div className="sm:col-span-2">
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         Billing Address
                                     </label>
                                     <input
@@ -2040,13 +2097,13 @@ export default function InvoiceFormPage() {
                                         placeholder="Billing Address"
                                         value={tempCustAddress}
                                         onChange={(e) => setTempCustAddress(e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                 </div>
 
                                 {/* Row 5: ID Number & Sales Rep */}
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         ID Number
                                     </label>
                                     <input
@@ -2054,18 +2111,18 @@ export default function InvoiceFormPage() {
                                         placeholder="ID Number (NIC / Passport)"
                                         value={tempCustIdNumber}
                                         onChange={(e) => setTempCustIdNumber(e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-mono text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         Sales Rep
                                     </label>
                                     <select
                                         value={tempCustSalesRep}
                                         onChange={(e) => setTempCustSalesRep(e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-medium text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors [&>option]:bg-white [&>option]:dark:bg-slate-900 [&>option]:text-gray-900 [&>option]:dark:text-white"
                                     >
                                         <option value="">-- Select Sales Rep (Optional) --</option>
                                         {users.map((u) => (
@@ -2077,7 +2134,7 @@ export default function InvoiceFormPage() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+                            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -2111,62 +2168,99 @@ export default function InvoiceFormPage() {
                 title={editingIndex !== null ? `Edit Item #${editingIndex + 1}` : `Add Item to ${docTypeLabel}`}
                 size="2xl"
             >
-                <div className="space-y-4">
+                <div
+                    className="space-y-4"
+                    onKeyDown={(e) => {
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddItemFromModal(editingIndex === null);
+                        }
+                    }}
+                >
                     {/* Catalog Product Selection - Quick Fill Card */}
-                    <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-blue-50/30 border border-blue-200/80 rounded-xl p-3 sm:p-3.5 shadow-xs">
+                    <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-blue-50/30 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-blue-950/20 border border-blue-200/80 dark:border-blue-900/50 rounded-xl p-3 sm:p-3.5 shadow-xs">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="flex items-center gap-1.5 text-xs font-bold text-blue-900 uppercase tracking-wider">
-                                <Layers size={14} className="text-blue-600" />
+                            <span className="flex items-center gap-1.5 text-xs font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider">
+                                <Layers size={14} className="text-blue-600 dark:text-blue-400" />
                                 Select Product from Catalog
                             </span>
-                            <span className="text-[11px] text-blue-600/80 font-medium hidden sm:inline">
-                                Auto-fills details, description & standard pricing
+                            <span className="text-[11px] text-blue-600/80 dark:text-blue-400 font-medium hidden sm:inline">
+                                Auto-fills details, description &amp; standard pricing (Press <kbd className="bg-white/80 dark:bg-slate-800 border border-blue-300 dark:border-blue-700 text-slate-800 dark:text-slate-200 px-1 py-0.2 rounded font-mono text-[10px]">↵ Enter</kbd> to search)
                             </span>
                         </div>
                         <SearchableSelect
+                            triggerRef={catalogSelectTriggerRef}
                             placeholder="Type to search catalog product..."
                             options={productOptions}
                             value={modalItem.productId || ''}
                             onChange={(e) => updateModalItem('productId', e.target.value)}
+                            onSelect={() => {
+                                setTimeout(() => {
+                                    quantityInputRef.current?.focus();
+                                    quantityInputRef.current?.select();
+                                }, 60);
+                            }}
                         />
                     </div>
 
                     {/* Item Name & Translation Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                         <div>
-                            <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                            <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
                                 Item Name / Title <span className="text-red-500">*</span>
                             </label>
                             <input
+                                ref={productNameInputRef}
                                 type="text"
                                 required
                                 placeholder="e.g. Repair Works / Lorry Door Reconstruction"
                                 value={modalItem.productName}
                                 onChange={(e) => updateModalItem('productName', e.target.value)}
-                                className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors placeholder:text-gray-400"
+                                onFocus={(e) => e.target.select()}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                        focusAndSelect(quantityInputRef.current);
+                                    } else if (e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                        catalogSelectTriggerRef.current?.focus();
+                                    }
+                                }}
+                                className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors placeholder:text-gray-400 dark:placeholder:text-slate-500"
                             />
                         </div>
 
                         <div>
                             <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-xs font-bold text-gray-700">
+                                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300">
                                     Translation (Sinhala / Tamil)
                                 </label>
                                 <button
                                     type="button"
                                     onClick={handleTranslateModalItem}
-                                    className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-bold bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition cursor-pointer"
+                                    className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2 py-0.5 rounded transition cursor-pointer"
                                 >
-                                    <Sparkles size={11} className="text-blue-500" />
+                                    <Sparkles size={11} className="text-blue-500 dark:text-blue-400" />
                                     Translate
                                 </button>
                             </div>
                             <input
+                                ref={productTranslationInputRef}
                                 type="text"
                                 placeholder="සිංහල / தமிழ் නම"
                                 value={modalItem.productTranslation || ''}
                                 onChange={(e) => updateModalItem('productTranslation', e.target.value)}
-                                className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors placeholder:text-gray-400 font-sans"
+                                onFocus={(e) => e.target.select()}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                        focusAndSelect(quantityInputRef.current);
+                                    } else if (e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                        focusAndSelect(productNameInputRef.current);
+                                    }
+                                }}
+                                className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors placeholder:text-gray-400 dark:placeholder:text-slate-500 font-sans"
                             />
                         </div>
                     </div>
@@ -2176,110 +2270,199 @@ export default function InvoiceFormPage() {
                         {/* Left Column: Detailed Specifications / Multiline Description */}
                         <div className="lg:col-span-7 flex flex-col">
                             <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-xs font-bold text-gray-700">
+                                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300">
                                     Detailed Description / Specifications
                                 </label>
-                                <span className="text-[11px] text-gray-400">
+                                <span className="text-[11px] text-gray-400 dark:text-slate-500">
                                     Multiline scope of work (15 lines visible)
                                 </span>
                             </div>
                             <textarea
+                                ref={descriptionInputRef}
                                 rows={15}
-                                className="w-full p-3.5 border border-gray-300 rounded-lg text-xs leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors font-sans placeholder:text-gray-400 min-h-[280px] resize-y"
+                                className="w-full p-3.5 border border-gray-300 dark:border-slate-700 rounded-lg text-xs leading-relaxed bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors font-sans placeholder:text-gray-400 dark:placeholder:text-slate-500 min-h-[280px] resize-y"
                                 placeholder="Specifications or repair scope (e.g.&#10;01. Side shutter replacement&#10;02. Waterproof rubber bead fitting&#10;03. Aluminium corrugated sheet fitting&#10;04. Subframe reinforcement...)"
                                 value={modalItem.description || ''}
                                 onChange={(e) => updateModalItem('description', e.target.value)}
+                                onKeyDown={(e) => {
+                                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddItemFromModal(editingIndex === null);
+                                    }
+                                }}
                             />
                         </div>
 
                         {/* Right Column: Pricing, Quantity & Calculations Card */}
-                        <div className="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 space-y-3">
-                            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                                <Calculator size={13} className="text-slate-600" />
+                        <div className="lg:col-span-5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 sm:p-4 space-y-3">
+                            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <Calculator size={13} className="text-slate-600 dark:text-slate-400" />
                                 Pricing &amp; Calculations
                             </div>
 
                             {/* Financial Inputs */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         Quantity <span className="text-red-500">*</span>
                                     </label>
                                     <input
+                                        ref={quantityInputRef}
                                         type="number"
                                         step="any"
                                         min="0.01"
                                         value={modalItem.quantity}
                                         onChange={(e) => updateModalItem('quantity', e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        onFocus={(e) => e.target.select()}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                                e.preventDefault();
+                                                focusAndSelect(unitPriceInputRef.current);
+                                            } else if (e.key === 'ArrowUp') {
+                                                e.preventDefault();
+                                                focusAndSelect(productNameInputRef.current);
+                                            }
+                                        }}
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-mono font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         Unit Price (LKR) <span className="text-red-500">*</span>
                                     </label>
                                     <input
+                                        ref={unitPriceInputRef}
                                         type="number"
                                         step="0.01"
                                         min="0"
                                         value={modalItem.unitPrice}
                                         onChange={(e) => updateModalItem('unitPrice', e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        onFocus={(e) => e.target.select()}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                                e.preventDefault();
+                                                focusAndSelect(discountInputRef.current);
+                                            } else if (e.key === 'ArrowUp') {
+                                                e.preventDefault();
+                                                focusAndSelect(quantityInputRef.current);
+                                            }
+                                        }}
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-mono font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                 </div>
 
                                 <div className="sm:col-span-2">
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
                                         Discount / Unit (LKR)
                                     </label>
                                     <input
+                                        ref={discountInputRef}
                                         type="number"
                                         step="0.01"
                                         min="0"
                                         placeholder="0.00"
                                         value={modalItem.discount || ''}
                                         onChange={(e) => updateModalItem('discount', e.target.value)}
-                                        className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white font-mono font-semibold text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition-colors"
+                                        onFocus={(e) => e.target.select()}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                                e.preventDefault();
+                                                if (modalItem.taxable && taxRateInputRef.current) {
+                                                    focusAndSelect(taxRateInputRef.current);
+                                                } else if (editingIndex === null && addAnotherBtnRef.current) {
+                                                    addAnotherBtnRef.current.focus();
+                                                } else if (addItemBtnRef.current) {
+                                                    addItemBtnRef.current.focus();
+                                                }
+                                            } else if (e.key === 'ArrowUp') {
+                                                e.preventDefault();
+                                                focusAndSelect(unitPriceInputRef.current);
+                                            }
+                                        }}
+                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-mono font-semibold text-rose-600 dark:text-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition-colors"
                                     />
                                 </div>
                             </div>
 
                             {/* Tax Switch */}
-                            <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-slate-200">
-                                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer select-none">
+                            <div
+                                className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border transition-all ${
+                                    modalItem.taxable
+                                        ? 'bg-blue-50/80 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 shadow-xs'
+                                        : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 hover:bg-slate-100/70 dark:hover:bg-slate-800/70'
+                                }`}
+                            >
+                                <label className="flex items-center gap-2.5 cursor-pointer select-none">
                                     <input
+                                        ref={taxableInputRef}
                                         type="checkbox"
                                         checked={modalItem.taxable}
                                         onChange={(e) => updateModalItem('taxable', e.target.checked)}
-                                        className="rounded text-blue-600 h-4 w-4 focus:ring-blue-500 cursor-pointer"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                                e.preventDefault();
+                                                if (modalItem.taxable && taxRateInputRef.current) {
+                                                    focusAndSelect(taxRateInputRef.current);
+                                                } else if (editingIndex === null && addAnotherBtnRef.current) {
+                                                    addAnotherBtnRef.current.focus();
+                                                } else if (addItemBtnRef.current) {
+                                                    addItemBtnRef.current.focus();
+                                                }
+                                            } else if (e.key === 'ArrowUp') {
+                                                e.preventDefault();
+                                                focusAndSelect(discountInputRef.current);
+                                            }
+                                        }}
+                                        className="h-4.5 w-4.5 rounded border-gray-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                     />
-                                    <span>Apply Tax</span>
+                                    <span
+                                        className={`text-xs font-bold tracking-wide ${
+                                            modalItem.taxable ? 'text-blue-900 dark:text-blue-200' : 'text-slate-700 dark:text-slate-300'
+                                        }`}
+                                    >
+                                        Apply Tax
+                                    </span>
                                 </label>
 
                                 {modalItem.taxable && (
-                                    <div className="flex items-center gap-1 bg-white border border-gray-300 rounded-lg px-2.5 py-1 shadow-2xs">
-                                        <span className="text-xs text-gray-500 font-medium">Rate:</span>
+                                    <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 rounded-lg px-2.5 py-1 shadow-xs focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                                        <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Rate:</span>
                                         <input
+                                            ref={taxRateInputRef}
                                             type="number"
                                             step="0.01"
                                             min="0"
                                             value={modalItem.taxRate}
                                             onChange={(e) => updateModalItem('taxRate', e.target.value)}
-                                            className="w-12 text-xs font-mono font-bold text-right outline-none bg-transparent"
+                                            onFocus={(e) => e.target.select()}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                                    e.preventDefault();
+                                                    if (editingIndex === null && addAnotherBtnRef.current) {
+                                                        addAnotherBtnRef.current.focus();
+                                                    } else if (addItemBtnRef.current) {
+                                                        addItemBtnRef.current.focus();
+                                                    }
+                                                } else if (e.key === 'ArrowUp') {
+                                                    e.preventDefault();
+                                                    focusAndSelect(discountInputRef.current);
+                                                }
+                                            }}
+                                            className="w-14 text-sm font-mono font-bold text-blue-900 dark:text-blue-200 text-right outline-none bg-transparent"
                                         />
-                                        <span className="text-xs text-gray-400 font-bold">%</span>
+                                        <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400">%</span>
                                     </div>
                                 )}
                             </div>
 
                             {/* Line Total Badge */}
-                            <div className="flex items-center justify-between gap-3 bg-white px-3.5 py-2.5 rounded-lg border border-slate-200 shadow-2xs">
+                            <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-800/80 px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
                                 <div>
-                                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Line Total</div>
-                                    <div className="text-xs text-slate-500 font-medium">Calculated amount</div>
+                                    <div className="text-[10px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">Line Total</div>
+                                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Calculated amount</div>
                                 </div>
-                                <div className="text-lg font-extrabold font-mono text-emerald-700">
+                                <div className="text-lg font-extrabold font-mono text-emerald-700 dark:text-emerald-400">
                                     {fmt(
                                         Math.max(
                                             0,
@@ -2292,58 +2475,85 @@ export default function InvoiceFormPage() {
                                     )}
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    {/* Action buttons */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-100">
-                        <span className="text-xs text-gray-500">
-                            Currently <strong>{items.length}</strong> {items.length === 1 ? 'item' : 'items'} in this {docTypeLower}
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                    setIsAddItemModalOpen(false);
-                                    setEditingIndex(null);
-                                    setModalItem(defaultItemState);
-                                }}
-                            >
-                                Close
-                            </Button>
-                            {editingIndex === null ? (
-                                <>
+                            {/* Action buttons directly below Line Total */}
+                            <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        onClick={() => handleAddItemFromModal(true)}
-                                        className="bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-700 font-semibold text-xs"
+                                        onClick={() => {
+                                            setIsAddItemModalOpen(false);
+                                            setEditingIndex(null);
+                                            setModalItem(defaultItemState);
+                                        }}
+                                        className="px-3 py-2 text-xs"
                                     >
-                                        <Plus size={14} className="mr-1" />
-                                        Add & Add Another
+                                        Close
                                     </Button>
-                                    <Button
-                                        type="button"
-                                        variant="primary"
-                                        onClick={() => handleAddItemFromModal(false)}
-                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs"
-                                    >
-                                        <CheckCircle2 size={14} className="mr-1.5" />
-                                        Add to {docTypeLabel}
-                                    </Button>
-                                </>
-                            ) : (
-                                <Button
-                                    type="button"
-                                    variant="primary"
-                                    onClick={() => handleAddItemFromModal(false)}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs"
-                                >
-                                    <CheckCircle2 size={14} className="mr-1.5" />
-                                    Update Item #{editingIndex + 1}
-                                </Button>
-                            )}
+                                    {editingIndex === null ? (
+                                        <>
+                                            <Button
+                                                ref={addAnotherBtnRef}
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => handleAddItemFromModal(true)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'ArrowRight' && addItemBtnRef.current) {
+                                                        e.preventDefault();
+                                                        addItemBtnRef.current.focus();
+                                                    } else if (e.key === 'ArrowUp') {
+                                                        e.preventDefault();
+                                                        discountInputRef.current?.focus();
+                                                        discountInputRef.current?.select();
+                                                    }
+                                                }}
+                                                className="flex-1 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 font-semibold text-xs whitespace-nowrap px-2.5 py-2 focus:ring-2 focus:ring-emerald-400"
+                                            >
+                                                <Plus size={14} className="mr-1" />
+                                                <span>Add &amp; Add Another</span>
+                                                <kbd className="ml-1.5 px-1 py-0.2 bg-emerald-200/70 dark:bg-emerald-900 border border-emerald-400/60 dark:border-emerald-700 rounded text-[9px] font-mono text-emerald-900 dark:text-emerald-200 font-bold">
+                                                    ↵
+                                                </kbd>
+                                            </Button>
+                                            <Button
+                                                ref={addItemBtnRef}
+                                                type="button"
+                                                variant="primary"
+                                                onClick={() => handleAddItemFromModal(false)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'ArrowLeft' && addAnotherBtnRef.current) {
+                                                        e.preventDefault();
+                                                        addAnotherBtnRef.current.focus();
+                                                    } else if (e.key === 'ArrowUp') {
+                                                        e.preventDefault();
+                                                        discountInputRef.current?.focus();
+                                                        discountInputRef.current?.select();
+                                                    }
+                                                }}
+                                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs px-3 py-2 whitespace-nowrap focus:ring-2 focus:ring-emerald-400"
+                                            >
+                                                <CheckCircle2 size={14} className="mr-1.5" />
+                                                <span>Add to {docTypeLabel}</span>
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <Button
+                                            ref={addItemBtnRef}
+                                            type="button"
+                                            variant="primary"
+                                            onClick={() => handleAddItemFromModal(false)}
+                                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs py-2 focus:ring-2 focus:ring-emerald-400"
+                                        >
+                                            <CheckCircle2 size={14} className="mr-1.5" />
+                                            Update Item #{editingIndex + 1}
+                                        </Button>
+                                    )}
+                                </div>
+                                <div className="text-[11px] text-gray-500 dark:text-slate-400 text-right">
+                                    Currently <strong>{items.length}</strong> {items.length === 1 ? 'item' : 'items'} in this {docTypeLower}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2358,24 +2568,24 @@ export default function InvoiceFormPage() {
             >
                 <div className="space-y-5 max-h-[78vh] overflow-y-auto px-1 pr-2">
                     {/* Section 1: Vehicle Information */}
-                    <div className="bg-slate-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-gray-200 dark:border-slate-700 space-y-4">
                         <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                            <div className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold">
                                 <Truck size={14} />
                             </div>
-                            <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                            <span className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wide">
                                 Vehicle Information
                             </span>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase mb-1">
                                     Vehicle Number (Plate No)
                                 </label>
                                 <input
                                     type="text"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white font-mono uppercase font-bold text-blue-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-mono uppercase font-bold text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     value={vehicleNo}
                                     placeholder="e.g. WP DAI-1974"
                                     onChange={(e) => setVehicleNo(e.target.value.toUpperCase())}
@@ -2409,12 +2619,12 @@ export default function InvoiceFormPage() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase mb-1">
                                     Job Caption
                                 </label>
                                 <input
                                     type="text"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                     value={jobCaption}
                                     placeholder="e.g. Accident Repair / Body Construction"
                                     onChange={(e) => setJobCaption(e.target.value)}
@@ -2424,13 +2634,13 @@ export default function InvoiceFormPage() {
                     </div>
 
                     {/* Section 2: Photo Attachments */}
-                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-200/80 space-y-4">
+                    <div className="bg-blue-50/50 dark:bg-slate-800/40 p-4 rounded-xl border border-blue-200/80 dark:border-slate-700 space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                                <div className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold">
                                     <ImageIcon size={14} />
                                 </div>
-                                <span className="text-xs font-black text-blue-900 uppercase tracking-wide">
+                                <span className="text-xs font-black text-blue-900 dark:text-blue-200 uppercase tracking-wide">
                                     Photo Attachments (Displayed on Print &amp; PDF)
                                 </span>
                             </div>
@@ -2443,16 +2653,16 @@ export default function InvoiceFormPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Number Plate Photo */}
-                            <div className="bg-white p-3.5 rounded-xl border border-blue-200 space-y-2">
-                                <label className="block text-xs font-bold text-gray-700 uppercase">Number Plate Photo</label>
+                            <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-blue-200 dark:border-slate-700 space-y-2">
+                                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase">Number Plate Photo</label>
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    className="text-xs text-gray-500 w-full file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer"
+                                    className="text-xs text-gray-500 dark:text-slate-400 w-full file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 dark:file:bg-blue-950 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-200 cursor-pointer"
                                     onChange={(e) => handleImageUpload('numberPlateImage', e.target.files[0])}
                                 />
                                 {numberPlateImage ? (
-                                    <div className="relative border rounded-lg p-1 bg-gray-50">
+                                    <div className="relative border border-gray-200 dark:border-slate-700 rounded-lg p-1 bg-gray-50 dark:bg-slate-800">
                                         <img src={numberPlateImage} alt="Number Plate Preview" className="h-24 object-contain mx-auto" />
                                         <button
                                             type="button"
@@ -2466,7 +2676,7 @@ export default function InvoiceFormPage() {
                                     <input
                                         type="text"
                                         placeholder="Or paste Image URL..."
-                                        className="w-full text-xs px-2.5 py-1.5 border rounded bg-gray-50"
+                                        className="w-full text-xs px-2.5 py-1.5 border border-gray-200 dark:border-slate-700 rounded bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white"
                                         value={numberPlateImage}
                                         onChange={(e) => setNumberPlateImage(e.target.value)}
                                     />
@@ -2474,16 +2684,16 @@ export default function InvoiceFormPage() {
                             </div>
 
                             {/* Lorry Body Photo */}
-                            <div className="bg-white p-3.5 rounded-xl border border-blue-200 space-y-2">
-                                <label className="block text-xs font-bold text-gray-700 uppercase">Lorry Body Photo</label>
+                            <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-blue-200 dark:border-slate-700 space-y-2">
+                                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase">Lorry Body Photo</label>
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    className="text-xs text-gray-500 w-full file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer"
+                                    className="text-xs text-gray-500 dark:text-slate-400 w-full file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-100 dark:file:bg-blue-950 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-200 cursor-pointer"
                                     onChange={(e) => handleImageUpload('lorryBodyImage', e.target.files[0])}
                                 />
                                 {lorryBodyImage ? (
-                                    <div className="relative border rounded-lg p-1 bg-gray-50">
+                                    <div className="relative border border-gray-200 dark:border-slate-700 rounded-lg p-1 bg-gray-50 dark:bg-slate-800">
                                         <img src={lorryBodyImage} alt="Lorry Body Preview" className="h-24 object-contain mx-auto" />
                                         <button
                                             type="button"
@@ -2497,7 +2707,7 @@ export default function InvoiceFormPage() {
                                     <input
                                         type="text"
                                         placeholder="Or paste Image URL..."
-                                        className="w-full text-xs px-2.5 py-1.5 border rounded bg-gray-50"
+                                        className="w-full text-xs px-2.5 py-1.5 border border-gray-200 dark:border-slate-700 rounded bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white"
                                         value={lorryBodyImage}
                                         onChange={(e) => setLorryBodyImage(e.target.value)}
                                     />
@@ -2506,17 +2716,17 @@ export default function InvoiceFormPage() {
                         </div>
 
                         {/* Additional Inspection Photos (Multiple Upload Allowed) */}
-                        <div className="bg-white p-4 rounded-xl border border-blue-200 space-y-3">
+                        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700 space-y-3">
                             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-800 uppercase">
+                                    <label className="block text-xs font-bold text-gray-800 dark:text-slate-200 uppercase">
                                         Additional Vehicle &amp; Damage Photos (Upload Multiple)
                                     </label>
-                                    <span className="text-[11px] text-gray-500">
+                                    <span className="text-[11px] text-gray-500 dark:text-slate-400">
                                         Select multiple files at once to attach damage inspection, chassis, or repair progress photos.
                                     </span>
                                 </div>
-                                <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100 self-start sm:self-auto">
+                                <span className="text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-1 rounded border border-blue-100 dark:border-blue-800 self-start sm:self-auto">
                                     {(photos?.length || 0)} photo{(photos?.length || 0) === 1 ? '' : 's'} added
                                 </span>
                             </div>
@@ -2526,7 +2736,7 @@ export default function InvoiceFormPage() {
                                     type="file"
                                     multiple
                                     accept="image/*"
-                                    className="text-xs text-gray-600 w-full file:mr-3 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                                    className="text-xs text-gray-600 dark:text-slate-400 w-full file:mr-3 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
                                     onChange={(e) => {
                                         handleMultiplePhotosUpload(e.target.files);
                                         e.target.value = '';
@@ -2536,7 +2746,7 @@ export default function InvoiceFormPage() {
                                     <button
                                         type="button"
                                         onClick={() => setPhotos([])}
-                                        className="text-[11px] text-red-600 hover:text-red-800 font-bold whitespace-nowrap px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded border border-red-200"
+                                        className="text-[11px] text-red-600 dark:text-red-400 hover:text-red-800 font-bold whitespace-nowrap px-2.5 py-1.5 bg-red-50 dark:bg-red-950/50 hover:bg-red-100 rounded border border-red-200 dark:border-red-800"
                                     >
                                         Clear All ({photos.length})
                                     </button>
@@ -2545,9 +2755,9 @@ export default function InvoiceFormPage() {
 
                             {/* Gallery Preview of Additional Photos */}
                             {(photos?.length || 0) > 0 && (
-                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5 pt-2 border-t border-gray-100">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5 pt-2 border-t border-gray-100 dark:border-slate-700">
                                     {photos.map((src, idx) => (
-                                        <div key={idx} className="relative group border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-24 flex items-center justify-center shadow-xs">
+                                        <div key={idx} className="relative group border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden bg-gray-50 dark:bg-slate-800 h-24 flex items-center justify-center shadow-xs">
                                             <img src={src} alt={`Inspection Photo ${idx + 1}`} className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                 <button
@@ -2570,7 +2780,7 @@ export default function InvoiceFormPage() {
                     </div>
 
                     {/* Modal Footer */}
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-slate-700">
                         <button
                             type="button"
                             onClick={() => {
@@ -2582,7 +2792,7 @@ export default function InvoiceFormPage() {
                                 setLorryBodyImage('');
                                 setPhotos([]);
                             }}
-                            className="text-xs text-red-600 hover:text-red-800 font-semibold px-2 py-1 hover:bg-red-50 rounded transition"
+                            className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-semibold px-2 py-1 hover:bg-red-50 dark:hover:bg-red-950/50 rounded transition"
                         >
                             Reset / Clear All
                         </button>
@@ -2590,7 +2800,7 @@ export default function InvoiceFormPage() {
                             <button
                                 type="button"
                                 onClick={() => setIsVehicleModalOpen(false)}
-                                className="px-4 py-2 rounded-lg text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+                                className="px-4 py-2 rounded-lg text-xs font-bold text-gray-700 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition"
                             >
                                 Cancel
                             </button>

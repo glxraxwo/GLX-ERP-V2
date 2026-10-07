@@ -246,7 +246,7 @@ export default function AIAnalyzerPage() {
             {/* Top Section - Module Select and Insights */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Module Selector */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                     <div>
                         <h3 className="text-sm font-semibold text-slate-800 mb-4">Select Domain for AI Audit</h3>
                         <div className="space-y-3">
@@ -259,7 +259,7 @@ export default function AIAnalyzerPage() {
                                         className={`w-full text-left p-3.5 rounded-lg border transition-all flex items-center gap-3 ${
                                             selectedModule === m.id
                                                 ? 'border-amber-500 bg-amber-50/30'
-                                                : 'border-slate-200 hover:bg-slate-50'
+                                                : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
                                         }`}
                                     >
                                         <div className={`p-2 rounded-md ${selectedModule === m.id ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
@@ -294,7 +294,7 @@ export default function AIAnalyzerPage() {
                 </div>
 
                 {/* Audit Results Dashboard */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-2 space-y-4">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm lg:col-span-2 space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div>
                             <h3 className="text-sm font-semibold text-slate-800">AI Health Assessment</h3>
@@ -346,7 +346,7 @@ export default function AIAnalyzerPage() {
             </div>
 
             {/* Chat Assistant Section */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                 <div className="flex items-center gap-2 mb-2">
                     <Bot className="w-5 h-5 text-amber-500" />
                     <div>
@@ -369,7 +369,7 @@ export default function AIAnalyzerPage() {
                 </div>
 
                 {/* Chat feed box */}
-                <div className="h-64 overflow-y-auto bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3 flex flex-col">
+                <div className="h-64 overflow-y-auto bg-slate-50 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-100 dark:border-slate-800 space-y-3 flex flex-col">
                     {messages.map((m, i) => (
                         <div
                             key={i}

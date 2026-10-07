@@ -96,7 +96,7 @@ function WarehouseAutocomplete({ label, placeholder, warehouses = [], value, onC
 
     return (
         <div ref={wrapperRef} className="relative w-full">
-            {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
+            {label && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{label}</label>}
             <input
                 type="text"
                 placeholder={placeholder}
@@ -104,24 +104,24 @@ function WarehouseAutocomplete({ label, placeholder, warehouses = [], value, onC
                 onChange={(e) => handleInputChange(e.target.value)}
                 onFocus={() => setIsOpen(true)}
                 disabled={disabled}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-500 text-sm disabled:bg-gray-100 disabled:text-gray-400 font-medium"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-500 text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 disabled:bg-gray-100 dark:disabled:bg-slate-800 disabled:text-gray-400 dark:disabled:text-slate-500 font-medium"
             />
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
                     {filtered.length > 0 ? (
                         filtered.map(w => (
                             <button
                                 key={w._id}
                                 type="button"
                                 onClick={() => handleSelectOption(w)}
-                                className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 transition flex items-center justify-between border-b border-gray-50 last:border-0"
+                                className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-slate-800 transition flex items-center justify-between border-b border-gray-50 dark:border-slate-800 last:border-0"
                             >
-                                <span className="font-medium text-gray-900">{w.name}</span>
-                                {w.warehouseCode && <span className="text-gray-400 text-xs font-mono">({w.warehouseCode})</span>}
+                                <span className="font-medium text-gray-900 dark:text-white">{w.name}</span>
+                                {w.warehouseCode && <span className="text-gray-400 dark:text-slate-400 text-xs font-mono">({w.warehouseCode})</span>}
                             </button>
                         ))
                     ) : (
-                        <div className="px-4 py-3 text-xs text-gray-400 italic text-center">
+                        <div className="px-4 py-3 text-xs text-gray-400 dark:text-slate-500 italic text-center">
                             No matching warehouses found
                         </div>
                     )}

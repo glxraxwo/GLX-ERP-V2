@@ -244,18 +244,18 @@ export default function EmployeeAdvanceHub({ initialSearch = '' }) {
     return (
         <div id="employee-master-section" className="space-y-5">
             {/* Header & Employee Search Selector */}
-            <Card className="p-4 sm:p-5 bg-white border border-gray-150 rounded-2xl shadow-xs">
+            <Card className="p-4 sm:p-5 bg-white dark:bg-[#111F33] border border-gray-150 dark:border-slate-800 rounded-2xl shadow-xs">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-2">
-                            <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                            <span className="p-2 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-xl">
                                 <DollarSign size={20} />
                             </span>
                             <div>
-                                <h3 className="font-bold text-base text-gray-900">
+                                <h3 className="font-bold text-base text-gray-900 dark:text-white">
                                     Employee Master &amp; Salary Advance Hub (සේවක Master සහ අත්තිකාරම් කළමනාකරණය)
                                 </h3>
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-gray-500 dark:text-slate-400">
                                     Search employees, issue new advances, view installment progress, and track remaining balances accurately.
                                 </p>
                             </div>
@@ -274,31 +274,31 @@ export default function EmployeeAdvanceHub({ initialSearch = '' }) {
                 </div>
 
                 {/* Employee Selector Bar with Real-time Search */}
-                <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
                     <div className="sm:col-span-1">
-                        <label className="block text-xs font-bold text-gray-600 mb-1">
+                        <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
                             Search Employee (සේවකයා සොයන්න):
                         </label>
                         <div className="relative">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                             <input
                                 type="text"
                                 placeholder="Search by name or code..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-xl text-xs bg-slate-50 focus:bg-white transition"
+                                className="w-full pl-9 pr-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-xl text-xs bg-slate-50 dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-[#132238] transition"
                             />
                         </div>
                     </div>
 
                     <div className="sm:col-span-2">
-                        <label className="block text-xs font-bold text-gray-600 mb-1">
+                        <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">
                             Select Employee Profile ({filteredEmployees.length} available):
                         </label>
                         <select
                             value={selectedEmployeeId}
                             onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                            className="w-full px-3 py-1.5 border border-gray-300 rounded-xl text-xs font-semibold bg-white text-gray-800"
+                            className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-xl text-xs font-semibold bg-white dark:bg-[#132238] text-gray-800 dark:text-white"
                         >
                             {filteredEmployees.map((emp) => (
                                 <option key={emp._id} value={emp._id}>

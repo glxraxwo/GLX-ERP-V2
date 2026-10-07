@@ -96,21 +96,21 @@ export default function ExportCentrePage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                         <FileSpreadsheet className="w-7 h-7 text-emerald-500" />
                         Export & Reporting Centre
                     </h1>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                         Export raw database records, ledger logs, and compliance journals directly into formatted Microsoft Excel files
                     </p>
                 </div>
             </div>
 
             {/* Date range filter card */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center gap-4">
+            <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row items-center gap-4">
                 <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-emerald-500" />
-                    <span className="text-xs font-bold text-slate-600 uppercase">Export Data Range</span>
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">Export Data Range</span>
                 </div>
                 <div className="grid grid-cols-2 gap-4 flex-1 w-full">
                     <div>
@@ -118,7 +118,7 @@ export default function ExportCentrePage() {
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                            className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-700 dark:text-white outline-none [color-scheme:light] dark:[color-scheme:dark]"
                         />
                     </div>
                     <div>
@@ -126,7 +126,7 @@ export default function ExportCentrePage() {
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                            className="w-full px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-slate-700 dark:text-white outline-none [color-scheme:light] dark:[color-scheme:dark]"
                         />
                     </div>
                 </div>
@@ -135,13 +135,13 @@ export default function ExportCentrePage() {
             {/* Modules Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {EXPORT_MODULES.map((mod) => (
-                    <div key={mod.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                    <div key={mod.id} className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between hover:shadow-md transition">
                         <div>
                             <div className="flex items-center justify-between mb-3">
-                                <h3 className="font-bold text-slate-800 text-sm">{mod.title}</h3>
-                                <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                                <h3 className="font-bold text-slate-800 dark:text-white text-sm">{mod.title}</h3>
+                                <FileSpreadsheet className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                             </div>
-                            <p className="text-xs text-slate-500 leading-relaxed mb-6">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
                                 {mod.description}
                             </p>
                         </div>
@@ -168,11 +168,11 @@ export default function ExportCentrePage() {
             </div>
 
             {/* Info notice */}
-            <div className="flex gap-3 bg-blue-50/50 border border-blue-100 p-4 rounded-xl items-start">
-                <ShieldCheck className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                <div className="text-xs leading-relaxed text-slate-600">
-                    <p className="font-bold text-slate-700">Secure Export & Auditing</p>
-                    <p className="mt-0.5">All export actions are logged under the **Log Centre**. Financial spreadsheets include computed tallies, invoice logs, and are fully aligned with the central general ledger.</p>
+            <div className="flex gap-3 bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 p-4 rounded-xl items-start">
+                <ShieldCheck className="w-5 h-5 text-blue-500 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <div className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                    <p className="font-bold text-slate-700 dark:text-white">Secure Export & Auditing</p>
+                    <p className="mt-0.5 text-slate-500 dark:text-slate-400">All export actions are logged under the **Log Centre**. Financial spreadsheets include computed tallies, invoice logs, and are fully aligned with the central general ledger.</p>
                 </div>
             </div>
         </div>

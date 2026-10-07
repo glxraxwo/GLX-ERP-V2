@@ -104,7 +104,7 @@ const AuditLogPage = () => {
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap gap-4 items-center">
+            <div className="bg-white dark:bg-[#111F33] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap gap-4 items-center">
                 <div className="flex-1 min-w-[200px]">
                     <label className="block text-xs font-medium text-slate-500 mb-1">Module</label>
                     <select
@@ -150,10 +150,10 @@ const AuditLogPage = () => {
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-[#111F33] rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-50 border-b border-slate-200">
+                        <thead className="bg-slate-50 dark:bg-[#132238] border-b border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200">
                             <tr>
                                 <th className="px-6 py-3.5 text-xs font-semibold text-slate-600 uppercase tracking-wider">Timestamp</th>
                                 <th className="px-6 py-3.5 text-xs font-semibold text-slate-600 uppercase tracking-wider">User</th>
@@ -177,7 +177,7 @@ const AuditLogPage = () => {
                                 </tr>
                             ) : (
                                 logs.map((log, idx) => (
-                                    <tr key={log._id || idx} className="hover:bg-slate-50/60 transition-colors">
+                                    <tr key={log._id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800/60 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap text-xs font-mono text-slate-600">
                                             {formatDateSafely(log.createdAt)}
                                         </td>
@@ -213,20 +213,20 @@ const AuditLogPage = () => {
                 </div>
 
                 {/* Pagination */}
-                <div className="px-6 py-4 border-t border-slate-200 flex justify-between items-center bg-slate-50/50">
+                <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-[#0E1A2B]">
                     <p className="text-xs text-slate-500 font-medium">Page {page} of {totalPages}</p>
                     <div className="flex gap-2">
                         <button
                             disabled={page === 1}
                             onClick={() => setPage(p => Math.max(1, p - 1))}
-                            className="p-1.5 border border-slate-200 bg-white rounded-lg hover:bg-slate-50 disabled:opacity-50 transition"
+                            className="p-1.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#132238] text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition"
                         >
                             <ChevronLeft size={16} />
                         </button>
                         <button
                             disabled={page >= totalPages}
                             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                            className="p-1.5 border border-slate-200 bg-white rounded-lg hover:bg-slate-50 disabled:opacity-50 transition"
+                            className="p-1.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#132238] text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition"
                         >
                             <ChevronRight size={16} />
                         </button>

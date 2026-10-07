@@ -487,7 +487,7 @@ export default function PosPage() {
         <div className="h-screen flex flex-col bg-gray-100 -m-6 overflow-hidden">
 
             {/* ─── TOP BAR ─── */}
-            <div className="bg-white shadow-sm z-20 flex-shrink-0">
+            <div className="bg-white dark:bg-[#111F33] border-b border-gray-100 dark:border-slate-800 shadow-sm z-20 flex-shrink-0">
                 {/* Main top bar */}
                 <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100">
                     <button
@@ -549,7 +549,7 @@ export default function PosPage() {
                                 type="number" min="0" max="100" step="0.5"
                                 value={orderDiscountPercent}
                                 onChange={(e) => setOrderDiscountPercent(e.target.value)}
-                                className="w-16 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-right bg-white"
+                                className="w-16 px-2 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-right bg-white dark:bg-[#111F33] text-gray-900 dark:text-white"
                             />
                             <span className="text-gray-500 text-xs">%</span>
                         </div>
@@ -571,7 +571,7 @@ export default function PosPage() {
                                         type="number" min="0" max="100" step="0.5"
                                         value={overrideTaxRate}
                                         onChange={(e) => setOverrideTaxRate(e.target.value)}
-                                        className="w-14 px-2 py-1.5 border border-gray-200 rounded-lg text-sm text-right bg-white"
+                                        className="w-14 px-2 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-right bg-white dark:bg-[#111F33] text-gray-900 dark:text-white"
                                     />
                                     <span className="text-xs text-gray-500">%</span>
                                     <button
@@ -682,7 +682,7 @@ export default function PosPage() {
                                         onClick={() => addToCart(p)}
                                         disabled={outOfStock}
                                         className={`
-                                            relative text-left bg-white rounded-2xl p-3 transition-all duration-150 active:scale-95
+                                            relative text-left bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 rounded-2xl p-3 transition-all duration-150 active:scale-95
                                             ${outOfStock
                                                 ? 'opacity-50 cursor-not-allowed'
                                                 : 'hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
@@ -824,7 +824,7 @@ export default function PosPage() {
                     {/* Drawer */}
                     <div
                         ref={cartDrawerRef}
-                        className="relative bg-white rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col animate-slideUp"
+                        className="relative bg-white dark:bg-[#111F33] rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col animate-slideUp text-gray-900 dark:text-white"
                         style={{
                             animation: 'slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
                         }}
@@ -966,7 +966,7 @@ function CartPanel({
                             </button>
                         </div>
                         {cart.map((item) => (
-                            <div key={item.productId} className="bg-gray-50 rounded-2xl p-3">
+                            <div key={item.productId} className="bg-gray-50 dark:bg-[#132238] border border-gray-100 dark:border-slate-800 rounded-2xl p-3">
                                 <div className="flex items-start justify-between mb-2">
                                     <div className="flex-1 min-w-0 pr-2">
                                         <p className="text-sm font-semibold text-gray-800 leading-tight truncate">{item.name}</p>
@@ -986,10 +986,10 @@ function CartPanel({
 
                                 <div className="flex items-center justify-between gap-2">
                                     {/* Qty stepper */}
-                                    <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl overflow-hidden">
+                                    <div className="flex items-center gap-1 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
                                         <button
                                             onClick={() => updateQty(item.productId, -1)}
-                                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 active:bg-gray-100 transition-colors text-gray-600"
+                                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-800 active:bg-gray-100 dark:active:bg-slate-700 transition-colors text-gray-600"
                                         >
                                             <Minus size={13} />
                                         </button>
@@ -1003,7 +1003,7 @@ function CartPanel({
                                         />
                                         <button
                                             onClick={() => updateQty(item.productId, 1)}
-                                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 active:bg-gray-100 transition-colors text-gray-600"
+                                            className="w-8 h-8 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-800 active:bg-gray-100 dark:active:bg-slate-700 transition-colors text-gray-600"
                                         >
                                             <Plus size={13} />
                                         </button>
@@ -1032,7 +1032,7 @@ function CartPanel({
 
             {/* Order summary & checkout */}
             {cart.length > 0 && (
-                <div className="border-t border-gray-100 bg-white flex-shrink-0 px-4 pt-3 pb-5 space-y-2.5">
+                <div className="border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-[#111F33] flex-shrink-0 px-4 pt-3 pb-5 space-y-2.5">
                     {/* Summary rows */}
                     <div className="space-y-1.5">
                         <div className="flex justify-between text-sm text-gray-600">
@@ -1133,7 +1133,7 @@ function CartPanel({
                                     className={`py-1.5 px-1 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center justify-center gap-1 ${
                                         paymentMethod === pm.id
                                             ? 'border-primary-600 bg-primary-50 text-primary-700'
-                                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                            : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-600 dark:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'
                                     }`}
                                 >
                                     {pm.label}

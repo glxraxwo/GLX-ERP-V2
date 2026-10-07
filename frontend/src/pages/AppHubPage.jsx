@@ -10,6 +10,106 @@ import { usePermission } from '../hooks/usePermission';
 import { useAuthStore } from '../store/authStore';
 import { useTabStore } from '../store/tabStore';
 import { useThemeStore, THEME_MODES } from '../store/themeStore';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+
+const PINNED_ICON_PALETTES = [
+    {
+        name: 'purple',
+        cardBg: 'bg-purple-100/75 hover:bg-purple-100 border-2 border-purple-300/80 hover:border-purple-400 shadow-sm shadow-purple-500/10 dark:bg-purple-950/40 dark:border-purple-500/50 dark:hover:bg-purple-900/40',
+        icon: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-sm shadow-purple-500/30',
+        subtitle: 'text-purple-800 dark:text-purple-300 font-semibold',
+        hoverTitle: 'group-hover:text-purple-900 dark:group-hover:text-purple-200',
+        arrow: 'text-purple-700 dark:text-purple-300',
+    },
+    {
+        name: 'sky',
+        cardBg: 'bg-sky-100/75 hover:bg-sky-100 border-2 border-sky-300/80 hover:border-sky-400 shadow-sm shadow-sky-500/10 dark:bg-sky-950/40 dark:border-sky-500/50 dark:hover:bg-sky-900/40',
+        icon: 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sm shadow-sky-500/30',
+        subtitle: 'text-sky-800 dark:text-sky-300 font-semibold',
+        hoverTitle: 'group-hover:text-sky-900 dark:group-hover:text-sky-200',
+        arrow: 'text-sky-700 dark:text-sky-300',
+    },
+    {
+        name: 'emerald',
+        cardBg: 'bg-emerald-100/75 hover:bg-emerald-100 border-2 border-emerald-300/80 hover:border-emerald-400 shadow-sm shadow-emerald-500/10 dark:bg-emerald-950/40 dark:border-emerald-500/50 dark:hover:bg-emerald-900/40',
+        icon: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30',
+        subtitle: 'text-emerald-800 dark:text-emerald-300 font-semibold',
+        hoverTitle: 'group-hover:text-emerald-900 dark:group-hover:text-emerald-200',
+        arrow: 'text-emerald-700 dark:text-emerald-300',
+    },
+    {
+        name: 'amber',
+        cardBg: 'bg-amber-100/75 hover:bg-amber-100 border-2 border-amber-300/80 hover:border-amber-400 shadow-sm shadow-amber-500/10 dark:bg-amber-950/40 dark:border-amber-500/50 dark:hover:bg-amber-900/40',
+        icon: 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-sm shadow-amber-500/30',
+        subtitle: 'text-amber-800 dark:text-amber-300 font-semibold',
+        hoverTitle: 'group-hover:text-amber-900 dark:group-hover:text-amber-200',
+        arrow: 'text-amber-700 dark:text-amber-300',
+    },
+    {
+        name: 'rose',
+        cardBg: 'bg-rose-100/75 hover:bg-rose-100 border-2 border-rose-300/80 hover:border-rose-400 shadow-sm shadow-rose-500/10 dark:bg-rose-950/40 dark:border-rose-500/50 dark:hover:bg-rose-900/40',
+        icon: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-sm shadow-rose-500/30',
+        subtitle: 'text-rose-800 dark:text-rose-300 font-semibold',
+        hoverTitle: 'group-hover:text-rose-900 dark:group-hover:text-rose-200',
+        arrow: 'text-rose-700 dark:text-rose-300',
+    },
+    {
+        name: 'indigo',
+        cardBg: 'bg-indigo-100/75 hover:bg-indigo-100 border-2 border-indigo-300/80 hover:border-indigo-400 shadow-sm shadow-indigo-500/10 dark:bg-indigo-950/40 dark:border-indigo-500/50 dark:hover:bg-indigo-900/40',
+        icon: 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm shadow-indigo-500/30',
+        subtitle: 'text-indigo-800 dark:text-indigo-300 font-semibold',
+        hoverTitle: 'group-hover:text-indigo-900 dark:group-hover:text-indigo-200',
+        arrow: 'text-indigo-700 dark:text-indigo-300',
+    },
+    {
+        name: 'teal',
+        cardBg: 'bg-teal-100/75 hover:bg-teal-100 border-2 border-teal-300/80 hover:border-teal-400 shadow-sm shadow-teal-500/10 dark:bg-teal-950/40 dark:border-teal-500/50 dark:hover:bg-teal-900/40',
+        icon: 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-sm shadow-teal-500/30',
+        subtitle: 'text-teal-800 dark:text-teal-300 font-semibold',
+        hoverTitle: 'group-hover:text-teal-900 dark:group-hover:text-teal-200',
+        arrow: 'text-teal-700 dark:text-teal-300',
+    },
+    {
+        name: 'orange',
+        cardBg: 'bg-orange-100/75 hover:bg-orange-100 border-2 border-orange-300/80 hover:border-orange-400 shadow-sm shadow-orange-500/10 dark:bg-orange-950/40 dark:border-orange-500/50 dark:hover:bg-orange-900/40',
+        icon: 'bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-sm shadow-orange-500/30',
+        subtitle: 'text-orange-800 dark:text-orange-300 font-semibold',
+        hoverTitle: 'group-hover:text-orange-900 dark:group-hover:text-orange-200',
+        arrow: 'text-orange-700 dark:text-orange-300',
+    },
+    {
+        name: 'blue',
+        cardBg: 'bg-blue-100/75 hover:bg-blue-100 border-2 border-blue-300/80 hover:border-blue-400 shadow-sm shadow-blue-500/10 dark:bg-blue-950/40 dark:border-blue-500/50 dark:hover:bg-blue-900/40',
+        icon: 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white shadow-sm shadow-blue-500/30',
+        subtitle: 'text-blue-800 dark:text-blue-300 font-semibold',
+        hoverTitle: 'group-hover:text-blue-900 dark:group-hover:text-blue-200',
+        arrow: 'text-blue-700 dark:text-blue-300',
+    },
+    {
+        name: 'fuchsia',
+        cardBg: 'bg-fuchsia-100/75 hover:bg-fuchsia-100 border-2 border-fuchsia-300/80 hover:border-fuchsia-400 shadow-sm shadow-fuchsia-500/10 dark:bg-fuchsia-950/40 dark:border-fuchsia-500/50 dark:hover:bg-fuchsia-900/40',
+        icon: 'bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white shadow-sm shadow-fuchsia-500/30',
+        subtitle: 'text-fuchsia-800 dark:text-fuchsia-300 font-semibold',
+        hoverTitle: 'group-hover:text-fuchsia-900 dark:group-hover:text-fuchsia-200',
+        arrow: 'text-fuchsia-700 dark:text-fuchsia-300',
+    },
+    {
+        name: 'cyan',
+        cardBg: 'bg-cyan-100/75 hover:bg-cyan-100 border-2 border-cyan-300/80 hover:border-cyan-400 shadow-sm shadow-cyan-500/10 dark:bg-cyan-950/40 dark:border-cyan-500/50 dark:hover:bg-cyan-900/40',
+        icon: 'bg-gradient-to-br from-cyan-500 to-teal-500 text-white shadow-sm shadow-cyan-500/30',
+        subtitle: 'text-cyan-800 dark:text-cyan-300 font-semibold',
+        hoverTitle: 'group-hover:text-cyan-900 dark:group-hover:text-cyan-200',
+        arrow: 'text-cyan-700 dark:text-cyan-300',
+    },
+    {
+        name: 'lime',
+        cardBg: 'bg-lime-100/75 hover:bg-lime-100 border-2 border-lime-300/80 hover:border-lime-400 shadow-sm shadow-lime-500/10 dark:bg-lime-950/40 dark:border-lime-500/50 dark:hover:bg-lime-900/40',
+        icon: 'bg-gradient-to-br from-lime-500 to-emerald-600 text-white shadow-sm shadow-lime-500/30',
+        subtitle: 'text-lime-900 dark:text-lime-300 font-semibold',
+        hoverTitle: 'group-hover:text-lime-950 dark:group-hover:text-lime-200',
+        arrow: 'text-lime-700 dark:text-lime-300',
+    },
+];
 
 const getCategoryThemeStyles = (catId, isDark) => {
     if (!isDark) {
@@ -177,6 +277,52 @@ export default function AppHubPage() {
         }
         return DEFAULT_PINNED_PATHS;
     });
+
+    // Item queued for unpin confirmation
+    const [itemToUnpin, setItemToUnpin] = useState(null);
+
+    const handleRequestUnpin = (item, e) => {
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+        setItemToUnpin(item);
+    };
+
+    const handleConfirmUnpin = () => {
+        if (!itemToUnpin) return;
+        const targetPath = itemToUnpin.path;
+        setPinnedPaths(prev => {
+            const next = prev.filter(p => p !== targetPath);
+            try {
+                localStorage.setItem('glx_apphub_pinned_paths', JSON.stringify(next));
+            } catch (err) {
+                console.error('Failed to save pinned paths', err);
+            }
+            return next;
+        });
+        setItemToUnpin(null);
+    };
+
+    const handleCardPinClick = (item, e) => {
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+        if (pinnedPaths.includes(item.path)) {
+            setItemToUnpin(item);
+        } else {
+            setPinnedPaths(prev => {
+                const next = [...prev, item.path];
+                try {
+                    localStorage.setItem('glx_apphub_pinned_paths', JSON.stringify(next));
+                } catch (err) {
+                    console.error('Failed to save pinned paths', err);
+                }
+                return next;
+            });
+        }
+    };
 
     const togglePin = (path, e) => {
         if (e) {
@@ -420,9 +566,6 @@ export default function AppHubPage() {
                         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
                             {greeting}, <span className={isDark ? 'text-sky-400' : 'text-[#000865]'}>{user?.fullName || user?.firstName || 'User'}</span>
                         </h1>
-                        <p className={`text-xs sm:text-sm font-normal max-w-xl ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                            Select any module below to open it in a tab at the top. You can filter by category or search directly for quick access.
-                        </p>
                     </div>
 
                     {/* Quick Stats Pill */}
@@ -441,154 +584,58 @@ export default function AppHubPage() {
                     </div>
                 </div>
 
-                {/* ── Search Bar inside Banner ── */}
-                <div className="mt-6 relative max-w-2xl">
-                    <Search className={`absolute left-4 top-3.5 h-4 w-4 pointer-events-none ${isDark ? 'text-slate-400' : 'text-slate-400'}`} />
-                    <input
-                        type="text"
-                        value={hubSearchQuery}
-                        onChange={(e) => setHubSearchQuery(e.target.value)}
-                        placeholder="Search modules, actions or features (e.g. Products, Invoices, Employees, Payroll)..."
-                        className={`w-full pl-11 pr-10 py-3 rounded-xl text-sm font-medium outline-none transition-all ${
-                            isDark
-                                ? 'bg-[#16273F] border border-slate-700 text-white placeholder-slate-400 focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400'
-                                : 'bg-white border border-slate-300 text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-[#000865]/20 focus:border-[#000865] shadow-xs'
-                        }`}
-                    />
-                    {hubSearchQuery && (
-                        <button
-                            onClick={() => setHubSearchQuery('')}
-                            className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-200 transition"
-                        >
-                            <X size={16} />
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* ── Quick Access Bar (Top-up / Pinned Shortcuts) ── */}
-            <div className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 shadow-xs ${
-                isDark
-                    ? 'bg-[#0E1A2B] border-slate-700/80'
-                    : isSoft
-                        ? 'bg-gradient-to-r from-white via-slate-50 to-amber-50/20 border-slate-200'
-                        : 'bg-white border-slate-200'
-            }`}>
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-700/80">
-                    <div className="flex items-center gap-2.5">
-                        <div className="p-1.5 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-xs">
-                            <Pin size={15} className="rotate-45" />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className={`text-sm sm:text-base font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                    Quick Access Bar
-                                </h2>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                    isDark 
-                                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' 
-                                        : 'bg-amber-50 text-amber-700 border-amber-200'
-                                }`}>
-                                    {pinnedItems.length} Pinned
-                                </span>
-                            </div>
-                            <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                Fast 1-click access to essential modules. Click 📌 on any module below to top-up here.
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Right Controls */}
-                    <div className="flex items-center gap-2 self-start sm:self-auto">
-                        {pinnedPaths.length !== DEFAULT_PINNED_PATHS.length && (
-                            <button
-                                type="button"
-                                onClick={handleResetPinned}
-                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
-                                    isDark 
-                                        ? 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white' 
-                                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                                }`}
-                                title="Restore recommended shortcuts (Invoices, Quotations & Estimates, Customers, POS)"
-                            >
-                                <RotateCcw size={12} />
-                                <span>Reset Defaults</span>
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Body: Pinned Cards */}
-                {pinnedItems.length === 0 ? (
-                    <div className="py-6 text-center">
-                        <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            No shortcuts pinned yet. Click the <span className="font-bold text-amber-500">📌 Pin</span> icon on any module below to top-up here for quick access.
-                        </p>
-                        <button
-                            type="button"
-                            onClick={handleResetPinned}
-                            className="mt-3 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition shadow-xs cursor-pointer inline-flex items-center gap-1.5"
-                        >
-                            <Pin size={13} className="rotate-45" />
-                            <span>Add Recommended Shortcuts</span>
-                        </button>
-                    </div>
-                ) : (
-                    <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {pinnedItems.map((item) => {
-                            const IconComponent = item.icon;
-                            const themeStyles = getCategoryThemeStyles(item.categoryId, isDark);
-                            return (
-                                <div
-                                    key={item.path}
-                                    onClick={() => handleCardClick(item)}
-                                    className={`group relative p-3 sm:p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex items-center justify-between gap-3 ${
-                                        isDark
-                                            ? `bg-[#132238] border-slate-700/80 ${themeStyles.cardBorder} hover:bg-[#182C48]`
-                                            : `bg-slate-50/80 border-slate-200/90 ${themeStyles.cardBorder} hover:bg-white hover:border-slate-300`
-                                    }`}
-                                >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border transition-transform duration-200 group-hover:scale-105 ${themeStyles.icon}`}>
-                                            <IconComponent size={20} />
+                {/* ── Pinned Shortcuts inside Banner ── */}
+                {pinnedItems.length > 0 && (
+                    <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-slate-700/60 relative z-10">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            {pinnedItems.map((item, idx) => {
+                                const IconComponent = item.icon;
+                                const colorStyle = PINNED_ICON_PALETTES[idx % PINNED_ICON_PALETTES.length];
+                                return (
+                                    <div
+                                        key={item.path}
+                                        onClick={() => handleCardClick(item)}
+                                        className={`group relative p-3 sm:p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex items-center justify-between gap-3 shadow-xs ${colorStyle.cardBg}`}
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105 ${colorStyle.icon}`}>
+                                                <IconComponent size={20} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h4 className={`text-xs sm:text-[13px] font-bold truncate leading-snug transition-colors ${
+                                                    isDark ? 'text-white' : 'text-slate-900'
+                                                } ${colorStyle.hoverTitle}`}>
+                                                    {item.title}
+                                                </h4>
+                                                <span className={`text-[10px] capitalize truncate block ${colorStyle.subtitle}`}>
+                                                    {item.categoryLabel || item.categoryId}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="min-w-0">
-                                            <h4 className={`text-xs sm:text-[13px] font-bold truncate leading-snug transition-colors ${
-                                                isDark ? 'text-white group-hover:text-sky-300' : 'text-slate-900 group-hover:text-[#000865]'
-                                            }`}>
-                                                {item.title}
-                                            </h4>
-                                            <span className="text-[10px] font-medium text-slate-400 capitalize truncate block">
-                                                {item.categoryLabel || item.categoryId}
-                                            </span>
+
+                                        {/* Unpin button */}
+                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleRequestUnpin(item, e)}
+                                                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                                    isDark 
+                                                        ? 'text-slate-400 hover:text-red-400 hover:bg-slate-800/80' 
+                                                        : 'text-slate-400 hover:text-red-600 hover:bg-black/5'
+                                                }`}
+                                                title="Remove from Quick Access"
+                                                aria-label="Remove pin"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                            <div className={`p-1 rounded-md opacity-60 group-hover:opacity-100 transition-opacity ${colorStyle.arrow}`}>
+                                                <ArrowUpRight size={13} />
+                                            </div>
                                         </div>
                                     </div>
-
-                                    {/* Unpin button */}
-                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                        <button
-                                            type="button"
-                                            onClick={(e) => togglePin(item.path, e)}
-                                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                                                isDark 
-                                                    ? 'text-slate-400 hover:text-red-400 hover:bg-slate-800' 
-                                                    : 'text-slate-400 hover:text-red-600 hover:bg-slate-200/60'
-                                            }`}
-                                            title="Remove from Quick Access"
-                                            aria-label="Remove pin"
-                                        >
-                                            <X size={14} />
-                                        </button>
-                                        <div className={`p-1 rounded-md opacity-60 group-hover:opacity-100 transition-opacity ${
-                                            isDark ? 'text-sky-300' : 'text-[#000865]'
-                                        }`}>
-                                            <ArrowUpRight size={13} />
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
             </div>
@@ -603,7 +650,7 @@ export default function AppHubPage() {
                         className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl border flex-shrink-0 transition-all cursor-pointer ${
                             isDark
                                 ? 'bg-[#132238] border-slate-700 text-slate-300 hover:bg-[#1A2E4C] hover:text-white active:scale-95'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 shadow-2xs active:scale-95'
+                                : 'bg-white dark:bg-[#132238] border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white shadow-2xs active:scale-95'
                         }`}
                         title="Scroll categories left"
                         aria-label="Scroll left"
@@ -638,7 +685,7 @@ export default function AppHubPage() {
                                 ? (isDark ? 'bg-sky-600 text-white shadow-md' : 'bg-[#000865] text-white shadow-sm ring-1 ring-[#000865]/20')
                                 : (isDark
                                     ? 'bg-[#132238] text-slate-200 hover:bg-[#1A2E4C] hover:text-white border border-slate-700'
-                                    : 'bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-200')
+                                    : 'bg-white dark:bg-[#132238] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700')
                         }`}
                     >
                         <Layers size={13} className="flex-shrink-0" />
@@ -689,7 +736,7 @@ export default function AppHubPage() {
                         className={`flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl border flex-shrink-0 transition-all cursor-pointer ${
                             isDark
                                 ? 'bg-[#132238] border-slate-700 text-slate-300 hover:bg-[#1A2E4C] hover:text-white active:scale-95'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 shadow-2xs active:scale-95'
+                                : 'bg-white dark:bg-[#132238] border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white shadow-2xs active:scale-95'
                         }`}
                         title="Scroll categories right"
                         aria-label="Scroll right"
@@ -712,6 +759,31 @@ export default function AppHubPage() {
                     {isWrapped ? <ListFilter size={14} /> : <LayoutGrid size={14} />}
                     <span className="hidden sm:inline">{isWrapped ? 'Collapse' : 'Show All'}</span>
                 </button>
+            </div>
+
+            {/* ── Search Bar (Above Dashboard & Overview) ── */}
+            <div className="relative w-full max-w-2xl">
+                <Search className={`absolute left-4 top-3.5 h-4 w-4 pointer-events-none ${isDark ? 'text-slate-400' : 'text-slate-400'}`} />
+                <input
+                    type="text"
+                    value={hubSearchQuery}
+                    onChange={(e) => setHubSearchQuery(e.target.value)}
+                    placeholder="Search modules, actions or features (e.g. Products, Invoices, Employees, Payroll)..."
+                    className={`w-full pl-11 pr-10 py-3 rounded-xl text-sm font-medium outline-none transition-all ${
+                        isDark
+                            ? 'bg-[#132238] border border-slate-700 text-white placeholder-slate-400 focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400'
+                            : 'bg-white dark:bg-[#132238] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-[#000865]/20 focus:border-[#000865] shadow-xs'
+                    }`}
+                />
+                {hubSearchQuery && (
+                    <button
+                        onClick={() => setHubSearchQuery('')}
+                        className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-200 transition cursor-pointer"
+                        title="Clear search"
+                    >
+                        <X size={16} />
+                    </button>
+                )}
             </div>
 
             {/* ── Category Modules Sections & Cards ── */}
@@ -771,8 +843,8 @@ export default function AppHubPage() {
                                                     isDark
                                                         ? `bg-[#152338] border-slate-700 ${themeStyles.cardBorder} hover:bg-[#1A2D48] shadow-sm`
                                                         : isSoft
-                                                            ? `bg-white border-slate-200 ${themeStyles.cardBorder} hover:shadow-slate-300/40`
-                                                            : `bg-white border-slate-200 ${themeStyles.cardBorder} hover:shadow-slate-200`
+                                                            ? `bg-white dark:bg-[#152338] border-slate-200 dark:border-slate-700 ${themeStyles.cardBorder} hover:shadow-slate-300/40`
+                                                            : `bg-white dark:bg-[#152338] border-slate-200 dark:border-slate-700 ${themeStyles.cardBorder} hover:shadow-slate-200`
                                                 }`}
                                             >
                                                 <div className="flex items-start justify-between gap-3">
@@ -785,7 +857,7 @@ export default function AppHubPage() {
                                                     <div className="flex items-center gap-1">
                                                         <button
                                                             type="button"
-                                                            onClick={(e) => togglePin(item.path, e)}
+                                                            onClick={(e) => handleCardPinClick(item, e)}
                                                             className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                                                                 pinnedPaths.includes(item.path)
                                                                     ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30 shadow-2xs hover:bg-amber-500/25'
@@ -838,6 +910,18 @@ export default function AppHubPage() {
                     })}
                 </div>
             )}
+
+            {/* ── Unpin Confirmation Dialog ── */}
+            <ConfirmDialog
+                isOpen={!!itemToUnpin}
+                onClose={() => setItemToUnpin(null)}
+                onConfirm={handleConfirmUnpin}
+                title="Remove Pinned Shortcut"
+                message={`Are you sure you want to remove "${itemToUnpin?.title || 'this shortcut'}" from your pinned shortcuts?`}
+                confirmText="Remove"
+                cancelText="Cancel"
+                confirmVariant="danger"
+            />
         </div>
     );
 }

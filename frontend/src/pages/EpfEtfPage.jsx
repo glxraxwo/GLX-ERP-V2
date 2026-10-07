@@ -136,16 +136,16 @@ export default function EpfEtfPage() {
             </div>
 
             {/* Selection filters */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 print:hidden">
+            <div className="bg-white dark:bg-[#111F33] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 print:hidden">
                 <div className="flex items-center gap-2 flex-1">
                     <div className="relative w-full max-w-xs">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
                         <input
                             type="text"
                             placeholder="Search by employee name / ID..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                            className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none"
                         />
                     </div>
                 </div>
@@ -154,7 +154,7 @@ export default function EpfEtfPage() {
                     <select
                         value={month}
                         onChange={(e) => setMonth(e.target.value)}
-                        className="px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                        className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                     >
                         <option value="1">January</option>
                         <option value="2">February</option>
@@ -173,7 +173,7 @@ export default function EpfEtfPage() {
                     <select
                         value={year}
                         onChange={(e) => setYear(e.target.value)}
-                        className="px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                        className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                     >
                         <option value="2025">2025</option>
                         <option value="2026">2026</option>
@@ -184,7 +184,7 @@ export default function EpfEtfPage() {
 
             {/* Quick Summary Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
                     <div>
                         <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total EPF Liability (20%)</span>
                         <p className="text-xl font-bold text-slate-800 mt-1">LKR {(totalEpfEmployee + totalEpfEmployer).toLocaleString()}</p>
@@ -195,7 +195,7 @@ export default function EpfEtfPage() {
                     </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
                     <div>
                         <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Total ETF Liability (3%)</span>
                         <p className="text-xl font-bold text-slate-800 mt-1">LKR {totalEtfEmployer.toLocaleString()}</p>
@@ -206,7 +206,7 @@ export default function EpfEtfPage() {
                     </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
                     <div>
                         <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Grand Total Compliance due</span>
                         <p className="text-xl font-bold text-slate-800 mt-1">LKR {grandTotal.toLocaleString()}</p>
@@ -219,7 +219,7 @@ export default function EpfEtfPage() {
             </div>
 
             {/* Main Table schedule */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-[#111F33] rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="p-5 border-b border-slate-200 flex justify-between items-center">
                     <h3 className="text-sm font-semibold text-slate-800">EPF / ETF Schedule for {month}/{year}</h3>
                     <HelpCircle className="w-4 h-4 text-slate-450 cursor-pointer print:hidden" title="Statutory rates: Employees' Provident Fund (EPF) and Employees' Trust Fund (ETF) Sri Lanka" />
@@ -239,7 +239,7 @@ export default function EpfEtfPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-200 text-xs">
                             {filteredEPFData.map(emp => (
-                                <tr key={emp._id} className="hover:bg-slate-50/50 text-slate-700">
+                                <tr key={emp._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800/60">
                                     <td className="p-4 font-mono text-[11px]">{emp.employeeCode || '—'}</td>
                                     <td className="p-4 font-bold">{emp.firstName} {emp.lastName}</td>
                                     <td className="p-4 text-right font-medium">LKR {emp.salary.toLocaleString()}</td>
@@ -250,7 +250,7 @@ export default function EpfEtfPage() {
                                 </tr>
                             ))}
                             {/* Summary row */}
-                            <tr className="bg-slate-50 text-xs font-bold text-slate-800 border-t border-slate-300">
+                            <tr className="bg-slate-50 dark:bg-[#132238] text-xs font-bold text-slate-800 dark:text-white border-t border-slate-300 dark:border-slate-700">
                                 <td colSpan="2" className="p-4">TOTALS</td>
                                 <td className="p-4 text-right">LKR {totalSalaries.toLocaleString()}</td>
                                 <td className="p-4 text-right">LKR {totalEpfEmployee.toLocaleString()}</td>

@@ -124,7 +124,7 @@ export default function VarianceComparisonPage() {
             />
 
             {/* Navigation Tabs */}
-            <div className="border-b border-gray-200 bg-white px-4 py-2 rounded-xl flex gap-4">
+            <div className="border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-[#111F33] px-4 py-2 rounded-xl flex gap-4">
                 <button
                     onClick={() => setActiveTab('variance')}
                     className={`pb-2 pt-1 px-4 text-sm font-semibold border-b-2 transition-all ${
@@ -225,7 +225,7 @@ export default function VarianceComparisonPage() {
                                     </div>
 
                                     {/* Progress Meter */}
-                                    <div className="border border-gray-100 rounded-xl p-5 bg-slate-50/50">
+                                    <div className="border border-gray-100 dark:border-slate-800 rounded-xl p-5 bg-slate-50/50 dark:bg-slate-900/60">
                                         <div className="flex justify-between items-center mb-3">
                                             <div>
                                                 <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Compliance progress meter</h4>
@@ -263,14 +263,14 @@ export default function VarianceComparisonPage() {
                                         <h4 className="text-sm font-bold text-gray-800 mb-3">Operating Expense Breakdown (Daily P&L)</h4>
                                         <div className="overflow-x-auto border border-gray-200 rounded-xl">
                                             <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                                <thead className="bg-gray-50 text-gray-700">
+                                                <thead className="bg-gray-50 dark:bg-[#132238] text-gray-700 dark:text-slate-300">
                                                     <tr>
                                                         <th className="px-4 py-3 text-left font-semibold">Expense Category</th>
                                                         <th className="px-4 py-3 text-right font-semibold">Total Amount (LKR)</th>
                                                         <th className="px-4 py-3 text-right font-semibold">% of Total Expenses</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-gray-100 bg-white text-gray-700">
+                                                <tbody className="divide-y divide-gray-100 dark:divide-slate-800 bg-white dark:bg-[#111F33] text-gray-700 dark:text-slate-200">
                                                     {[
                                                         { name: 'Raw Material Cost', val: varianceData.expensesBreakdown.rawMaterial },
                                                         { name: 'Labour Salary', val: varianceData.expensesBreakdown.labourSalary },
@@ -282,7 +282,7 @@ export default function VarianceComparisonPage() {
                                                         { name: 'Communication & Admin', val: varianceData.expensesBreakdown.communication },
                                                         { name: 'Other Overheads', val: varianceData.expensesBreakdown.other }
                                                     ].filter(x => x.val > 0 || varianceData.actualExpenses === 0).map((row, i) => (
-                                                        <tr key={i} className="hover:bg-slate-50/50">
+                                                        <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                                                             <td className="px-4 py-3 text-left font-medium">{row.name}</td>
                                                             <td className="px-4 py-3 text-right font-bold">{fmtLKR(row.val)}</td>
                                                             <td className="px-4 py-3 text-right text-gray-500">
@@ -292,7 +292,7 @@ export default function VarianceComparisonPage() {
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                    <tr className="bg-slate-50 font-bold text-gray-900 border-t border-gray-200">
+                                                    <tr className="bg-slate-50 dark:bg-[#132238] font-bold text-gray-900 dark:text-white border-t border-gray-200 dark:border-slate-700">
                                                         <td className="px-4 py-3 text-left">Total Expenses</td>
                                                         <td className="px-4 py-3 text-right text-red-600">{fmtLKR(varianceData.actualExpenses)}</td>
                                                         <td className="px-4 py-3 text-right">100.0%</td>
@@ -379,7 +379,7 @@ export default function VarianceComparisonPage() {
                     <h3 className="text-base font-bold text-gray-800 mb-4">Dual Month-to-Month Comparator</h3>
                     
                     {/* Filters Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 border rounded-xl mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-900/60 p-4 border border-slate-200 dark:border-slate-800 rounded-xl mb-6">
                         {/* Month A Selector */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Reference Month A</label>
@@ -432,7 +432,7 @@ export default function VarianceComparisonPage() {
                                 <h4 className="text-sm font-bold text-gray-800 mb-3 border-b pb-2">Financial KPI Comparison</h4>
                                 <div className="overflow-x-auto border rounded-xl">
                                     <table className="min-w-full divide-y divide-gray-200 text-sm">
-                                        <thead className="bg-gray-50 text-gray-700">
+                                        <thead className="bg-gray-50 dark:bg-[#132238] text-gray-700 dark:text-slate-300">
                                             <tr>
                                                 <th className="px-5 py-3 text-left font-semibold">Performance Metric</th>
                                                 <th className="px-5 py-3 text-right font-semibold">
@@ -445,9 +445,9 @@ export default function VarianceComparisonPage() {
                                                 <th className="px-5 py-3 text-center font-semibold">Growth Rate</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-100 bg-white text-gray-700">
+                                        <tbody className="divide-y divide-gray-100 dark:divide-slate-800 bg-white dark:bg-[#111F33] text-gray-700 dark:text-slate-200">
                                             {/* Revenue Row */}
-                                            <tr className="hover:bg-slate-50/50">
+                                            <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                                                 <td className="px-5 py-4 text-left font-medium">Verified Commercial Revenue</td>
                                                 <td className="px-5 py-4 text-right font-bold">{fmtLKR(comparisonData.monthA.revenue)}</td>
                                                 <td className="px-5 py-4 text-right font-bold">{fmtLKR(comparisonData.monthB.revenue)}</td>
@@ -466,7 +466,7 @@ export default function VarianceComparisonPage() {
                                                 </td>
                                             </tr>
                                             {/* Expenses Row */}
-                                            <tr className="hover:bg-slate-50/50">
+                                            <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                                                 <td className="px-5 py-4 text-left font-medium">Billed Operations Expenses</td>
                                                 <td className="px-5 py-4 text-right font-bold text-red-600">{fmtLKR(comparisonData.monthA.expenses)}</td>
                                                 <td className="px-5 py-4 text-right font-bold text-red-600">{fmtLKR(comparisonData.monthB.expenses)}</td>
@@ -482,7 +482,7 @@ export default function VarianceComparisonPage() {
                                                 </td>
                                             </tr>
                                             {/* Net Profit Row */}
-                                            <tr className="hover:bg-slate-50/50 bg-slate-50/30">
+                                            <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 bg-slate-50/30">
                                                 <td className="px-5 py-4 text-left font-bold">Net Profit / Loss</td>
                                                 <td className="px-5 py-4 text-right font-black text-teal-600">{fmtLKR(comparisonData.monthA.netProfit)}</td>
                                                 <td className="px-5 py-4 text-right font-black text-teal-600">{fmtLKR(comparisonData.monthB.netProfit)}</td>
@@ -501,7 +501,7 @@ export default function VarianceComparisonPage() {
                                                 </td>
                                             </tr>
                                             {/* Invoice Count Row */}
-                                            <tr className="hover:bg-slate-50/50">
+                                            <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
                                                 <td className="px-5 py-4 text-left font-medium">Invoiced Orders Volume</td>
                                                 <td className="px-5 py-4 text-right font-semibold">{comparisonData.monthA.invoiceCount}</td>
                                                 <td className="px-5 py-4 text-right font-semibold">{comparisonData.monthB.invoiceCount}</td>
@@ -520,7 +520,7 @@ export default function VarianceComparisonPage() {
                             {/* Dual Month Products Breakdowns */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Month A Top Products */}
-                                <Card className="p-4 border border-gray-100 bg-slate-50/50">
+                                <Card className="p-4 border border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60">
                                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Top Products Sold in Month A</h4>
                                     {comparisonData.monthA.topProducts.length === 0 ? (
                                         <p className="text-xs text-gray-400 py-6 text-center">No sales logged in Month A.</p>
@@ -537,7 +537,7 @@ export default function VarianceComparisonPage() {
                                 </Card>
 
                                 {/* Month B Top Products */}
-                                <Card className="p-4 border border-gray-100 bg-slate-50/50">
+                                <Card className="p-4 border border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60">
                                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Top Products Sold in Month B</h4>
                                     {comparisonData.monthB.topProducts.length === 0 ? (
                                         <p className="text-xs text-gray-400 py-6 text-center">No sales logged in Month B.</p>

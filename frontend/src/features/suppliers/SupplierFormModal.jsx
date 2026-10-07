@@ -279,7 +279,7 @@ export default function SupplierFormModal({ isOpen, onClose, supplier = null }) 
                     )}
                 </div>
 
-                <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#111F33] rounded-b-xl">
                     <Button variant="outline" type="button" onClick={onClose} disabled={isLoading}>Cancel</Button>
                     <Button type="submit" variant="primary" loading={isLoading}>
                         {isEdit ? 'Update Supplier' : 'Create Supplier'}

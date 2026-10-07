@@ -69,7 +69,7 @@ export default function IncomeTaxPage() {
                     <select
                         value={taxYear}
                         onChange={(e) => setTaxYear(e.target.value)}
-                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                        className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                     >
                         <option value="2024/2025">Year 2024/2025</option>
                         <option value="2025/2026">Year 2025/2026</option>
@@ -78,7 +78,7 @@ export default function IncomeTaxPage() {
                     <select
                         value={quarter}
                         onChange={(e) => setQuarter(e.target.value)}
-                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                        className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                     >
                         <option value="Q1">Quarter 1</option>
                         <option value="Q2">Quarter 2</option>
@@ -91,7 +91,7 @@ export default function IncomeTaxPage() {
             {/* Quick Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Corporate Tax card */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                     <div>
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Corporate Income Tax</span>
@@ -108,7 +108,7 @@ export default function IncomeTaxPage() {
                 </div>
 
                 {/* APIT card */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                     <div>
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">APIT / PAYE (Payroll)</span>
@@ -125,7 +125,7 @@ export default function IncomeTaxPage() {
                 </div>
 
                 {/* WHT card */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                     <div>
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Withholding Tax (WHT)</span>
@@ -143,7 +143,7 @@ export default function IncomeTaxPage() {
             </div>
 
             {/* Calculations Detail Section */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                 <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                     <div>
                         <h3 className="text-sm font-semibold text-slate-800">Tax Estimation Workspace</h3>
@@ -163,19 +163,19 @@ export default function IncomeTaxPage() {
                     <div className="space-y-3">
                         <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Corporate Income Tax Estimate</span>
                         <div className="space-y-2 text-xs">
-                            <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                            <div className="flex justify-between p-2 bg-slate-50 dark:bg-[#132238] border border-slate-200/60 dark:border-slate-700/60 rounded-lg">
                                 <span className="text-slate-500">Gross Revenue (Est.)</span>
                                 <span className="font-semibold text-slate-800">LKR 12,450,000</span>
                             </div>
-                            <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                            <div className="flex justify-between p-2 bg-slate-50 dark:bg-[#132238] border border-slate-200/60 dark:border-slate-700/60 rounded-lg">
                                 <span className="text-slate-500">Allowable Deductions / Expenses</span>
                                 <span className="font-semibold text-slate-800">- LKR 7,950,000</span>
                             </div>
-                            <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                            <div className="flex justify-between p-2 bg-slate-50 dark:bg-[#132238] border border-slate-200/60 dark:border-slate-700/60 rounded-lg">
                                 <span className="text-slate-500">Assessable Profit</span>
                                 <span className="font-bold text-slate-800">LKR 4,500,000</span>
                             </div>
-                            <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                            <div className="flex justify-between p-2 bg-slate-50 dark:bg-[#132238] border border-slate-200/60 dark:border-slate-700/60 rounded-lg">
                                 <span className="text-slate-500">Tax Rate (Sri Lanka Standard)</span>
                                 <span className="font-semibold text-slate-800">30.00 %</span>
                             </div>
@@ -190,19 +190,19 @@ export default function IncomeTaxPage() {
                     <div className="space-y-3">
                         <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Payroll APIT & WHT Withholdings</span>
                         <div className="space-y-2 text-xs">
-                            <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                            <div className="flex justify-between p-2 bg-slate-50 dark:bg-[#132238] border border-slate-200/60 dark:border-slate-700/60 rounded-lg">
                                 <span className="text-slate-500">APIT Deductions (Employees)</span>
                                 <span className="font-semibold text-slate-800">LKR 184,500</span>
                             </div>
-                            <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                            <div className="flex justify-between p-2 bg-slate-50 dark:bg-[#132238] border border-slate-200/60 dark:border-slate-700/60 rounded-lg">
                                 <span className="text-slate-500">WHT on Professional Fees (10%)</span>
                                 <span className="font-semibold text-slate-800">LKR 45,000</span>
                             </div>
-                            <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                            <div className="flex justify-between p-2 bg-slate-50 dark:bg-[#132238] border border-slate-200/60 dark:border-slate-700/60 rounded-lg">
                                 <span className="text-slate-500">WHT on Rent & Leases (10%)</span>
                                 <span className="font-semibold text-slate-800">LKR 27,300</span>
                             </div>
-                            <div className="flex justify-between p-2 bg-slate-50 rounded-lg">
+                            <div className="flex justify-between p-2 bg-slate-50 dark:bg-[#132238] border border-slate-200/60 dark:border-slate-700/60 rounded-lg">
                                 <span className="text-slate-500">Total Withholding Tax Liability</span>
                                 <span className="font-bold text-slate-800">LKR 256,800</span>
                             </div>

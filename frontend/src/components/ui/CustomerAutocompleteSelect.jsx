@@ -207,7 +207,7 @@ export default function CustomerAutocompleteSelect({
 
     return (
         <div ref={wrapperRef} className="relative w-full">
-            {label && <label className="block text-xs font-bold text-gray-600 mb-1">{label}</label>}
+            {label && <label className="block text-xs font-bold text-gray-600 dark:text-slate-300 mb-1">{label}</label>}
             <div className="relative">
                 <input
                     type="text"
@@ -223,27 +223,27 @@ export default function CustomerAutocompleteSelect({
                     onBlur={handleBlur}
                     onKeyDown={handleKeyDown}
                     disabled={disabled}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none bg-white font-medium"
+                    className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 font-medium"
                 />
             </div>
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {filtered.map(c => (
                         <button
                             key={c._id}
                             type="button"
                             onMouseDown={() => handleSelectOption(c)}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition flex items-center justify-between"
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-800 transition flex items-center justify-between"
                         >
-                            <span className="font-medium text-gray-900">{c.displayName || c.companyName || `${c.firstName || ''} ${c.lastName || ''}`.trim()}</span>
-                            <span className="text-gray-400 text-xs font-mono">({c.customerCode || 'CUST'}{c.primaryContact?.phone ? ` - ${c.primaryContact.phone}` : ''})</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{c.displayName || c.companyName || `${c.firstName || ''} ${c.lastName || ''}`.trim()}</span>
+                            <span className="text-gray-400 dark:text-slate-500 text-xs font-mono">({c.customerCode || 'CUST'}{c.primaryContact?.phone ? ` - ${c.primaryContact.phone}` : ''})</span>
                         </button>
                     ))}
                     {inputValue.trim() && !localCustomers.some(c => c.displayName.toLowerCase() === inputValue.trim().toLowerCase()) && (
                         <button
                             type="button"
                             onMouseDown={() => handleAutoCreate(inputValue)}
-                            className="w-full text-left px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 font-semibold border-t border-gray-100 flex items-center gap-1.5"
+                            className="w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 font-semibold border-t border-gray-100 dark:border-slate-700 flex items-center gap-1.5"
                         >
                             <span>+ Create new: "{inputValue.trim()}"</span>
                         </button>

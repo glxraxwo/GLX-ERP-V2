@@ -4,7 +4,7 @@ const settingsSchema = new mongoose.Schema({
     companyName: {
         type: String,
         required: false,
-        default: 'GLX Industries'
+        default: 'GLX INDUSTRIES'
     },
     companyAddress: String,
     companyPhone: String,

@@ -175,7 +175,7 @@ const BatchesPage = () => {
                     { label: 'Total Batches', value: batches.length, color: 'green', icon: CheckCircle2 },
                     { label: 'Efficiency', value: '94.2%', color: 'purple', icon: Layers },
                 ].map((stat, i) => (
-                    <div key={i} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <div key={i} className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm">
                         <div className="flex justify-between items-start mb-2">
                             <span className="text-sm font-medium text-gray-500">{stat.label}</span>
                             <stat.icon size={20} className={`text-${stat.color}-500`} />
@@ -186,23 +186,23 @@ const BatchesPage = () => {
             </div>
 
             {/* Filter Bar */}
-            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="bg-white dark:bg-[#111F33] p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={18} />
                         <input
                             type="text"
                             placeholder="Search batch #..."
-                            className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none w-full sm:w-64"
+                            className="pl-10 pr-4 py-2 bg-gray-50 dark:bg-[#132238] border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm outline-none w-full sm:w-64 focus:ring-2 focus:ring-primary-500"
                         />
                     </div>
                     <select
-                        className="h-10 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+                        className="h-10 px-3 bg-gray-50 dark:bg-[#132238] border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-white rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                     >
-                        <option value="">All Statuses</option>
-                        <option value="planned">Planned</option>
+                        <option value="" className="dark:bg-[#132238] dark:text-white">All Statuses</option>
+                        <option value="planned" className="dark:bg-[#132238] dark:text-white">Planned</option>
                         <option value="in_progress">In Progress</option>
                         <option value="qc_pending">Pending QC</option>
                         <option value="qc_passed">QC Passed</option>
@@ -297,7 +297,7 @@ const BatchesPage = () => {
                                                         handleUpdateStatus(batch._id, 'in_progress');
                                                         setActiveMenuId(null);
                                                     }}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center gap-2"
                                                 >
                                                     Start Batch
                                                 </button>
@@ -308,7 +308,7 @@ const BatchesPage = () => {
                                                         handleUpdateStatus(batch._id, 'qc_pending');
                                                         setActiveMenuId(null);
                                                     }}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center gap-2"
                                                 >
                                                     Move to QC
                                                 </button>
@@ -415,7 +415,7 @@ const BatchesPage = () => {
                                                     const val = e.target.value;
                                                     setAssignedMachines(prev => prev.map((item, i) => i === idx ? { ...item, machineId: val } : item));
                                                 }}
-                                                className="w-full h-9 px-2 bg-white border border-gray-200 rounded-lg text-sm outline-none"
+                                                className="w-full h-9 px-2 bg-white dark:bg-[#132238] border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg text-sm outline-none"
                                             >
                                                 <option value="">Select Machine</option>
                                                 {machines.map(m => (
@@ -436,7 +436,7 @@ const BatchesPage = () => {
                                                     setAssignedMachines(prev => prev.map((item, i) => i === idx ? { ...item, hours: val } : item));
                                                 }}
                                                 placeholder="Hours"
-                                                className="w-full h-9 px-2 bg-white border border-gray-200 rounded-lg text-sm outline-none"
+                                                className="w-full h-9 px-2 bg-white dark:bg-[#132238] border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg text-sm outline-none"
                                             />
                                         </div>
 

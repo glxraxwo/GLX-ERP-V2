@@ -96,10 +96,10 @@ export default function PayslipDetailPage({ isPublicView = false }) {
             )}
 
             {/* PaySlip Mode Controls */}
-            <div className="no-print bg-white p-4 rounded-xl border shadow-sm flex flex-wrap items-center justify-between gap-4">
+            <div className="no-print bg-white dark:bg-[#111F33] p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">PaySlip View Format:</span>
-                    <div className="inline-flex rounded-lg border p-1 bg-gray-50">
+                    <div className="inline-flex rounded-lg border border-gray-200 dark:border-slate-700 p-1 bg-gray-50 dark:bg-[#132238]">
                         <button onClick={() => setPayslipMode('full')}
                             className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${payslipMode === 'full' ? 'bg-primary-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>
                             Full Pay Slip (ආයතනික - Company Details)
@@ -170,7 +170,7 @@ export default function PayslipDetailPage({ isPublicView = false }) {
 
             {/* Main Payslip Container */}
             <ProtectedView title="Salary PaySlip" enableWatermark={false}>
-                <Card className={`p-8 max-w-3xl mx-auto relative overflow-hidden card-print bg-white`}>
+                <Card className={`p-8 max-w-3xl mx-auto relative overflow-hidden card-print bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800`}>
                     {watermarkEnabled && (
                         <div className="absolute inset-0 pointer-events-none flex items-center justify-center rotate-[-30deg] opacity-10 select-none text-red-600 font-extrabold text-5xl tracking-widest uppercase">
                             CONFIDENTIAL · GLX ERP SECURITY
@@ -208,7 +208,7 @@ export default function PayslipDetailPage({ isPublicView = false }) {
                     </div>
 
                     {/* Employee Info Section */}
-                    <div className="grid grid-cols-2 gap-6 mb-6 p-4 bg-gray-50/70 rounded-xl border text-sm">
+                    <div className="grid grid-cols-2 gap-6 mb-6 p-4 bg-gray-50/70 dark:bg-slate-900/60 rounded-xl border border-gray-200 dark:border-slate-800 text-sm">
                         <div>
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Employee Details</p>
                             <p className="font-bold text-base text-gray-900">{employee?.firstName || ps?.employeeName} {employee?.lastName || ''}</p>
@@ -225,15 +225,15 @@ export default function PayslipDetailPage({ isPublicView = false }) {
                     </div>
 
                     {/* Attendance Summary */}
-                    <div className="mb-6 border rounded-lg p-3 bg-gray-50/40">
+                    <div className="mb-6 border border-gray-200 dark:border-slate-800 rounded-lg p-3 bg-gray-50/40 dark:bg-slate-900/40">
                         <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Attendance Summary</p>
                         <div className="grid grid-cols-6 gap-2 text-center text-xs">
-                            <div className="p-1 bg-white rounded border"><p className="text-gray-500">Working</p><p className="font-bold">{ps?.workingDays || 0}</p></div>
-                            <div className="p-1 bg-white rounded border"><p className="text-gray-500">Present</p><p className="font-bold text-emerald-700">{ps?.daysPresent || 0}</p></div>
-                            <div className="p-1 bg-white rounded border"><p className="text-gray-500">Absent</p><p className="font-bold text-red-600">{ps?.daysAbsent || 0}</p></div>
-                            <div className="p-1 bg-white rounded border"><p className="text-gray-500">Leave</p><p className="font-bold text-blue-600">{ps?.leaveDays || 0}</p></div>
-                            <div className="p-1 bg-white rounded border"><p className="text-gray-500">Uninformed</p><p className="font-bold text-amber-600">{ps?.uninformedLeaveDays || 0}</p></div>
-                            <div className="p-1 bg-white rounded border"><p className="text-gray-500">OT Hrs</p><p className="font-bold">{ps?.overtimeHours || 0}</p></div>
+                            <div className="p-1 bg-white dark:bg-[#132238] rounded border border-gray-200 dark:border-slate-700"><p className="text-gray-500">Working</p><p className="font-bold">{ps?.workingDays || 0}</p></div>
+                            <div className="p-1 bg-white dark:bg-[#132238] rounded border border-gray-200 dark:border-slate-700"><p className="text-gray-500">Present</p><p className="font-bold text-emerald-700">{ps?.daysPresent || 0}</p></div>
+                            <div className="p-1 bg-white dark:bg-[#132238] rounded border border-gray-200 dark:border-slate-700"><p className="text-gray-500">Absent</p><p className="font-bold text-red-600">{ps?.daysAbsent || 0}</p></div>
+                            <div className="p-1 bg-white dark:bg-[#132238] rounded border border-gray-200 dark:border-slate-700"><p className="text-gray-500">Leave</p><p className="font-bold text-blue-600">{ps?.leaveDays || 0}</p></div>
+                            <div className="p-1 bg-white dark:bg-[#132238] rounded border border-gray-200 dark:border-slate-700"><p className="text-gray-500">Uninformed</p><p className="font-bold text-amber-600">{ps?.uninformedLeaveDays || 0}</p></div>
+                            <div className="p-1 bg-white dark:bg-[#132238] rounded border border-gray-200 dark:border-slate-700"><p className="text-gray-500">OT Hrs</p><p className="font-bold">{ps?.overtimeHours || 0}</p></div>
                         </div>
                     </div>
 

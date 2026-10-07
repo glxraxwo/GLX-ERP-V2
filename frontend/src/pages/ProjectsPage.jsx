@@ -186,63 +186,63 @@ export default function ProjectsPage() {
 
             {/* Dashboard Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <Card className="p-4 bg-gradient-to-br from-blue-50 to-white border-blue-100 flex items-center space-x-4">
+                <Card className="p-4 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/40 dark:to-[#111F33] border-blue-100 dark:border-blue-900/60 flex items-center space-x-4">
                     <div className="p-3 bg-blue-500 text-white rounded-xl shadow-md">
                         <Briefcase size={22} />
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Projects</p>
-                        <p className="text-2xl font-bold text-slate-800">{totalActive}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Total projects: {projects.length}</p>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Projects</p>
+                        <p className="text-2xl font-bold text-slate-800 dark:text-white">{totalActive}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Total projects: {projects.length}</p>
                     </div>
                 </Card>
 
-                <Card className="p-4 bg-gradient-to-br from-indigo-50 to-white border-indigo-100 flex items-center space-x-4">
+                <Card className="p-4 bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/40 dark:to-[#111F33] border-indigo-100 dark:border-indigo-900/60 flex items-center space-x-4">
                     <div className="p-3 bg-indigo-500 text-white rounded-xl shadow-md">
                         <DollarSign size={22} />
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Quoted Amount</p>
-                        <p className="text-2xl font-bold text-slate-800">{fmt(totalQuoted)}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Project sales values</p>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Quoted Amount</p>
+                        <p className="text-2xl font-bold text-slate-800 dark:text-white">{fmt(totalQuoted)}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Project sales values</p>
                     </div>
                 </Card>
 
-                <Card className="p-4 bg-gradient-to-br from-red-50 to-white border-red-100 flex items-center space-x-4">
+                <Card className="p-4 bg-gradient-to-br from-red-50 to-white dark:from-rose-950/40 dark:to-[#111F33] border-red-100 dark:border-rose-900/60 flex items-center space-x-4">
                     <div className="p-3 bg-red-500 text-white rounded-xl shadow-md">
                         <Activity size={22} />
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Expenses</p>
-                        <p className="text-2xl font-bold text-slate-800">{fmt(totalMaterials + totalLabor + totalExpenses)}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Materials + Labor + Cash expenses</p>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Expenses</p>
+                        <p className="text-2xl font-bold text-slate-800 dark:text-white">{fmt(totalMaterials + totalLabor + totalExpenses)}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">Materials + Labor + Cash expenses</p>
                     </div>
                 </Card>
 
-                <Card className="p-4 bg-gradient-to-br from-emerald-50 to-white border-emerald-100 flex items-center space-x-4">
+                <Card className="p-4 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/40 dark:to-[#111F33] border-emerald-100 dark:border-emerald-900/60 flex items-center space-x-4">
                     <div className="p-3 bg-emerald-500 text-white rounded-xl shadow-md">
                         <BarChart2 size={22} />
                     </div>
                     <div>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Project Net Profit</p>
-                        <p className="text-2xl font-bold text-slate-800">{fmt(totalNetProfit)}</p>
-                        <p className="text-[10px] text-emerald-600 font-medium mt-0.5">Margin: {avgProfitMargin.toFixed(1)}%</p>
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Project Net Profit</p>
+                        <p className="text-2xl font-bold text-slate-800 dark:text-white">{fmt(totalNetProfit)}</p>
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">Margin: {avgProfitMargin.toFixed(1)}%</p>
                     </div>
                 </Card>
             </div>
 
             {/* View Mode Toggle & Filters */}
             <Card>
-                <div className="p-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                <div className="p-4 border-b border-gray-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
                     {/* View Switcher Tabs */}
-                    <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1 shadow-xs">
+                    <div className="inline-flex rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/80 p-1 shadow-xs">
                         <button
                             type="button"
                             onClick={() => setViewMode('bays')}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                 viewMode === 'bays'
-                                    ? 'bg-white text-primary-700 shadow-sm border border-gray-200'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-white shadow-sm border border-gray-200 dark:border-slate-600'
+                                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                             }`}
                         >
                             <LayoutGrid size={15} />
@@ -253,8 +253,8 @@ export default function ProjectsPage() {
                             onClick={() => setViewMode('table')}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                 viewMode === 'table'
-                                    ? 'bg-white text-primary-700 shadow-sm border border-gray-200'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                    ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-white shadow-sm border border-gray-200 dark:border-slate-600'
+                                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white'
                             }`}
                         >
                             <List size={15} />
@@ -264,9 +264,9 @@ export default function ProjectsPage() {
 
                     <div className="flex flex-wrap items-center gap-3 flex-1 justify-end">
                         <div className="relative min-w-[200px]">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                             <input type="text" placeholder="Search projects by name, code, yard..."
-                                className="w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white"
+                                className="w-full pl-9 pr-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)} />
                         </div>

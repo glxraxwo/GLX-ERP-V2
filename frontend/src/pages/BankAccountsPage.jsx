@@ -193,7 +193,7 @@ export default function BankAccountsPage() {
 
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
                     <div className="w-12 h-12 bg-primary-50 rounded-xl flex items-center justify-center text-primary-600">
                         <DollarSign size={24} />
                     </div>
@@ -203,7 +203,7 @@ export default function BankAccountsPage() {
                     </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center gap-4">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
                     <div className="w-12 h-12 bg-violet-50 rounded-xl flex items-center justify-center text-violet-600">
                         <TrendingUp size={24} />
                     </div>
@@ -236,7 +236,7 @@ export default function BankAccountsPage() {
                                     className={`p-5 rounded-2xl border transition-all cursor-pointer ${
                                         isSelected 
                                             ? 'border-primary-500 bg-primary-50/30 shadow-md ring-2 ring-primary-500/10' 
-                                            : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                                            : 'border-gray-200 dark:border-slate-800 bg-white dark:bg-[#111F33] hover:border-gray-300 dark:hover:border-slate-700 hover:shadow-sm text-slate-800 dark:text-slate-100'
                                     }`}
                                 >
                                     <div className="flex justify-between items-start">
@@ -281,12 +281,12 @@ export default function BankAccountsPage() {
                     </div>
 
                     {!selectedAccount ? (
-                        <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center text-gray-400">
+                        <div className="bg-white dark:bg-[#111F33] rounded-2xl border border-gray-200 dark:border-slate-800 p-16 text-center text-gray-400 dark:text-slate-500">
                             Select a bank account on the left to view its statement.
                         </div>
                     ) : (
                         <Card className="overflow-hidden">
-                            <div className="p-5 border-b border-gray-200 bg-slate-50 flex justify-between items-center">
+                            <div className="p-5 border-b border-gray-200 dark:border-slate-800 bg-slate-50 dark:bg-[#132238] flex justify-between items-center">
                                 <div>
                                     <h3 className="font-bold text-gray-800 text-lg">{selectedAccount.bankName} Ledger</h3>
                                     <p className="text-xs text-gray-500 font-mono mt-0.5">Account Number: {selectedAccount.accountNumber} · Holder: {selectedAccount.accountName}</p>

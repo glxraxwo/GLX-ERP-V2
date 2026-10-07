@@ -109,7 +109,7 @@ export default function AnalyticsPage() {
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Revenue */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Revenue</span>
                         <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
@@ -126,7 +126,7 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Orders */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Sales Orders</span>
                         <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
@@ -143,7 +143,7 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Expenses */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Expenses</span>
                         <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
@@ -160,7 +160,7 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Conversion Rate */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Conversion Rate</span>
                         <div className="p-2 bg-violet-50 text-violet-600 rounded-lg">
@@ -180,7 +180,7 @@ export default function AnalyticsPage() {
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Revenue Trend Chart */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm lg:col-span-2">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm lg:col-span-2">
                     <h3 className="text-sm font-semibold text-slate-800 mb-4">Revenue Trend (LKR Millions)</h3>
                     <div className="h-64 flex items-end justify-between relative px-2 pt-4">
                         <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[10px] text-slate-400">
@@ -222,7 +222,7 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Top Selling Products */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                     <div>
                         <h3 className="text-sm font-semibold text-slate-800 mb-4">Top Product Configurations</h3>
                         <div className="space-y-4">
@@ -245,13 +245,13 @@ export default function AnalyticsPage() {
             {/* Bottom Row - Performance Logs */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Recent Inquiries and Conversion Log */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-semibold text-slate-800">Active Projects Pipeline</h3>
                         <Activity className="w-4 h-4 text-emerald-500" />
                     </div>
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-[#132238] border border-slate-100 dark:border-slate-700/60 rounded-lg">
                             <div className="flex items-center gap-3">
                                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
                                 <div>
@@ -262,7 +262,7 @@ export default function AnalyticsPage() {
                             <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">High Probability</span>
                         </div>
 
-                        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-[#132238] border border-slate-100 dark:border-slate-700/60 rounded-lg">
                             <div className="flex items-center gap-3">
                                 <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
                                 <div>
@@ -273,7 +273,7 @@ export default function AnalyticsPage() {
                             <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded">In Negotiation</span>
                         </div>
 
-                        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-[#132238] border border-slate-100 dark:border-slate-700/60 rounded-lg">
                             <div className="flex items-center gap-3">
                                 <div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
                                 <div>
@@ -287,7 +287,7 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Performance Calendar / Milestone */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                     <div>
                         <h3 className="text-sm font-semibold text-slate-800 mb-2">Monthly Target Progress</h3>
                         <p className="text-[11px] text-slate-400">Track factory dispatch goals</p>

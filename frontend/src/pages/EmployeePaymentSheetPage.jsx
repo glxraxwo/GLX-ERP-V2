@@ -134,11 +134,11 @@ export default function EmployeePaymentSheetPage() {
                     <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-1 text-xs">
                             <label className="font-bold text-gray-600">From:</label>
-                            <input type="date" className="border rounded px-2 py-1 bg-gray-50 text-xs" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                            <input type="date" className="border border-gray-300 dark:border-slate-700 rounded px-2 py-1 bg-gray-50 dark:bg-[#132238] text-gray-900 dark:text-white text-xs" value={startDate} onChange={e => setStartDate(e.target.value)} />
                         </div>
                         <div className="flex items-center gap-1 text-xs">
                             <label className="font-bold text-gray-600">To:</label>
-                            <input type="date" className="border rounded px-2 py-1 bg-gray-50 text-xs" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                            <input type="date" className="border border-gray-300 dark:border-slate-700 rounded px-2 py-1 bg-gray-50 dark:bg-[#132238] text-gray-900 dark:text-white text-xs" value={endDate} onChange={e => setEndDate(e.target.value)} />
                         </div>
                         <Button variant="primary" size="sm" onClick={loadSheet} loading={loading}>
                             <RefreshCw size={14} className="mr-1" /> Load
@@ -157,7 +157,7 @@ export default function EmployeePaymentSheetPage() {
                     {/* Header and Language Controls */}
                     <div className="flex flex-wrap items-center gap-3">
                         {/* With Header / Without Header Mode Selector */}
-                        <div className="flex items-center rounded-lg border border-gray-300 bg-white p-0.5 font-semibold shadow-xs">
+                        <div className="flex items-center rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] p-0.5 font-semibold shadow-xs">
                             <button
                                 type="button"
                                 onClick={() => setHideHeaderAndSignature(false)}
@@ -179,13 +179,13 @@ export default function EmployeePaymentSheetPage() {
                         {/* Language switcher */}
                         <div className="flex items-center gap-1.5">
                             <span className="font-semibold text-gray-500">Language:</span>
-                            <div className="inline-flex border border-gray-300 rounded-lg bg-white overflow-hidden text-xs font-semibold">
+                            <div className="inline-flex border border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-[#132238] overflow-hidden text-xs font-semibold">
                                 {['en', 'si', 'ta'].map(l => (
                                     <button
                                         key={l}
                                         type="button"
                                         onClick={() => setLang(l)}
-                                        className={`px-2.5 py-1 ${lang === l ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+                                        className={`px-2.5 py-1 ${lang === l ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
                                     >
                                         {l === 'en' ? 'English' : l === 'si' ? 'සිංහල' : 'தமிழ்'}
                                     </button>
@@ -316,7 +316,7 @@ export default function EmployeePaymentSheetPage() {
                             </thead>
                             <tbody className="divide-y divide-gray-200">
                                 {data.rows.map((row, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50">
+                                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                         <td className="py-2 px-3 font-medium text-gray-700">{row.date}</td>
                                         <td className="py-2 px-3 text-center font-mono text-gray-600">{row.inTime}</td>
                                         <td className="py-2 px-3 text-center font-mono text-gray-600">{row.outTime}</td>

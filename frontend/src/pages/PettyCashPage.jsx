@@ -107,7 +107,7 @@ export default function PettyCashPage() {
                     <p className="text-sm text-gray-500">Factory petty cash pool — Running balance tracker</p>
                 </div>
                 <div className="flex flex-wrap gap-2 sm:gap-3">
-                    <button onClick={fetchAll} className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+                    <button onClick={fetchAll} className="p-2 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 transition">
                         <RefreshCw size={16} className="text-gray-500" />
                     </button>
                     <button onClick={() => openForm('replenish')}
@@ -141,7 +141,7 @@ export default function PettyCashPage() {
                 </div>
 
                 {/* Category Breakdown */}
-                <div className="col-span-1 md:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <div className="col-span-1 md:col-span-2 bg-white dark:bg-[#111F33] rounded-2xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
                     <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Expense Breakdown by Category</p>
                     <div className="space-y-2">
                         {CATEGORIES.filter(c => (balanceData?.categories?.[c.key] || 0) > 0).slice(0, 6).map(cat => {
@@ -166,8 +166,8 @@ export default function PettyCashPage() {
             </div>
 
             {/* Transaction List */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-100 flex flex-wrap justify-between items-center gap-3 bg-gray-50/50">
+            <div className="bg-white dark:bg-[#111F33] rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3 bg-gray-50/50 dark:bg-[#132238]/60">
                     <div className="flex items-center gap-2">
                         <h4 className="font-bold text-gray-800">Recent Transactions</h4>
                         <span className="text-xs text-gray-400">({entries.length} entries)</span>
@@ -192,7 +192,7 @@ export default function PettyCashPage() {
                         <div className="p-10 text-center text-gray-500 italic">No transactions recorded</div>
                     ) : (
                         entries.map((entry) => (
-                            <div key={entry._id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                            <div key={entry._id} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800/60 transition-colors">
                                 <div className="flex items-center gap-4 text-gray-900">
                                     <div className={`p-2 rounded-lg ${
                                         entry.transactionType === 'receipt' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'
@@ -263,7 +263,7 @@ export default function PettyCashPage() {
             {/* Modal */}
             {isFormOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between p-6 border-b">
                             <h3 className="text-lg font-bold text-gray-900">
                                 {formType === 'replenish' ? '💰 Top Up Petty Cash Pool' : '📋 Record Expense'}
@@ -382,7 +382,7 @@ export default function PettyCashPage() {
 
                             <div className="flex justify-end gap-3 pt-2">
                                 <button type="button" onClick={() => setIsFormOpen(false)}
-                                    className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50">Cancel</button>
+                                    className="px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200">Cancel</button>
                                 <button type="submit" disabled={saving}
                                     className="px-6 py-2 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 disabled:opacity-50">
                                     {saving ? 'Saving...' : formType === 'replenish' ? 'Top Up Pool' : 'Record Expense'}

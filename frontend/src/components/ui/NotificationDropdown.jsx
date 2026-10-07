@@ -45,23 +45,23 @@ const NotificationDropdown = () => {
         <div className="relative">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition relative rounded-lg"
+                className="p-2 text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-slate-200 transition relative rounded-lg"
             >
                 <Bell size={20} />
                 {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white">
+                    <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white dark:border-slate-900">
                         {unreadCount}
                     </span>
                 )}
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
-                    <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                        <h3 className="font-semibold text-gray-900">Notifications</h3>
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden">
+                    <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/60">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>
                         <button
                             onClick={markAllRead}
-                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
                         >
                             Mark all read
                         </button>
@@ -69,33 +69,33 @@ const NotificationDropdown = () => {
 
                     <div className="max-h-96 overflow-y-auto">
                         {notifications.length === 0 ? (
-                            <div className="p-8 text-center text-gray-400 text-sm italic">
+                            <div className="p-8 text-center text-gray-400 dark:text-slate-500 text-sm italic">
                                 No notifications yet
                             </div>
                         ) : (
                             notifications.map((n) => (
                                 <div
                                     key={n._id}
-                                    className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${!n.isRead ? 'bg-blue-50/30' : ''}`}
+                                    className={`p-4 border-b border-gray-100 dark:border-slate-700/60 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors ${!n.isRead ? 'bg-blue-50/30 dark:bg-blue-950/20' : ''}`}
                                 >
                                     <div className="flex justify-between items-start mb-1">
                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${n.type.includes('fail') || n.type.includes('low') || n.type.includes('error')
-                                                ? 'bg-red-100 text-red-700'
-                                                : 'bg-blue-100 text-blue-700'
+                                                ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300'
+                                                : 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
                                             }`}>
                                             {n.type.replace('notification:', '').replace('_', ' ')}
                                         </span>
-                                        <span className="text-[10px] text-gray-400">
+                                        <span className="text-[10px] text-gray-400 dark:text-slate-500">
                                             {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                                         </span>
                                     </div>
-                                    <h4 className="text-sm font-semibold text-gray-900 mb-0.5">{n.title}</h4>
-                                    <p className="text-sm text-gray-600 mb-2 leading-tight">{n.message}</p>
+                                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-0.5">{n.title}</h4>
+                                    <p className="text-sm text-gray-600 dark:text-slate-300 mb-2 leading-tight">{n.message}</p>
                                     <div className="flex justify-between items-center">
                                         {n.link ? (
                                             <Link
                                                 to={n.link}
-                                                className="text-xs text-blue-600 flex items-center gap-1 hover:underline font-medium"
+                                                className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1 hover:underline font-medium"
                                                 onClick={() => { setIsOpen(false); markAsRead(n._id); }}
                                             >
                                                 View Action <ExternalLink size={10} />
@@ -104,7 +104,7 @@ const NotificationDropdown = () => {
                                         {!n.isRead && (
                                             <button
                                                 onClick={() => markAsRead(n._id)}
-                                                className="text-gray-400 hover:text-green-600 p-1 rounded-md hover:bg-green-50 transition-colors"
+                                                className="text-gray-400 dark:text-slate-500 hover:text-green-600 dark:hover:text-green-400 p-1 rounded-md hover:bg-green-50 dark:hover:bg-green-950/40 transition-colors"
                                                 title="Mark as read"
                                             >
                                                 <Check size={14} />

@@ -242,18 +242,18 @@ export default function DashboardPage() {
             {/* Header */}
             <div className="flex flex-wrap items-start justify-between gap-2">
                 <PageHeader title="Factory Operations & MD Command" description="Real-time Command Hub" />
-                <button onClick={() => { fetchDeptMetrics(); }} className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition bg-white shadow-sm">
-                    <RefreshCw size={16} className="text-gray-500" />
+                <button onClick={() => { fetchDeptMetrics(); }} className="p-2 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition bg-white dark:bg-[#111F33] shadow-sm">
+                    <RefreshCw size={16} className="text-gray-500 dark:text-slate-400" />
                 </button>
             </div>
 
             {/* ── QUICK NAVIGATION SHORTCUTS (Invoice / Quotation / Estimate / Employer / Stock In/Out / Stock Overview) ── */}
             <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
-                    <span className="text-xs font-black uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
-                        <Layers size={15} className="text-blue-600" /> Module Shortcuts &amp; Quick Access (ප්‍රධාන පිටු වෙත කෙටිමං)
+                    <span className="text-xs font-black uppercase tracking-wider text-gray-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <Layers size={15} className="text-blue-600 dark:text-blue-400" /> Module Shortcuts &amp; Quick Access (ප්‍රධාන පිටු වෙත කෙටිමං)
                     </span>
-                    <span className="text-[11px] text-gray-500 font-semibold hidden sm:inline">Direct 1-Click Access</span>
+                    <span className="text-[11px] text-gray-500 dark:text-slate-400 font-semibold hidden sm:inline">Direct 1-Click Access</span>
                 </div>
 
                 {/* 6 Primary Requested Module Shortcuts */}
@@ -261,54 +261,54 @@ export default function DashboardPage() {
                     {/* 1. Invoice */}
                     <button 
                         onClick={() => navigate('/invoices')} 
-                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-emerald-200 bg-white hover:bg-emerald-50/50 hover:border-emerald-400 hover:shadow-md transition-all text-left shadow-xs"
+                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-white dark:bg-[#111F33] hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 hover:border-emerald-400 dark:hover:border-emerald-700 hover:shadow-md transition-all text-left shadow-xs"
                     >
                         <div className="flex items-center justify-between mb-2.5">
-                            <span className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-xs">
+                            <span className="p-2.5 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 rounded-xl group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-xs">
                                 <Receipt size={18} />
                             </span>
                             <ArrowRight size={14} className="text-emerald-400 group-hover:translate-x-1 transition-transform opacity-0 group-hover:opacity-100" />
                         </div>
                         <div>
-                            <span className="text-[10px] text-emerald-600 block font-bold uppercase tracking-wider">Billing &amp; Sales</span>
-                            <span className="text-sm font-black text-gray-900 group-hover:text-emerald-700 transition-colors">Invoice</span>
-                            <span className="text-[10px] text-gray-400 block mt-0.5">ඉන්වොයිසි</span>
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block font-bold uppercase tracking-wider">Billing &amp; Sales</span>
+                            <span className="text-sm font-black text-gray-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">Invoice</span>
+                            <span className="text-[10px] text-gray-400 dark:text-slate-400 block mt-0.5">ඉන්වොයිසි</span>
                         </div>
                     </button>
 
                     {/* 2. Quotation */}
                     <button 
                         onClick={() => navigate('/crm/quotations?type=quotation')} 
-                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-indigo-200 bg-white hover:bg-indigo-50/50 hover:border-indigo-400 hover:shadow-md transition-all text-left shadow-xs"
+                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-[#111F33] hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 hover:border-indigo-400 dark:hover:border-indigo-700 hover:shadow-md transition-all text-left shadow-xs"
                     >
                         <div className="flex items-center justify-between mb-2.5">
-                            <span className="p-2.5 bg-indigo-100 text-indigo-700 rounded-xl group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-xs">
+                            <span className="p-2.5 bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 rounded-xl group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-xs">
                                 <FileText size={18} />
                             </span>
                             <ArrowRight size={14} className="text-indigo-400 group-hover:translate-x-1 transition-transform opacity-0 group-hover:opacity-100" />
                         </div>
                         <div>
-                            <span className="text-[10px] text-indigo-600 block font-bold uppercase tracking-wider">CRM &amp; Pricing</span>
-                            <span className="text-sm font-black text-gray-900 group-hover:text-indigo-700 transition-colors">Quotation</span>
-                            <span className="text-[10px] text-gray-400 block mt-0.5">මිල ගණන්</span>
+                            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 block font-bold uppercase tracking-wider">CRM &amp; Pricing</span>
+                            <span className="text-sm font-black text-gray-900 dark:text-white group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">Quotation</span>
+                            <span className="text-[10px] text-gray-400 dark:text-slate-400 block mt-0.5">මිල ගණන්</span>
                         </div>
                     </button>
 
                     {/* 3. Estimate */}
                     <button 
                         onClick={() => navigate('/crm/quotations?type=estimate')} 
-                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-amber-200 bg-white hover:bg-amber-50/50 hover:border-amber-400 hover:shadow-md transition-all text-left shadow-xs"
+                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-[#111F33] hover:bg-amber-50/50 dark:hover:bg-amber-950/30 hover:border-amber-400 dark:hover:border-amber-700 hover:shadow-md transition-all text-left shadow-xs"
                     >
                         <div className="flex items-center justify-between mb-2.5">
-                            <span className="p-2.5 bg-amber-100 text-amber-700 rounded-xl group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition-all shadow-xs">
+                            <span className="p-2.5 bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 rounded-xl group-hover:scale-110 group-hover:bg-amber-600 group-hover:text-white transition-all shadow-xs">
                                 <Calculator size={18} />
                             </span>
                             <ArrowRight size={14} className="text-amber-400 group-hover:translate-x-1 transition-transform opacity-0 group-hover:opacity-100" />
                         </div>
                         <div>
-                            <span className="text-[10px] text-amber-600 block font-bold uppercase tracking-wider">Vehicle Repair</span>
-                            <span className="text-sm font-black text-gray-900 group-hover:text-amber-700 transition-colors">Estimate</span>
-                            <span className="text-[10px] text-gray-400 block mt-0.5">ඇස්තමේන්තු</span>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 block font-bold uppercase tracking-wider">Vehicle Repair</span>
+                            <span className="text-sm font-black text-gray-900 dark:text-white group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">Estimate</span>
+                            <span className="text-[10px] text-gray-400 dark:text-slate-400 block mt-0.5">ඇස්තමේන්තු</span>
                         </div>
                     </button>
 
@@ -321,54 +321,54 @@ export default function DashboardPage() {
                                 if (el) el.scrollIntoView({ behavior: 'smooth' });
                             }, 100);
                         }} 
-                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-purple-200 bg-white hover:bg-purple-50/50 hover:border-purple-400 hover:shadow-md transition-all text-left shadow-xs"
+                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-purple-200 dark:border-purple-900/60 bg-white dark:bg-[#111F33] hover:bg-purple-50/50 dark:hover:bg-purple-950/30 hover:border-purple-400 dark:hover:border-purple-700 hover:shadow-md transition-all text-left shadow-xs"
                     >
                         <div className="flex items-center justify-between mb-2.5">
-                            <span className="p-2.5 bg-purple-100 text-purple-700 rounded-xl group-hover:scale-110 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-xs">
+                            <span className="p-2.5 bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 rounded-xl group-hover:scale-110 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-xs">
                                 <Users size={18} />
                             </span>
                             <ArrowRight size={14} className="text-purple-400 group-hover:translate-x-1 transition-transform opacity-0 group-hover:opacity-100" />
                         </div>
                         <div>
-                            <span className="text-[10px] text-purple-600 block font-bold uppercase tracking-wider">Human Resources</span>
-                            <span className="text-sm font-black text-gray-900 group-hover:text-purple-700 transition-colors">Employee Master</span>
-                            <span className="text-[10px] text-gray-400 block mt-0.5">සේවක Master &amp; Advances</span>
+                            <span className="text-[10px] text-purple-600 dark:text-purple-400 block font-bold uppercase tracking-wider">Human Resources</span>
+                            <span className="text-sm font-black text-gray-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">Employee Master</span>
+                            <span className="text-[10px] text-gray-400 dark:text-slate-400 block mt-0.5">සේවක Master &amp; Advances</span>
                         </div>
                     </button>
 
                     {/* 5. Stock (In / Out) */}
                     <button 
                         onClick={() => navigate('/stock/movements')} 
-                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-rose-200 bg-white hover:bg-rose-50/50 hover:border-rose-400 hover:shadow-md transition-all text-left shadow-xs"
+                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-[#111F33] hover:bg-rose-50/50 dark:hover:bg-rose-950/30 hover:border-rose-400 dark:hover:border-rose-700 hover:shadow-md transition-all text-left shadow-xs"
                     >
                         <div className="flex items-center justify-between mb-2.5">
-                            <span className="p-2.5 bg-rose-100 text-rose-700 rounded-xl group-hover:scale-110 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-xs">
+                            <span className="p-2.5 bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 rounded-xl group-hover:scale-110 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-xs">
                                 <ArrowDownUp size={18} />
                             </span>
                             <ArrowRight size={14} className="text-rose-400 group-hover:translate-x-1 transition-transform opacity-0 group-hover:opacity-100" />
                         </div>
                         <div>
-                            <span className="text-[10px] text-rose-600 block font-bold uppercase tracking-wider">Warehouse Movements</span>
-                            <span className="text-sm font-black text-gray-900 group-hover:text-rose-700 transition-colors">Stock (In / Out)</span>
-                            <span className="text-[10px] text-gray-400 block mt-0.5">තොග හුවමාරු</span>
+                            <span className="text-[10px] text-rose-600 dark:text-rose-400 block font-bold uppercase tracking-wider">Warehouse Movements</span>
+                            <span className="text-sm font-black text-gray-900 dark:text-white group-hover:text-rose-700 dark:group-hover:text-rose-300 transition-colors">Stock (In / Out)</span>
+                            <span className="text-[10px] text-gray-400 dark:text-slate-400 block mt-0.5">තොග හුවමාරු</span>
                         </div>
                     </button>
 
                     {/* 6. Stock Overview */}
                     <button 
                         onClick={() => navigate('/stock')} 
-                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-sky-200 bg-white hover:bg-sky-50/50 hover:border-sky-400 hover:shadow-md transition-all text-left shadow-xs"
+                        className="group flex flex-col justify-between p-3.5 rounded-2xl border border-sky-200 dark:border-sky-900/60 bg-white dark:bg-[#111F33] hover:bg-sky-50/50 dark:hover:bg-sky-950/30 hover:border-sky-400 dark:hover:border-sky-700 hover:shadow-md transition-all text-left shadow-xs"
                     >
                         <div className="flex items-center justify-between mb-2.5">
-                            <span className="p-2.5 bg-sky-100 text-sky-700 rounded-lg group-hover:scale-110 group-hover:bg-sky-600 group-hover:text-white transition-all shadow-xs">
+                            <span className="p-2.5 bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 rounded-lg group-hover:scale-110 group-hover:bg-sky-600 group-hover:text-white transition-all shadow-xs">
                                 <Package size={18} />
                             </span>
                             <ArrowRight size={14} className="text-sky-400 group-hover:translate-x-1 transition-transform opacity-0 group-hover:opacity-100" />
                         </div>
                         <div>
-                            <span className="text-[10px] text-sky-600 block font-bold uppercase tracking-wider">Inventory Levels</span>
-                            <span className="text-sm font-black text-gray-900 group-hover:text-sky-700 transition-colors">Stock Overview</span>
-                            <span className="text-[10px] text-gray-400 block mt-0.5">තොග ශේෂයන්</span>
+                            <span className="text-[10px] text-sky-600 dark:text-sky-400 block font-bold uppercase tracking-wider">Inventory Levels</span>
+                            <span className="text-sm font-black text-gray-900 dark:text-white group-hover:text-sky-700 dark:group-hover:text-sky-300 transition-colors">Stock Overview</span>
+                            <span className="text-[10px] text-gray-400 dark:text-slate-400 block mt-0.5">තොග ශේෂයන්</span>
                         </div>
                     </button>
                 </div>
@@ -426,16 +426,16 @@ export default function DashboardPage() {
             {/* ── DEPARTMENT COMMAND DASHBOARD ── */}
             <div className="space-y-6">
                 {/* ── OVERVIEW COMMAND TOOLBAR (Date Range Filter + Quick Presets) ── */}
-                <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3">
+                <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm space-y-3">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                        <span className="text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
-                            <Calendar size={15} className="text-blue-600" /> Filter Period / කාල සීමාව
+                        <span className="text-xs font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Calendar size={15} className="text-blue-600 dark:text-blue-400" /> Filter Period / කාල සීමාව
                         </span>
 
                         {/* Date Range Filter with quick presets */}
                         <div className="flex flex-wrap items-center gap-2">
                             {/* Quick Presets */}
-                            <div className="flex items-center bg-gray-100 p-1 rounded-xl gap-1 text-xs">
+                            <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 rounded-xl gap-1 text-xs">
                                 {[
                                     { id: 'today', label: 'Today' },
                                     { id: 'week', label: 'This Week' },
@@ -448,8 +448,8 @@ export default function DashboardPage() {
                                         onClick={() => handlePreset(preset.id)}
                                         className={`px-2.5 py-1 rounded-lg font-bold transition-all text-xs ${
                                             activePreset === preset.id && (!overviewStartDate || preset.id !== 'all')
-                                                ? 'bg-white text-gray-900 shadow-xs'
-                                                : 'text-gray-600 hover:text-gray-900'
+                                                ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-xs'
+                                                : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
                                         }`}
                                     >
                                         {preset.label}
@@ -511,11 +511,11 @@ export default function DashboardPage() {
                                 {/* Revenue Trend */}
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                     <Card className="lg:col-span-2 p-6">
-                                        <h3 className="text-sm font-bold text-gray-700 mb-4">Revenue Trend (Last 6 Months)</h3>
+                                        <h3 className="text-sm font-bold text-gray-700 dark:text-white mb-4">Revenue Trend (Last 6 Months)</h3>
                                         <div className="min-h-[200px] sm:min-h-[280px]">
                                         <ResponsiveContainer width="100%" height={280}>
                                             <LineChart data={revenueData?.data || []}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" className="dark:opacity-10" />
                                                 <XAxis dataKey="monthLabel" tick={{ fontSize: 11 }} />
                                                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                                                 <Tooltip formatter={(v) => fmt(v)} />
@@ -526,7 +526,7 @@ export default function DashboardPage() {
                                     </Card>
                                     
                                     <Card className="p-6">
-                                        <h3 className="text-sm font-bold text-gray-700 mb-4">Live Control Actions</h3>
+                                        <h3 className="text-sm font-bold text-gray-700 dark:text-white mb-4">Live Control Actions</h3>
                                         <div className="space-y-2">
                                             <Button fullWidth variant="primary" onClick={() => navigate('/crm/quotations')}>New Quotation <Plus size={14} className="ml-auto" /></Button>
                                             <Button fullWidth variant="outline" onClick={() => navigate('/sales-orders/new')}>New Sales Order <ArrowRight size={14} className="ml-auto" /></Button>
@@ -542,18 +542,18 @@ export default function DashboardPage() {
                                 {/* Live Feed Tables */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <Card className="p-5">
-                                        <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-1.5"><ShoppingCart size={16} className="text-blue-600" /> Recent Sales Orders</h3>
-                                        <div className="divide-y divide-gray-100 text-xs">
+                                        <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-1.5"><ShoppingCart size={16} className="text-blue-600 dark:text-blue-400" /> Recent Sales Orders</h3>
+                                        <div className="divide-y divide-gray-100 dark:divide-slate-800 text-xs">
                                             {filteredRecentOrders.length === 0 ? (
-                                                <p className="text-center py-6 text-gray-400 italic">No sales orders found{overviewSearch ? ` matching "${overviewSearch}"` : ''}</p>
+                                                <p className="text-center py-6 text-gray-400 dark:text-slate-500 italic">No sales orders found{overviewSearch ? ` matching "${overviewSearch}"` : ''}</p>
                                             ) : (
                                                 filteredRecentOrders.map(order => (
                                                     <div key={order._id} className="py-2.5 flex justify-between">
                                                         <div>
-                                                            <p className="font-bold text-gray-900">{order.customerId?.displayName || 'Walk-in'}</p>
-                                                            <p className="text-[10px] text-gray-400 font-mono">{order.orderNumber} · {format(new Date(order.orderDate), 'yyyy-MM-dd')}</p>
+                                                            <p className="font-bold text-gray-900 dark:text-white">{order.customerId?.displayName || 'Walk-in'}</p>
+                                                            <p className="text-[10px] text-gray-400 dark:text-slate-500 font-mono">{order.orderNumber} · {format(new Date(order.orderDate), 'yyyy-MM-dd')}</p>
                                                         </div>
-                                                        <span className="font-bold text-gray-700 text-right">{fmt(order.grandTotal)}</span>
+                                                        <span className="font-bold text-gray-700 dark:text-slate-200 text-right">{fmt(order.grandTotal)}</span>
                                                     </div>
                                                 ))
                                             )}
@@ -561,18 +561,18 @@ export default function DashboardPage() {
                                     </Card>
 
                                     <Card className="p-5">
-                                        <h3 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-1.5"><Package size={16} className="text-emerald-600" /> Recent Goods Receipts (GRN)</h3>
-                                        <div className="divide-y divide-gray-100 text-xs">
+                                        <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-1.5"><Package size={16} className="text-emerald-600 dark:text-emerald-400" /> Recent Goods Receipts (GRN)</h3>
+                                        <div className="divide-y divide-gray-100 dark:divide-slate-800 text-xs">
                                             {filteredRecentGrns.length === 0 ? (
-                                                <p className="text-center py-6 text-gray-400 italic">No goods receipts found{overviewSearch ? ` matching "${overviewSearch}"` : ''}</p>
+                                                <p className="text-center py-6 text-gray-400 dark:text-slate-500 italic">No goods receipts found{overviewSearch ? ` matching "${overviewSearch}"` : ''}</p>
                                             ) : (
                                                 filteredRecentGrns.map(grn => (
                                                     <div key={grn._id} className="py-2.5 flex justify-between">
                                                         <div>
-                                                            <p className="font-bold text-gray-900">{grn.supplierName}</p>
-                                                            <p className="text-[10px] text-gray-400 font-mono">{grn.grnNumber} · {format(new Date(grn.receiptDate), 'yyyy-MM-dd')}</p>
+                                                            <p className="font-bold text-gray-900 dark:text-white">{grn.supplierName}</p>
+                                                            <p className="text-[10px] text-gray-400 dark:text-slate-500 font-mono">{grn.grnNumber} · {format(new Date(grn.receiptDate), 'yyyy-MM-dd')}</p>
                                                         </div>
-                                                        <span className="font-bold text-emerald-700 text-right">+{fmt(grn.totalAcceptedValue)}</span>
+                                                        <span className="font-bold text-emerald-700 dark:text-emerald-400 text-right">+{fmt(grn.totalAcceptedValue)}</span>
                                                     </div>
                                                 ))
                                             )}
@@ -630,7 +630,7 @@ export default function DashboardPage() {
                                                 <p className="text-center py-6 text-gray-400 italic">No batches found{overviewSearch ? ` matching "${overviewSearch}"` : ''}</p>
                                             ) : (
                                                 filteredRecentBatches.map(b => (
-                                                    <div key={b._id} className="flex justify-between items-center p-3 border-b bg-gray-50/25 last:border-0 hover:bg-gray-50 transition">
+                                                    <div key={b._id} className="flex justify-between items-center p-3 border-b bg-gray-50/25 dark:bg-[#132238]/40 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
                                                         <div>
                                                             <p className="font-bold text-gray-900">{b.batchNo}</p>
                                                             <p className="text-[10px] text-gray-500 mt-0.5">{b.product} · {format(new Date(b.date), 'MMM dd, yyyy')}</p>
@@ -653,7 +653,7 @@ export default function DashboardPage() {
                                             <p className="text-center py-6 text-gray-400 italic">No inventory items found{overviewSearch ? ` matching "${overviewSearch}"` : ''}</p>
                                         ) : (
                                             filteredLowestStock.map(item => (
-                                                <div key={item._id} className="p-3 border border-gray-100 rounded-lg bg-gray-50/25 flex justify-between items-center text-xs">
+                                                <div key={item._id} className="p-3 border border-gray-100 rounded-lg bg-gray-50/25 dark:bg-[#132238]/40 flex justify-between items-center text-xs">
                                                     <div>
                                                         <p className="font-bold text-gray-900">{item.name}</p>
                                                         <p className="text-[10px] text-gray-400 font-mono mt-0.5">{item.productCode}</p>
@@ -740,12 +740,12 @@ export default function DashboardPage() {
                                     {/* Bank accounts break down */}
                                     <div className="space-y-3 pt-2">
                                         <h4 className="text-xs font-bold text-gray-400 uppercase">Registered Bank Accounts</h4>
-                                        <div className="divide-y border border-gray-100 rounded-xl overflow-hidden bg-white text-xs">
+                                        <div className="divide-y divide-gray-100 dark:divide-slate-800 border border-gray-100 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-[#111F33] text-xs">
                                             {filteredBankSummary.length === 0 ? (
                                                 <p className="text-center py-6 text-gray-400 italic">No bank accounts found{overviewSearch ? ` matching "${overviewSearch}"` : ''}</p>
                                             ) : (
                                                 filteredBankSummary.map((bank, i) => (
-                                                    <div key={i} className="flex justify-between items-center p-3 hover:bg-gray-50 transition">
+                                                    <div key={i} className="flex justify-between items-center p-3 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
                                                         <div>
                                                             <p className="font-bold text-gray-900">{bank.bankName}</p>
                                                             <p className="text-[10px] text-gray-400 mt-0.5">{bank.accountNumber}</p>
@@ -771,7 +771,7 @@ export default function DashboardPage() {
                                             <p className="text-xl font-bold mt-1 text-red-500">{fmt(deptData?.finance?.payables)}</p>
                                         </div>
                                         <hr />
-                                        <div className="bg-gray-50 p-3 rounded-lg border">
+                                        <div className="bg-gray-50 dark:bg-[#132238] p-3 rounded-lg border border-gray-200 dark:border-slate-800">
                                             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Net Liquidity Working Capital</p>
                                             <p className="text-lg font-black mt-1 text-gray-900">
                                                 {fmt((deptData?.finance?.totalBankBalance || 0) + (deptData?.finance?.receivables || 0) - (deptData?.finance?.payables || 0))}
@@ -787,7 +787,7 @@ export default function DashboardPage() {
                                             <p className="text-gray-400 text-xs italic text-center py-4">No petty cash expense categories found{overviewSearch ? ` matching "${overviewSearch}"` : ''}.</p>
                                         ) : (
                                             filteredPettyCategories.map((item, idx) => (
-                                                <div key={idx} className="flex justify-between items-center p-2.5 border border-gray-100 rounded-xl bg-gray-50/25 text-xs hover:bg-gray-50 transition">
+                                                <div key={idx} className="flex justify-between items-center p-2.5 border border-gray-100 rounded-xl bg-gray-50/25 dark:bg-[#132238]/40 text-xs hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
                                                     <span className="font-semibold text-gray-800">{item.category}</span>
                                                     <span className="font-bold text-gray-900">{fmt(item.amount)}</span>
                                                 </div>
@@ -847,7 +847,7 @@ export default function DashboardPage() {
                                     {/* EPF/ETF breakdown */}
                                     <div className="space-y-3 pt-2">
                                         <h4 className="text-xs font-bold text-gray-400 uppercase">Monthly EPF & ETF Breakdown</h4>
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border border-gray-100 rounded-xl p-4 bg-gray-50/50 text-xs">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border border-gray-100 rounded-xl p-4 bg-gray-50/50 dark:bg-slate-900/50 text-xs">
                                             <div>
                                                 <p className="text-[10px] font-bold text-gray-400 uppercase">EPF Employer (12%)</p>
                                                 <p className="text-sm font-bold mt-1 text-gray-800">{fmt(deptData?.hr?.payrollStats?.epfEmployer)}</p>
@@ -1052,7 +1052,7 @@ function EmployeeDashboard() {
                     <span className="text-[10px] text-blue-600 mt-0.5 block font-medium">Awaiting HR/Admin approval</span>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl">
+                <div className="bg-slate-50 dark:bg-[#132238] border border-slate-200 dark:border-slate-800 p-4 rounded-2xl">
                     <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">Deducted in Payroll</span>
                     <span className="text-xl sm:text-2xl font-extrabold text-slate-800 mt-1 block font-mono">
                         {fmt(ledgerSummary.totalDeducted)}
@@ -1088,7 +1088,7 @@ function EmployeeDashboard() {
                             <span className="text-xs font-semibold text-gray-500">Active Shift: {profile.workShift?.name || 'Not assigned'}</span>
                         </div>
                     </div>
-                    <div className="mt-4 py-3 bg-gray-50 border border-gray-100 rounded-xl px-4 flex justify-between text-xs">
+                    <div className="mt-4 py-3 bg-gray-50 dark:bg-[#132238] border border-gray-100 dark:border-slate-800 rounded-xl px-4 flex justify-between text-xs">
                         <div>
                             <span className="text-[10px] text-gray-400 font-bold block uppercase">In</span>
                             <span className="font-semibold text-gray-700">{todayAtt?.checkInTime ? new Date(todayAtt.checkInTime).toLocaleTimeString('en-LK', { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
@@ -1125,7 +1125,7 @@ function EmployeeDashboard() {
                 {ledgerLoading ? (
                     <div className="py-8 text-center text-xs text-gray-400 font-medium">Loading advance ledger transactions...</div>
                 ) : ledger.length === 0 ? (
-                    <div className="text-center py-10 border-2 border-dashed border-gray-150 rounded-xl bg-gray-50/50">
+                    <div className="text-center py-10 border-2 border-dashed border-gray-150 rounded-xl bg-gray-50/50 dark:bg-slate-900/50">
                         <DollarSign size={32} className="mx-auto text-gray-300 mb-2" />
                         <p className="text-sm font-semibold text-gray-600">No Advance Transactions Found</p>
                         <p className="text-xs text-gray-400 mt-1">You haven't requested any salary advances yet.</p>
@@ -1150,7 +1150,7 @@ function EmployeeDashboard() {
                                     const isPending = entry.type === 'request';
                                     
                                     return (
-                                        <tr key={entry._id} className="hover:bg-gray-50/80 transition">
+                                        <tr key={entry._id} className="hover:bg-gray-50/80 dark:hover:bg-slate-800/50 transition">
                                             <td className="py-3 font-medium text-gray-700 whitespace-nowrap">
                                                 {new Date(entry.date).toLocaleDateString('en-LK', { year: 'numeric', month: 'short', day: 'numeric' })}
                                             </td>
@@ -1205,7 +1205,7 @@ function EmployeeDashboard() {
                                 </thead>
                                 <tbody>
                                     {leaves.map((l) => (
-                                        <tr key={l._id} className="border-b last:border-0 hover:bg-gray-50 transition">
+                                        <tr key={l._id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
                                             <td className="py-2.5 font-medium text-gray-800">
                                                 {new Date(l.fromDate).toLocaleDateString('en-LK')} — {new Date(l.toDate).toLocaleDateString('en-LK')}
                                             </td>
@@ -1241,7 +1241,7 @@ function EmployeeDashboard() {
                                 </thead>
                                 <tbody>
                                     {payslips.map((p) => (
-                                        <tr key={p._id} className="border-b last:border-0 hover:bg-gray-50 transition">
+                                        <tr key={p._id} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
                                             <td className="py-2.5 font-medium text-gray-800">
                                                 {new Date(p.periodStartDate).toLocaleDateString('en-LK', { month: 'long', year: 'numeric' })}
                                             </td>
@@ -1297,7 +1297,7 @@ function EmployeeDashboard() {
                     <Textarea label="Reason" required rows={3} value={form.reason}
                         onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} />
                 </div>
-                <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#0E1A2B]">
                     <Button variant="outline" onClick={() => setIsLeaveModalOpen(false)}>Cancel</Button>
                     <Button variant="primary" onClick={submitLeave} loading={createLeaveM.isPending}>Submit</Button>
                 </div>
@@ -1353,7 +1353,7 @@ function EmployeeDashboard() {
                         onChange={(e) => setAdvanceForm((f) => ({ ...f, reason: e.target.value }))}
                     />
                 </div>
-                <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#0E1A2B]">
                     <Button variant="outline" onClick={() => setIsAdvanceModalOpen(false)}>Cancel</Button>
                     <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={submitAdvance} loading={createAdvanceM.isPending}>
                         Submit Advance Request

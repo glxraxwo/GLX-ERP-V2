@@ -437,7 +437,7 @@ export default function InventoryConverterPage() {
                     }}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all duration-200 ${
                         activeTab === 'recipe'
-                            ? 'bg-white text-gray-800 shadow-sm'
+                            ? 'bg-white dark:bg-[#111F33] text-gray-800 dark:text-white shadow-sm'
                             : 'text-gray-500 hover:text-gray-800'
                     }`}
                 >
@@ -454,7 +454,7 @@ export default function InventoryConverterPage() {
                     }}
                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all duration-200 ${
                         activeTab === 'direct'
-                            ? 'bg-white text-gray-800 shadow-sm'
+                            ? 'bg-white dark:bg-[#111F33] text-gray-800 dark:text-white shadow-sm'
                             : 'text-gray-500 hover:text-gray-800'
                     }`}
                 >
@@ -492,7 +492,7 @@ export default function InventoryConverterPage() {
                                             value={warehouseId}
                                             onChange={(e) => setWarehouseId(e.target.value)}
                                             required
-                                            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white font-medium"
+                                            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white dark:bg-[#132238] text-gray-900 dark:text-white font-medium"
                                         >
                                             {warehouses.map(w => (
                                                 <option key={w._id} value={w._id}>{w.name} ({w.warehouseCode})</option>
@@ -542,7 +542,7 @@ export default function InventoryConverterPage() {
 
                             {/* Stock Display & Input Quantity */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 flex flex-col justify-center">
+                                <div className="bg-gray-50 dark:bg-[#132238]/60 border border-gray-100 dark:border-slate-800 rounded-xl p-3 flex flex-col justify-center">
                                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">
                                         {selectedBatch === 'all' ? 'Total Warehouse Stock' : 'Selected Batch Stock'}
                                     </span>
@@ -598,7 +598,7 @@ export default function InventoryConverterPage() {
 
                                         {/* Suggestions Dropdown */}
                                         {showSuggestions && getFilteredRecipes().length > 0 && (
-                                            <ul className="absolute z-30 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto divide-y divide-gray-100">
+                                            <ul className="absolute z-30 w-full bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-800">
                                                 {getFilteredRecipes().map(recipe => (
                                                     <li
                                                         key={recipe._id}
@@ -681,12 +681,12 @@ export default function InventoryConverterPage() {
                                             </div>
 
                                             <div className="flex items-center gap-4 py-2 border-y border-emerald-100/60">
-                                                <div className="flex-1 text-center bg-white p-2.5 rounded-lg border border-emerald-100/50">
+                                                <div className="flex-1 text-center bg-white dark:bg-[#111F33] p-2.5 rounded-lg border border-emerald-100/50 dark:border-emerald-900/50">
                                                     <span className="text-[10px] text-gray-455 block uppercase font-bold">Source Input</span>
                                                     <span className="text-base font-extrabold text-gray-850">{inputQuantity} {activeSourceProd?.unitOfMeasure}</span>
                                                 </div>
                                                 <ArrowRight className="text-emerald-400" size={16} />
-                                                <div className="flex-1 text-center bg-white p-2.5 rounded-lg border border-emerald-100/50">
+                                                <div className="flex-1 text-center bg-white dark:bg-[#111F33] p-2.5 rounded-lg border border-emerald-100/50 dark:border-emerald-900/50">
                                                     <span className="text-[10px] text-gray-455 block uppercase font-bold">Expected Output</span>
                                                     <span className="text-base font-extrabold text-emerald-600">{yieldPrediction.predictedWeight} {yieldPrediction.outputProduct?.unitOfMeasure}</span>
                                                 </div>
@@ -734,7 +734,7 @@ export default function InventoryConverterPage() {
                                     )}
 
                                     {inputQuantity && !yieldPrediction && !predicting && (
-                                        <div className="border border-gray-200 bg-white rounded-xl p-4 space-y-4">
+                                        <div className="border border-gray-200 dark:border-slate-700 bg-white dark:bg-[#111F33] rounded-xl p-4 space-y-4">
                                             <div className="flex gap-2 text-amber-600 text-xs">
                                                 <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                                                 <div>
@@ -859,7 +859,7 @@ export default function InventoryConverterPage() {
                                                                 const val = e.target.value;
                                                                 setAssignedMachines(prev => prev.map((item, i) => i === idx ? { ...item, machineId: val } : item));
                                                             }}
-                                                            className="w-full h-9 px-2 bg-white border border-gray-200 rounded-lg text-sm outline-none"
+                                                            className="w-full h-9 px-2 bg-white dark:bg-[#132238] border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg text-sm outline-none"
                                                         >
                                                             <option value="">Select Machine</option>
                                                             {machines.map(m => (
@@ -880,7 +880,7 @@ export default function InventoryConverterPage() {
                                                                 setAssignedMachines(prev => prev.map((item, i) => i === idx ? { ...item, hours: val } : item));
                                                             }}
                                                             placeholder="Hours"
-                                                            className="w-full h-9 px-2 bg-white border border-gray-200 rounded-lg text-sm outline-none"
+                                                            className="w-full h-9 px-2 bg-white dark:bg-[#132238] border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg text-sm outline-none"
                                                         />
                                                     </div>
 

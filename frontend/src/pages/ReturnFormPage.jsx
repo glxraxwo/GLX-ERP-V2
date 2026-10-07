@@ -349,7 +349,7 @@ export default function ReturnFormPage() {
                         )}
 
                         {customerId && !ordersLoading && orders.length === 0 && (
-                            <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-slate-600">
+                            <div className="p-4 bg-slate-50 dark:bg-[#132238]/60 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg">
                                 <p className="text-xs font-medium text-slate-700">No previous sales orders found for this customer.</p>
                                 <p className="text-[11px] text-slate-500 mt-1">
                                     You can still process this return by picking products directly from the Product Catalog in Step 3 below.
@@ -368,7 +368,7 @@ export default function ReturnFormPage() {
                                             className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                                                 checked
                                                     ? 'border-primary-400 bg-primary-50'
-                                                    : 'border-gray-200 hover:bg-gray-50'
+                                                    : 'border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300'
                                             }`}
                                         >
                                             <input
@@ -413,8 +413,8 @@ export default function ReturnFormPage() {
 
                         {/* Direct item picker from catalog */}
                         {customerId && (
-                            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl mb-4">
-                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                            <div className="p-3.5 bg-slate-50 dark:bg-[#132238] border border-slate-200 dark:border-slate-700 rounded-xl mb-4">
+                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
                                     Add Product Directly (From Catalog)
                                 </label>
                                 <div className="flex flex-col sm:flex-row gap-2">
@@ -509,7 +509,7 @@ export default function ReturnFormPage() {
                                 )}
                                 <div className="space-y-3">
                                     {items.map((item, idx) => (
-                                        <div key={idx} className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                                        <div key={idx} className="border border-gray-200 dark:border-slate-700 rounded-xl p-4 bg-gray-50 dark:bg-slate-900/60">
                                             {/* Item header */}
                                             <div className="flex items-start justify-between mb-3">
                                                 <div>

@@ -235,7 +235,7 @@ export default function BomFormPage() {
 
                     <Card className="p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-semibold text-gray-700">Components / Raw Materials</h3>
+                            <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200">Components / Raw Materials</h3>
                             <Button type="button" variant="outline" size="sm" onClick={addComponent}>
                                 <Plus size={14} className="mr-1" /> Add Component
                             </Button>
@@ -245,9 +245,9 @@ export default function BomFormPage() {
                                 const effective = (+c.quantity || 0) * (1 + (+c.wastagePercent || 0) / 100);
                                 const lineTotal = effective * (+c.standardCost || 0);
                                 return (
-                                    <div key={idx} className="border border-gray-200 rounded-lg p-3">
+                                    <div key={idx} className="border border-gray-200 dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-[#111F33]">
                                         <div className="flex gap-2 items-start mb-2">
-                                            <span className="text-xs text-gray-500 mt-2 w-6">{idx + 1}</span>
+                                            <span className="text-xs text-gray-500 dark:text-slate-400 mt-2 w-6">{idx + 1}</span>
                                             <div className="flex-1">
                                                 <ProductAutocompleteSelect
                                                     placeholder="Type to search or add component..."

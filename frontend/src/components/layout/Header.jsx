@@ -98,8 +98,8 @@ export default function Header() {
                         alt="Logo"
                     />
                     <div className="hidden sm:block">
-                        <h2 className="font-bold text-sm text-slate-900 dark:text-white leading-tight truncate max-w-[150px]">
-                            {settings?.companyName || 'GLX Industries'}
+                        <h2 className="font-bold text-sm text-slate-900 dark:text-white leading-tight truncate max-w-[150px] uppercase">
+                            {settings?.companyName || 'GLX INDUSTRIES'}
                         </h2>
                         <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">
                             ERP System

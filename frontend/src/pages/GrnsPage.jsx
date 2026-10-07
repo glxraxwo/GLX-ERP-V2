@@ -330,7 +330,7 @@ export default function GrnsPage() {
             label: 'Actions',
             render: (r) => (
                 <div className="flex gap-2">
-                    <button onClick={() => viewGrn(r)} className="p-1 text-gray-500 hover:text-primary-600 hover:bg-gray-50 rounded border border-gray-100 flex items-center gap-1 text-xs px-2 py-1">
+                    <button onClick={() => viewGrn(r)} className="p-1 text-gray-500 hover:text-primary-600 hover:bg-gray-50 dark:hover:bg-slate-800 rounded border border-gray-100 flex items-center gap-1 text-xs px-2 py-1">
                         <Eye size={14} /> View
                     </button>
                     {r.status === 'pending_approval' && canManage && (
@@ -354,11 +354,11 @@ export default function GrnsPage() {
             <Card className="p-4">
                 <div className="flex flex-wrap items-center gap-3 mb-4">
                     <div className="relative flex-1 min-w-[200px]">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                         <input
                             type="text"
                             placeholder="Search GRN #..."
-                            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                             value={filters.search}
                             onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
                         />
@@ -381,7 +381,7 @@ export default function GrnsPage() {
                         onEndDateChange={(val) => setFilters(prev => ({ ...prev, endDate: val }))}
                         onClear={() => setFilters(prev => ({ ...prev, startDate: '', endDate: '' }))}
                     />
-                    <button onClick={fetchAllData} className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition" title="Refresh">
+                    <button onClick={fetchAllData} className="p-2 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 transition" title="Refresh">
                         <RefreshCw size={16} className="text-gray-500" />
                     </button>
                 </div>
@@ -464,7 +464,7 @@ export default function GrnsPage() {
                             <h4 className="text-sm font-bold text-gray-700 mb-2">Received Items</h4>
                             <div className="overflow-x-auto border border-gray-150 rounded-xl">
                                 <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
-                                    <thead className="bg-gray-50 text-gray-500 font-semibold text-xs uppercase">
+                                    <thead className="bg-gray-50 dark:bg-[#132238] text-gray-500 dark:text-slate-400 font-semibold text-xs uppercase border-b border-gray-200 dark:border-slate-800">
                                         <tr>
                                             <th className="px-4 py-3">Product</th>
                                             <th className="px-4 py-3">Received Qty</th>
@@ -476,7 +476,7 @@ export default function GrnsPage() {
                                     </thead>
                                     <tbody className="divide-y divide-gray-150 text-gray-700">
                                         {selectedGrn.items.map((item, idx) => (
-                                            <tr key={idx} className="hover:bg-gray-50">
+                                            <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800/60">
                                                 <td className="px-4 py-3 font-semibold text-gray-900">{item.productName}</td>
                                                 <td className="px-4 py-3 font-bold text-gray-700">{item.receivedQuantity} {item.unitOfMeasure}</td>
                                                 <td className="px-4 py-3 text-emerald-600 font-bold">{item.acceptedQuantity || 0} {item.unitOfMeasure}</td>
@@ -537,7 +537,7 @@ export default function GrnsPage() {
 
                     <div className="space-y-4">
                         {qcApprovals.map((item, idx) => (
-                            <div key={item._id} className="border border-gray-200 p-4 rounded-xl space-y-3 bg-white shadow-sm">
+                            <div key={item._id} className="border border-gray-200 dark:border-slate-700 p-4 rounded-xl space-y-3 bg-white dark:bg-[#111F33] shadow-sm">
                                 <h5 className="font-bold text-gray-800 text-sm">{item.productName}</h5>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                                     <div>
@@ -594,13 +594,13 @@ export default function GrnsPage() {
                         ))}
                     </div>
 
-                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-150 space-y-4">
+                    <div className="bg-gray-50 dark:bg-[#132238]/60 p-4 rounded-xl border border-gray-150 dark:border-slate-800 space-y-4">
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-600 block">Payment Type</label>
                             <select
                                 value={paymentType}
                                 onChange={(e) => setPaymentType(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
+                                className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
                             >
                                 <option value="credit">On Credit (Generate Bill)</option>
                                 <option value="paid">Paid Instantly</option>
@@ -625,7 +625,7 @@ export default function GrnsPage() {
                                     <select
                                         value={paymentMethod}
                                         onChange={(e) => setPaymentMethod(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
+                                        className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
                                     >
                                         <option value="cash">Cash</option>
                                         <option value="bank_transfer">Bank Transfer</option>
@@ -640,7 +640,7 @@ export default function GrnsPage() {
                                             value={bankAccountId}
                                             onChange={(e) => setBankAccountId(e.target.value)}
                                             required
-                                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
+                                            className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
                                         >
                                             <option value="">-- Select Bank Account --</option>
                                             {bankAccounts.map((acc) => (
@@ -663,7 +663,7 @@ export default function GrnsPage() {
                                 )}
 
                                 {paymentMethod === 'cheque' && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3 rounded-lg border">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 p-3 rounded-lg">
                                         <div className="col-span-1">
                                             <Input
                                                 label="Cheque Number *"
@@ -696,7 +696,7 @@ export default function GrnsPage() {
                                             <select
                                                 value={chequeStatus}
                                                 onChange={(e) => setChequeStatus(e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
+                                                className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium"
                                             >
                                                 <option value="pending">Pending</option>
                                                 <option value="cleared">Cleared</option>
@@ -726,23 +726,23 @@ export default function GrnsPage() {
                 <form onSubmit={handleFormSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label className="text-xs font-bold text-gray-600 block mb-1">Receipt Type</label>
+                            <label className="text-xs font-bold text-gray-600 dark:text-slate-300 block mb-1">Receipt Type</label>
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <button
                                     type="button"
                                     onClick={() => handlePoChange('')}
-                                    className={`flex-1 py-2 text-sm font-semibold rounded-lg border transition ${!formData.purchaseOrderId ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                                    className={`flex-1 py-2 text-sm font-semibold rounded-lg border transition ${!formData.purchaseOrderId ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
                                 >
                                     Direct GRN (No PO)
                                 </button>
                                 <select
                                     value={formData.purchaseOrderId}
                                     onChange={(e) => handlePoChange(e.target.value)}
-                                    className={`flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none bg-white font-medium transition ${formData.purchaseOrderId ? 'border-primary-500 text-primary-600 font-bold focus:ring-2 focus:ring-primary-200' : 'border-gray-300 text-gray-600 focus:ring-2 focus:ring-primary-200'}`}
+                                    className={`flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none bg-white dark:bg-[#132238] font-medium transition ${formData.purchaseOrderId ? 'border-primary-500 text-primary-600 dark:text-blue-400 font-bold focus:ring-2 focus:ring-primary-200' : 'border-gray-300 dark:border-slate-700 text-gray-600 dark:text-slate-300 focus:ring-2 focus:ring-primary-200'}`}
                                 >
-                                    <option value="">Receive against PO</option>
+                                    <option value="" className="dark:bg-[#132238] dark:text-white">Receive against PO</option>
                                     {purchaseOrders.map(po => (
-                                        <option key={po._id} value={po._id}>{po.poNumber}</option>
+                                        <option key={po._id} value={po._id} className="dark:bg-[#132238] dark:text-white">{po.poNumber}</option>
                                     ))}
                                 </select>
                             </div>
@@ -858,8 +858,8 @@ export default function GrnsPage() {
 
                     {/* Direct GRN items entry form */}
                     {!formData.purchaseOrderId && (
-                        <div className="border border-gray-150 p-4 rounded-xl bg-gray-50 space-y-4">
-                            <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wider">Add Received Product</h4>
+                        <div className="border border-gray-200 dark:border-slate-700 p-4 rounded-xl bg-gray-50 dark:bg-slate-900/60 space-y-4">
+                            <h4 className="text-xs font-bold text-gray-600 dark:text-slate-300 uppercase tracking-wider">Add Received Product</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
                                 <div className="md:col-span-2">
                                     <ProductAutocompleteSelect
@@ -907,10 +907,10 @@ export default function GrnsPage() {
                     )}
 
                     <div>
-                        <h4 className="text-sm font-bold text-gray-700 mb-2">GRN Items</h4>
-                        <div className="overflow-x-auto border border-gray-150 rounded-xl">
-                            <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
-                                <thead className="bg-gray-50 text-gray-500 font-semibold text-xs uppercase">
+                        <h4 className="text-sm font-bold text-gray-700 dark:text-slate-200 mb-2">GRN Items</h4>
+                        <div className="overflow-x-auto border border-gray-200 dark:border-slate-700 rounded-xl">
+                            <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800 text-left text-sm">
+                                <thead className="bg-gray-50 dark:bg-slate-900/60 text-gray-500 dark:text-slate-400 font-semibold text-xs uppercase">
                                     <tr>
                                         <th className="px-4 py-3">Product</th>
                                         {formData.purchaseOrderId && <th className="px-4 py-3">PO Ordered</th>}
@@ -920,16 +920,16 @@ export default function GrnsPage() {
                                         {!formData.purchaseOrderId && <th className="px-4 py-3 text-center">Action</th>}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-150 text-gray-700">
+                                <tbody className="divide-y divide-gray-150 dark:divide-slate-800 text-gray-700 dark:text-slate-200 bg-white dark:bg-[#111F33]">
                                     {formData.items.length === 0 ? (
                                         <tr>
-                                            <td colSpan={formData.purchaseOrderId ? 5 : 5} className="px-4 py-8 text-center text-gray-400 italic">No items added to GRN yet.</td>
+                                            <td colSpan={formData.purchaseOrderId ? 5 : 5} className="px-4 py-8 text-center text-gray-400 dark:text-slate-500 italic">No items added to GRN yet.</td>
                                         </tr>
                                     ) : (
                                         formData.items.map((item, idx) => (
                                             <tr key={idx}>
-                                                <td className="px-4 py-3 font-semibold text-gray-900">{item.productName}</td>
-                                                {formData.purchaseOrderId && <td className="px-4 py-3">{item.orderedQuantity} {item.unitOfMeasure}</td>}
+                                                <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">{item.productName}</td>
+                                                {formData.purchaseOrderId && <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{item.orderedQuantity} {item.unitOfMeasure}</td>}
                                                 <td className="px-4 py-3">
                                                     {formData.purchaseOrderId ? (
                                                         <input
@@ -945,17 +945,17 @@ export default function GrnsPage() {
                                                                     return { ...p, items: updated };
                                                                 });
                                                             }}
-                                                            className="w-24 px-2 py-1 border border-gray-200 rounded focus:ring-1 focus:ring-primary-500 outline-none font-bold"
+                                                            className="w-24 px-2 py-1 border border-gray-200 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white rounded focus:ring-1 focus:ring-primary-500 outline-none font-bold"
                                                         />
                                                     ) : (
                                                         `${item.receivedQuantity} ${item.unitOfMeasure}`
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">Rs. {item.unitPrice?.toFixed(2)}</td>
-                                                <td className="px-4 py-3 text-right font-bold text-gray-900">Rs. {(item.receivedQuantity * item.unitPrice).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</td>
+                                                <td className="px-4 py-3 text-right font-bold text-gray-900 dark:text-white">Rs. {(item.receivedQuantity * item.unitPrice).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</td>
                                                 {!formData.purchaseOrderId && (
                                                     <td className="px-4 py-3 text-center">
-                                                        <button type="button" onClick={() => handleRemoveItem(idx)} className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded">
+                                                        <button type="button" onClick={() => handleRemoveItem(idx)} className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 dark:hover:bg-red-950/40 rounded">
                                                             <Trash2 size={16} />
                                                         </button>
                                                     </td>

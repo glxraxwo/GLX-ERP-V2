@@ -173,14 +173,14 @@ export default function RawMaterialsPage() {
             <Card className="p-4">
                 {/* Search & Filters */}
                 <div className="flex flex-col sm:flex-row gap-3 items-center justify-between mb-4">
-                    <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-150 w-full sm:w-80">
-                        <Search size={16} className="text-gray-400" />
+                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-[#132238] px-3 py-2 rounded-xl border border-gray-150 dark:border-slate-700 w-full sm:w-80">
+                        <Search size={16} className="text-gray-400 dark:text-slate-500" />
                         <input
                             type="text"
                             placeholder="Search by material, code or batch..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="bg-transparent border-none outline-none text-sm w-full"
+                            className="bg-transparent border-none outline-none text-sm w-full text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                         />
                     </div>
 
@@ -188,9 +188,9 @@ export default function RawMaterialsPage() {
                         <select
                             value={warehouseFilter}
                             onChange={(e) => setWarehouseFilter(e.target.value)}
-                            className="px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                            className="px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                         >
-                            <option value="">All Warehouses</option>
+                            <option value="" className="dark:bg-[#132238] dark:text-white">All Warehouses</option>
                             {warehouses.map(w => (
                                 <option key={w._id} value={w._id}>{w.name}</option>
                             ))}

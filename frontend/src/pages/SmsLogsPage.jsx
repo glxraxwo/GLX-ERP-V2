@@ -108,20 +108,20 @@ export default function SmsLogsPage() {
                         <Mail size={16} />
                         Send Custom SMS
                     </button>
-                    <button onClick={fetchLogs} className="p-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition" title="Refresh logs">
+                    <button onClick={fetchLogs} className="p-2 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 transition" title="Refresh logs">
                         <RefreshCw size={16} className="text-gray-500" />
                     </button>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-wrap items-center gap-3">
+            <div className="bg-white dark:bg-[#111F33] p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center gap-3">
                 <div className="relative flex-1 min-w-[200px] max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
                     <input
                         type="text"
                         placeholder="Search supplier, mobile, message, GRN..."
-                        className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
+                        className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-[#132238] border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -136,9 +136,9 @@ export default function SmsLogsPage() {
             </div>
 
             {/* Table / List */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-[#111F33] rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <table className="w-full text-left">
-                    <thead className="bg-gray-50 border-b border-gray-200">
+                    <thead className="bg-gray-50 dark:bg-[#132238] border-b border-gray-200 dark:border-slate-800 text-gray-700 dark:text-slate-200">
                         <tr className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                             <th className="px-5 py-3">Timestamp</th>
                             <th className="px-5 py-3">Supplier Name</th>
@@ -165,7 +165,7 @@ export default function SmsLogsPage() {
                             </tr>
                         ) : (
                             filtered.map((log) => (
-                                <tr key={log._id} className="hover:bg-gray-50/50 transition">
+                                <tr key={log._id} className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800/60 transition">
                                     <td className="px-5 py-4 whitespace-nowrap text-xs text-gray-500">
                                         {formatDateSafely(log.date)}
                                     </td>
@@ -208,7 +208,7 @@ export default function SmsLogsPage() {
                     <button
                         onClick={() => setPage(p => Math.max(1, p - 1))}
                         disabled={page === 1}
-                        className="px-3 py-1.5 border rounded-lg text-xs font-semibold disabled:opacity-50 hover:bg-gray-50"
+                        className="px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-xs font-semibold disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200"
                     >
                         Previous
                     </button>
@@ -216,7 +216,7 @@ export default function SmsLogsPage() {
                     <button
                         onClick={() => setPage(p => Math.min(pages, p + 1))}
                         disabled={page === pages}
-                        className="px-3 py-1.5 border rounded-lg text-xs font-semibold disabled:opacity-50 hover:bg-gray-50"
+                        className="px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-xs font-semibold disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200"
                     >
                         Next
                     </button>
@@ -275,7 +275,7 @@ export default function SmsLogsPage() {
                         <button
                             type="button"
                             onClick={() => setIsModalOpen(false)}
-                            className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 transition"
+                            className="px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-semibold hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 transition"
                             disabled={sending}
                         >
                             Cancel

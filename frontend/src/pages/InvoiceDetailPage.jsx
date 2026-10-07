@@ -284,7 +284,7 @@ export default function InvoiceDetailPage() {
                             variant="outline" 
                             size="sm" 
                             onClick={() => setIsEditLogOpen(true)}
-                            className="border-slate-300 text-slate-700 bg-white hover:bg-slate-50 font-semibold"
+                            className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-[#132238] hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold"
                             title="View complete document edit history and audit log"
                         >
                             <History size={14} className="sm:mr-1 text-slate-500" />
@@ -653,7 +653,7 @@ export default function InvoiceDetailPage() {
             {/* Quick Payment Modal */}
             {isQuickPayOpen && (
                 <div className="fixed inset-0 bg-black/45 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-[slideUp_0.2s_ease-out]">
+                    <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-[slideUp_0.2s_ease-out]">
                         <div className="flex justify-between items-center mb-4 border-b pb-2">
                             <h3 className="text-lg font-bold text-slate-800">Record Payment</h3>
                             <button onClick={() => setIsQuickPayOpen(false)} className="text-gray-400 hover:text-slate-600 text-lg">✕</button>
@@ -681,7 +681,7 @@ export default function InvoiceDetailPage() {
                                     value={quickPayAmount}
                                     onChange={(e) => setQuickPayAmount(e.target.value)}
                                     placeholder={`Max LKR ${inv.balanceDue?.toLocaleString()}`}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold font-mono bg-white"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-bold font-mono bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                 />
                                 <p className="text-[11px] text-gray-500">Enter full amount (LKR {inv.balanceDue?.toLocaleString()}) or a partial payment amount.</p>
                             </div>
@@ -691,7 +691,7 @@ export default function InvoiceDetailPage() {
                                 <select
                                     value={quickPayMethod}
                                     onChange={(e) => setQuickPayMethod(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                 >
                                     <option value="cash">Cash</option>
                                     <option value="bank_transfer">Bank Transfer</option>
@@ -707,7 +707,7 @@ export default function InvoiceDetailPage() {
                                         required
                                         value={quickPayBankAccountId}
                                         onChange={(e) => setQuickPayBankAccountId(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                        className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                     >
                                         <option value="">-- Select Account --</option>
                                         {bankAccounts.map(acc => (
@@ -725,7 +725,7 @@ export default function InvoiceDetailPage() {
                                     type="text"
                                     value={quickPayReference}
                                     onChange={(e) => setQuickPayReference(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                     placeholder="e.g. Txn Ref, Cheque No, etc."
                                 />
                             </div>
@@ -742,7 +742,7 @@ export default function InvoiceDetailPage() {
             {/* Revert Modal */}
             {isRevertOpen && (
                 <div className="fixed inset-0 bg-black/45 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-[slideUp_0.2s_ease-out]">
+                    <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-[slideUp_0.2s_ease-out]">
                         <div className="flex justify-between items-center mb-4 border-b pb-2">
                             <h3 className="text-lg font-bold text-amber-900 flex items-center gap-2">
                                 <RotateCcw size={18} /> Revert Invoice to Quotation
@@ -763,7 +763,7 @@ export default function InvoiceDetailPage() {
                                     value={revertAdminPassword}
                                     onChange={(e) => setRevertAdminPassword(e.target.value)}
                                     placeholder="Enter Admin Password to verify"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white font-mono"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white font-mono"
                                 />
                             </div>
 
@@ -781,7 +781,7 @@ export default function InvoiceDetailPage() {
             {/* CONVERT INVOICE MODAL */}
             {isConvertOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-scaleUp">
+                    <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-scaleUp">
                         <div className="flex justify-between items-center border-b pb-3">
                             <div>
                                 <h3 className="font-bold text-gray-900 text-lg">Convert Document</h3>

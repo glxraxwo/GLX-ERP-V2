@@ -230,53 +230,53 @@ export default function DataEntryManagerPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div
                     onClick={() => setActiveTab('categories')}
-                    className={`cursor-pointer p-4 rounded-xl border transition-all shadow-xs ${activeTab === 'categories' ? 'bg-blue-50/70 border-blue-400 ring-2 ring-blue-500/20' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+                    className={`cursor-pointer p-4 rounded-xl border transition-all shadow-xs ${activeTab === 'categories' ? 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-400 dark:border-blue-500 ring-2 ring-blue-500/20' : 'bg-white dark:bg-[#111F33] border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700'}`}
                 >
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-500 uppercase">Categories</span>
-                        <FolderTree size={18} className="text-blue-600" />
+                        <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Categories</span>
+                        <FolderTree size={18} className="text-blue-600 dark:text-blue-400" />
                     </div>
-                    <div className="mt-2 text-2xl font-bold text-gray-800">{categories.length}</div>
+                    <div className="mt-2 text-2xl font-bold text-gray-800 dark:text-white">{categories.length}</div>
                 </div>
 
                 <div
                     onClick={() => setActiveTab('brands')}
-                    className={`cursor-pointer p-4 rounded-xl border transition-all shadow-xs ${activeTab === 'brands' ? 'bg-amber-50/70 border-amber-400 ring-2 ring-amber-500/20' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+                    className={`cursor-pointer p-4 rounded-xl border transition-all shadow-xs ${activeTab === 'brands' ? 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-500 ring-2 ring-amber-500/20' : 'bg-white dark:bg-[#111F33] border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700'}`}
                 >
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-500 uppercase">Brands</span>
-                        <Award size={18} className="text-amber-600" />
+                        <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Brands</span>
+                        <Award size={18} className="text-amber-600 dark:text-amber-400" />
                     </div>
-                    <div className="mt-2 text-2xl font-bold text-gray-800">{brands.length}</div>
+                    <div className="mt-2 text-2xl font-bold text-gray-800 dark:text-white">{brands.length}</div>
                 </div>
 
                 <div
                     onClick={() => setActiveTab('vehicle-models')}
-                    className={`cursor-pointer p-4 rounded-xl border transition-all shadow-xs ${activeTab === 'vehicle-models' ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/20' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+                    className={`cursor-pointer p-4 rounded-xl border transition-all shadow-xs ${activeTab === 'vehicle-models' ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-500 ring-2 ring-emerald-500/20' : 'bg-white dark:bg-[#111F33] border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700'}`}
                 >
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-500 uppercase">Vehicle Models</span>
-                        <Truck size={18} className="text-emerald-600" />
+                        <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Vehicle Models</span>
+                        <Truck size={18} className="text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <div className="mt-2 text-2xl font-bold text-gray-800">{vehicleModels.length}</div>
+                    <div className="mt-2 text-2xl font-bold text-gray-800 dark:text-white">{vehicleModels.length}</div>
                 </div>
 
                 <div
                     onClick={() => setActiveTab('insurance-companies')}
-                    className={`cursor-pointer p-4 rounded-xl border transition-all shadow-xs ${activeTab === 'insurance-companies' ? 'bg-purple-50/70 border-purple-400 ring-2 ring-purple-500/20' : 'bg-white border-gray-200 hover:border-gray-300'}`}
+                    className={`cursor-pointer p-4 rounded-xl border transition-all shadow-xs ${activeTab === 'insurance-companies' ? 'bg-purple-50/70 dark:bg-purple-950/40 border-purple-400 dark:border-purple-500 ring-2 ring-purple-500/20' : 'bg-white dark:bg-[#111F33] border-gray-200 dark:border-slate-800 hover:border-gray-300 dark:hover:border-slate-700'}`}
                 >
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-500 uppercase">Insurance Cos</span>
-                        <ShieldCheck size={18} className="text-purple-600" />
+                        <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Insurance Cos</span>
+                        <ShieldCheck size={18} className="text-purple-600 dark:text-purple-400" />
                     </div>
-                    <div className="mt-2 text-2xl font-bold text-gray-800">{insuranceCompanies.length}</div>
+                    <div className="mt-2 text-2xl font-bold text-gray-800 dark:text-white">{insuranceCompanies.length}</div>
                 </div>
             </div>
 
             {/* Main Workspace Card */}
-            <Card className="p-0 overflow-hidden border border-gray-200/90 shadow-sm">
+            <Card className="p-0 overflow-hidden border border-gray-200/90 dark:border-slate-800 shadow-sm">
                 {/* Tab Navigation Header */}
-                <div className="flex items-center border-b border-gray-200 bg-gray-50/60 px-4 pt-2 gap-2 overflow-x-auto">
+                <div className="flex items-center border-b border-gray-200 dark:border-slate-800 bg-gray-50/60 dark:bg-slate-900/60 px-4 pt-2 gap-2 overflow-x-auto">
                     {TABS.map((tab) => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -287,11 +287,11 @@ export default function DataEntryManagerPage() {
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                                     isActive
-                                        ? 'border-blue-600 text-blue-700 bg-white rounded-t-lg shadow-2xs font-semibold'
-                                        : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100/60 rounded-t-lg'
+                                        ? 'border-blue-600 text-blue-700 dark:text-blue-400 bg-white dark:bg-[#111F33] rounded-t-lg shadow-2xs font-semibold'
+                                        : 'border-transparent text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100/60 dark:hover:bg-slate-800 rounded-t-lg'
                                 }`}
                             >
-                                <Icon size={16} className={isActive ? tab.color : 'text-gray-400'} />
+                                <Icon size={16} className={isActive ? tab.color : 'text-gray-400 dark:text-slate-500'} />
                                 <span>{tab.label}</span>
                             </button>
                         );
@@ -299,14 +299,14 @@ export default function DataEntryManagerPage() {
                 </div>
 
                 {/* 1-Click Fast Entry Box */}
-                <div className="p-5 border-b border-gray-100 bg-linear-to-r from-blue-50/30 via-white to-gray-50/30">
+                <div className="p-5 border-b border-gray-100 dark:border-slate-800 bg-linear-to-r from-blue-50/30 via-white to-gray-50/30 dark:from-blue-950/20 dark:via-[#111F33] dark:to-slate-900/20">
                     <form onSubmit={handleQuickAdd} className="max-w-3xl space-y-2">
                         <div className="flex items-center gap-2 mb-1">
                             <ActiveIcon size={16} className={activeMeta.color} />
-                            <h3 className="text-sm font-bold text-gray-800">
+                            <h3 className="text-sm font-bold text-gray-800 dark:text-white">
                                 Quick Add New {activeMeta.label.replace(/s$/, '')}
                             </h3>
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-gray-400 dark:text-slate-500">
                                 (Just enter the name and press Enter or Save)
                             </span>
                         </div>
@@ -327,7 +327,7 @@ export default function DataEntryManagerPage() {
                                             ? 'Tata LPT 1109, Isuzu NKR, Mahindra Bolero'
                                             : 'Sri Lanka Insurance, Ceylinco, Fairfirst'
                                     })...`}
-                                    className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs transition"
+                                    className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs transition"
                                     disabled={isSubmitting}
                                     autoFocus
                                 />
@@ -340,7 +340,7 @@ export default function DataEntryManagerPage() {
                                         value={extraInput}
                                         onChange={(e) => setExtraInput(e.target.value)}
                                         placeholder="Contact Phone (Optional)"
-                                        className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs transition"
+                                        className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs transition"
                                         disabled={isSubmitting}
                                     />
                                 </div>
@@ -362,17 +362,17 @@ export default function DataEntryManagerPage() {
                 {/* Filter and Table List */}
                 <div className="p-5 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
-                        <div className="text-xs text-gray-500 font-medium">
-                            Total {activeMeta.label}: <span className="font-bold text-gray-800">{currentList.length}</span>
+                        <div className="text-xs text-gray-500 dark:text-slate-400 font-medium">
+                            Total {activeMeta.label}: <span className="font-bold text-gray-800 dark:text-white">{currentList.length}</span>
                         </div>
                         <div className="w-full sm:w-64 relative">
-                            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                             <input
                                 type="text"
                                 value={searchText}
                                 onChange={(e) => setSearchText(e.target.value)}
                                 placeholder={`Search ${activeMeta.label}...`}
-                                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 bg-white text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
                     </div>
@@ -383,9 +383,9 @@ export default function DataEntryManagerPage() {
                             description={searchText ? 'No items match your search.' : `Type a name above and click Save to add the first ${activeMeta.label.replace(/s$/, '')}.`}
                         />
                     ) : (
-                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                        <div className="overflow-x-auto border border-gray-200 dark:border-slate-800 rounded-lg">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50/80 text-gray-600 font-semibold text-xs border-b border-gray-200 uppercase tracking-wider">
+                                <thead className="bg-gray-50/80 dark:bg-slate-900/80 text-gray-600 dark:text-slate-300 font-semibold text-xs border-b border-gray-200 dark:border-slate-800 uppercase tracking-wider">
                                     <tr>
                                         <th className="px-4 py-3 w-12 text-center">#</th>
                                         <th className="px-4 py-3">Name</th>
@@ -396,22 +396,22 @@ export default function DataEntryManagerPage() {
                                         {canManage && <th className="px-4 py-3 w-20 text-center">Actions</th>}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 bg-white">
+                                <tbody className="divide-y divide-gray-100 dark:divide-slate-800 bg-white dark:bg-[#111F33]">
                                     {currentList.map((item, idx) => (
-                                        <tr key={item._id || idx} className="hover:bg-blue-50/30 transition">
-                                            <td className="px-4 py-3 text-center text-xs text-gray-400 font-medium">
+                                        <tr key={item._id || idx} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/40 transition">
+                                            <td className="px-4 py-3 text-center text-xs text-gray-400 dark:text-slate-500 font-medium">
                                                 {idx + 1}
                                             </td>
-                                            <td className="px-4 py-3 font-semibold text-gray-800">
+                                            <td className="px-4 py-3 font-semibold text-gray-800 dark:text-white">
                                                 {item.name}
                                             </td>
                                             {activeTab === 'categories' && (
-                                                <td className="px-4 py-3 text-xs text-gray-500 font-mono">
+                                                <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400 font-mono">
                                                     {item.code || '—'}
                                                 </td>
                                             )}
                                             {activeTab === 'insurance-companies' && (
-                                                <td className="px-4 py-3 text-xs text-gray-500">
+                                                <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400">
                                                     {item.contactPhone || '—'}
                                                 </td>
                                             )}
@@ -420,7 +420,7 @@ export default function DataEntryManagerPage() {
                                                     {item.isActive !== false ? 'Active' : 'Inactive'}
                                                 </Badge>
                                             </td>
-                                            <td className="px-4 py-3 text-xs text-gray-400">
+                                            <td className="px-4 py-3 text-xs text-gray-400 dark:text-slate-500">
                                                 {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '—'}
                                             </td>
                                             {canManage && (

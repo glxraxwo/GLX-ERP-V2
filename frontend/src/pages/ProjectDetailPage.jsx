@@ -422,25 +422,25 @@ export default function ProjectDetailPage() {
 
             {/* Financial Summary Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-                <Card className="p-4 bg-slate-50 border flex flex-col justify-between">
+                <Card className="p-4 bg-slate-50 dark:bg-[#132238] border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Quoted Price</span>
                     <span className="text-xl font-bold text-slate-800">{fmt(project.quotedPrice)}</span>
                     <span className="text-[10px] text-slate-400 mt-1">Price agreed with customer</span>
                 </Card>
 
-                <Card className="p-4 bg-slate-50 border flex flex-col justify-between">
+                <Card className="p-4 bg-slate-50 dark:bg-[#132238] border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Materials (Buying Cost)</span>
                     <span className="text-xl font-bold text-amber-600">{fmt(totalMaterialsCost)}</span>
                     <span className="text-[10px] text-slate-400 mt-1">POS Issued Cost</span>
                 </Card>
 
-                <Card className="p-4 bg-slate-50 border flex flex-col justify-between">
+                <Card className="p-4 bg-slate-50 dark:bg-[#132238] border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Labor Cost</span>
                     <span className="text-xl font-bold text-indigo-600">{fmt(totalLaborCost)}</span>
                     <span className="text-[10px] text-slate-400 mt-1">Logs calculated from shifts</span>
                 </Card>
 
-                <Card className="p-4 bg-slate-50 border flex flex-col justify-between">
+                <Card className="p-4 bg-slate-50 dark:bg-[#132238] border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cash/Other Expenses</span>
                     <span className="text-xl font-bold text-red-500">{fmt(totalCashExpenses)}</span>
                     <span className="text-[10px] text-slate-400 mt-1">Directly logged expenses</span>
@@ -515,7 +515,7 @@ export default function ProjectDetailPage() {
             </Card>
 
             {/* Tabs Navigation */}
-            <div className="flex border-b border-gray-200 bg-white rounded-t-xl overflow-x-auto">
+            <div className="flex border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-[#111F33] rounded-t-xl overflow-x-auto">
                 {[
                     { id: 'overview', label: 'Overview & Employees', icon: User },
                     { id: 'materials', label: `Materials Issued (${project.materialsIssued?.length || 0})`, icon: Package },
@@ -541,11 +541,11 @@ export default function ProjectDetailPage() {
                                 </p>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="bg-slate-50 p-3 rounded-xl border">
+                                <div className="bg-slate-50 dark:bg-[#132238]/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase">Yard / Site</span>
                                     <p className="text-sm font-semibold text-slate-800 mt-0.5">{project.yard || '—'}</p>
                                 </div>
-                                <div className="bg-slate-50 p-3 rounded-xl border">
+                                <div className="bg-slate-50 dark:bg-[#132238]/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase">Delivery Date</span>
                                     <p className="text-sm font-semibold text-slate-800 mt-0.5">{project.deliveryDate ? fmtDate(project.deliveryDate) : 'Pending Delivery'}</p>
                                 </div>
@@ -569,7 +569,7 @@ export default function ProjectDetailPage() {
                                     </button>
                                 )}
                             </div>
-                            <div className="border rounded-xl p-3 bg-slate-50 divide-y space-y-2">
+                            <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50 dark:bg-[#132238]/60 divide-y divide-slate-200 dark:divide-slate-700 space-y-2">
                                 {project.assignedEmployees && project.assignedEmployees.length > 0 ? (
                                     project.assignedEmployees.map(emp => (
                                         <div key={emp._id} className="flex items-center justify-between pt-2 first:pt-0">
@@ -586,7 +586,7 @@ export default function ProjectDetailPage() {
                                                     <p className="text-xs text-gray-500">{emp.employeeCode}</p>
                                                 </div>
                                             </div>
-                                            <span className="text-xs font-medium text-slate-600 bg-white px-2.5 py-1 border rounded-lg">
+                                            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-[#132238] px-2.5 py-1 border border-slate-200 dark:border-slate-700 rounded-lg">
                                                 LKR {emp.basicWageRate || emp.hourlyRate || 0}/hr
                                             </span>
                                         </div>
@@ -650,7 +650,7 @@ export default function ProjectDetailPage() {
             {/* Add Expense Modal */}
             {isExpenseOpen && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <Card className="w-full max-w-md shadow-2xl p-6 bg-white">
+                    <Card className="w-full max-w-md shadow-2xl p-6 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white">
                         <div className="flex justify-between items-center mb-4 border-b pb-2">
                             <h3 className="text-lg font-bold text-slate-800">Log Project Expense</h3>
                             <button onClick={() => setIsExpenseOpen(false)} className="text-gray-400 hover:text-slate-600 text-lg">×</button>
@@ -697,7 +697,7 @@ export default function ProjectDetailPage() {
             {/* Edit Employees Modal */}
             {isEditEmployeesOpen && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <Card className="w-full max-w-md shadow-2xl p-6 bg-white">
+                    <Card className="w-full max-w-md shadow-2xl p-6 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white">
                         <div className="flex justify-between items-center mb-4 border-b pb-2">
                             <h3 className="text-lg font-bold text-slate-800">Assign / Edit Employees</h3>
                             <button onClick={() => setIsEditEmployeesOpen(false)} className="text-gray-400 hover:text-slate-600 text-lg">×</button>
@@ -708,7 +708,7 @@ export default function ProjectDetailPage() {
                                 <div className="border border-gray-200 rounded-xl p-3 max-h-60 overflow-y-auto space-y-2">
                                     {allEmployees.length > 0 ? (
                                         allEmployees.map(emp => (
-                                            <label key={emp._id} className="flex items-center space-x-2 text-sm p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer">
+                                            <label key={emp._id} className="flex items-center space-x-2 text-sm p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer">
                                                 <input type="checkbox" checked={editSelectedEmployees.includes(emp._id)}
                                                     onChange={() => handleEmployeeCheckboxToggle(emp._id)}
                                                     className="rounded text-primary-600 focus:ring-primary-500 border-gray-300" />
@@ -733,10 +733,10 @@ export default function ProjectDetailPage() {
             {/* Add Material Modal */}
             {isMaterialOpen && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <Card className="w-full max-w-md shadow-2xl p-6 bg-white">
-                        <div className="flex justify-between items-center mb-4 border-b pb-2">
-                            <h3 className="text-lg font-bold text-slate-800">Issue Material to Project</h3>
-                            <button onClick={() => setIsMaterialOpen(false)} className="text-gray-400 hover:text-slate-600 text-lg">×</button>
+                    <Card className="w-full max-w-md shadow-2xl p-6 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800">
+                        <div className="flex justify-between items-center mb-4 border-b border-gray-200 dark:border-slate-800 pb-2">
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Issue Material to Project</h3>
+                            <button onClick={() => setIsMaterialOpen(false)} className="text-gray-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg">×</button>
                         </div>
                         <form onSubmit={handleAddMaterial} className="space-y-4">
                             <ProductAutocompleteSelect
@@ -759,7 +759,7 @@ export default function ProjectDetailPage() {
                                 <Input label="Buying Price (LKR)" type="number" required value={materialBuyingPrice} onChange={(e) => setMaterialBuyingPrice(e.target.value)} min="0" step="0.01" />
                             </div>
 
-                            <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
+                            <div className="flex flex-wrap justify-end gap-2 pt-4 border-t border-gray-200 dark:border-slate-800">
                                 <Button variant="outline" type="button" onClick={() => setIsMaterialOpen(false)}>Cancel</Button>
                                 <Button variant="primary" type="submit" loading={isSavingMaterial}>Issue Material</Button>
                             </div>
@@ -771,16 +771,16 @@ export default function ProjectDetailPage() {
             {/* Return Material Modal */}
             {returnModalItem && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <Card className="w-full max-w-md shadow-2xl p-6 bg-white space-y-4">
-                        <div className="flex justify-between items-center border-b pb-2">
+                    <Card className="w-full max-w-md shadow-2xl p-6 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 space-y-4">
+                        <div className="flex justify-between items-center border-b border-gray-200 dark:border-slate-800 pb-2">
                             <div>
-                                <h3 className="text-lg font-bold text-slate-800">Return Material to Warehouse</h3>
-                                <p className="text-xs text-slate-500">Return unused yard materials back to inventory</p>
+                                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Return Material to Warehouse</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Return unused yard materials back to inventory</p>
                             </div>
-                            <button onClick={() => setReturnModalItem(null)} className="text-gray-400 hover:text-slate-600 text-lg">×</button>
+                            <button onClick={() => setReturnModalItem(null)} className="text-gray-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg">×</button>
                         </div>
                         <form onSubmit={handleReturnMaterial} className="space-y-4">
-                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 space-y-1">
+                            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-xs text-amber-900 dark:text-amber-200 space-y-1">
                                 <div><strong>Material:</strong> {returnModalItem.productName || returnModalItem.productCode}</div>
                                 <div>
                                     <strong>Issued:</strong> {returnModalItem.qty} {returnModalItem.product?.unitOfMeasure || 'pcs'} |{' '}

@@ -405,7 +405,7 @@ export default function EmployeeFormPage() {
                                         🔐 <strong>System User Account (ලොගින් ගිණුම):</strong> සේවකයාට System එකට සහ Employee Portal එකට Login වීම සඳහා පරිශීලක ගිණුමක් සෑදීමට මෙතැනින් එකඟ වන්න.
                                     </div>
 
-                                    <div className="border rounded-xl p-5 bg-gray-50/50 space-y-4">
+                                    <div className="border border-gray-200 dark:border-slate-800 rounded-xl p-5 bg-gray-50/50 dark:bg-slate-900/60 space-y-4">
                                         <label className="flex items-center gap-3 cursor-pointer select-none">
                                             <input
                                                 type="checkbox"
@@ -469,7 +469,7 @@ export default function EmployeeFormPage() {
                             </div>
 
                             {/* Grama Niladhari Certificate */}
-                            <div className="border rounded-lg p-4 bg-gray-50/50 space-y-3">
+                            <div className="border border-gray-200 dark:border-slate-800 rounded-lg p-4 bg-gray-50/50 dark:bg-slate-900/60 space-y-3">
                                 <div className="flex items-center justify-between">
                                     <h4 className="font-semibold text-gray-900 flex items-center gap-2">
                                         <FileText size={18} className="text-primary-600" />
@@ -542,7 +542,7 @@ export default function EmployeeFormPage() {
                             </div>
 
                             {/* Education Certificates */}
-                            <div className="border rounded-lg p-4 bg-gray-50/50 space-y-3">
+                            <div className="border border-gray-200 dark:border-slate-800 rounded-lg p-4 bg-gray-50/50 dark:bg-slate-900/60 space-y-3">
                                 <h4 className="font-semibold text-gray-900 flex items-center gap-2">
                                     <FileText size={18} className="text-indigo-600" />
                                     2. Education Certificates (අධ්‍යාපන සහතික)
@@ -610,7 +610,7 @@ export default function EmployeeFormPage() {
                             </div>
 
                             {/* Police Report */}
-                            <div className="border rounded-lg p-4 bg-gray-50/50 space-y-3">
+                            <div className="border border-gray-200 dark:border-slate-800 rounded-lg p-4 bg-gray-50/50 dark:bg-slate-900/60 space-y-3">
                                 <h4 className="font-semibold text-gray-900 flex items-center gap-2">
                                     <FileText size={18} className="text-rose-600" />
                                     3. Police Report (පොලිස් වාර්තාව)
@@ -751,7 +751,7 @@ export default function EmployeeFormPage() {
                     )}
                 </div>
 
-                <div className="flex flex-wrap justify-end gap-2 sm:gap-3 px-3 sm:px-6 py-4 border-t bg-gray-50">
+                <div className="flex flex-wrap justify-end gap-2 sm:gap-3 px-3 sm:px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#0E1A2B]">
                     <Button variant="outline" onClick={() => navigate('/employees')}>Cancel</Button>
                     <Button variant="primary" onClick={submit}
                         loading={createMutation.isPending || updateMutation.isPending}>

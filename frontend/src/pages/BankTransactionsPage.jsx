@@ -166,38 +166,38 @@ export default function BankTransactionsPage() {
                 </button>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row flex-wrap items-center gap-3">
+            <div className="bg-white dark:bg-[#111F33] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row flex-wrap items-center gap-3">
                 <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
                     <input
                         type="text"
                         placeholder="Search by description or reference..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                 </div>
 
                 <select
                     value={accountFilter}
                     onChange={(e) => setAccountFilter(e.target.value)}
-                    className="px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                    className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                 >
-                    <option value="">All Accounts</option>
+                    <option value="" className="dark:bg-[#132238] dark:text-white">All Accounts</option>
                     {accounts.map(acc => (
-                        <option key={acc._id} value={acc._id}>{acc.bankName} ({acc.accountNumber})</option>
+                        <option key={acc._id} value={acc._id} className="dark:bg-[#132238] dark:text-white">{acc.bankName} ({acc.accountNumber})</option>
                     ))}
                 </select>
 
                 <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
-                    className="px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                    className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                 >
-                    <option value="">All Types</option>
-                    <option value="deposit">Deposits</option>
-                    <option value="withdrawal">Withdrawals</option>
-                    <option value="transfer">Transfers</option>
+                    <option value="" className="dark:bg-[#132238] dark:text-white">All Types</option>
+                    <option value="deposit" className="dark:bg-[#132238] dark:text-white">Deposits</option>
+                    <option value="withdrawal" className="dark:bg-[#132238] dark:text-white">Withdrawals</option>
+                    <option value="transfer" className="dark:bg-[#132238] dark:text-white">Transfers</option>
                 </select>
 
                 <DateRangeFilter
@@ -209,7 +209,7 @@ export default function BankTransactionsPage() {
                 />
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-[#111F33] rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 {loading ? (
                     <div className="py-16 text-center text-slate-500">Loading transactions...</div>
                 ) : (
@@ -227,7 +227,7 @@ export default function BankTransactionsPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-200 text-xs">
                                 {filteredTransactions.map(tx => (
-                                    <tr key={tx._id} className="hover:bg-slate-50/50 text-slate-700">
+                                    <tr key={tx._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800/60">
                                         <td className="p-4 font-medium">{new Date(tx.date).toLocaleDateString('en-LK')}</td>
                                         <td className="p-4">{tx.accountName}</td>
                                         <td className="p-4 font-mono">{tx.referenceNo || '—'}</td>
@@ -266,7 +266,7 @@ export default function BankTransactionsPage() {
 
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-md w-full overflow-hidden">
+                    <div className="bg-white dark:bg-[#111F33] border border-slate-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-xl shadow-xl max-w-md w-full overflow-hidden">
                         <div className="p-5 border-b border-slate-200 flex justify-between items-center">
                             <h3 className="font-bold text-slate-800">Record Bank Transaction</h3>
                             <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
@@ -277,7 +277,7 @@ export default function BankTransactionsPage() {
                                 <select
                                     value={formData.accountId}
                                     onChange={(e) => setFormData(prev => ({ ...prev, accountId: e.target.value }))}
-                                    className="w-full p-2.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                                    className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                                 >
                                     <option value="">Select Account</option>
                                     {accounts.map(acc => (
@@ -292,7 +292,7 @@ export default function BankTransactionsPage() {
                                     <select
                                         value={formData.type}
                                         onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
-                                        className="w-full p-2.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                                        className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                                     >
                                         <option value="deposit">Deposit (Inflow)</option>
                                         <option value="withdrawal">Withdrawal (Outflow)</option>
@@ -307,7 +307,7 @@ export default function BankTransactionsPage() {
                                         placeholder="e.g. 25000"
                                         value={formData.amount}
                                         onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                                        className="w-full p-2.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                                        className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                                     />
                                 </div>
                             </div>
@@ -320,7 +320,7 @@ export default function BankTransactionsPage() {
                                         required
                                         value={formData.date}
                                         onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                                        className="w-full p-2.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                                        className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                                     />
                                 </div>
                                 <div>
@@ -330,7 +330,7 @@ export default function BankTransactionsPage() {
                                         placeholder="e.g. TRF-12049"
                                         value={formData.referenceNo}
                                         onChange={(e) => setFormData(prev => ({ ...prev, referenceNo: e.target.value }))}
-                                        className="w-full p-2.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                                        className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                                     />
                                 </div>
                             </div>
@@ -342,7 +342,7 @@ export default function BankTransactionsPage() {
                                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                                     placeholder="Enter details..."
                                     rows="2"
-                                    className="w-full p-2.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-700 outline-none"
+                                    className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-slate-700 dark:text-white outline-none"
                                 />
                             </div>
 

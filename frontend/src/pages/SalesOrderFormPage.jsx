@@ -522,22 +522,22 @@ export default function SalesOrderFormPage() {
 
                             <div className="flex justify-between text-sm">
                                 <span className="text-gray-600">Tax (VAT)</span>
-                                <span>{fmt(totals.totalTax)}</span>
+                                <span className="dark:text-slate-200">{fmt(totals.totalTax)}</span>
                             </div>
 
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <label className="text-sm text-gray-600">Shipping Cost</label>
+                                <label className="text-sm text-gray-600 dark:text-slate-400">Shipping Cost</label>
                                 <input
                                     type="number" step="0.01" min="0"
                                     value={shippingCost}
                                     onChange={(e) => setShippingCost(e.target.value)}
-                                    className="w-28 min-w-0 px-2 py-1 border border-gray-300 rounded text-sm text-right"
+                                    className="w-28 min-w-0 px-2 py-1 border border-gray-300 dark:border-slate-700 rounded text-sm text-right bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500"
                                 />
                             </div>
 
-                            <div className="pt-3 border-t border-gray-200 flex justify-between">
-                                <span className="font-semibold text-gray-900">Grand Total</span>
-                                <span className="font-bold text-lg text-primary-600">{fmt(totals.grandTotal)}</span>
+                            <div className="pt-3 border-t border-gray-200 dark:border-slate-800 flex justify-between">
+                                <span className="font-semibold text-gray-900 dark:text-white">Grand Total</span>
+                                <span className="font-bold text-lg text-primary-600 dark:text-blue-400">{fmt(totals.grandTotal)}</span>
                             </div>
                         </div>
 

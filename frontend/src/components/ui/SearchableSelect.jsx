@@ -8,6 +8,9 @@ const SearchableSelect = forwardRef(({
     options = [],
     value = '',
     onChange,
+    onSelect,
+    triggerRef,
+    autoFocus = false,
     placeholder = 'Select product...',
     className = '',
     helperText,
@@ -101,6 +104,9 @@ const SearchableSelect = forwardRef(({
         }
         setIsOpen(false);
         setSearchTerm('');
+        if (onSelect) {
+            onSelect(opt);
+        }
     };
 
     const handleClear = (e) => {
@@ -135,10 +141,18 @@ const SearchableSelect = forwardRef(({
         }
     };
 
+    useEffect(() => {
+        if (autoFocus && triggerRef?.current) {
+            setTimeout(() => {
+                triggerRef.current?.focus();
+            }, 50);
+        }
+    }, [autoFocus, triggerRef]);
+
     return (
         <div className={`w-full relative ${className}`} ref={containerRef}>
             {label && (
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
                     {label}
                     {required && <span className="text-red-500 ml-0.5">*</span>}
                 </label>
@@ -146,27 +160,28 @@ const SearchableSelect = forwardRef(({
 
             {/* Trigger Button */}
             <div
+                ref={triggerRef}
                 tabIndex={disabled ? -1 : 0}
                 onKeyDown={handleKeyDown}
                 onClick={() => !disabled && setIsOpen(!isOpen)}
-                className={`w-full px-3 py-2 border rounded-lg flex items-center justify-between text-sm transition-all cursor-pointer select-none bg-white min-h-[40px]
-                    ${disabled ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200' : 'hover:border-gray-400'}
+                className={`w-full px-3 py-2 border rounded-lg flex items-center justify-between text-sm transition-all cursor-pointer select-none bg-white dark:bg-slate-900 min-h-[40px] outline-none
+                    ${disabled ? 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-not-allowed border-gray-200 dark:border-slate-700' : 'hover:border-gray-400 dark:hover:border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30'}
                     ${error
-                        ? 'border-red-400 focus:ring-2 focus:ring-red-200 focus:border-red-500 bg-red-50/20'
+                        ? 'border-red-400 focus:ring-2 focus:ring-red-200 focus:border-red-500 bg-red-50/20 dark:bg-red-950/20'
                         : isOpen
-                            ? 'border-blue-500 ring-2 ring-blue-100 shadow-xs'
-                            : 'border-gray-300'
+                            ? 'border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900/30 shadow-xs'
+                            : 'border-gray-300 dark:border-slate-700'
                     }`}
             >
                 <div className="flex-1 truncate mr-2">
                     {selectedOption ? (
                         <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900 truncate">
+                            <span className="font-medium text-gray-900 dark:text-white truncate">
                                 {selectedOption.label}
                             </span>
                         </div>
                     ) : (
-                        <span className="text-gray-400 font-normal">{placeholder}</span>
+                        <span className="text-gray-400 dark:text-slate-500 font-normal">{placeholder}</span>
                     )}
                 </div>
 
@@ -175,7 +190,7 @@ const SearchableSelect = forwardRef(({
                         <button
                             type="button"
                             onClick={handleClear}
-                            className="p-1 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition"
+                            className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 transition"
                             title="Clear selection"
                         >
                             <X size={14} />
@@ -183,7 +198,7 @@ const SearchableSelect = forwardRef(({
                     )}
                     <ChevronDown
                         size={16}
-                        className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-600' : ''}`}
+                        className={`text-gray-400 dark:text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-600 dark:text-blue-400' : ''}`}
                     />
                 </div>
             </div>
@@ -199,11 +214,11 @@ const SearchableSelect = forwardRef(({
 
             {/* Dropdown Popover */}
             {isOpen && !disabled && (
-                <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-100 min-w-[280px]">
+                <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden animate-in fade-in-50 zoom-in-95 duration-100 min-w-[280px]">
                     {/* Live Search Input */}
-                    <div className="p-2 border-b border-gray-100 bg-gray-50/80">
+                    <div className="p-2 border-b border-gray-100 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-800/80">
                         <div className="relative">
-                            <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400" />
                             <input
                                 ref={searchInputRef}
                                 type="text"
@@ -214,13 +229,13 @@ const SearchableSelect = forwardRef(({
                                 }}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Type to search product, code or Sinhala..."
-                                className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+                                className="w-full pl-8 pr-7 py-1.5 text-xs bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                             />
                             {searchTerm && (
                                 <button
                                     type="button"
                                     onClick={() => setSearchTerm('')}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 p-0.5"
                                 >
                                     <X size={13} />
                                 </button>
@@ -231,13 +246,13 @@ const SearchableSelect = forwardRef(({
                     {/* Options List */}
                     <div
                         ref={listRef}
-                        className="max-h-60 overflow-y-auto divide-y divide-gray-50 p-1"
+                        className="max-h-60 overflow-y-auto divide-y divide-gray-50 dark:divide-slate-800 p-1"
                     >
                         {filteredOptions.length === 0 ? (
-                            <div className="py-6 px-4 text-center text-xs text-gray-400 space-y-1">
-                                <Package size={20} className="mx-auto text-gray-300 mb-1" />
-                                <p className="font-semibold text-gray-600">No matching items found</p>
-                                <p className="text-[11px] text-gray-400">Try typing a different name, code or keyword</p>
+                            <div className="py-6 px-4 text-center text-xs text-gray-400 dark:text-slate-500 space-y-1">
+                                <Package size={20} className="mx-auto text-gray-300 dark:text-slate-600 mb-1" />
+                                <p className="font-semibold text-gray-600 dark:text-slate-300">No matching items found</p>
+                                <p className="text-[11px] text-gray-400 dark:text-slate-500">Try typing a different name, code or keyword</p>
                             </div>
                         ) : (
                             filteredOptions.map((opt, idx) => {
@@ -250,8 +265,8 @@ const SearchableSelect = forwardRef(({
                                         onMouseEnter={() => setHighlightedIndex(idx)}
                                         onClick={() => handleSelect(opt)}
                                         className={`px-3 py-2.5 rounded-lg text-xs cursor-pointer flex items-center justify-between transition-colors
-                                            ${isSelected ? 'bg-blue-50/80 text-blue-900 font-semibold' : 'text-gray-700'}
-                                            ${isHighlighted && !isSelected ? 'bg-gray-100/80 text-gray-900' : ''}
+                                            ${isSelected ? 'bg-blue-50/80 dark:bg-blue-950/70 text-blue-900 dark:text-blue-200 font-semibold' : 'text-gray-700 dark:text-slate-200'}
+                                            ${isHighlighted && !isSelected ? 'bg-gray-100/80 dark:bg-slate-800 text-gray-900 dark:text-white' : ''}
                                         `}
                                     >
                                         <div className="flex-1 min-w-0 pr-2">
@@ -259,14 +274,14 @@ const SearchableSelect = forwardRef(({
                                                 <span className="truncate">{opt.label}</span>
                                             </div>
                                             {opt.subtext && (
-                                                <div className="text-[11px] text-gray-400 font-mono mt-0.5">
+                                                <div className="text-[11px] text-gray-400 dark:text-slate-400 font-mono mt-0.5">
                                                     {opt.subtext}
                                                 </div>
                                             )}
                                         </div>
 
                                         {isSelected && (
-                                            <Check size={15} className="text-blue-600 shrink-0 ml-2" />
+                                            <Check size={15} className="text-blue-600 dark:text-blue-400 shrink-0 ml-2" />
                                         )}
                                     </div>
                                 );
@@ -275,9 +290,9 @@ const SearchableSelect = forwardRef(({
                     </div>
 
                     {/* Footer count indicator */}
-                    <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-400 flex items-center justify-between">
+                    <div className="px-3 py-1.5 bg-gray-50 dark:bg-slate-800/60 border-t border-gray-100 dark:border-slate-700 text-[10px] text-gray-400 dark:text-slate-500 flex items-center justify-between">
                         <span>{filteredOptions.length} of {options.length} options</span>
-                        <span className="text-[9px] text-gray-400 font-mono">Use ↑↓ & Enter to select</span>
+                        <span className="text-[9px] text-gray-400 dark:text-slate-500 font-mono">Use ↑↓ & Enter to select</span>
                     </div>
                 </div>
             )}

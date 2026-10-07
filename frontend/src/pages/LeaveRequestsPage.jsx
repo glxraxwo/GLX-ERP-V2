@@ -332,7 +332,7 @@ export default function LeaveRequestsPage() {
             </div>
 
             <Card>
-                <div className="border-b flex gap-2 px-4 overflow-x-auto bg-gray-50/50">
+                <div className="border-b border-gray-200 dark:border-slate-800 flex gap-2 px-4 overflow-x-auto bg-gray-50/50 dark:bg-[#132238]/60">
                     <button onClick={() => setActiveTab('leaves')}
                         className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 ${activeTab === 'leaves' ? 'border-primary-600 text-primary-600 font-semibold' : 'border-transparent text-gray-600 hover:text-gray-900'
                             }`}>
@@ -424,7 +424,7 @@ export default function LeaveRequestsPage() {
                     <Textarea label="Reason / Notes" required rows={3} value={leaveForm.reason}
                         onChange={(e) => setLeaveForm((f) => ({ ...f, reason: e.target.value }))} />
                 </div>
-                <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#0E1A2B]">
                     <Button variant="outline" onClick={() => setIsFormOpen(false)}>Cancel</Button>
                     <Button variant="primary" onClick={submitLeave} loading={createLeaveM.isPending}>Submit Request</Button>
                 </div>
@@ -473,7 +473,7 @@ export default function LeaveRequestsPage() {
                         ℹ️ Admin approval threshold applies. Approved advance will be auto-deducted from ongoing salary during payroll run.
                     </div>
                 </div>
-                <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#0E1A2B]">
                     <Button variant="outline" onClick={() => setIsAdvanceFormOpen(false)}>Cancel</Button>
                     <Button variant="primary" onClick={submitAdvance} loading={createAdvanceM.isPending}>Submit Advance Request</Button>
                 </div>
@@ -492,7 +492,7 @@ export default function LeaveRequestsPage() {
                             : `Cancel this leave request?`}</p>
                     )}
                 </div>
-                <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#0E1A2B]">
                     <Button variant="outline" onClick={() => { setActionModal(null); setActionReason(''); }}>Close</Button>
                     <Button variant={actionModal?.type === 'reject' ? 'danger' : 'primary'} onClick={handleLeaveAction}
                         loading={leaveActions.approve.isPending || leaveActions.reject.isPending || leaveActions.cancel.isPending}>
@@ -513,7 +513,7 @@ export default function LeaveRequestsPage() {
                     <Textarea label="Admin Notes / Reason" rows={2} placeholder="Optional notes..." value={actionReason}
                         onChange={(e) => setActionReason(e.target.value)} />
                 </div>
-                <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#0E1A2B]">
                     <Button variant="outline" onClick={() => { setAdvanceActionModal(null); setActionReason(''); }}>Close</Button>
                     <Button variant={advanceActionModal?.type === 'decline' ? 'danger' : 'primary'} onClick={handleAdvanceAction}
                         loading={advanceActions.approve.isPending || advanceActions.decline.isPending}>
@@ -567,7 +567,7 @@ export default function LeaveRequestsPage() {
                         This will create a payment voucher and mark the advance as paid. The amount will be automatically deducted from the employee's salary in the next payroll.
                     </p>
                 </div>
-                <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#0E1A2B]">
                     <Button variant="outline" onClick={() => { setPaymentModal(null); setPaymentForm({ method: 'cash', bankAccountId: '', notes: '' }); }}>Cancel</Button>
                     <Button 
                         variant="primary" 
@@ -622,7 +622,7 @@ export default function LeaveRequestsPage() {
                         This will mark the leave as unauthorized and set the deduction amount. The deduction will be automatically applied during salary processing.
                     </p>
                 </div>
-                <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#0E1A2B]">
                     <Button variant="outline" onClick={() => { setUnauthorizedModal(null); setUnauthorizedForm({ deductionAmount: 0, notes: '' }); }}>Cancel</Button>
                     <Button variant="danger" onClick={handleUnauthorizedDeduction}>
                         <MinusCircle size={16} className="mr-1.5" /> Apply Deduction

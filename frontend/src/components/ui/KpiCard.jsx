@@ -15,18 +15,18 @@ export default function KpiCard({
         >
             <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1 truncate">{label}</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 leading-tight truncate">{value}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mb-1 truncate">{label}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white leading-tight truncate">{value}</p>
                     {hasTrend && (
-                        <p className={`text-xs mt-1 flex items-center gap-1 ${trendUp ? 'text-green-600' : 'text-red-600'}`}>
+                        <p className={`text-xs mt-1 flex items-center gap-1 ${trendUp ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {trendUp ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
                             {Math.abs(trend)}% {trendUp ? 'up' : 'down'}
                         </p>
                     )}
-                    {subtext && <p className="text-xs text-gray-400 mt-0.5 truncate">{subtext}</p>}
+                    {subtext && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 truncate">{subtext}</p>}
                 </div>
                 {Icon && (
-                    <div className={`${iconBg} ${iconColor} w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0`}>
+                    <div className={`${iconBg} ${iconColor} w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 dark:opacity-90`}>
                         <Icon size={16} />
                     </div>
                 )}

@@ -141,14 +141,14 @@ export default function AttendancePoliciesPage() {
         {loading ? (
           <div className="col-span-full py-12 text-center text-slate-400">Loading policies...</div>
         ) : policies.length === 0 ? (
-          <div className="col-span-full p-8 text-center bg-white rounded-xl border border-slate-200 text-slate-500">
+          <div className="col-span-full p-8 text-center bg-white dark:bg-[#111F33] rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400">
             No attendance policies defined yet. Click "Create New Policy" to add one.
           </div>
         ) : (
           policies.map((policy) => (
             <div
               key={policy._id}
-              className={`bg-white rounded-xl border p-5 shadow-sm space-y-4 relative ${
+              className={`bg-white dark:bg-[#111F33] rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4 relative ${
                 policy.isDefault ? 'border-indigo-500 ring-1 ring-indigo-500/30' : 'border-slate-200'
               }`}
             >
@@ -164,7 +164,7 @@ export default function AttendancePoliciesPage() {
               </div>
 
               {/* Policy Settings Grid */}
-              <div className="bg-slate-50 rounded-lg p-3 space-y-2 text-xs">
+              <div className="bg-slate-50 dark:bg-[#132238] rounded-lg p-3 space-y-2 text-xs border border-slate-100 dark:border-slate-700">
                 <div className="flex justify-between border-b border-slate-200 pb-1.5">
                   <span className="text-slate-500">Standard Shift:</span>
                   <span className="font-semibold text-slate-700">
@@ -212,7 +212,7 @@ export default function AttendancePoliciesPage() {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   onClick={() => handleOpenModal(policy)}
-                  className="p-1.5 text-slate-600 hover:bg-slate-100 rounded transition-colors"
+                  className="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                 >
                   <Edit className="w-4 h-4" />
                 </button>
@@ -231,7 +231,7 @@ export default function AttendancePoliciesPage() {
       {/* Policy Form Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-800">
               {editingPolicy ? 'Edit Attendance Policy' : 'Create New Attendance Policy'}
             </h3>
@@ -245,7 +245,7 @@ export default function AttendancePoliciesPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g. Standard Permanent Staff Policy (9 AM - 5 PM)"
-                  className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                 />
               </div>
 
@@ -256,11 +256,11 @@ export default function AttendancePoliciesPage() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Brief summary of shift hours and rules"
-                  className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 rounded-lg">
+              <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Shift Start</label>
                   <input
@@ -268,7 +268,7 @@ export default function AttendancePoliciesPage() {
                     required
                     value={formData.shiftStartTime}
                     onChange={(e) => setFormData({ ...formData, shiftStartTime: e.target.value })}
-                    className="w-full px-3 py-1.5 border rounded-lg text-sm bg-white"
+                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                   />
                 </div>
 
@@ -279,7 +279,7 @@ export default function AttendancePoliciesPage() {
                     required
                     value={formData.shiftEndTime}
                     onChange={(e) => setFormData({ ...formData, shiftEndTime: e.target.value })}
-                    className="w-full px-3 py-1.5 border rounded-lg text-sm bg-white"
+                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                   />
                 </div>
 
@@ -289,7 +289,7 @@ export default function AttendancePoliciesPage() {
                     type="number"
                     value={formData.standardWorkHours}
                     onChange={(e) => setFormData({ ...formData, standardWorkHours: Number(e.target.value) })}
-                    className="w-full px-3 py-1.5 border rounded-lg text-sm bg-white"
+                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -303,7 +303,7 @@ export default function AttendancePoliciesPage() {
                       type="number"
                       value={formData.overtimeRatePerHour}
                       onChange={(e) => setFormData({ ...formData, overtimeRatePerHour: Number(e.target.value) })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                     />
                   </div>
                 </div>
@@ -314,7 +314,7 @@ export default function AttendancePoliciesPage() {
                     type="number"
                     value={formData.earlyLeavePenaltyRatePerHour}
                     onChange={(e) => setFormData({ ...formData, earlyLeavePenaltyRatePerHour: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                   />
                 </div>
 
@@ -324,7 +324,7 @@ export default function AttendancePoliciesPage() {
                     type="number"
                     value={formData.lateArrivalPenaltyRatePerHour}
                     onChange={(e) => setFormData({ ...formData, lateArrivalPenaltyRatePerHour: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -335,7 +335,7 @@ export default function AttendancePoliciesPage() {
                 <select
                   value={formData.applicableScope}
                   onChange={(e) => setFormData({ ...formData, applicableScope: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                 >
                   <option value="ALL">Global Default (All Employees)</option>
                   <option value="PERMANENT">Permanent Employees Only</option>
@@ -354,7 +354,7 @@ export default function AttendancePoliciesPage() {
                       const options = Array.from(e.target.selectedOptions, option => option.value);
                       setFormData({ ...formData, assignedEmployees: options });
                     }}
-                    className="w-full px-3 py-2 border rounded-lg text-sm bg-white h-32"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white h-32"
                   >
                     {employees.map(emp => (
                       <option key={emp._id} value={emp._id}>
@@ -383,7 +383,7 @@ export default function AttendancePoliciesPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
                 >
                   Cancel
                 </button>

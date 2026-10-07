@@ -127,13 +127,13 @@ const ProcessTemplatesPage = () => {
                 </Button>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+            <div className="bg-white dark:bg-[#111F33] p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm flex items-center gap-4">
                 <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={18} />
                     <input
                         type="text"
                         placeholder="Search by name or code..."
-                        className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition"
+                        className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-[#132238] border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none transition"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -143,13 +143,13 @@ const ProcessTemplatesPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
                     Array(6).fill(0).map((_, i) => (
-                        <div key={i} className="h-48 bg-gray-100 rounded-xl animate-pulse"></div>
+                        <div key={i} className="h-48 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse"></div>
                     ))
                 ) : filtered.length === 0 ? (
-                    <div className="col-span-full py-12 text-center text-gray-500 italic">No templates found</div>
+                    <div className="col-span-full py-12 text-center text-gray-500 dark:text-slate-400 italic">No templates found</div>
                 ) : (
                     filtered.map((template) => (
-                        <div key={template._id} className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow group">
+                        <div key={template._id} className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 rounded-xl shadow-sm hover:shadow-md transition-shadow group">
                             <div className="p-5">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="p-3 rounded-lg bg-primary-50 text-primary-600">
@@ -188,11 +188,11 @@ const ProcessTemplatesPage = () => {
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Template Name *</label>
-                        <input required className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-primary-500" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+                        <input required className="w-full px-4 py-2 bg-gray-50 dark:bg-[#132238] border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-500" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
+                        <div className="flex justify-between items-center bg-gray-50 dark:bg-[#132238] border border-gray-200 dark:border-slate-700 p-2 rounded-lg">
                             <h4 className="text-sm font-black text-gray-700">PROCESS STAGES</h4>
                             <Button type="button" variant="outline" size="sm" onClick={handleAddStage}>
                                 <Plus size={14} className="mr-1" /> Add Stage
@@ -200,7 +200,7 @@ const ProcessTemplatesPage = () => {
                         </div>
 
                         {form.stages.map((stage, index) => (
-                            <div key={index} className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm space-y-3 relative">
+                            <div key={index} className="p-4 border border-gray-100 dark:border-slate-700 rounded-xl bg-white dark:bg-[#132238]/60 shadow-sm space-y-3 relative">
                                 <button type="button" onClick={() => handleRemoveStage(index)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition"><X size={16} /></button>
                                 <div className="grid grid-cols-12 gap-3">
                                     <div className="col-span-1 flex items-center justify-center font-black text-gray-300 text-2xl">{index + 1}</div>
@@ -220,8 +220,8 @@ const ProcessTemplatesPage = () => {
                                 <div className="grid grid-cols-12 gap-3">
                                     <div className="col-span-1"></div>
                                     <div className="col-span-11 flex gap-3">
-                                        <input type="number" placeholder="Hrs" className="w-24 px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-gray-50" value={stage.expectedDuration} onChange={e => handleStageChange(index, 'expectedDuration', e.target.value)} />
-                                        <input placeholder="Instructions..." className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-gray-50" value={stage.instructions} onChange={e => handleStageChange(index, 'instructions', e.target.value)} />
+                                        <input type="number" placeholder="Hrs" className="w-24 px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-gray-50 dark:bg-[#132238] text-gray-900 dark:text-white" value={stage.expectedDuration} onChange={e => handleStageChange(index, 'expectedDuration', e.target.value)} />
+                                        <input placeholder="Instructions..." className="flex-1 px-3 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-sm bg-gray-50 dark:bg-[#132238] text-gray-900 dark:text-white" value={stage.instructions} onChange={e => handleStageChange(index, 'instructions', e.target.value)} />
                                     </div>
                                 </div>
                             </div>

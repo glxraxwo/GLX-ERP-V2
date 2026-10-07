@@ -53,7 +53,7 @@ export default function QuickCreateSupplierModal({ isOpen, onClose, onCreated })
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Quick Create Supplier" size="md">
             <div className="p-6 space-y-4">
-                <p className="text-xs text-blue-700 bg-blue-50 p-2 rounded">
+                <p className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 p-2.5 rounded-lg border border-blue-200 dark:border-blue-900/50">
                     Capture basics now. Add bank details, full address, tax info from the Suppliers page later.
                 </p>
 
@@ -91,7 +91,7 @@ export default function QuickCreateSupplierModal({ isOpen, onClose, onCreated })
                     )}
                 </div>
             </div>
-            <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#111F33] rounded-b-xl">
                 <Button variant="outline" onClick={onClose}>Cancel</Button>
                 <Button variant="primary" onClick={submit} loading={createMutation.isPending}>
                     Create Supplier

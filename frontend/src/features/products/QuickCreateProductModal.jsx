@@ -98,7 +98,7 @@ export default function QuickCreateProductModal({
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Quick Create Product" size="md">
             <div className="p-6 space-y-4">
-                <p className="text-xs text-blue-700 bg-blue-50 p-2 rounded">
+                <p className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 p-2.5 rounded-lg border border-blue-200 dark:border-blue-900/50">
                     Capture essentials now. You can add full pricing tiers, stock levels, BOM, and images from the Products page.
                 </p>
 
@@ -109,17 +109,17 @@ export default function QuickCreateProductModal({
 
                     <div>
                         <div className="flex items-center justify-between mb-1">
-                            <label className="block text-sm font-medium text-gray-700">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
                                 Sinhala Name (සිංහල නම)
                             </label>
                             <button
                                 type="button"
                                 onClick={handleAutoGenerateSinhala}
                                 disabled={isGeneratingSinhala || !form.name?.trim()}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
                                 title="Generate Sinhala translation automatically"
                             >
-                                <Sparkles className={`w-3.5 h-3.5 text-amber-600 ${isGeneratingSinhala ? 'animate-spin' : ''}`} />
+                                <Sparkles className={`w-3.5 h-3.5 text-amber-600 dark:text-amber-400 ${isGeneratingSinhala ? 'animate-spin' : ''}`} />
                                 {isGeneratingSinhala ? 'Generating...' : 'Auto-Generate (සිංහලෙන් ජනනය)'}
                             </button>
                         </div>
@@ -131,7 +131,7 @@ export default function QuickCreateProductModal({
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                             Description / Specifications (විස්තරය / Specifications)
                         </label>
                         <textarea
@@ -139,7 +139,7 @@ export default function QuickCreateProductModal({
                             placeholder="e.g., 3x3 Aluminium Patch, Waterproof Shutter Board, Custom specs..."
                             value={form.description}
                             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary-500 leading-relaxed font-sans min-h-[160px]"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-primary-500 leading-relaxed font-sans min-h-[160px]"
                         />
                     </div>
                 </div>
@@ -179,20 +179,22 @@ export default function QuickCreateProductModal({
                         onChange={(e) => setForm((f) => ({ ...f, purchasePrice: e.target.value }))} />
                 </div>
 
-                <div className="flex gap-4 text-sm">
-                    <label className="flex items-center gap-2">
+                <div className="flex gap-4 text-sm text-gray-700 dark:text-slate-300">
+                    <label className="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" checked={form.canBeSold}
+                            className="rounded border-gray-300 dark:border-slate-700"
                             onChange={(e) => setForm((f) => ({ ...f, canBeSold: e.target.checked }))} />
                         Can be sold
                     </label>
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" checked={form.canBePurchased}
+                            className="rounded border-gray-300 dark:border-slate-700"
                             onChange={(e) => setForm((f) => ({ ...f, canBePurchased: e.target.checked }))} />
                         Can be purchased
                     </label>
                 </div>
             </div>
-            <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50">
+            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-[#111F33] rounded-b-xl">
                 <Button variant="outline" onClick={onClose}>Cancel</Button>
                 <Button variant="primary" onClick={submit} loading={createMutation.isPending}>
                     Create Product

@@ -256,24 +256,24 @@ export default function PurchaseOrderFormPage() {
 
                 <div>
                     <Card className="p-3 sm:p-6 sticky top-6">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-4">Summary</h3>
+                        <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">Summary</h3>
                         <div className="space-y-3 text-sm">
-                            <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span>{fmt(totals.sub)}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-600">Discount</span><span className="text-red-600">-{fmt(totals.disc)}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-600">Tax</span><span>{fmt(totals.tax)}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-600 dark:text-slate-400">Subtotal</span><span className="dark:text-slate-200">{fmt(totals.sub)}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-600 dark:text-slate-400">Discount</span><span className="text-red-600 dark:text-red-400">-{fmt(totals.disc)}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-600 dark:text-slate-400">Tax</span><span className="dark:text-slate-200">{fmt(totals.tax)}</span></div>
                             <div className="flex items-center justify-between gap-2">
-                                <span className="text-gray-600">Shipping</span>
+                                <span className="text-gray-600 dark:text-slate-400">Shipping</span>
                                 <input type="number" step="0.01" min="0" value={shippingCost} onChange={(e) => setShippingCost(e.target.value)}
-                                    className="w-28 px-2 py-1 border border-gray-300 rounded text-sm text-right" />
+                                    className="w-28 px-2 py-1 border border-gray-300 dark:border-slate-700 rounded text-sm text-right bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500" />
                             </div>
                             <div className="flex items-center justify-between gap-2">
-                                <span className="text-gray-600">Other Charges</span>
+                                <span className="text-gray-600 dark:text-slate-400">Other Charges</span>
                                 <input type="number" step="0.01" min="0" value={otherCharges} onChange={(e) => setOtherCharges(e.target.value)}
-                                    className="w-28 px-2 py-1 border border-gray-300 rounded text-sm text-right" />
+                                    className="w-28 px-2 py-1 border border-gray-300 dark:border-slate-700 rounded text-sm text-right bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary-500" />
                             </div>
-                            <div className="pt-3 border-t flex justify-between">
-                                <span className="font-semibold">Grand Total</span>
-                                <span className="font-bold text-lg text-primary-600">{fmt(totals.grand)}</span>
+                            <div className="pt-3 border-t border-gray-200 dark:border-slate-800 flex justify-between">
+                                <span className="font-semibold text-gray-900 dark:text-white">Grand Total</span>
+                                <span className="font-bold text-lg text-primary-600 dark:text-blue-400">{fmt(totals.grand)}</span>
                             </div>
                         </div>
 

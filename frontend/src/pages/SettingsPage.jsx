@@ -44,11 +44,11 @@ const TABS = [
 
 function SectionBadge({ icon: Icon, label, accent = 'blue' }) {
     const map = {
-        blue:     'bg-blue-50 border-blue-200 text-blue-600',
-        emerald:  'bg-emerald-50 border-emerald-200 text-emerald-600',
-        amber:    'bg-amber-50 border-amber-200 text-amber-600',
-        purple:   'bg-purple-50 border-purple-200 text-purple-600',
-        indigo:   'bg-indigo-50 border-indigo-200 text-indigo-600',
+        blue:     'bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800/60 text-blue-600 dark:text-blue-300',
+        emerald:  'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800/60 text-emerald-600 dark:text-emerald-300',
+        amber:    'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800/60 text-amber-600 dark:text-amber-300',
+        purple:   'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800/60 text-purple-600 dark:text-purple-300',
+        indigo:   'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-300',
     };
     return (
         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border mb-5 ${map[accent]}`}>
@@ -61,12 +61,12 @@ function SectionBadge({ icon: Icon, label, accent = 'blue' }) {
 function StyledInput({ label, icon: Icon, error, type = 'text', step, placeholder, registration, required }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <label className="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wide">
                 {label}{required && <span className="text-rose-500 ml-1">*</span>}
             </label>
             <div className="relative group">
                 {Icon && (
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none">
                         <Icon size={15} />
                     </div>
                 )}
@@ -75,10 +75,10 @@ function StyledInput({ label, icon: Icon, error, type = 'text', step, placeholde
                     step={step}
                     placeholder={placeholder}
                     {...registration}
-                    className={`w-full ${Icon ? 'pl-9' : 'pl-3'} pr-3 py-2.5 rounded-xl bg-white border text-sm text-gray-800 placeholder-gray-300 outline-none transition-all
+                    className={`w-full ${Icon ? 'pl-9' : 'pl-3'} pr-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border text-sm text-gray-800 dark:text-white placeholder-gray-300 dark:placeholder-slate-500 outline-none transition-all
                         ${error
                             ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-400/20'
-                            : 'border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                            : 'border-gray-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
                         }`}
                 />
             </div>
@@ -100,7 +100,7 @@ export default function SettingsPage() {
     const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
         resolver: zodResolver(settingsSchema),
         defaultValues: {
-            companyName: 'GLX Industries',
+            companyName: 'GLX INDUSTRIES',
             currency: 'LKR',
             currencySymbol: 'Rs.',
             defaultTaxRate: 0,
@@ -185,7 +185,7 @@ export default function SettingsPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
                     <p className="text-gray-400 text-sm">Loading settings...</p>
@@ -195,19 +195,19 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
+        <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-3 sm:p-6">
 
             {/* ── Page Header ─────────────────────────────────────── */}
             <div className="mb-8">
-                <div className="flex items-center gap-2 text-gray-400 text-xs mb-3">
+                <div className="flex items-center gap-2 text-gray-400 dark:text-slate-500 text-xs mb-3">
                     <span>Admin</span>
                     <ChevronRight size={12} />
                     <span className="text-emerald-500 font-medium">System Settings</span>
                 </div>
                 <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
-                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">System Settings</h1>
-                        <p className="text-gray-400 text-sm mt-1">Configure company profile, financial defaults &amp; inventory behaviour</p>
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white tracking-tight">System Settings</h1>
+                        <p className="text-gray-400 dark:text-slate-400 text-sm mt-1">Configure company profile, financial defaults &amp; inventory behaviour</p>
                     </div>
                     <button
                         type="button"
@@ -215,8 +215,8 @@ export default function SettingsPage() {
                         disabled={updateMutation.isPending}
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-md
                             ${saved
-                                ? 'bg-emerald-600 text-white shadow-emerald-200'
-                                : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200'
+                                ? 'bg-emerald-600 text-white shadow-emerald-200 dark:shadow-none'
+                                : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-200 dark:shadow-none'
                             }`}
                     >
                         {saved ? (
@@ -246,8 +246,8 @@ export default function SettingsPage() {
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-left transition-all whitespace-nowrap flex-shrink-0 sm:flex-shrink sm:whitespace-normal
                                         ${isActive
-                                            ? 'bg-white border border-gray-200 text-emerald-600 shadow-sm'
-                                            : 'text-gray-500 hover:bg-white hover:text-gray-700 border border-transparent'
+                                            ? 'bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                                            : 'text-gray-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-slate-200 border border-transparent'
                                         }`}
                                 >
                                     <Icon size={16} className={isActive ? 'text-emerald-500' : tab.color} />
@@ -259,14 +259,14 @@ export default function SettingsPage() {
                     </nav>
 
                     {/* Company badge card */}
-                    <div className="mt-4 sm:mt-6 p-4 rounded-xl bg-white border border-gray-200 shadow-sm hidden sm:block">
-                        <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-3">
+                    <div className="mt-4 sm:mt-6 p-4 rounded-xl bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 shadow-sm hidden sm:block">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-100 dark:border-emerald-800/60 flex items-center justify-center mb-3">
                             <Building2 size={18} className="text-emerald-500" />
                         </div>
-                        <p className="text-xs font-bold text-gray-800">GLX Industries</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">Truck Body Engineers</p>
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                            <p className="text-[10px] text-gray-400">v1.0.0 · ERP Platform</p>
+                        <p className="text-xs font-bold text-gray-800 dark:text-white uppercase">GLX INDUSTRIES</p>
+                        <p className="text-[10px] text-gray-400 dark:text-slate-400 mt-0.5">Truck Body Engineers</p>
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800">
+                            <p className="text-[10px] text-gray-400 dark:text-slate-500">v1.0.0 · ERP Platform</p>
                         </div>
                     </div>
                 </div>
@@ -274,7 +274,7 @@ export default function SettingsPage() {
                 {/* Content panel */}
                 <div className="flex-1">
                     <form onSubmit={handleSubmit(onSubmit)}>
-                        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-7">
+                        <div className="bg-white dark:bg-[#111F33] rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-4 sm:p-7">
 
                             {/* ── COMPANY PROFILE ───────────────────────── */}
                             {activeTab === 'company' && (
@@ -321,14 +321,14 @@ export default function SettingsPage() {
                                             registration={register('managerSmsPhone')}
                                         />
                                         <div className="col-span-2">
-                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Company Address</label>
+                                            <label className="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wide">Company Address</label>
                                             <div className="relative group mt-1.5">
-                                                <MapPin size={15} className="absolute left-3 top-3 text-gray-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+                                                <MapPin size={15} className="absolute left-3 top-3 text-gray-400 dark:text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
                                                 <textarea
                                                     rows={3}
                                                     placeholder="No. 123, Negoda Road, Weliweriya, Sri Lanka"
                                                     {...register('companyAddress')}
-                                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-gray-200 text-sm text-gray-800 placeholder-gray-300 outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 resize-none"
+                                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-sm text-gray-800 dark:text-white placeholder-gray-300 dark:placeholder-slate-500 outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 resize-none"
                                                 />
                                             </div>
                                         </div>
@@ -342,9 +342,9 @@ export default function SettingsPage() {
                                             />
                                         </div>
 
-                                        <div className="col-span-2 mt-2 p-4 rounded-xl border border-blue-100 bg-blue-50/40">
-                                            <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5 mb-3">
-                                                <BadgeCheck size={16} className="text-blue-600" /> Authorized Boss / Admin Signature (for Payslips & Payment Sheets)
+                                        <div className="col-span-2 mt-2 p-4 rounded-xl border border-blue-100 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/30">
+                                            <label className="text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                                                <BadgeCheck size={16} className="text-blue-600 dark:text-blue-400" /> Authorized Boss / Admin Signature (for Payslips & Payment Sheets)
                                             </label>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                                                 <div className="space-y-3">
@@ -355,30 +355,30 @@ export default function SettingsPage() {
                                                         registration={register('bossTitle')}
                                                     />
                                                     <div>
-                                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Upload E-Signature / Stamp Image</label>
+                                                        <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Upload E-Signature / Stamp Image</label>
                                                         <input
                                                             type="file"
                                                             accept="image/*"
                                                             onChange={handleSignatureFileUpload}
-                                                            className="mt-1 block w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                                                            className="mt-1 block w-full text-xs text-gray-500 dark:text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
                                                         />
-                                                        <p className="text-[11px] text-gray-400 mt-1">PNG with transparent background or dark ink on white paper recommended (Max 2MB).</p>
+                                                        <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">PNG with transparent background or dark ink on white paper recommended (Max 2MB).</p>
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Signature Preview</label>
-                                                    <div className="h-28 w-full border border-dashed border-gray-300 rounded-xl bg-white flex items-center justify-center p-2 relative">
+                                                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide block mb-1">Signature Preview</label>
+                                                    <div className="h-28 w-full border border-dashed border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center p-2 relative">
                                                         {watch('bossSignature') ? (
                                                             <img src={watch('bossSignature')} alt="Boss Signature Preview" className="max-h-24 max-w-full object-contain" />
                                                         ) : (
-                                                            <span className="text-xs text-gray-400 font-medium">No signature uploaded yet</span>
+                                                            <span className="text-xs text-gray-400 dark:text-slate-500 font-medium">No signature uploaded yet</span>
                                                         )}
                                                     </div>
                                                     {watch('bossSignature') && (
                                                         <button
                                                             type="button"
                                                             onClick={() => setValue('bossSignature', '')}
-                                                            className="mt-1.5 text-xs text-rose-600 hover:underline font-medium"
+                                                            className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 hover:underline font-medium"
                                                         >
                                                             Remove Signature
                                                         </button>
@@ -388,37 +388,37 @@ export default function SettingsPage() {
                                         </div>
 
                                         {/* ── Official Company Seal / Stamp ── */}
-                                        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 sm:p-5 mt-4">
-                                            <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5 mb-3">
-                                                <BadgeCheck size={16} className="text-emerald-600" /> Official Company Seal / Rubber Stamp (for Quotations & Invoices)
+                                        <div className="bg-slate-50 dark:bg-slate-850 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700 rounded-2xl p-4 sm:p-5 mt-4">
+                                            <label className="text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                                                <BadgeCheck size={16} className="text-emerald-600 dark:text-emerald-400" /> Official Company Seal / Rubber Stamp (for Quotations & Invoices)
                                             </label>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                                                 <div className="space-y-3">
                                                     <div>
-                                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Upload Company Seal / Stamp</label>
+                                                        <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Upload Company Seal / Stamp</label>
                                                         <input
                                                             type="file"
                                                             accept="image/*"
                                                             onChange={handleSealFileUpload}
-                                                            className="mt-1 block w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
+                                                            className="mt-1 block w-full text-xs text-gray-500 dark:text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
                                                         />
-                                                        <p className="text-[11px] text-gray-400 mt-1">Official circular rubber stamp or company seal image with transparent background (Max 2MB).</p>
+                                                        <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">Official circular rubber stamp or company seal image with transparent background (Max 2MB).</p>
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Company Seal Preview</label>
-                                                    <div className="h-28 w-full border border-dashed border-gray-300 rounded-xl bg-white flex items-center justify-center p-2 relative">
+                                                    <label className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide block mb-1">Company Seal Preview</label>
+                                                    <div className="h-28 w-full border border-dashed border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center p-2 relative">
                                                         {watch('companySeal') ? (
                                                             <img src={watch('companySeal')} alt="Company Seal Preview" className="max-h-24 max-w-full object-contain" />
                                                         ) : (
-                                                            <span className="text-xs text-gray-400 font-medium">No seal uploaded yet</span>
+                                                            <span className="text-xs text-gray-400 dark:text-slate-500 font-medium">No seal uploaded yet</span>
                                                         )}
                                                     </div>
                                                     {watch('companySeal') && (
                                                         <button
                                                             type="button"
                                                             onClick={() => setValue('companySeal', '')}
-                                                            className="mt-1.5 text-xs text-rose-600 hover:underline font-medium"
+                                                            className="mt-1.5 text-xs text-rose-600 dark:text-rose-400 hover:underline font-medium"
                                                         >
                                                             Remove Seal
                                                         </button>
@@ -460,11 +460,11 @@ export default function SettingsPage() {
                                         />
                                     </div>
 
-                                    <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 flex gap-3">
+                                    <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800/60 p-4 flex gap-3">
                                         <CheckCircle2 size={18} className="text-emerald-500 flex-shrink-0 mt-0.5" />
                                         <div>
-                                            <p className="text-sm font-semibold text-emerald-700">Sri Lanka Rupee (LKR)</p>
-                                            <p className="text-xs text-emerald-600/70 mt-0.5">
+                                            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Sri Lanka Rupee (LKR)</p>
+                                            <p className="text-xs text-emerald-600/70 dark:text-emerald-400/80 mt-0.5">
                                                 All quotations, invoices, and cost summaries will use these currency settings system-wide.
                                             </p>
                                         </div>
@@ -487,11 +487,11 @@ export default function SettingsPage() {
                                         />
                                     </div>
 
-                                    <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 flex gap-3">
+                                    <div className="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-800/60 p-4 flex gap-3">
                                         <AlertTriangle size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
                                         <div>
-                                            <p className="text-sm font-semibold text-amber-700">Low Stock Notifications</p>
-                                            <p className="text-xs text-amber-600/70 mt-0.5">
+                                            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Low Stock Notifications</p>
+                                            <p className="text-xs text-amber-600/70 dark:text-amber-400/80 mt-0.5">
                                                 When any product's stock drops at or below this threshold, the system triggers a real-time alert and highlights it on the dashboard.
                                             </p>
                                         </div>
@@ -505,12 +505,12 @@ export default function SettingsPage() {
                                     <SectionBadge icon={Calendar} label="Salary Payment Configuration" accent="indigo" />
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
                                         <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+                                            <label className="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wide block mb-1">
                                                 Payment Day Type
                                             </label>
                                             <select
                                                 {...register('salaryPaymentDayType')}
-                                                className="w-full px-3 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-medium outline-none focus:border-indigo-500"
+                                                className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-sm font-medium text-gray-800 dark:text-white outline-none focus:border-indigo-500 [&>option]:dark:bg-slate-900"
                                             >
                                                 <option value="fixed_day">Fixed Day of Month</option>
                                                 <option value="last_working_day">Last Working Day of Month</option>
@@ -533,20 +533,20 @@ export default function SettingsPage() {
                                             <input
                                                 type="checkbox"
                                                 {...register('allowEarlySalaryPayment')}
-                                                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                                className="w-4 h-4 text-indigo-600 border-gray-300 dark:border-slate-700 rounded focus:ring-indigo-500"
                                             />
-                                            <span className="text-sm font-medium text-gray-700">Allow Early Salary Payment</span>
+                                            <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Allow Early Salary Payment</span>
                                         </label>
-                                        <p className="text-xs text-gray-500 mt-1 ml-7">
+                                        <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 ml-7">
                                             When enabled, administrators can mark payroll as paid before the scheduled payment date. When disabled, payment is only allowed on or after the scheduled date.
                                         </p>
                                     </div>
 
-                                    <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-4 flex gap-3">
+                                    <div className="rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-800/60 p-4 flex gap-3">
                                         <CheckCircle2 size={18} className="text-indigo-500 flex-shrink-0 mt-0.5" />
                                         <div>
-                                            <p className="text-sm font-semibold text-indigo-700">Fixed Salary Payment Schedule</p>
-                                            <p className="text-xs text-indigo-600/70 mt-0.5">
+                                            <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">Fixed Salary Payment Schedule</p>
+                                            <p className="text-xs text-indigo-600/70 dark:text-indigo-400/80 mt-0.5">
                                                 Configure when salary payments should be processed. Choose a fixed day (e.g., 25th of each month) or the last working day. This helps maintain consistent payment schedules and prevents early payouts.
                                             </p>
                                         </div>

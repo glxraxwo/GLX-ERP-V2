@@ -647,8 +647,8 @@ export default function Sidebar({ isOpen, onClose }) {
                             )}
                             {isOpen && (
                                 <div>
-                                    <h2 className={`font-extrabold ${brandTitle} leading-none truncate max-w-[145px]`} title={settings?.companyName || 'GLX Industries'}>
-                                        {settings?.companyName || 'GLX Industries'}
+                                    <h2 className={`font-extrabold ${brandTitle} uppercase leading-none truncate max-w-[145px]`} title={settings?.companyName || 'GLX INDUSTRIES'}>
+                                        {settings?.companyName || 'GLX INDUSTRIES'}
                                     </h2>
                                     <p className={`text-[10px] ${brandSub} font-semibold mt-1 truncate max-w-[145px]`} title="TRUCK BODY ENGINEERS">
                                         TRUCK BODY ENGINEERS
@@ -849,7 +849,7 @@ export default function Sidebar({ isOpen, onClose }) {
                                     type="button"
                                     onClick={() => { setThemeMode(THEME_MODES.SOFT); toast.success('Soft Slate tone (Eye-comfort)'); }}
                                     className={`flex-1 py-1 px-1 rounded-lg flex items-center justify-center gap-1 transition ${
-                                        themeMode === THEME_MODES.SOFT ? 'bg-white text-slate-900 shadow-xs font-bold' : 'hover:text-slate-900'
+                                        themeMode === THEME_MODES.SOFT ? 'bg-white text-slate-900 shadow-xs font-bold' : 'hover:text-slate-900 dark:hover:text-white'
                                     }`}
                                     title="Soft Slate (Eye-comfort / Less glare)"
                                 >
@@ -859,7 +859,7 @@ export default function Sidebar({ isOpen, onClose }) {
                                     type="button"
                                     onClick={() => { setThemeMode(THEME_MODES.PURE); toast.success('Pure White tone'); }}
                                     className={`flex-1 py-1 px-1 rounded-lg flex items-center justify-center gap-1 transition ${
-                                        themeMode === THEME_MODES.PURE ? 'bg-white text-slate-900 shadow-xs font-bold' : 'hover:text-slate-900'
+                                        themeMode === THEME_MODES.PURE ? 'bg-white text-slate-900 shadow-xs font-bold' : 'hover:text-slate-900 dark:hover:text-white'
                                     }`}
                                     title="Pure White"
                                 >
@@ -869,7 +869,7 @@ export default function Sidebar({ isOpen, onClose }) {
                                     type="button"
                                     onClick={() => { setThemeMode(THEME_MODES.DARK); toast.success('Classic Dark tone'); }}
                                     className={`flex-1 py-1 px-1 rounded-lg flex items-center justify-center gap-1 transition ${
-                                        themeMode === THEME_MODES.DARK ? 'bg-slate-800 text-white shadow-xs font-bold' : 'hover:text-slate-900'
+                                        themeMode === THEME_MODES.DARK ? 'bg-slate-800 text-white shadow-xs font-bold' : 'hover:text-slate-900 dark:hover:text-white'
                                     }`}
                                     title="Navy Dark"
                                 >
@@ -881,7 +881,7 @@ export default function Sidebar({ isOpen, onClose }) {
                         <button
                             onClick={handleLogout}
                             title="Logout"
-                            className={`w-full flex items-center justify-center ${isOpen ? 'gap-2 px-3 py-2' : 'p-2'} bg-rose-50 hover:bg-rose-100/80 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs`}
+                            className={`w-full flex items-center justify-center ${isOpen ? 'gap-2 px-3 py-2' : 'p-2'} bg-rose-50 hover:bg-rose-100/80 text-rose-600 border border-rose-200 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 dark:text-rose-400 dark:border-rose-900/40 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs`}
                         >
                             <LogOut size={15} />
                             {isOpen && <span>Logout</span>}

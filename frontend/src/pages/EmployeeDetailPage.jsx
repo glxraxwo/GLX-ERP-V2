@@ -78,15 +78,15 @@ export default function EmployeeDetailPage() {
                             <h3 className="text-sm font-semibold">Contact Details (සම්බන්ධ කරගන්නා අංක 3)</h3>
                         </div>
                         <div className="space-y-3 text-sm">
-                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-[#132238] rounded border border-gray-100 dark:border-slate-800">
                                 <span className="text-gray-600 font-medium">Contact 1 (Primary)</span>
                                 <span className="font-semibold text-gray-900"><Phone size={12} className="inline mr-1" />{emp.phone || '—'}</span>
                             </div>
-                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-[#132238] rounded border border-gray-100 dark:border-slate-800">
                                 <span className="text-gray-600 font-medium">Contact 2 (Secondary)</span>
                                 <span className="font-semibold text-gray-900"><Phone size={12} className="inline mr-1" />{emp.secondaryPhone || '—'}</span>
                             </div>
-                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-[#132238] rounded border border-gray-100 dark:border-slate-800">
                                 <span className="text-gray-600 font-medium">Contact 3</span>
                                 <span className="font-semibold text-gray-900"><Phone size={12} className="inline mr-1" />{emp.tertiaryPhone || '—'}</span>
                             </div>
@@ -111,7 +111,7 @@ export default function EmployeeDetailPage() {
                             <h3 className="text-sm font-semibold">Required Documents (අවශ්‍ය ලේඛන)</h3>
                         </div>
                         <div className="space-y-3 text-sm">
-                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded border">
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-[#132238] rounded border border-gray-200 dark:border-slate-700">
                                 <div>
                                     <p className="font-medium text-gray-900">Grama Niladhari Cert (GS)</p>
                                     <p className="text-xs text-gray-500">No: {emp.gsCertificate?.certificateNo || '—'}</p>
@@ -120,7 +120,7 @@ export default function EmployeeDetailPage() {
                                     {emp.gsCertificate?.status || 'pending'}
                                 </Badge>
                             </div>
-                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded border">
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-[#132238] rounded border border-gray-200 dark:border-slate-700">
                                 <div>
                                     <p className="font-medium text-gray-900">Education Certificates</p>
                                     <p className="text-xs text-gray-500">{emp.educationCertificates?.summary || '—'}</p>
@@ -129,7 +129,7 @@ export default function EmployeeDetailPage() {
                                     {emp.educationCertificates?.status || 'pending'}
                                 </Badge>
                             </div>
-                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded border">
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 dark:bg-[#132238] rounded border border-gray-200 dark:border-slate-700">
                                 <div>
                                     <p className="font-medium text-gray-900">Police Report</p>
                                     <p className="text-xs text-gray-500">Ref: {emp.policeReport?.reportNo || '—'}</p>

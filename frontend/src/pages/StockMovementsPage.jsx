@@ -148,16 +148,16 @@ export default function StockMovementsPage() {
 
             <Card>
                 {/* Search Bar + Filters + Date Range */}
-                <div className="p-4 border-b border-gray-200 flex flex-wrap gap-3 items-center">
+                <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex flex-wrap gap-3 items-center">
                     {/* Search Bar */}
                     <div className="relative flex-1 min-w-[200px]">
-                        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                         <input
                             type="text"
                             placeholder="Search product, code, ref #..."
                             value={filters.search}
                             onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))}
-                            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-xl text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-xs"
+                            className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-xs"
                         />
                     </div>
 
@@ -216,7 +216,7 @@ export default function StockMovementsPage() {
                 {selectedMovement && (
                     <div className="p-5 space-y-4 text-xs">
                         {/* Status Header Strip */}
-                        <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                        <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-[#132238] rounded-xl border border-slate-200 dark:border-slate-800">
                             <div>
                                 <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">Movement Type</span>
                                 <span className="text-sm font-black text-gray-900">
@@ -253,13 +253,13 @@ export default function StockMovementsPage() {
 
                             {/* Balances Before & After */}
                             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-indigo-200/50">
-                                <div className="bg-white p-2.5 rounded-lg border border-indigo-100">
+                                <div className="bg-white dark:bg-[#111F33] p-2.5 rounded-lg border border-indigo-100 dark:border-slate-700">
                                     <span className="text-[10px] text-gray-500 block">Balance Before</span>
                                     <span className="text-xs font-mono font-bold text-gray-700">
                                         {fmt(selectedMovement.balanceBefore)} {selectedMovement.unitOfMeasure}
                                     </span>
                                 </div>
-                                <div className="bg-white p-2.5 rounded-lg border border-indigo-100">
+                                <div className="bg-white dark:bg-[#111F33] p-2.5 rounded-lg border border-indigo-100 dark:border-slate-700">
                                     <span className="text-[10px] text-gray-500 block">Balance After</span>
                                     <span className="text-xs font-mono font-black text-emerald-700">
                                         {fmt(selectedMovement.balanceAfter)} {selectedMovement.unitOfMeasure}
@@ -270,7 +270,7 @@ export default function StockMovementsPage() {
 
                         {/* Detail Grid */}
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="p-3 bg-white border border-gray-200 rounded-xl space-y-1">
+                            <div className="p-3 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 rounded-xl space-y-1">
                                 <span className="text-[10px] uppercase font-bold text-gray-400 block">Warehouse</span>
                                 <p className="font-bold text-gray-800">
                                     {selectedMovement.warehouseId?.name || selectedMovement.fromWarehouseId?.name || 'Primary Warehouse'}
@@ -280,7 +280,7 @@ export default function StockMovementsPage() {
                                 )}
                             </div>
 
-                            <div className="p-3 bg-white border border-gray-200 rounded-xl space-y-1">
+                            <div className="p-3 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 rounded-xl space-y-1">
                                 <span className="text-[10px] uppercase font-bold text-gray-400 block">Source Reference</span>
                                 <p className="font-bold text-indigo-700 font-mono">
                                     {selectedMovement.sourceDocument?.number || 'Manual / None'}
@@ -292,7 +292,7 @@ export default function StockMovementsPage() {
                         </div>
 
                         {/* Additional Info */}
-                        <div className="p-3 bg-white border border-gray-200 rounded-xl space-y-2">
+                        <div className="p-3 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 rounded-xl space-y-2">
                             {selectedMovement.batchNumber && (
                                 <div>
                                     <span className="text-[10px] uppercase font-bold text-gray-400 block">Batch Number</span>

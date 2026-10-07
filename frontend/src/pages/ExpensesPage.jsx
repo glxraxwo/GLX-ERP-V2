@@ -241,7 +241,7 @@ export default function ExpensesPage() {
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Grand Total Expenses</span>
               <div className="p-2 bg-rose-50 text-rose-600 rounded-lg">
@@ -253,7 +253,7 @@ export default function ExpensesPage() {
             </p>
           </div>
 
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Top Category</span>
               <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
@@ -268,7 +268,7 @@ export default function ExpensesPage() {
             </span>
           </div>
 
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cash / Petty Outflow</span>
               <div className="p-2 bg-amber-50 text-amber-600 rounded-lg">
@@ -280,7 +280,7 @@ export default function ExpensesPage() {
             </p>
           </div>
 
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white dark:bg-[#111F33] p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Bank / Cheque Outflow</span>
               <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
@@ -295,39 +295,39 @@ export default function ExpensesPage() {
       )}
 
       {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row flex-wrap gap-2">
+      <div className="bg-white dark:bg-[#111F33] p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row flex-wrap gap-2">
         <div className="relative flex-1 min-w-0 w-full sm:w-auto">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
             placeholder="Search by title, number, payee, reference..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-[16px] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-[#132238] border border-slate-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm text-[16px] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700"
+          className="px-3 py-2 bg-slate-50 dark:bg-[#132238] border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-white"
         >
-          <option value="">All Categories</option>
+          <option value="" className="dark:bg-[#132238] dark:text-white">All Categories</option>
           {EXPENSE_CATEGORIES.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
+            <option key={cat} value={cat} className="dark:bg-[#132238] dark:text-white">{cat}</option>
           ))}
         </select>
 
         <select
           value={paymentMethodFilter}
           onChange={(e) => setPaymentMethodFilter(e.target.value)}
-          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700"
+          className="px-3 py-2 bg-slate-50 dark:bg-[#132238] border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-700 dark:text-white"
         >
-          <option value="">All Payment Methods</option>
-          <option value="Cash">Cash</option>
-          <option value="Bank Transfer">Bank Transfer</option>
-          <option value="Cheque">Cheque</option>
-          <option value="Petty Cash">Petty Cash</option>
+          <option value="" className="dark:bg-[#132238] dark:text-white">All Payment Methods</option>
+          <option value="Cash" className="dark:bg-[#132238] dark:text-white">Cash</option>
+          <option value="Bank Transfer" className="dark:bg-[#132238] dark:text-white">Bank Transfer</option>
+          <option value="Cheque" className="dark:bg-[#132238] dark:text-white">Cheque</option>
+          <option value="Petty Cash" className="dark:bg-[#132238] dark:text-white">Petty Cash</option>
         </select>
 
         <DateRangeFilter
@@ -340,10 +340,10 @@ export default function ExpensesPage() {
       </div>
 
       {/* Expenses Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-[#111F33] rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-xs">
+            <thead className="bg-slate-50 dark:bg-[#132238] border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase text-xs">
               <tr>
                 <th className="py-3.5 px-4 font-semibold">Expense #</th>
                 <th className="py-3.5 px-4 font-semibold">Date</th>
@@ -366,7 +366,7 @@ export default function ExpensesPage() {
                 </tr>
               ) : (
                 expenses.map((expense) => (
-                  <tr key={expense._id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={expense._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800/60 transition-colors">
                     <td className="py-3 px-4 font-medium text-emerald-600">
                       {expense.expenseNumber}
                     </td>
@@ -400,7 +400,7 @@ export default function ExpensesPage() {
                       <div className="flex flex-wrap items-center justify-center gap-1">
                         <button
                           onClick={() => handleOpenModal(expense)}
-                          className="p-1.5 hover:bg-slate-100 text-slate-600 rounded transition-colors"
+                          className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded transition-colors"
                           title="Edit"
                         >
                           <Edit className="w-4 h-4" />
@@ -425,7 +425,7 @@ export default function ExpensesPage() {
       {/* Modal Form */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-800">
               {editingExpense ? 'Edit Expense Record' : 'Record New Expense'}
             </h3>
@@ -439,7 +439,7 @@ export default function ExpensesPage() {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g. Office Electricity Bill, Factory Maintenance"
-                  className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                 />
               </div>
 
@@ -450,7 +450,7 @@ export default function ExpensesPage() {
                     value={formData.category}
                     disabled={formData.isStockConsumption}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm bg-white disabled:opacity-75"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white disabled:opacity-75"
                   >
                     {EXPENSE_CATEGORIES.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -468,13 +468,13 @@ export default function ExpensesPage() {
                     value={formData.amount}
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 border rounded-lg text-sm bg-white read-only:bg-gray-100"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white read-only:bg-gray-100 dark:read-only:bg-slate-800"
                   />
                 </div>
               </div>
 
               {/* Internal Stock Consumption Switch */}
-              <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-lg">
                 <input
                   type="checkbox"
                   id="isStockConsumption"
@@ -498,7 +498,7 @@ export default function ExpensesPage() {
 
               {/* Items grid if internal stock consumption checked */}
               {formData.isStockConsumption && (
-                <div className="space-y-3 p-3 border border-dashed rounded-lg bg-white">
+                <div className="space-y-3 p-3 border border-dashed border-gray-300 dark:border-slate-700 rounded-lg bg-white dark:bg-[#132238]/40">
                   <div className="flex items-center justify-between border-b pb-1.5">
                     <span className="text-xs font-bold text-slate-800 uppercase">Raw Materials & Quantities</span>
                     <button
@@ -518,7 +518,7 @@ export default function ExpensesPage() {
                           <select
                             value={item.productId || ''}
                             onChange={(e) => handleItemChange(idx, 'productId', e.target.value)}
-                            className="w-full text-xs p-1.5 border rounded bg-white"
+                            className="w-full text-xs p-1.5 border border-gray-300 dark:border-slate-700 rounded bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                             required
                           >
                             <option value="">-- Select Material --</option>
@@ -532,7 +532,7 @@ export default function ExpensesPage() {
                           <select
                             value={item.warehouseId || ''}
                             onChange={(e) => handleItemChange(idx, 'warehouseId', e.target.value)}
-                            className="w-full text-xs p-1.5 border rounded bg-white"
+                            className="w-full text-xs p-1.5 border border-gray-300 dark:border-slate-700 rounded bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                             required
                           >
                             <option value="">-- Select Wh --</option>
@@ -550,7 +550,7 @@ export default function ExpensesPage() {
                             type="number"
                             value={item.costPerUnit || 0}
                             readOnly
-                            className="w-full text-xs p-1 bg-gray-50 border rounded font-mono"
+                            className="w-full text-xs p-1 bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded font-mono text-gray-900 dark:text-white"
                           />
                         </div>
                         <div>
@@ -561,7 +561,7 @@ export default function ExpensesPage() {
                             step="any"
                             value={item.quantity || 0}
                             onChange={(e) => handleItemChange(idx, 'quantity', Number(e.target.value))}
-                            className="w-full text-xs p-1 border rounded font-mono bg-white"
+                            className="w-full text-xs p-1 border border-gray-300 dark:border-slate-700 rounded font-mono bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                             required
                           />
                         </div>
@@ -592,7 +592,7 @@ export default function ExpensesPage() {
                   <select
                     value={formData.paymentMethod}
                     onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                   >
                     <option value="Cash">Cash</option>
                     <option value="Bank Transfer">Bank Transfer</option>
@@ -608,7 +608,7 @@ export default function ExpensesPage() {
                     required
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                   />
                 </div>
               </div>
@@ -622,7 +622,7 @@ export default function ExpensesPage() {
                       value={formData.chequeNumber}
                       onChange={(e) => setFormData({ ...formData, chequeNumber: e.target.value })}
                       placeholder="e.g. CHQ-98214"
-                      className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                     />
                   </div>
                   <div>
@@ -631,7 +631,7 @@ export default function ExpensesPage() {
                       type="date"
                       value={formData.chequeDate}
                       onChange={(e) => setFormData({ ...formData, chequeDate: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                     />
                   </div>
                 </div>
@@ -645,7 +645,7 @@ export default function ExpensesPage() {
                       required
                       value={formData.bankAccountId}
                       onChange={(e) => setFormData({ ...formData, bankAccountId: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                     >
                       <option value="">-- Select Bank Account --</option>
                       {bankAccounts.map(acc => (
@@ -660,7 +660,7 @@ export default function ExpensesPage() {
                     const selectedAccount = bankAccounts.find(acc => acc._id === formData.bankAccountId);
                     if (!selectedAccount) return null;
                     return (
-                      <div className="bg-white p-3 rounded-lg border border-indigo-200 space-y-2">
+                      <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-indigo-200 dark:border-indigo-900/50 space-y-2">
                         <h4 className="text-xs font-bold text-indigo-700 uppercase tracking-wide">Selected Bank Account Details</h4>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div>
@@ -696,7 +696,7 @@ export default function ExpensesPage() {
                     value={formData.payeeName}
                     onChange={(e) => setFormData({ ...formData, payeeName: e.target.value })}
                     placeholder="e.g. CEB / Sri Lanka Telecom"
-                    className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                   />
                 </div>
 
@@ -707,7 +707,7 @@ export default function ExpensesPage() {
                     value={formData.referenceNo}
                     onChange={(e) => setFormData({ ...formData, referenceNo: e.target.value })}
                     placeholder="e.g. INV-10029"
-                    className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                   />
                 </div>
               </div>
@@ -718,7 +718,7 @@ export default function ExpensesPage() {
                   rows="2"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg text-sm bg-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                 ></textarea>
               </div>
 
@@ -726,7 +726,7 @@ export default function ExpensesPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
                 >
                   Cancel
                 </button>

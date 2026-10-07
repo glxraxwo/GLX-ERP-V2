@@ -227,17 +227,17 @@ export default function DailyPayrollPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => navigate('/employees')}
-                            className="flex items-center gap-1.5 font-bold text-gray-700 bg-white border-gray-300 hover:bg-gray-50 shadow-xs"
+                            className="flex items-center gap-1.5 font-bold text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 shadow-xs"
                         >
-                            <Users size={15} className="text-primary-600" /> Employee Master (සේවක ලැයිස්තුව)
+                            <Users size={15} className="text-blue-600 dark:text-blue-400" /> Employee Master (සේවක ලැයිස්තුව)
                         </Button>
-                        <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border shadow-xs">
+                        <div className="flex items-center gap-2 bg-white dark:bg-[#111F33] p-1.5 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-xs">
                             <Button variant="outline" size="sm" onClick={() => changeDate(-1)}><ChevronLeft size={16} /></Button>
                             <input
                                 type="date"
                                 value={selectedDate}
                                 onChange={(e) => setSelectedDate(e.target.value)}
-                                className="text-xs font-bold text-gray-800 bg-transparent outline-none px-2 font-mono cursor-pointer"
+                                className="text-xs font-bold text-gray-800 dark:text-white bg-transparent outline-none px-2 font-mono cursor-pointer [color-scheme:light] dark:[color-scheme:dark]"
                             />
                             <Button variant="outline" size="sm" onClick={() => changeDate(1)}><ChevronRight size={16} /></Button>
                             <Button
@@ -255,69 +255,69 @@ export default function DailyPayrollPage() {
 
             {/* Metric KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <Card className="p-4 bg-white border border-gray-100 shadow-xs rounded-2xl">
+                <Card className="p-4 border border-gray-100 dark:border-slate-700/80 shadow-xs rounded-2xl">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Daily Workers Active</p>
-                            <p className="text-2xl font-black text-slate-800 mt-1">{totalWorkers}</p>
+                            <p className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Daily Workers Active</p>
+                            <p className="text-2xl font-black text-slate-800 dark:text-white mt-1">{totalWorkers}</p>
                         </div>
-                        <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                        <div className="p-2.5 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-xl">
                             <Clock size={20} />
                         </div>
                     </div>
-                    <p className="text-xs text-gray-400 mt-2 font-medium">Daily & Hourly wage earners</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500 mt-2 font-medium">Daily & Hourly wage earners</p>
                 </Card>
 
-                <Card className="p-4 bg-white border border-gray-100 shadow-xs rounded-2xl">
+                <Card className="p-4 border border-gray-100 dark:border-slate-700/80 shadow-xs rounded-2xl">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Wages Payable ({selectedDate})</p>
-                            <p className="text-2xl font-black text-amber-600 mt-1">{fmt(totalWagesPayable)}</p>
+                            <p className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Wages Payable ({selectedDate})</p>
+                            <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">{fmt(totalWagesPayable)}</p>
                         </div>
-                        <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
+                        <div className="p-2.5 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-xl">
                             <DollarSign size={20} />
                         </div>
                     </div>
-                    <p className="text-xs text-gray-400 mt-2 font-medium">Calculated from today's attendance</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500 mt-2 font-medium">Calculated from today's attendance</p>
                 </Card>
 
-                <Card className="p-4 bg-white border border-gray-100 shadow-xs rounded-2xl">
+                <Card className="p-4 border border-gray-100 dark:border-slate-700/80 shadow-xs rounded-2xl">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Total Paid Today</p>
-                            <p className="text-2xl font-black text-emerald-600 mt-1">{fmt(totalPaidToday)}</p>
+                            <p className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Total Paid Today</p>
+                            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{fmt(totalPaidToday)}</p>
                         </div>
-                        <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-xl">
                             <CheckCircle2 size={20} />
                         </div>
                     </div>
-                    <p className="text-xs text-emerald-600 mt-2 font-bold flex items-center gap-1">
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 font-bold flex items-center gap-1">
                         ✓ Disbursed & Logged
                     </p>
                 </Card>
 
-                <Card className="p-4 bg-white border border-gray-100 shadow-xs rounded-2xl">
+                <Card className="p-4 border border-gray-100 dark:border-slate-700/80 shadow-xs rounded-2xl">
                     <div className="flex justify-between items-start">
                         <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Pending Payouts</p>
-                            <p className="text-2xl font-black text-rose-600 mt-1">{pendingWorkers.length}</p>
+                            <p className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Pending Payouts</p>
+                            <p className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">{pendingWorkers.length}</p>
                         </div>
-                        <div className="p-2.5 bg-rose-50 text-rose-600 rounded-xl">
+                        <div className="p-2.5 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-xl">
                             <AlertCircle size={20} />
                         </div>
                     </div>
-                    <p className="text-xs text-rose-500 mt-2 font-medium">Awaiting disbursement</p>
+                    <p className="text-xs text-rose-500 dark:text-rose-400 mt-2 font-medium">Awaiting disbursement</p>
                 </Card>
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex overflow-x-auto no-scrollbar gap-2 border-b border-gray-200 pb-2">
+            <div className="flex overflow-x-auto no-scrollbar gap-2 border-b border-gray-200 dark:border-slate-700 pb-2">
                 <button
                     onClick={() => setActiveTab('daily')}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                         activeTab === 'daily'
-                            ? 'bg-slate-900 text-white shadow-md'
-                            : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-white dark:bg-[#111F33] text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700'
                     }`}
                 >
                     <Calendar size={15} /> Daily Payouts ({selectedDate})
@@ -326,8 +326,8 @@ export default function DailyPayrollPage() {
                     onClick={() => setActiveTab('bimonthly')}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                         activeTab === 'bimonthly'
-                            ? 'bg-purple-900 text-white shadow-md font-black'
-                            : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                            ? 'bg-purple-600 text-white shadow-md font-black'
+                            : 'bg-white dark:bg-[#111F33] text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700'
                     }`}
                 >
                     <Clock size={15} /> Bi-Monthly / Period Payout (මාසික පඩි දවස් 2ක එකතුව)
@@ -336,8 +336,8 @@ export default function DailyPayrollPage() {
                     onClick={() => setActiveTab('history')}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
                         activeTab === 'history'
-                            ? 'bg-slate-900 text-white shadow-md'
-                            : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-white dark:bg-[#111F33] text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-700'
                     }`}
                 >
                     <DollarSign size={15} /> Daily Payout History & Vouchers
@@ -421,7 +421,7 @@ export default function DailyPayrollPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-xs border-collapse">
                                 <thead>
-                                    <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider border-b">
+                                    <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider border-b dark:border-slate-700">
                                         <th className="p-3 w-10">
                                             <input
                                                 type="checkbox"
@@ -447,11 +447,11 @@ export default function DailyPayrollPage() {
                                         <th className="p-3 text-right">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+                                <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-gray-700 dark:text-slate-200 font-medium">
                                     {workers.map((w) => {
                                         const isChecked = selectedWorkerIds.includes(w.employeeId.toString());
                                         return (
-                                            <tr key={w.employeeId} className={`hover:bg-slate-50 transition ${w.alreadyPaid ? 'bg-emerald-50/30' : ''}`}>
+                                            <tr key={w.employeeId} className={`hover:bg-slate-50 dark:hover:bg-slate-800/60 transition ${w.alreadyPaid ? 'bg-emerald-50/30 dark:bg-emerald-950/20' : ''}`}>
                                                 <td className="p-3">
                                                     {!w.alreadyPaid && w.baseWage > 0 && (
                                                         <input
@@ -469,53 +469,53 @@ export default function DailyPayrollPage() {
                                                     )}
                                                 </td>
                                                 <td className="p-3">
-                                                    <div className="font-bold text-gray-900">{w.employeeName}</div>
-                                                    <div className="text-[11px] text-gray-500 font-mono">{w.employeeCode} · {w.designation}</div>
+                                                    <div className="font-bold text-gray-900 dark:text-white">{w.employeeName}</div>
+                                                    <div className="text-[11px] text-gray-500 dark:text-slate-400 font-mono">{w.employeeCode} · {w.designation}</div>
                                                 </td>
                                                 <td className="p-3">
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${w.payType === 'hourly' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${w.payType === 'hourly' ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'}`}>
                                                         {w.payType}
                                                     </span>
                                                 </td>
-                                                <td className="p-3 font-mono">
+                                                <td className="p-3 font-mono text-gray-800 dark:text-slate-200">
                                                     {fmt(w.rate)} / {w.payType === 'hourly' ? 'hr' : 'day'}
                                                 </td>
                                                 <td className="p-3">
                                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                                        w.attendanceStatus === 'present' ? 'bg-emerald-100 text-emerald-800' :
-                                                        w.attendanceStatus === 'half_day' ? 'bg-amber-100 text-amber-800' :
-                                                        'bg-gray-100 text-gray-500'
+                                                        w.attendanceStatus === 'present' ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' :
+                                                        w.attendanceStatus === 'half_day' ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300' :
+                                                        'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700'
                                                     }`}>
                                                         {w.attendanceStatus.replace('_', ' ')}
                                                     </span>
                                                 </td>
-                                                <td className="p-3 font-mono font-bold">
+                                                <td className="p-3 font-mono font-bold text-gray-800 dark:text-slate-200">
                                                     {w.units} {w.payType === 'hourly' ? 'hrs' : 'day(s)'}
                                                 </td>
-                                                <td className="p-3 font-mono font-bold text-slate-900">
+                                                <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
                                                     {fmt(w.baseWage)}
                                                 </td>
                                                 <td className="p-3 text-right">
                                                     {w.pendingAdvance > 0 ? (
                                                         <div className="flex flex-col items-end">
-                                                            <span className="font-mono text-[11px] text-rose-600 font-bold">-{fmt(w.pendingAdvance)}</span>
+                                                            <span className="font-mono text-[11px] text-rose-600 dark:text-rose-400 font-bold">-{fmt(w.pendingAdvance)}</span>
                                                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-black border ${
-                                                                w.advancePercentage > 50 ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                                                                w.advancePercentage > 50 ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60' : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
                                                             }`}>
                                                                 {w.advancePercentage}%
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-gray-400 text-xs font-mono">0.0%</span>
+                                                        <span className="text-gray-400 dark:text-slate-500 text-xs font-mono">0.0%</span>
                                                     )}
                                                 </td>
                                                 <td className="p-3">
                                                     {w.alreadyPaid ? (
-                                                        <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 w-max">
+                                                        <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 flex items-center gap-1 w-max">
                                                             <Check size={12} /> Paid ({w.paymentDetails?.voucherNumber})
                                                         </span>
                                                     ) : (
-                                                        <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                        <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
                                                             Unpaid
                                                         </span>
                                                     )}
@@ -556,29 +556,29 @@ export default function DailyPayrollPage() {
                 <Card className="p-3 sm:p-5 space-y-4">
                     <div className="flex flex-wrap justify-between items-center gap-3 sm:gap-4">
                         <div className="relative flex-1 max-w-md">
-                            <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                            <Search className="absolute left-3 top-2.5 text-gray-400 dark:text-slate-500" size={16} />
                             <input
                                 type="text"
                                 placeholder="Search by voucher # or worker name..."
                                 value={historySearch}
                                 onChange={(e) => setHistorySearch(e.target.value)}
-                                className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-slate-900 outline-none"
+                                className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-xl focus:ring-2 focus:ring-slate-900 dark:focus:ring-sky-500 outline-none"
                             />
                         </div>
-                        <span className="text-xs font-bold text-slate-600">
-                            Total Disbursed: <strong className="text-emerald-600 font-mono text-sm">{fmt(historyData?.totalPaid)}</strong>
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                            Total Disbursed: <strong className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">{fmt(historyData?.totalPaid)}</strong>
                         </span>
                     </div>
 
                     {isHistoryLoading ? (
-                        <div className="py-16 text-center text-gray-500">Loading payout history...</div>
+                        <div className="py-16 text-center text-gray-500 dark:text-slate-400">Loading payout history...</div>
                     ) : historyList.length === 0 ? (
-                        <div className="py-16 text-center text-gray-400 font-medium">No historical daily wage payouts logged.</div>
+                        <div className="py-16 text-center text-gray-400 dark:text-slate-500 font-medium">No historical daily wage payouts logged.</div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-xs border-collapse">
                                 <thead>
-                                    <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider border-b">
+                                    <tr className="bg-slate-100 dark:bg-[#132238] text-slate-700 dark:text-slate-200 font-bold uppercase tracking-wider border-b border-gray-200 dark:border-slate-800">
                                         <th className="p-3">Voucher #</th>
                                         <th className="p-3">Date</th>
                                         <th className="p-3">Employee</th>
@@ -591,7 +591,7 @@ export default function DailyPayrollPage() {
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {historyList.map(h => (
-                                        <tr key={h._id} className="hover:bg-slate-50 transition">
+                                        <tr key={h._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800/60 transition">
                                             <td className="p-3 font-mono font-bold text-blue-700">{h.voucherNumber}</td>
                                             <td className="p-3">{new Date(h.date).toLocaleDateString('en-GB')}</td>
                                             <td className="p-3 font-bold text-gray-900">{h.employeeName} ({h.employeeCode})</td>
@@ -631,20 +631,20 @@ export default function DailyPayrollPage() {
 
                         {/* Date Range Controls */}
                         <div className="flex flex-wrap items-center gap-2">
-                            <div className="flex items-center gap-1 bg-gray-50 p-1.5 rounded-xl border border-gray-200 text-xs">
+                            <div className="flex items-center gap-1 bg-gray-50 dark:bg-[#132238] p-1.5 rounded-xl border border-gray-200 dark:border-slate-700 text-xs">
                                 <span className="font-bold text-gray-500 pl-1">From:</span>
                                 <input
                                     type="date"
                                     value={periodStartDate}
                                     onChange={(e) => setPeriodStartDate(e.target.value)}
-                                    className="px-2 py-1 bg-white border border-gray-300 rounded-lg text-xs font-mono font-bold"
+                                    className="px-2 py-1 bg-white dark:bg-[#111F33] border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg text-xs font-mono font-bold"
                                 />
                                 <span className="font-bold text-gray-500">To:</span>
                                 <input
                                     type="date"
                                     value={periodEndDate}
                                     onChange={(e) => setPeriodEndDate(e.target.value)}
-                                    className="px-2 py-1 bg-white border border-gray-300 rounded-lg text-xs font-mono font-bold"
+                                    className="px-2 py-1 bg-white dark:bg-[#111F33] border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-lg text-xs font-mono font-bold"
                                 />
                             </div>
 
@@ -800,7 +800,7 @@ export default function DailyPayrollPage() {
                             {/* Period Summary Table */}
                             <div className="overflow-x-auto border border-gray-200 rounded-xl">
                                 <table className="w-full text-xs text-left">
-                                    <thead className="bg-gray-50 text-gray-500 uppercase text-[10px] tracking-wider border-b">
+                                    <thead className="bg-gray-50 dark:bg-[#132238] text-gray-500 dark:text-slate-400 uppercase text-[10px] tracking-wider border-b border-gray-200 dark:border-slate-800">
                                         <tr>
                                             <th className="p-3">Employee</th>
                                             <th className="p-3">Department</th>
@@ -815,7 +815,7 @@ export default function DailyPayrollPage() {
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {periodSummaryData.data.map(p => (
-                                            <tr key={p.employeeId} className="hover:bg-slate-50 transition">
+                                            <tr key={p.employeeId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800/60 transition">
                                                 <td className="p-3 font-bold text-gray-900">{p.employeeName} ({p.employeeCode})</td>
                                                 <td className="p-3 text-gray-500">{p.department}</td>
                                                 <td className="p-3 text-center font-semibold">{p.daysWorked} days</td>
@@ -850,7 +850,7 @@ export default function DailyPayrollPage() {
             {/* SINGLE WORKER PAYOUT MODAL */}
             {singlePayoutWorker && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-scaleUp">
+                    <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-scaleUp">
                         <div className="flex justify-between items-center border-b pb-3">
                             <div>
                                 <h3 className="font-bold text-gray-900 text-lg">Daily Wage Payout</h3>
@@ -877,7 +877,7 @@ export default function DailyPayrollPage() {
                                     step="0.01"
                                     value={singleNetPaid}
                                     onChange={(e) => setSingleNetPaid(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm font-bold font-mono bg-white outline-none focus:border-slate-900"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl text-sm font-bold font-mono bg-white dark:bg-[#132238] text-gray-900 dark:text-white outline-none focus:border-slate-900"
                                 />
                             </div>
 
@@ -892,7 +892,7 @@ export default function DailyPayrollPage() {
                                             className={`py-1.5 px-2 rounded-xl text-xs font-bold border capitalize transition ${
                                                 singlePaymentMethod === m
                                                     ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                                                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                                                    : 'bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700'
                                             }`}
                                         >
                                             {m.replace('_', ' ')}
@@ -908,7 +908,7 @@ export default function DailyPayrollPage() {
                                         required
                                         value={singleBankAccountId}
                                         onChange={(e) => setSingleBankAccountId(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs bg-white focus:border-slate-900 outline-none"
+                                        className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:border-slate-900 outline-none"
                                     >
                                         <option value="">-- Select Bank Account --</option>
                                         {bankAccounts.map((acc) => (
@@ -925,7 +925,7 @@ export default function DailyPayrollPage() {
                                 <select
                                     value={singleProjectId}
                                     onChange={(e) => setSingleProjectId(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs bg-white focus:border-slate-900 outline-none"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:border-slate-900 outline-none"
                                 >
                                     <option value="">-- Optional: No Project Assignment --</option>
                                     {activeProjects.map((p) => (
@@ -943,7 +943,7 @@ export default function DailyPayrollPage() {
                                     placeholder="e.g. Daily wage payout for welding work"
                                     value={singleNotes}
                                     onChange={(e) => setSingleNotes(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-xl text-xs bg-white outline-none"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl text-xs bg-white dark:bg-[#132238] text-gray-900 dark:text-white outline-none"
                                 />
                             </div>
 

@@ -149,7 +149,7 @@ export default function ProductAutocompleteSelect({
     return (
         <div ref={wrapperRef} className="relative w-full">
             {label && (
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                     {label}
                 </label>
             )}
@@ -165,32 +165,32 @@ export default function ProductAutocompleteSelect({
                     onFocus={() => setIsOpen(true)}
                     onBlur={handleBlur}
                     disabled={disabled}
-                    className="w-full px-3 py-2 border border-gray-300 focus:border-primary-500 focus:ring-primary-200 rounded-lg text-sm focus:outline-none bg-white font-medium transition"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-200 rounded-lg text-sm focus:outline-none bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 font-medium transition"
                 />
             </div>
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     {filtered.map(p => (
                         <button
                             key={p._id}
                             type="button"
                             onMouseDown={() => handleSelectOption(p)}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition flex items-center justify-between"
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-slate-800 transition flex items-center justify-between"
                         >
                             <div>
-                                <span className="font-medium text-gray-900">{p.name}</span>
+                                <span className="font-medium text-gray-900 dark:text-white">{p.name}</span>
                                 {p.sinhalaName && (
-                                    <span className="text-xs text-emerald-700 block font-medium">{p.sinhalaName}</span>
+                                    <span className="text-xs text-emerald-700 dark:text-emerald-400 block font-medium">{p.sinhalaName}</span>
                                 )}
                             </div>
-                            <span className="text-gray-400 text-xs font-mono ml-2">({p.productCode})</span>
+                            <span className="text-gray-400 dark:text-slate-500 text-xs font-mono ml-2">({p.productCode})</span>
                         </button>
                     ))}
                     {inputValue.trim() && !products.some(p => p.name.toLowerCase() === inputValue.trim().toLowerCase()) && (
                         <button
                             type="button"
                             onMouseDown={() => handleAutoCreate(inputValue)}
-                            className="w-full text-left px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 font-semibold border-t border-gray-100 flex items-center gap-1.5"
+                            className="w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 font-semibold border-t border-gray-100 dark:border-slate-700 flex items-center gap-1.5"
                         >
                             <span>+ Create new: "{inputValue.trim()}"</span>
                         </button>

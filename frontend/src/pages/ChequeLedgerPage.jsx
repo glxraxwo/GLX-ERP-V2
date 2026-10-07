@@ -247,13 +247,13 @@ export default function ChequeLedgerPage() {
                     </div>
 
                     <div className="relative w-full sm:w-72">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
                         <input
                             type="text"
                             placeholder="Search Cheque #, Bank, Party..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 pr-4 py-2 w-full bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all"
+                            className="pl-9 pr-4 py-2 w-full bg-gray-50 dark:bg-[#132238] border border-gray-200 dark:border-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500 dark:focus:bg-[#132238] transition-all"
                         />
                     </div>
                 </div>

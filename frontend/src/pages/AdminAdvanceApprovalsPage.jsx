@@ -91,20 +91,20 @@ export default function AdminAdvanceApprovalsPage() {
             />
 
             <Card>
-                <div className="p-4 border-b flex flex-wrap gap-3">
+                <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex flex-wrap gap-3">
                     <div className="relative flex-1 min-w-[200px]">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                         <input
                             type="text"
                             placeholder="Search by employee name..."
-                            className="w-full pl-9 pr-3 py-2 border rounded-lg text-sm"
+                            className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm"
                             value={filters.search}
                             onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))}
                         />
                     </div>
                     <div className="w-full sm:w-40">
                         <select
-                            className="w-full px-3 py-2 border rounded-lg text-sm"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white rounded-lg text-sm"
                             value={filters.status}
                             onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value, page: 1 }))}
                         >

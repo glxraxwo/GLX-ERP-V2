@@ -1077,7 +1077,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     )}
                 />
             ) : (
-                <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-xs mb-2">
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-[#111F33] p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs mb-2">
                     <div>
                         <h2 className="text-base font-bold text-gray-900">
                             {activeTab === 'estimate' ? 'Cost Estimates' : activeTab === 'quotation' ? 'Price Quotations' : 'Quotations & Estimates'}
@@ -1097,28 +1097,28 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         label: 'All Documents',
                         count: summaryMetrics.totalCount,
                         val: summaryMetrics.totalVal,
-                        color: 'bg-slate-50 text-slate-700 border-slate-200'
+                        color: 'bg-slate-50 dark:bg-[#132238] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
                     },
                     {
                         key: 'quotation',
                         label: 'Quotations (JA/QT)',
                         count: summaryMetrics.qCount,
                         val: summaryMetrics.qVal,
-                        color: 'bg-blue-50 text-blue-700 border-blue-200'
+                        color: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/50'
                     },
                     {
                         key: 'estimate',
                         label: 'Estimates (JA/EST)',
                         count: summaryMetrics.estCount,
                         val: summaryMetrics.estVal,
-                        color: 'bg-amber-50 text-amber-700 border-amber-200'
+                        color: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/50'
                     },
                     {
                         key: 'converted',
                         label: 'Converted to Invoice/Project',
                         count: summaryMetrics.convCount,
                         val: summaryMetrics.convVal,
-                        color: 'bg-purple-50 text-purple-700 border-purple-200'
+                        color: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-900/50'
                     },
                 ].map((b) => (
                     <button
@@ -1138,13 +1138,13 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
             <Card>
                 {/* Document Type Filter Pills (Matching Invoices layout) */}
-                <div className="flex overflow-x-auto flex-nowrap border-b border-gray-200 bg-white rounded-t-xl">
+                <div className="flex overflow-x-auto flex-nowrap border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-[#111F33] rounded-t-xl">
                     <button
                         onClick={() => setActiveTab('all')}
                         className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
                             activeTab === 'all'
-                                ? 'border-primary-600 text-primary-600 bg-slate-50'
-                                : 'border-transparent text-gray-500 hover:text-slate-800 hover:bg-slate-50'
+                                ? 'border-primary-600 text-primary-600 dark:text-primary-400 bg-slate-50 dark:bg-[#132238]'
+                                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#132238]'
                         }`}
                     >
                         All Documents
@@ -1153,8 +1153,8 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         onClick={() => setActiveTab('quotation')}
                         className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
                             activeTab === 'quotation'
-                                ? 'border-primary-600 text-primary-600 bg-slate-50'
-                                : 'border-transparent text-gray-500 hover:text-slate-800 hover:bg-slate-50'
+                                ? 'border-primary-600 text-primary-600 dark:text-primary-400 bg-slate-50 dark:bg-[#132238]'
+                                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#132238]'
                         }`}
                     >
                         Quotations (JA/QT)
@@ -1163,8 +1163,8 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         onClick={() => setActiveTab('estimate')}
                         className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
                             activeTab === 'estimate'
-                                ? 'border-primary-600 text-primary-600 bg-slate-50'
-                                : 'border-transparent text-gray-500 hover:text-slate-800 hover:bg-slate-50'
+                                ? 'border-primary-600 text-primary-600 dark:text-primary-400 bg-slate-50 dark:bg-[#132238]'
+                                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#132238]'
                         }`}
                     >
                         Estimates (JA/EST)
@@ -1173,8 +1173,8 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         onClick={() => setActiveTab('converted')}
                         className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
                             activeTab === 'converted'
-                                ? 'border-primary-600 text-primary-600 bg-slate-50'
-                                : 'border-transparent text-gray-500 hover:text-slate-800 hover:bg-slate-50'
+                                ? 'border-primary-600 text-primary-600 dark:text-primary-400 bg-slate-50 dark:bg-[#132238]'
+                                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#132238]'
                         }`}
                     >
                         Converted ({summaryMetrics.convCount})
@@ -1182,13 +1182,13 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 </div>
 
                 {/* Filter Toolbar with Search, Status, Date Filters, and View Switcher */}
-                <div className="p-4 border-b border-gray-200 flex flex-col lg:flex-row flex-wrap items-center gap-3">
+                <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex flex-col lg:flex-row flex-wrap items-center gap-3">
                     <div className="relative flex-1 min-w-[220px] w-full lg:w-auto">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                         <input 
                             type="text"
                             placeholder="Search by ref #, customer, vehicle no, model..."
-                            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm text-[16px] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm text-[16px] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-primary-500"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             onKeyDown={async (e) => {
@@ -1219,7 +1219,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
                     <div className="w-full sm:w-44">
                         <select 
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white min-h-[44px] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white min-h-[44px] focus:outline-none focus:ring-2 focus:ring-primary-500"
                             value={documentTypeFilter}
                             onChange={(e) => setDocumentTypeFilter(e.target.value)}
                         >
@@ -1231,7 +1231,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
                     <div className="w-full sm:w-40">
                         <select 
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white min-h-[44px] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white min-h-[44px] focus:outline-none focus:ring-2 focus:ring-primary-500"
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
                         >
@@ -1245,26 +1245,26 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     </div>
 
                     {/* Date-wise filter inputs */}
-                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1 min-h-[44px]">
+                    <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-[#132238] border border-gray-300 dark:border-slate-700 rounded-lg px-2.5 py-1 min-h-[44px]">
                         <Calendar size={15} className="text-gray-400 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-[9px] font-bold text-gray-500 uppercase leading-none">From Date</span>
                             <input
                                 type="date"
-                                className="bg-transparent text-xs text-gray-800 focus:outline-none"
+                                className="bg-transparent text-xs text-gray-800 dark:text-white focus:outline-none"
                                 value={startDate}
                                 onChange={(e) => setStartDate(e.target.value)}
                             />
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1 min-h-[44px]">
+                    <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-[#132238] border border-gray-300 dark:border-slate-700 rounded-lg px-2.5 py-1 min-h-[44px]">
                         <Calendar size={15} className="text-gray-400 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-[9px] font-bold text-gray-500 uppercase leading-none">To Date</span>
                             <input
                                 type="date"
-                                className="bg-transparent text-xs text-gray-800 focus:outline-none"
+                                className="bg-transparent text-xs text-gray-800 dark:text-white focus:outline-none"
                                 value={endDate}
                                 onChange={(e) => setEndDate(e.target.value)}
                             />
@@ -1284,14 +1284,14 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     )}
 
                     {/* View Switcher: Table vs Cards */}
-                    <div className="flex items-center bg-gray-100 p-1 rounded-lg border border-gray-200 ml-auto">
+                    <div className="flex items-center bg-gray-100 dark:bg-slate-800 p-1 rounded-lg border border-gray-200 dark:border-slate-700 ml-auto">
                         <button
                             type="button"
                             onClick={() => setViewMode('table')}
                             className={`p-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition ${
                                 viewMode === 'table'
-                                    ? 'bg-white text-primary-600 shadow-xs'
-                                    : 'text-gray-500 hover:text-gray-800'
+                                    ? 'bg-white dark:bg-[#111F33] text-primary-600 dark:text-primary-400 shadow-xs'
+                                    : 'text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
                             }`}
                             title="Table View (Invoice Format)"
                         >
@@ -1302,8 +1302,8 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                             onClick={() => setViewMode('cards')}
                             className={`p-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition ${
                                 viewMode === 'cards'
-                                    ? 'bg-white text-primary-600 shadow-xs'
-                                    : 'text-gray-500 hover:text-gray-800'
+                                    ? 'bg-white dark:bg-[#111F33] text-primary-600 dark:text-primary-400 shadow-xs'
+                                    : 'text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200'
                             }`}
                             title="Grid Cards View"
                         >
@@ -1335,8 +1335,8 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         {filteredQuotations.map((quote) => {
                             const isEst = quote.documentType === 'estimate' || quote.quoteNumber?.startsWith('EST');
                             return (
-                                <div key={quote._id} className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col group h-full">
-                                    <div className="p-5 border-b border-gray-100">
+                                <div key={quote._id} className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col group h-full">
+                                    <div className="p-5 border-b border-gray-100 dark:border-slate-800">
                                         <div className="flex justify-between items-start mb-2">
                                             <div className="text-gray-900">
                                                 <div className="flex items-center gap-2">
@@ -1410,7 +1410,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         </div>
                                     </div>
 
-                                    <div className="p-3 bg-gray-50 flex gap-2 rounded-b-2xl border-t border-gray-100 flex-wrap">
+                                    <div className="p-3 bg-gray-50 dark:bg-[#0E1A2B] flex gap-2 rounded-b-2xl border-t border-gray-100 dark:border-slate-800 flex-wrap">
                                         <Button variant="outline" size="sm" className="flex-1" onClick={() => { setPreviewQuote(quote); setIsPreviewOpen(true); }}>
                                             <Eye size={14} className="mr-1" /> View
                                         </Button>
@@ -1484,11 +1484,11 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 <form onSubmit={handleSubmit} className="p-3 sm:p-6 space-y-6 max-h-[85vh] overflow-y-auto">
                     
                     {/* Document Type Selector & Ref */}
-                    <div className="bg-slate-100 p-3 rounded-xl flex flex-wrap items-center justify-between gap-4">
+                    <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-xl flex flex-wrap items-center justify-between gap-4">
                         <div className="flex flex-wrap gap-2">
                             <button
                                 type="button"
-                                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.documentType === 'quotation' ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.documentType === 'quotation' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-[#132238] text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
                                 onClick={() => {
                                     setFormData(prev => ({ ...prev, documentType: 'quotation' }));
                                     if (!editing) {
@@ -1502,7 +1502,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                             </button>
                             <button
                                 type="button"
-                                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.documentType === 'estimate' ? 'bg-amber-600 text-white shadow' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${formData.documentType === 'estimate' ? 'bg-amber-600 text-white shadow' : 'bg-white dark:bg-[#132238] text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
                                 onClick={() => {
                                     setFormData(prev => ({ ...prev, documentType: 'estimate' }));
                                     if (!editing) {
@@ -1517,7 +1517,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         </div>
 
                         {/* Auto-Generated Document ID Display */}
-                        <div className="flex items-center bg-white border border-gray-200/90 px-3.5 py-1.5 rounded-xl shadow-2xs">
+                        <div className="flex items-center bg-white dark:bg-[#132238] border border-gray-200/90 dark:border-slate-700 px-3.5 py-1.5 rounded-xl shadow-2xs">
                             <div className="flex flex-col">
                                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider leading-none">
                                     {formData.documentType === 'estimate' ? 'Estimate ID' : 'Quotation ID'}
@@ -1530,7 +1530,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     </div>
 
                     {/* Vehicle & Client Details */}
-                    <div className="bg-slate-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                    <div className="bg-slate-50 dark:bg-[#132238]/60 p-4 rounded-xl border border-gray-200 dark:border-slate-700 space-y-4">
                         <span className="text-xs font-black text-slate-600 uppercase tracking-wide">Vehicle & Owner Information</span>
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1539,7 +1539,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <input 
                                     type="text"
                                     required
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
                                     value={formData.customerName}
                                     placeholder="e.g. Mr. UPDK Dhanasekara"
                                     onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value, vehicleOwner: e.target.value }))}
@@ -1550,7 +1550,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Vehicle Number (Plate No)</label>
                                 <input 
                                     type="text"
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white font-mono uppercase font-bold text-blue-700"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] font-mono uppercase font-bold text-blue-700 dark:text-blue-400"
                                     value={formData.vehicleNo}
                                     placeholder="e.g. WP DAI-1974"
                                     onChange={(e) => handleFormChange('vehicleNo', e.target.value)}
@@ -1589,7 +1589,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Job Caption</label>
                                 <input 
                                     type="text"
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                                     value={formData.jobCaption}
                                     placeholder="e.g. Accident Repair / Body Construction"
                                     onChange={(e) => handleFormChange('jobCaption', e.target.value)}
@@ -1600,7 +1600,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Contact Phone</label>
                                 <input 
                                     type="text" 
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                                     value={formData.customerPhone}
                                     placeholder="e.g. 0714193455"
                                     onChange={(e) => handleFormChange('customerPhone', e.target.value)}
@@ -1624,7 +1624,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Introducer (Employee)</label>
                                 <select
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                                     value={formData.introducer || ''}
                                     onChange={(e) => {
                                         const empId = e.target.value;
@@ -1646,7 +1646,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Biller (User)</label>
                                 <select
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                                     value={formData.biller || ''}
                                     onChange={(e) => {
                                         const userId = e.target.value;
@@ -1682,7 +1682,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Number Plate Photo */}
-                            <div className="bg-white p-3 rounded-lg border border-blue-200 space-y-2">
+                            <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-blue-200 dark:border-slate-700 space-y-2">
                                 <label className="block text-xs font-bold text-gray-700 uppercase">Number Plate Photo</label>
                                 <input 
                                     type="file" 
@@ -1707,7 +1707,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                             </div>
 
                             {/* Lorry Body Photo */}
-                            <div className="bg-white p-3 rounded-lg border border-blue-200 space-y-2">
+                            <div className="bg-white dark:bg-[#111F33] p-3 rounded-lg border border-blue-200 dark:border-slate-700 space-y-2">
                                 <label className="block text-xs font-bold text-gray-700 uppercase">Lorry Body Photo</label>
                                 <input 
                                     type="file" 
@@ -1733,7 +1733,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         </div>
 
                         {/* Additional Inspection Photos (Multiple Upload Allowed) */}
-                        <div className="bg-white p-3.5 rounded-lg border border-blue-200 space-y-2.5">
+                        <div className="bg-white dark:bg-[#111F33] p-3.5 rounded-lg border border-blue-200 dark:border-slate-700 space-y-2.5">
                             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-800 uppercase">
@@ -1820,7 +1820,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         <input 
                                             type="text" 
                                             required
-                                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white font-calibri"
+                                            className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white font-calibri"
                                             placeholder="e.g. Repair Works / Cargo Lorry Body DOOR Reconstruction (Large)"
                                             value={item.productName}
                                             onChange={(e) => {
@@ -1906,7 +1906,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         type="number" 
                                         step="any" 
                                         min="0.01" 
-                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm bg-white text-center font-semibold" 
+                                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white text-center font-semibold" 
                                         value={item.quantity} 
                                         onChange={e => handleItemChange(index, 'quantity', e.target.value)} 
                                     />
@@ -1917,7 +1917,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     <input 
                                         type="number" 
                                         step="any" 
-                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm bg-white font-mono" 
+                                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white font-mono" 
                                         value={item.unitPrice} 
                                         onChange={e => handleItemChange(index, 'unitPrice', e.target.value)} 
                                     />
@@ -1937,7 +1937,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
                                 <div className="col-span-8 sm:col-span-4 md:col-span-2 space-y-1">
                                     <label className="text-[10px] font-bold text-gray-700 uppercase">Net Subtotal</label>
-                                    <div className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg">
+                                    <div className="w-full px-2.5 py-1.5 bg-white dark:bg-[#132238] border border-gray-200 dark:border-slate-700 rounded-lg">
                                         <div className="text-xs font-mono font-bold text-gray-900 truncate">
                                             LKR {Number(item.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </div>
@@ -2027,7 +2027,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Remarks</label>
                                 <textarea 
                                     rows={2}
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                     placeholder="Remarks to appear under line items..."
                                     value={formData.remarks || ''}
                                     onChange={(e) => handleFormChange('remarks', e.target.value)}
@@ -2038,7 +2038,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Condition of Payments</label>
                                 <textarea 
                                     rows={2}
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                     placeholder="e.g. a). 0% Advance Payment with the firm Order.&#10;b). Balance Payment on Completion of Work"
                                     value={formData.conditionOfPayments}
                                     onChange={(e) => handleFormChange('conditionOfPayments', e.target.value)}
@@ -2049,7 +2049,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Completion of Work</label>
                                 <input 
                                     type="text"
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                     placeholder="e.g. 4 to 6 working Days after the Order Confirmation."
                                     value={formData.completionOfWork}
                                     onChange={(e) => handleFormChange('completionOfWork', e.target.value)}
@@ -2060,7 +2060,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Validity (Quotation / Invoice)</label>
                                 <input 
                                     type="text"
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                     placeholder="e.g. 30 Working Days From the Issued Date.."
                                     value={formData.validityQuotation}
                                     onChange={(e) => handleFormChange('validityQuotation', e.target.value)}
@@ -2071,7 +2071,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Warranty</label>
                                 <textarea 
                                     rows={2}
-                                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                     placeholder="e.g. a). Please See the Description..&#10;b). Warranty Will be Issued with the Invoice."
                                     value={formData.warrantyCondition}
                                     onChange={(e) => handleFormChange('warrantyCondition', e.target.value)}
@@ -2086,7 +2086,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Notes / Internal Notes</label>
                             <textarea 
                                 rows={4}
-                                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white"
+                                className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                 placeholder="Special notes, internal references..."
                                 value={formData.notes}
                                 onChange={(e) => handleFormChange('notes', e.target.value)}
@@ -2102,7 +2102,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <span>Labor Cost / Workmanship</span>
                                 <input 
                                     type="number" 
-                                    className="w-28 px-2 py-1 border rounded text-right font-mono text-xs bg-white text-emerald-700 font-bold"
+                                    className="w-28 px-2 py-1 border border-gray-300 dark:border-slate-700 rounded text-right font-mono text-xs bg-white dark:bg-[#132238] text-emerald-700 dark:text-emerald-400 font-bold"
                                     value={formData.laborCost} 
                                     onChange={(e) => handleFormChange('laborCost', Number(e.target.value))}
                                 />
@@ -2190,7 +2190,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 {previewQuote && (
                     <div className="p-3 sm:p-6 space-y-6">
                         {/* Language & Header Controls */}
-                        <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200 flex-wrap gap-3">
+                        <div className="flex items-center justify-between bg-gray-50 dark:bg-[#111F33] p-3 rounded-xl border border-gray-200 dark:border-slate-800 flex-wrap gap-3">
                             {/* With Header / Without Header Mode Selector */}
                             <div className="flex items-center rounded-lg border border-gray-300 bg-white p-0.5 text-xs font-semibold shadow-xs">
                                 <button
@@ -2364,7 +2364,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
             {/* Convert to Project Modal */}
             {isConvertToProjectOpen && (
                 <div className="fixed inset-0 bg-black/45 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+                    <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
                         <div className="flex justify-between items-center mb-4 border-b pb-2">
                             <h3 className="text-lg font-bold text-slate-800">Convert to Project</h3>
                             <button onClick={() => setIsConvertToProjectOpen(false)} className="text-gray-400 hover:text-slate-600 text-lg">×</button>
@@ -2377,7 +2377,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     required
                                     value={convertProjectYard}
                                     onChange={(e) => setConvertProjectYard(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                     placeholder="e.g. JA-ELA Workshop / Yard 1"
                                 />
                             </div>
@@ -2490,7 +2490,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
             {/* Revert Conversion Modal */}
             {isRevertModalOpen && revertQuote && (
                 <div className="fixed inset-0 bg-black/45 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative space-y-4">
+                    <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative space-y-4">
                         <div className="flex justify-between items-center pb-2 border-b">
                             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                 <RotateCcw className="w-5 h-5 text-amber-600" />
@@ -2558,7 +2558,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
             {/* Cancel Quotation / Project Modal */}
             {cancelModalOpen && targetCancelQuote && (
                 <div className="fixed inset-0 bg-black/45 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative space-y-4 animate-[slideUp_0.2s_ease-out]">
+                    <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative space-y-4 animate-[slideUp_0.2s_ease-out]">
                         <div className="flex justify-between items-center pb-2 border-b">
                             <h3 className="text-lg font-bold text-rose-700 flex items-center gap-2">
                                 <XCircle className="w-5 h-5 text-rose-600" />
@@ -2615,7 +2615,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 const targetQuote = selectedConvertQuoteForInvoice || previewQuote;
                 return (
                     <div className="fixed inset-0 bg-black/45 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-[slideUp_0.2s_ease-out]">
+                        <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-[slideUp_0.2s_ease-out]">
                             <div className="flex justify-between items-center mb-4 border-b pb-2">
                                 <h3 className="text-lg font-bold text-slate-800">Convert to Invoice</h3>
                                 <button onClick={() => { setIsConvertToInvoiceOpen(false); setSelectedConvertQuoteForInvoice(null); }} className="text-gray-400 hover:text-slate-600 text-lg font-bold">×</button>
@@ -2631,7 +2631,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <select
                                     value={convertInvoiceType}
                                     onChange={(e) => setConvertInvoiceType(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                 >
                                     <option value="commercial">Commercial / Standard Tax Invoice</option>
                                     <option value="proforma">Proforma Invoice (PI)</option>
@@ -2647,7 +2647,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     value={convertInvoiceAdvanceAmount}
                                     onChange={(e) => setConvertInvoiceAdvanceAmount(e.target.value)}
                                     placeholder="e.g. 50000"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold font-mono bg-white"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-bold font-mono bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                 />
                                 <p className="text-[11px] text-gray-500">Entering an advance amount will deduct it from the total invoice amount and show balance due.</p>
                             </div>
@@ -2659,7 +2659,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         <select
                                             value={convertInvoicePaymentMethod}
                                             onChange={(e) => setConvertInvoicePaymentMethod(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                         >
                                             <option value="cash">Cash</option>
                                             <option value="bank_transfer">Bank Transfer</option>
@@ -2674,7 +2674,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                             <select
                                                 value={convertInvoiceBankAccountId}
                                                 onChange={(e) => setConvertInvoiceBankAccountId(e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                             >
                                                 <option value="">-- Select Bank Account --</option>
                                                 {bankAccounts.map((acc) => (
@@ -2693,7 +2693,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                             value={convertInvoiceReference}
                                             onChange={(e) => setConvertInvoiceReference(e.target.value)}
                                             placeholder="Txn ID, cheque #, or reference"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                         />
                                     </div>
                                 </>

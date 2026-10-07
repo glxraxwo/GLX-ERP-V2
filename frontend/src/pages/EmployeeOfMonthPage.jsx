@@ -51,7 +51,7 @@ export default function EmployeeOfMonthPage() {
                         className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-primary-500 outline-none">
                         {[2024,2025,2026,2027].map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <button onClick={fetchData} className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                    <button onClick={fetchData} className="p-2 border border-gray-200 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 transition">
                         <RefreshCw size={16} className="text-gray-500" />
                     </button>
                 </div>
@@ -74,7 +74,7 @@ export default function EmployeeOfMonthPage() {
                     {[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl border border-gray-200 h-64 animate-pulse" />)}
                 </div>
             ) : data.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center">
+                <div className="bg-white dark:bg-[#111F33] rounded-2xl border border-gray-200 dark:border-slate-800 p-16 text-center text-gray-500 dark:text-slate-400">
                     <Trophy size={48} className="mx-auto text-gray-200 mb-4" />
                     <p className="text-gray-400 font-medium">No attendance records for this period</p>
                     <p className="text-gray-300 text-sm mt-1">Mark attendance to see employee rankings</p>
@@ -119,8 +119,8 @@ export default function EmployeeOfMonthPage() {
                     </div>
 
                     {/* Full ranking table */}
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+                    <div className="bg-white dark:bg-[#111F33] rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-[#132238]/60">
                             <h4 className="font-bold text-gray-800">Full Ranking</h4>
                         </div>
                         <table className="w-full text-left">
@@ -135,7 +135,7 @@ export default function EmployeeOfMonthPage() {
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {data.map((emp, i) => (
-                                    <tr key={emp.employeeId} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={emp.employeeId} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors border-b border-gray-100 dark:border-slate-800/60">
                                         <td className="px-5 py-4 text-lg">{['🥇','🥈','🥉'][i] || `#${i+1}`}</td>
                                         <td className="px-5 py-4">
                                             <p className="font-bold text-gray-900">{emp.name}</p>

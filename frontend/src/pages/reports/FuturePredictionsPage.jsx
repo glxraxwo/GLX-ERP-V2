@@ -332,7 +332,7 @@ export default function FuturePredictionsPage() {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex border-b border-gray-200 bg-white p-1.5 rounded-xl shadow-sm gap-2">
+            <div className="flex border-b border-gray-200 dark:border-slate-800 bg-white dark:bg-[#111F33] p-1.5 rounded-xl shadow-sm gap-2">
                 {[
                     { id: 'sales', label: 'Sales & Revenue Forecast', icon: TrendingUp },
                     { id: 'stock', label: 'Stockout & Depletion Risk', icon: Boxes },
@@ -430,12 +430,12 @@ export default function FuturePredictionsPage() {
                             <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">Regression Analysis</h4>
 
                             <div className="space-y-4">
-                                <div className="p-3 bg-white border border-indigo-100 rounded-xl shadow-sm">
+                                <div className="p-3 bg-white dark:bg-[#111F33] border border-indigo-100 dark:border-slate-700 rounded-xl shadow-sm">
                                     <span className="text-xs text-gray-400 block font-semibold">Predicted Revenue (Next 4 weeks)</span>
                                     <span className="text-xl font-bold text-indigo-900">{fmtCurrency(salesProjections.next4Weeks)}</span>
                                 </div>
 
-                                <div className="p-3 bg-white border border-indigo-100 rounded-xl shadow-sm">
+                                <div className="p-3 bg-white dark:bg-[#111F33] border border-indigo-100 dark:border-slate-700 rounded-xl shadow-sm">
                                     <span className="text-xs text-gray-400 block font-semibold">Predicted Revenue (Next 8 weeks)</span>
                                     <span className="text-xl font-bold text-indigo-900">{fmtCurrency(salesProjections.next8Weeks)}</span>
                                 </div>
@@ -454,7 +454,7 @@ export default function FuturePredictionsPage() {
                         </Card>
 
                         {/* Recommendation alert */}
-                        <Card className="p-4 bg-slate-50 border border-slate-100 flex items-start gap-3">
+                        <Card className="p-4 bg-slate-50 dark:bg-[#132238] border border-slate-100 dark:border-slate-700 flex items-start gap-3">
                             <AlertTriangle size={20} className="text-slate-500 mt-0.5 flex-shrink-0" />
                             <div className="text-xs text-slate-600 leading-normal">
                                 <p className="font-semibold text-slate-800 mb-0.5">Procurement Suggestion</p>
@@ -478,17 +478,17 @@ export default function FuturePredictionsPage() {
                             {/* Search & Filters */}
                             <div className="flex flex-wrap items-center gap-3">
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+                                    <Search className="absolute left-3 top-2.5 text-gray-400 dark:text-slate-500 w-4 h-4" />
                                     <input
                                         type="text"
                                         placeholder="Search product..."
                                         value={stockSearch}
                                         onChange={(e) => setStockSearch(e.target.value)}
-                                        className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-52 bg-slate-50"
+                                        className="pl-9 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-52 bg-slate-50 dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500"
                                     />
                                 </div>
 
-                                <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl">
+                                <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                                     {[
                                         { id: 'all', label: 'All' },
                                         { id: 'critical', label: 'Critical' },
@@ -500,7 +500,7 @@ export default function FuturePredictionsPage() {
                                             onClick={() => setStockFilter(f.id)}
                                             className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                                                 stockFilter === f.id
-                                                    ? 'bg-white text-gray-900 shadow-sm'
+                                                    ? 'bg-white dark:bg-[#111F33] text-gray-900 dark:text-white shadow-sm'
                                                     : 'text-gray-500 hover:text-gray-800'
                                             }`}
                                         >
@@ -541,7 +541,7 @@ export default function FuturePredictionsPage() {
                                             const progressPct = Math.min(100, (item.daysRemaining / 30) * 100);
 
                                             return (
-                                                <tr key={item.productId} className="hover:bg-slate-50 transition-colors">
+                                                <tr key={item.productId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-gray-100 dark:border-slate-800/60">
                                                     <td className="py-3.5 px-4">
                                                         <div className="font-semibold text-gray-800">{item.productName}</div>
                                                         <div className="text-[10px] text-gray-400 font-mono">{item.productCode}</div>
@@ -630,7 +630,7 @@ export default function FuturePredictionsPage() {
 
                         {/* Model Confidence Check */}
                         {simulatorProductData && (
-                            <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl flex items-start gap-2.5">
+                            <div className="p-3.5 bg-slate-50 dark:bg-[#132238] border border-slate-100 dark:border-slate-700 rounded-xl flex items-start gap-2.5">
                                 <Scale size={18} className="text-slate-500 flex-shrink-0 mt-0.5" />
                                 <div className="text-xs text-slate-600">
                                     <p className="font-bold text-gray-800 mb-0.5">Model Reliability</p>
@@ -784,7 +784,7 @@ export default function FuturePredictionsPage() {
                             <h4 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-4">Cash Outflow Forecast</h4>
 
                             <div className="space-y-4">
-                                <div className="p-3 bg-white border border-pink-100 rounded-xl shadow-sm">
+                                <div className="p-3 bg-white dark:bg-[#111F33] border border-pink-100 dark:border-slate-700 rounded-xl shadow-sm">
                                     <span className="text-xs text-gray-400 block font-semibold">Predicted 4-Week Cash Requirements</span>
                                     <span className="text-xl font-bold text-pink-900">{fmtCurrency(expenseProjections.next4Weeks)}</span>
                                 </div>
