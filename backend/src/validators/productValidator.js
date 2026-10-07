@@ -49,7 +49,7 @@ export const createProductSchema = z.object({
     brandId: objectId.optional(),
     tags: z.array(z.string()).optional(),
     type: z.enum(['manufactured', 'trading', 'service', 'bundle']).optional(),
-    unitOfMeasure: z.string().min(1),
+    unitOfMeasure: z.string().optional(),
     basePrice: z.number().min(0),
     mrp: z.number().min(0).optional(),
     tierPricing: z.array(z.object({

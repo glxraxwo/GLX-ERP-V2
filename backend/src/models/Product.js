@@ -182,7 +182,7 @@ productSchema.pre('save', async function () {
         const cat = await Category.findById(this.categoryId);
         const codeBase = cat ? (cat.code || cat.name) : 'GEN';
         const shortCode = codeBase.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase();
-        const pShort = this.productShortCode ? this.productShortCode.toUpperCase() : 'PRD';
+        const pShort = this.productShortCode ? `${this.productShortCode.toUpperCase()}-` : '';
         
         const today = new Date();
         const utcToday = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
@@ -192,7 +192,7 @@ productSchema.pre('save', async function () {
         const yearShort = today.getFullYear().toString().slice(-2);
         const sequenceNo = seq.toString().padStart(2, '0');
         
-        this.productCode = `P-${shortCode}-${pShort}-${yearShort}${julianDay}-${sequenceNo}`;
+        this.productCode = `P-${shortCode}-${pShort}${yearShort}${julianDay}-${sequenceNo}`;
     }
 });
 

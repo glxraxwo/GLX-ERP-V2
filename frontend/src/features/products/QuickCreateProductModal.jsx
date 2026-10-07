@@ -7,7 +7,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import { useCreateProduct } from './useProducts';
-import { useCategories, useUoms } from './useProducts';
+import { useCategories } from './useProducts';
 import { generateSinhalaProductName } from '../../utils/translationService';
 
 /**
@@ -24,7 +24,6 @@ export default function QuickCreateProductModal({
         description: '',
         productType: defaultProductType,
         categoryId: '',
-        unitOfMeasure: 'pcs',
         basePrice: 0,
         purchasePrice: 0,
         canBeSold: defaultProductType !== 'raw_material',
@@ -34,10 +33,8 @@ export default function QuickCreateProductModal({
 
     const createMutation = useCreateProduct();
     const { data: categoriesData } = useCategories({ isActive: 'true' });
-    const { data: uomsData } = useUoms();
 
     const categoryOptions = (categoriesData?.data || []).map((c) => ({ value: c._id, label: c.name }));
-    const uomOptions = (uomsData?.data || []).map((u) => ({ value: u.code, label: `${u.name} (${u.code})` }));
 
     const handleAutoGenerateSinhala = async () => {
         if (!form.name?.trim()) {
@@ -70,7 +67,6 @@ export default function QuickCreateProductModal({
                 description: form.description?.trim() || undefined,
                 productType: form.productType,
                 categoryId: form.categoryId || undefined,
-                unitOfMeasure: form.unitOfMeasure,
                 basePrice: +form.basePrice || 0,
                 costs: {
                     lastPurchaseCost: +form.purchasePrice || 0,
@@ -85,7 +81,7 @@ export default function QuickCreateProductModal({
 
             setForm({
                 name: '', sinhalaName: '', description: '', productType: defaultProductType, categoryId: '',
-                unitOfMeasure: 'pcs', basePrice: 0, purchasePrice: 0,
+                basePrice: 0, purchasePrice: 0,
                 canBeSold: defaultProductType !== 'raw_material', canBePurchased: true,
             });
 
@@ -144,7 +140,7 @@ export default function QuickCreateProductModal({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div>
                     <Select label="Type"
                         options={[
                             { value: 'finished_good', label: 'Finished Good (sellable)' },
@@ -161,9 +157,6 @@ export default function QuickCreateProductModal({
                                 canBeSold: v !== 'raw_material',
                             }));
                         }} />
-                    <Select label="Unit of Measure" required options={uomOptions}
-                        value={form.unitOfMeasure}
-                        onChange={(e) => setForm((f) => ({ ...f, unitOfMeasure: e.target.value }))} />
                 </div>
 
                 <Select label="Category" placeholder="Uncategorized" options={categoryOptions}

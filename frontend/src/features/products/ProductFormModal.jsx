@@ -15,7 +15,7 @@ import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import CreatableCombobox from '../../components/ui/CreatableCombobox';
 import { productFormSchema } from './productSchemas';
-import { useCategories, useBrands, useUoms, useCreateProduct, useUpdateProduct } from './useProducts';
+import { useCategories, useCreateProduct, useUpdateProduct } from './useProducts';
 import { productsApi } from './productsApi';
 import { masterDataApi } from '../masterData/masterDataApi';
 import { generateSinhalaProductName } from '../../utils/translationService';
@@ -25,8 +25,6 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
     const qc = useQueryClient();
 
     const { data: categoriesData } = useCategories();
-    const { data: brandsData } = useBrands();
-    const { data: uomsData } = useUoms();
     const createProduct = useCreateProduct();
     const updateProduct = useUpdateProduct();
 
@@ -38,18 +36,6 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
             return res?.data;
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to create category');
-            throw err;
-        }
-    };
-
-    const handleCreateBrand = async (name) => {
-        try {
-            const res = await masterDataApi.createBrand({ name });
-            qc.invalidateQueries({ queryKey: ['brands'] });
-            toast.success(`Brand "${name}" created!`);
-            return res?.data;
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to create brand');
             throw err;
         }
     };
@@ -67,7 +53,6 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
             name: '',
             sinhalaName: '',
             productCode: '',
-            productShortCode: '',
             type: 'trading',
             status: 'active',
             taxable: true,
@@ -81,7 +66,6 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
             initialQuantity: 0,
             reorderLevel: 10,
             minimumLevel: 5,
-            brandId: '',
             canBeSold: true,
             canBePurchased: true,
             canBeManufactured: false,
@@ -93,11 +77,9 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
         if (isOpen && product) {
             reset({
                 productCode: product.productCode || '',
-                productShortCode: product.productShortCode || '',
                 name: product.name || '',
                 sinhalaName: product.sinhalaName || '',
                 shortName: product.shortName || '',
-                sku: product.sku || '',
                 barcode: product.barcode || '',
                 productType: product.productType || 'finished_good',
                 canBeSold: product.canBeSold ?? true,
@@ -105,9 +87,7 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                 canBeManufactured: product.canBeManufactured ?? false,
                 description: product.description || '',
                 categoryId: product.categoryId?._id || product.categoryId || '',
-                brandId: product.brandId?._id || product.brandId || '',
                 type: product.type || 'trading',
-                unitOfMeasure: product.unitOfMeasure || '',
                 basePrice: product.basePrice || 0,
                 cost: product.costs?.standardCost || 0,
                 minPrice: product.minPrice || 0,
@@ -134,7 +114,6 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
 
             reset({
                 productCode: '',
-                productShortCode: '',
                 type: 'trading',
                 status: 'active',
                 taxable: true,
@@ -150,30 +129,26 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                 initialQuantity: 0,
                 reorderLevel: 10,
                 minimumLevel: 5,
-                brandId: '',
                 canBeSold: forceProductType === 'raw_material' ? false : true,
                 canBePurchased: true,
                 canBeManufactured: forceProductType === 'raw_material' ? false : true,
                 description: '',
                 name: '',
                 sinhalaName: '',
-                sku: '',
                 barcode: '',
-                unitOfMeasure: '',
             });
         }
     }, [isOpen, product, reset, forceProductType, categoriesData]);
 
     const selectedCategoryId = watch('categoryId');
-    const selectedProductShortCode = watch('productShortCode');
     const [isLoadingCode, setIsLoadingCode] = useState(false);
 
     useEffect(() => {
-        if (!isEdit && isOpen && selectedCategoryId && selectedProductShortCode && selectedProductShortCode.length === 3) {
+        if (!isEdit && isOpen && selectedCategoryId) {
             const fetchNextCode = async () => {
                 setIsLoadingCode(true);
                 try {
-                    const response = await productsApi.getNextCode(selectedCategoryId, selectedProductShortCode);
+                    const response = await productsApi.getNextCode(selectedCategoryId);
                     if (response?.success && response?.productCode) {
                         setValue('productCode', response.productCode);
                     }
@@ -184,10 +159,10 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                 }
             };
             fetchNextCode();
-        } else if (!isEdit && isOpen && (!selectedCategoryId || !selectedProductShortCode || selectedProductShortCode.length !== 3)) {
+        } else if (!isEdit && isOpen && !selectedCategoryId) {
             setValue('productCode', '');
         }
-    }, [selectedCategoryId, selectedProductShortCode, isEdit, isOpen, setValue]);
+    }, [selectedCategoryId, isEdit, isOpen, setValue]);
 
     const onInvalid = (errors) => {
         console.error('Product validation failed:', errors);
@@ -235,11 +210,9 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
         // Transform flat form data back into nested structure for API
         const payload = {
             productCode: data.productCode || undefined,
-            productShortCode: data.productShortCode || undefined,
             name: data.name,
             sinhalaName: data.sinhalaName || '',
             shortName: data.name.substring(0, 100),
-            sku: data.sku || undefined,
             barcode: data.barcode || undefined,
             productType: forceProductType || data.productType,
             canBeSold: data.canBeSold !== undefined ? Boolean(data.canBeSold) : (forceProductType === 'raw_material' ? false : true),
@@ -247,9 +220,7 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
             canBeManufactured: data.canBeManufactured,
             description: data.description || undefined,
             categoryId: rawCat ? rawCat._id : data.categoryId,
-            brandId: data.brandId || undefined,
             type: determinedType,
-            unitOfMeasure: data.unitOfMeasure,
             basePrice: Number(data.basePrice) || 0,
             minPrice: Number(data.minPrice) || 0,
             initialQuantity: Number(data.initialQuantity) || 0,
@@ -297,14 +268,6 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
     const categoryOptions = (categoriesData?.data || []).map((c) => ({
         value: c._id,
         label: `${c.name} (${c.code})`,
-    }));
-    const brandOptions = (brandsData?.data || []).map((b) => ({
-        value: b._id,
-        label: b.name,
-    }));
-    const uomOptions = (uomsData?.data || []).map((u) => ({
-        value: u.symbol,
-        label: `${u.name} (${u.symbol})`,
     }));
 
     const isLoading = createProduct.isPending || updateProduct.isPending;
@@ -415,26 +378,6 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                                 {...register('status')}
                             />
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Select
-                                label="Unit of Measure (UOM) *"
-                                required
-                                error={errors.unitOfMeasure?.message}
-                                options={uomOptions}
-                                {...register('unitOfMeasure')}
-                            />
-                            <CreatableCombobox
-                                label="Product Brand"
-                                error={errors.brandId?.message}
-                                options={brandOptions}
-                                value={watch('brandId')}
-                                onChange={(val) => setValue('brandId', val, { shouldValidate: true })}
-                                onCreate={handleCreateBrand}
-                                createLabel="+ Create Brand"
-                                placeholder="Select or type new brand..."
-                            />
-                        </div>
                     </div>
 
                     {/* SECTION 2: CODES & BARCODE IDENTIFICATION */}
@@ -446,15 +389,7 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                             </h3>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <Input
-                                label="Short Code (e.g. MOR, CLR)"
-                                maxLength={3}
-                                placeholder="3 letter code"
-                                disabled={isEdit}
-                                error={errors.productShortCode?.message}
-                                {...register('productShortCode')}
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
                                 label="Product System Code"
                                 disabled
@@ -462,35 +397,28 @@ export default function ProductFormModal({ isOpen, onClose, product = null, forc
                                 error={errors.productCode?.message}
                                 {...register('productCode')}
                             />
-                            <Input
-                                label="SKU / Internal Code"
-                                placeholder="e.g. SKU-1002"
-                                error={errors.sku?.message}
-                                {...register('sku')}
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <div className="flex justify-between items-center">
-                                <label className="text-xs font-semibold text-gray-700 dark:text-slate-300">Barcode Number (තීරු කේතය)</label>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const generatedBarcode = 'BC' + Math.floor(100000000000 + Math.random() * 900000000000);
-                                        setValue('barcode', generatedBarcode, { shouldValidate: true, shouldDirty: true });
-                                    }}
-                                    className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 hover:text-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 shadow-xs"
-                                >
-                                    ⚡ Auto-Generate Barcode
-                                </button>
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-xs font-semibold text-gray-700 dark:text-slate-300">Barcode Number (තීරු කේතය)</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const generatedBarcode = 'BC' + Math.floor(100000000000 + Math.random() * 900000000000);
+                                            setValue('barcode', generatedBarcode, { shouldValidate: true, shouldDirty: true });
+                                        }}
+                                        className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 hover:text-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1 shadow-xs"
+                                    >
+                                        ⚡ Auto-Generate Barcode
+                                    </button>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Scan or enter barcode number"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 shadow-xs transition"
+                                    {...register('barcode')}
+                                />
+                                {errors.barcode?.message && <p className="text-xs text-red-500">{errors.barcode.message}</p>}
                             </div>
-                            <input
-                                type="text"
-                                placeholder="Scan or enter barcode number"
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 shadow-xs transition"
-                                {...register('barcode')}
-                            />
-                            {errors.barcode?.message && <p className="text-xs text-red-500">{errors.barcode.message}</p>}
                         </div>
                     </div>
 

@@ -53,9 +53,7 @@ export default function ProductsPage() {
     const exportColumns = [
         { header: 'Code', dataKey: 'productCode' },
         { header: 'Name', dataKey: 'name' },
-        { header: 'SKU', dataKey: 'sku' },
         { header: 'Category', dataKey: 'categoryName' },
-        { header: 'Brand', dataKey: 'brandName' },
         { header: 'On Hand Stock', dataKey: 'onHandStock' },
         { header: 'Open (POS) Stock', dataKey: 'openStock' },
         { header: 'Price', dataKey: 'basePrice' },
@@ -73,7 +71,6 @@ export default function ProductsPage() {
     const exportData = products.map(p => ({
         ...p,
         categoryName: p.categoryId?.name || '—',
-        brandName: p.brandId?.name || '—',
         onHandStock: p.stock?.onHand ?? 0,
         openStock: p.stock?.openStock ?? 0,
     }));
@@ -108,7 +105,6 @@ export default function ProductsPage() {
                         <p className="text-xs font-medium text-emerald-700">{row.sinhalaName}</p>
                     )}
                     <div className="flex flex-wrap gap-2 text-xs text-gray-500 font-mono mt-0.5">
-                        {row.sku && <span>SKU: {row.sku}</span>}
                         {row.barcode && <span className="text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">BC: {row.barcode}</span>}
                     </div>
                 </div>
@@ -120,11 +116,6 @@ export default function ProductsPage() {
             render: (row) => row.categoryId?.name || '—',
         },
         {
-            key: 'brandId',
-            label: 'Brand',
-            render: (row) => row.brandId?.name || '—',
-        },
-        {
             key: 'stock',
             label: 'Stock',
             render: (row) => {
@@ -133,7 +124,7 @@ export default function ProductsPage() {
                 return (
                     <div>
                         <span className={`font-semibold text-sm ${onHand > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
-                            {onHand} {row.unitOfMeasure || ''}
+                            {onHand}
                         </span>
                         {open > 0 && (
                             <span className="block text-[11px] text-emerald-600 font-medium">
@@ -253,7 +244,7 @@ export default function ProductsPage() {
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
                         <input
                             type="text"
-                            placeholder="Search by name, SKU, code..."
+                            placeholder="Search by name, code..."
                             className="w-full pl-9 pr-3 py-2.5 border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-200 dark:focus:ring-blue-900/40 focus:border-primary-500 text-[16px] min-h-[44px]"
                             value={filters.search}
                             onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))}

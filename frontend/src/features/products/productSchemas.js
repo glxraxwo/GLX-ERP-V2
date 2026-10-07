@@ -18,7 +18,7 @@ export const productFormSchema = z.object({
     categoryId: z.string().min(1, 'Category is required'),
     brandId: z.string().optional().or(z.literal('')),
     type: z.enum(['manufactured', 'trading', 'service', 'bundle']),
-    unitOfMeasure: z.string().min(1, 'Unit of measure is required'),
+    unitOfMeasure: z.string().optional().or(z.literal('')),
     basePrice: z.coerce.number().min(0, 'Price must be 0 or greater'),
     minPrice: z.coerce.number().min(0).optional(),
     cost: z.coerce.number().min(0).optional(),
