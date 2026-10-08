@@ -13,101 +13,113 @@ import { useThemeStore, THEME_MODES } from '../store/themeStore';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 const PINNED_ICON_PALETTES = [
+    // 1. Red (රතු)
     {
-        name: 'purple',
-        cardBg: 'bg-purple-100/75 hover:bg-purple-100 border-2 border-purple-300/80 hover:border-purple-400 shadow-sm shadow-purple-500/10 dark:bg-purple-950/40 dark:border-purple-500/50 dark:hover:bg-purple-900/40',
-        icon: 'bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-sm shadow-purple-500/30',
-        subtitle: 'text-purple-800 dark:text-purple-300 font-semibold',
-        hoverTitle: 'group-hover:text-purple-900 dark:group-hover:text-purple-200',
-        arrow: 'text-purple-700 dark:text-purple-300',
+        name: 'red',
+        cardBg: 'bg-red-50/90 hover:bg-red-100/90 border-2 border-red-300/90 hover:border-red-400 shadow-sm shadow-red-500/10 dark:bg-red-950/40 dark:border-red-500/50 dark:hover:bg-red-900/40',
+        icon: 'bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-sm shadow-red-500/30',
+        subtitle: 'text-red-700 dark:text-red-300 font-semibold',
+        hoverTitle: 'group-hover:text-red-900 dark:group-hover:text-red-200',
+        arrow: 'text-red-600 dark:text-red-300',
     },
-    {
-        name: 'sky',
-        cardBg: 'bg-sky-100/75 hover:bg-sky-100 border-2 border-sky-300/80 hover:border-sky-400 shadow-sm shadow-sky-500/10 dark:bg-sky-950/40 dark:border-sky-500/50 dark:hover:bg-sky-900/40',
-        icon: 'bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sm shadow-sky-500/30',
-        subtitle: 'text-sky-800 dark:text-sky-300 font-semibold',
-        hoverTitle: 'group-hover:text-sky-900 dark:group-hover:text-sky-200',
-        arrow: 'text-sky-700 dark:text-sky-300',
-    },
-    {
-        name: 'emerald',
-        cardBg: 'bg-emerald-100/75 hover:bg-emerald-100 border-2 border-emerald-300/80 hover:border-emerald-400 shadow-sm shadow-emerald-500/10 dark:bg-emerald-950/40 dark:border-emerald-500/50 dark:hover:bg-emerald-900/40',
-        icon: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30',
-        subtitle: 'text-emerald-800 dark:text-emerald-300 font-semibold',
-        hoverTitle: 'group-hover:text-emerald-900 dark:group-hover:text-emerald-200',
-        arrow: 'text-emerald-700 dark:text-emerald-300',
-    },
-    {
-        name: 'amber',
-        cardBg: 'bg-amber-100/75 hover:bg-amber-100 border-2 border-amber-300/80 hover:border-amber-400 shadow-sm shadow-amber-500/10 dark:bg-amber-950/40 dark:border-amber-500/50 dark:hover:bg-amber-900/40',
-        icon: 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-sm shadow-amber-500/30',
-        subtitle: 'text-amber-800 dark:text-amber-300 font-semibold',
-        hoverTitle: 'group-hover:text-amber-900 dark:group-hover:text-amber-200',
-        arrow: 'text-amber-700 dark:text-amber-300',
-    },
-    {
-        name: 'rose',
-        cardBg: 'bg-rose-100/75 hover:bg-rose-100 border-2 border-rose-300/80 hover:border-rose-400 shadow-sm shadow-rose-500/10 dark:bg-rose-950/40 dark:border-rose-500/50 dark:hover:bg-rose-900/40',
-        icon: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-sm shadow-rose-500/30',
-        subtitle: 'text-rose-800 dark:text-rose-300 font-semibold',
-        hoverTitle: 'group-hover:text-rose-900 dark:group-hover:text-rose-200',
-        arrow: 'text-rose-700 dark:text-rose-300',
-    },
-    {
-        name: 'indigo',
-        cardBg: 'bg-indigo-100/75 hover:bg-indigo-100 border-2 border-indigo-300/80 hover:border-indigo-400 shadow-sm shadow-indigo-500/10 dark:bg-indigo-950/40 dark:border-indigo-500/50 dark:hover:bg-indigo-900/40',
-        icon: 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm shadow-indigo-500/30',
-        subtitle: 'text-indigo-800 dark:text-indigo-300 font-semibold',
-        hoverTitle: 'group-hover:text-indigo-900 dark:group-hover:text-indigo-200',
-        arrow: 'text-indigo-700 dark:text-indigo-300',
-    },
-    {
-        name: 'teal',
-        cardBg: 'bg-teal-100/75 hover:bg-teal-100 border-2 border-teal-300/80 hover:border-teal-400 shadow-sm shadow-teal-500/10 dark:bg-teal-950/40 dark:border-teal-500/50 dark:hover:bg-teal-900/40',
-        icon: 'bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-sm shadow-teal-500/30',
-        subtitle: 'text-teal-800 dark:text-teal-300 font-semibold',
-        hoverTitle: 'group-hover:text-teal-900 dark:group-hover:text-teal-200',
-        arrow: 'text-teal-700 dark:text-teal-300',
-    },
+    // 2. Orange (තැඹිලි)
     {
         name: 'orange',
-        cardBg: 'bg-orange-100/75 hover:bg-orange-100 border-2 border-orange-300/80 hover:border-orange-400 shadow-sm shadow-orange-500/10 dark:bg-orange-950/40 dark:border-orange-500/50 dark:hover:bg-orange-900/40',
+        cardBg: 'bg-orange-50/90 hover:bg-orange-100/90 border-2 border-orange-300/90 hover:border-orange-400 shadow-sm shadow-orange-500/10 dark:bg-orange-950/40 dark:border-orange-500/50 dark:hover:bg-orange-900/40',
         icon: 'bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-sm shadow-orange-500/30',
-        subtitle: 'text-orange-800 dark:text-orange-300 font-semibold',
+        subtitle: 'text-orange-700 dark:text-orange-300 font-semibold',
         hoverTitle: 'group-hover:text-orange-900 dark:group-hover:text-orange-200',
-        arrow: 'text-orange-700 dark:text-orange-300',
+        arrow: 'text-orange-600 dark:text-orange-300',
     },
+    // 3. Yellow / Amber (කහ)
     {
-        name: 'blue',
-        cardBg: 'bg-blue-100/75 hover:bg-blue-100 border-2 border-blue-300/80 hover:border-blue-400 shadow-sm shadow-blue-500/10 dark:bg-blue-950/40 dark:border-blue-500/50 dark:hover:bg-blue-900/40',
-        icon: 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white shadow-sm shadow-blue-500/30',
-        subtitle: 'text-blue-800 dark:text-blue-300 font-semibold',
-        hoverTitle: 'group-hover:text-blue-900 dark:group-hover:text-blue-200',
-        arrow: 'text-blue-700 dark:text-blue-300',
+        name: 'amber',
+        cardBg: 'bg-amber-50/90 hover:bg-amber-100/90 border-2 border-amber-300/90 hover:border-amber-400 shadow-sm shadow-amber-500/10 dark:bg-amber-950/40 dark:border-amber-500/50 dark:hover:bg-amber-900/40',
+        icon: 'bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-sm shadow-amber-500/30',
+        subtitle: 'text-amber-700 dark:text-amber-300 font-semibold',
+        hoverTitle: 'group-hover:text-amber-900 dark:group-hover:text-amber-200',
+        arrow: 'text-amber-600 dark:text-amber-300',
     },
-    {
-        name: 'fuchsia',
-        cardBg: 'bg-fuchsia-100/75 hover:bg-fuchsia-100 border-2 border-fuchsia-300/80 hover:border-fuchsia-400 shadow-sm shadow-fuchsia-500/10 dark:bg-fuchsia-950/40 dark:border-fuchsia-500/50 dark:hover:bg-fuchsia-900/40',
-        icon: 'bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white shadow-sm shadow-fuchsia-500/30',
-        subtitle: 'text-fuchsia-800 dark:text-fuchsia-300 font-semibold',
-        hoverTitle: 'group-hover:text-fuchsia-900 dark:group-hover:text-fuchsia-200',
-        arrow: 'text-fuchsia-700 dark:text-fuchsia-300',
-    },
-    {
-        name: 'cyan',
-        cardBg: 'bg-cyan-100/75 hover:bg-cyan-100 border-2 border-cyan-300/80 hover:border-cyan-400 shadow-sm shadow-cyan-500/10 dark:bg-cyan-950/40 dark:border-cyan-500/50 dark:hover:bg-cyan-900/40',
-        icon: 'bg-gradient-to-br from-cyan-500 to-teal-500 text-white shadow-sm shadow-cyan-500/30',
-        subtitle: 'text-cyan-800 dark:text-cyan-300 font-semibold',
-        hoverTitle: 'group-hover:text-cyan-900 dark:group-hover:text-cyan-200',
-        arrow: 'text-cyan-700 dark:text-cyan-300',
-    },
+    // 4. Lime / Light Green (ලා කොළ)
     {
         name: 'lime',
-        cardBg: 'bg-lime-100/75 hover:bg-lime-100 border-2 border-lime-300/80 hover:border-lime-400 shadow-sm shadow-lime-500/10 dark:bg-lime-950/40 dark:border-lime-500/50 dark:hover:bg-lime-900/40',
+        cardBg: 'bg-lime-50/90 hover:bg-lime-100/90 border-2 border-lime-300/90 hover:border-lime-400 shadow-sm shadow-lime-500/10 dark:bg-lime-950/40 dark:border-lime-500/50 dark:hover:bg-lime-900/40',
         icon: 'bg-gradient-to-br from-lime-500 to-emerald-600 text-white shadow-sm shadow-lime-500/30',
-        subtitle: 'text-lime-900 dark:text-lime-300 font-semibold',
+        subtitle: 'text-lime-800 dark:text-lime-300 font-semibold',
         hoverTitle: 'group-hover:text-lime-950 dark:group-hover:text-lime-200',
-        arrow: 'text-lime-700 dark:text-lime-300',
+        arrow: 'text-lime-600 dark:text-lime-300',
+    },
+    // 5. Green / Emerald (කොළ)
+    {
+        name: 'emerald',
+        cardBg: 'bg-emerald-50/90 hover:bg-emerald-100/90 border-2 border-emerald-300/90 hover:border-emerald-400 shadow-sm shadow-emerald-500/10 dark:bg-emerald-950/40 dark:border-emerald-500/50 dark:hover:bg-emerald-900/40',
+        icon: 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/30',
+        subtitle: 'text-emerald-700 dark:text-emerald-300 font-semibold',
+        hoverTitle: 'group-hover:text-emerald-900 dark:group-hover:text-emerald-200',
+        arrow: 'text-emerald-600 dark:text-emerald-300',
+    },
+    // 6. Teal / Mint (ටීල්)
+    {
+        name: 'teal',
+        cardBg: 'bg-teal-50/90 hover:bg-teal-100/90 border-2 border-teal-300/90 hover:border-teal-400 shadow-sm shadow-teal-500/10 dark:bg-teal-950/40 dark:border-teal-500/50 dark:hover:bg-teal-900/40',
+        icon: 'bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-sm shadow-teal-500/30',
+        subtitle: 'text-teal-700 dark:text-teal-300 font-semibold',
+        hoverTitle: 'group-hover:text-teal-900 dark:group-hover:text-teal-200',
+        arrow: 'text-teal-600 dark:text-teal-300',
+    },
+    // 7. Cyan / Sky (ලා නිල්)
+    {
+        name: 'cyan',
+        cardBg: 'bg-cyan-50/90 hover:bg-cyan-100/90 border-2 border-cyan-300/90 hover:border-cyan-400 shadow-sm shadow-cyan-500/10 dark:bg-cyan-950/40 dark:border-cyan-500/50 dark:hover:bg-cyan-900/40',
+        icon: 'bg-gradient-to-br from-cyan-500 to-blue-500 text-white shadow-sm shadow-cyan-500/30',
+        subtitle: 'text-cyan-700 dark:text-cyan-300 font-semibold',
+        hoverTitle: 'group-hover:text-cyan-900 dark:group-hover:text-cyan-200',
+        arrow: 'text-cyan-600 dark:text-cyan-300',
+    },
+    // 8. Blue / Royal (තද නිල්)
+    {
+        name: 'blue',
+        cardBg: 'bg-blue-50/90 hover:bg-blue-100/90 border-2 border-blue-300/90 hover:border-blue-400 shadow-sm shadow-blue-500/10 dark:bg-blue-950/40 dark:border-blue-500/50 dark:hover:bg-blue-900/40',
+        icon: 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-500/30',
+        subtitle: 'text-blue-700 dark:text-blue-300 font-semibold',
+        hoverTitle: 'group-hover:text-blue-900 dark:group-hover:text-blue-200',
+        arrow: 'text-blue-600 dark:text-blue-300',
+    },
+    // 9. Indigo (ඉන්ඩිගෝ)
+    {
+        name: 'indigo',
+        cardBg: 'bg-indigo-50/90 hover:bg-indigo-100/90 border-2 border-indigo-300/90 hover:border-indigo-400 shadow-sm shadow-indigo-500/10 dark:bg-indigo-950/40 dark:border-indigo-500/50 dark:hover:bg-indigo-900/40',
+        icon: 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm shadow-indigo-500/30',
+        subtitle: 'text-indigo-700 dark:text-indigo-300 font-semibold',
+        hoverTitle: 'group-hover:text-indigo-900 dark:group-hover:text-indigo-200',
+        arrow: 'text-indigo-600 dark:text-indigo-300',
+    },
+    // 10. Purple / Violet (දම්)
+    {
+        name: 'purple',
+        cardBg: 'bg-purple-50/90 hover:bg-purple-100/90 border-2 border-purple-300/90 hover:border-purple-400 shadow-sm shadow-purple-500/10 dark:bg-purple-950/40 dark:border-purple-500/50 dark:hover:bg-purple-900/40',
+        icon: 'bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white shadow-sm shadow-purple-500/30',
+        subtitle: 'text-purple-700 dark:text-purple-300 font-semibold',
+        hoverTitle: 'group-hover:text-purple-900 dark:group-hover:text-purple-200',
+        arrow: 'text-purple-600 dark:text-purple-300',
+    },
+    // 11. Fuchsia / Magenta (මැජෙන්ටා)
+    {
+        name: 'fuchsia',
+        cardBg: 'bg-fuchsia-50/90 hover:bg-fuchsia-100/90 border-2 border-fuchsia-300/90 hover:border-fuchsia-400 shadow-sm shadow-fuchsia-500/10 dark:bg-fuchsia-950/40 dark:border-fuchsia-500/50 dark:hover:bg-fuchsia-900/40',
+        icon: 'bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-sm shadow-fuchsia-500/30',
+        subtitle: 'text-fuchsia-700 dark:text-fuchsia-300 font-semibold',
+        hoverTitle: 'group-hover:text-fuchsia-900 dark:group-hover:text-fuchsia-200',
+        arrow: 'text-fuchsia-600 dark:text-fuchsia-300',
+    },
+    // 12. Rose / Pink (රෝස)
+    {
+        name: 'rose',
+        cardBg: 'bg-rose-50/90 hover:bg-rose-100/90 border-2 border-rose-300/90 hover:border-rose-400 shadow-sm shadow-rose-500/10 dark:bg-rose-950/40 dark:border-rose-500/50 dark:hover:bg-rose-900/40',
+        icon: 'bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-sm shadow-rose-500/30',
+        subtitle: 'text-rose-700 dark:text-rose-300 font-semibold',
+        hoverTitle: 'group-hover:text-rose-900 dark:group-hover:text-rose-200',
+        arrow: 'text-rose-600 dark:text-rose-300',
     },
 ];
 
@@ -587,6 +599,17 @@ export default function AppHubPage() {
                 {/* ── Pinned Shortcuts inside Banner ── */}
                 {pinnedItems.length > 0 && (
                     <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-slate-700/60 relative z-10">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <span className="h-2 w-7 rounded-full bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 via-sky-500 via-indigo-500 to-purple-500 shadow-xs" />
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                                    Quick Access Bar (ඉක්මන් ප්‍රවේශය)
+                                </h3>
+                            </div>
+                            <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 hidden sm:inline">
+                                {pinnedItems.length} shortcuts pinned
+                            </span>
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                             {pinnedItems.map((item, idx) => {
                                 const IconComponent = item.icon;
