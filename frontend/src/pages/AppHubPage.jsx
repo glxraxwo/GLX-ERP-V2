@@ -599,17 +599,6 @@ export default function AppHubPage() {
                 {/* ── Pinned Shortcuts inside Banner ── */}
                 {pinnedItems.length > 0 && (
                     <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-slate-700/60 relative z-10">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                                <span className="h-2 w-7 rounded-full bg-gradient-to-r from-red-500 via-yellow-400 via-green-500 via-sky-500 via-indigo-500 to-purple-500 shadow-xs" />
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                                    Quick Access Bar (ඉක්මන් ප්‍රවේශය)
-                                </h3>
-                            </div>
-                            <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 hidden sm:inline">
-                                {pinnedItems.length} shortcuts pinned
-                            </span>
-                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                             {pinnedItems.map((item, idx) => {
                                 const IconComponent = item.icon;
