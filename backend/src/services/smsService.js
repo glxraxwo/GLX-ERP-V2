@@ -1,7 +1,14 @@
+import fs from 'fs-extra';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import SmsLog from '../models/SmsLog.js';
 import Supplier from '../models/Supplier.js';
+import { generateDocumentPDF } from './documentPdfService.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const BACKUPS_PDF_DIR = path.join(__dirname, '../../backups/pdfs');
 
 export const formatSmsContact = (phone) => {
     if (!phone || phone === 'N/A') return null;
@@ -492,88 +499,22 @@ export const sendPaymentSheetSms = async (employeeData, employeePhone, startDate
 };
 
 /**
- * PDF Auto-backup: Generates a raw PDF copy and saves it locally.
+ * PDF Auto-backup: Generates a high-quality PDF copy and saves it to backups folder.
  */
 export const backupDocumentAsPdf = async (doc, docType) => {
     try {
-        const dir = path.resolve('backend/backups/pdfs');
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        const docCode = doc.quotationCode || doc.invoiceNumber || doc._id.toString();
-        const filename = `${docType}_${docCode.replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
-        const dest = path.join(dir, filename);
+        await fs.ensureDir(BACKUPS_PDF_DIR);
+        const docCode = doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || doc._id.toString();
+        const filename = `${docType}_${String(docCode).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
+        const dest = path.join(BACKUPS_PDF_DIR, filename);
         
-        const content = `%PDF-1.4
-%âãÏÓ
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/Resources <<
-/Font <<
-/F1 <<
-/Type /Font
-/Subtype /Type1
-/BaseFont /Helvetica
->>
->>
->>
-/MediaBox [0 0 595 842]
-/Contents 4 0 R
->>
-endobj
-4 0 obj
-<< /Length 500 >>
-stream
-BT
-/F1 12 Tf
-70 800 Td
-(GLX INDUSTRIES - ${docType.toUpperCase()} BACKUP) Tj
-70 780 Td
-(Document Code: ${docCode}) Tj
-70 760 Td
-(Date: ${new Date(doc.createdAt || Date.now()).toLocaleDateString('en-GB')}) Tj
-70 740 Td
-(Customer: ${doc.customerName || doc.customerSnapshot?.name || 'Valued Customer'}) Tj
-70 720 Td
-(Total Amount: LKR ${doc.grandTotal || doc.totalAmount || 0}) Tj
-ET
-endstream
-endobj
-xref
-0 5
-0000000000 65535 f 
-0000000015 00000 n 
-0000000074 00000 n 
-0000000134 00000 n 
-0000000300 00000 n 
-trailer
-<<
-/Size 5
-/Root 1 0 R
->>
-startxref
-450
-%%EOF`;
-        
-        fs.writeFileSync(dest, content, 'utf8');
+        const buffer = await generateDocumentPDF({ doc, docType });
+        await fs.writeFile(dest, buffer);
         console.log(`✓ Backup PDF successfully saved: ${dest}`);
+        return dest;
     } catch (err) {
         console.error('[Backup Service] Failed to create PDF backup:', err.message);
+        return null;
     }
 };
 

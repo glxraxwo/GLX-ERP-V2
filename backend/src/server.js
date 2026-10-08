@@ -325,13 +325,23 @@ app.post('/api/documents/:id/share-sms', protect, asyncHandler(async (req, res) 
 app.get('/api/documents/:id/download-pdf', protect, asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { documentType } = req.query;
-    const { backupDocumentAsPdf } = await import('./services/smsService.js');
+    const { generateDocumentPDF } = await import('./services/documentPdfService.js');
+    const Settings = (await import('./models/Settings.js')).default;
+    const settings = await Settings.findOne().lean();
     
     let doc;
-    if (documentType === 'invoice') {
-        doc = await Invoice.findById(id);
+    const docType = documentType || 'quotation';
+    if (docType === 'invoice') {
+        doc = await Invoice.findById(id)
+            .populate('customerId', 'displayName companyName primaryContact billingAddress')
+            .populate('items.productId', 'name productCode uom basePrice sku')
+            .lean();
     } else {
-        doc = await Quotation.findById(id);
+        doc = await Quotation.findById(id)
+            .populate('customerId', 'displayName companyName primaryContact billingAddress')
+            .populate('introducer', 'firstName lastName callingName employeeCode')
+            .populate('items.product', 'name productCode uom basePrice sku')
+            .lean();
     }
     
     if (!doc) {
@@ -339,16 +349,14 @@ app.get('/api/documents/:id/download-pdf', protect, asyncHandler(async (req, res
         throw new Error('Document not found');
     }
     
-    const docCode = doc.quotationCode || doc.invoiceNumber || doc._id.toString();
-    const filename = `${documentType || 'document'}_${docCode.replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
-    const dir = path.resolve('backend/backups/pdfs');
-    const filePath = path.join(dir, filename);
+    const docCode = doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || doc._id.toString();
+    const filename = `${docType}_${String(docCode).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
     
-    if (!fs.existsSync(filePath)) {
-        await backupDocumentAsPdf(doc, documentType || 'quotation');
-    }
+    const pdfBuffer = await generateDocumentPDF({ doc, docType, settings });
     
-    res.download(filePath, filename);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
 }));
 
 // Next document ID endpoint (read-only candidate generation for UI visibility)

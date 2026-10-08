@@ -59,20 +59,29 @@ export default function PublicDocumentViewPage() {
     }, [token]);
 
     const handleDownloadPDF = async () => {
-        if (!printRef.current) return;
         setDownloading(true);
         try {
-            const docNum = doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'document';
-            const fileName = `${docType}_${String(docNum).replace(/[\/\\:]/g, '_')}.pdf`;
-            await exportElementToPDF(printRef.current, fileName);
+            if (printRef.current) {
+                const docNum = doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'document';
+                const fileName = `${docType}_${String(docNum).replace(/[\/\\:]/g, '_')}.pdf`;
+                await exportElementToPDF(printRef.current, fileName);
+                setDownloading(false);
+                return;
+            }
         } catch (err) {
-            console.error('PDF export failed:', err);
-            // Fallback: direct server download
-            const directUrl = `${getApiUrl()}/public/documents/${token}/download`;
-            window.open(directUrl, '_blank');
+            console.warn('In-browser PDF export failed, falling back to server PDF download:', err);
         } finally {
             setDownloading(false);
         }
+
+        // Direct server download fallback: streams clean PDF directly from server
+        const directUrl = `${getApiUrl()}/public/documents/${token}/download`;
+        const link = document.createElement('a');
+        link.href = directUrl;
+        link.download = `${docType}_${String(doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || 'document').replace(/[\/\\:]/g, '_')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     if (loading) {
@@ -450,18 +459,20 @@ export default function PublicDocumentViewPage() {
                 {/* ══════════════════════════════════════════════════════
                     2. OFFICIAL A4 PRINT VIEW (Desktop default or toggled)
                 ══════════════════════════════════════════════════════ */}
-                <div className={`${viewMode === 'mobile' ? 'hidden md:block' : 'block'} print:block`}>
+                <div className={viewMode === 'mobile' ? 'fixed -left-[9999px] top-0 w-[800px] pointer-events-none z-[-50] md:static md:w-auto md:pointer-events-auto md:z-auto' : 'block print:block'}>
                     {/* Horizontal scroll notice for mobile if in A4 mode */}
-                    <div className="no-print md:hidden bg-blue-50 border border-blue-200 text-blue-700 text-[11px] p-2 rounded-xl mb-3 flex items-center justify-between">
-                        <span>💡 Pan horizontally to view full official sheet</span>
-                        <button 
-                            type="button" 
-                            onClick={() => setViewMode('mobile')}
-                            className="font-bold underline text-blue-800"
-                        >
-                            Back to Mobile View
-                        </button>
-                    </div>
+                    {viewMode === 'a4' && (
+                        <div className="no-print md:hidden bg-blue-50 border border-blue-200 text-blue-700 text-[11px] p-2 rounded-xl mb-3 flex items-center justify-between">
+                            <span>💡 Pan horizontally to view full official sheet</span>
+                            <button 
+                                type="button" 
+                                onClick={() => setViewMode('mobile')}
+                                className="font-bold underline text-blue-800"
+                            >
+                                Back to Mobile View
+                            </button>
+                        </div>
+                    )}
 
                     <div className="bg-white shadow-sm border border-slate-200 rounded-2xl print:shadow-none print:border-0 print:p-0 overflow-x-auto">
                         <div className="min-w-[760px] p-2 sm:p-6 md:p-8 mx-auto">

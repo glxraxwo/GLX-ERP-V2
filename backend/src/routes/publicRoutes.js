@@ -54,16 +54,25 @@ router.get('/documents/:token', asyncHandler(async (req, res) => {
 
 /**
  * GET /api/public/documents/:token/download
- * Download raw PDF file passwordless
+ * Download professional PDF file passwordless
  */
 router.get('/documents/:token/download', asyncHandler(async (req, res) => {
     const { token } = req.params;
-    const { backupDocumentAsPdf } = await import('../services/smsService.js');
+    const { generateDocumentPDF } = await import('../services/documentPdfService.js');
+    const settings = await Settings.findOne().lean();
     
-    let doc = await Quotation.findOne({ publicToken: token });
+    let doc = await Quotation.findOne({ publicToken: token })
+        .populate('customerId', 'displayName companyName primaryContact billingAddress')
+        .populate('introducer', 'firstName lastName callingName employeeCode')
+        .populate('items.product', 'name productCode uom basePrice sku')
+        .lean();
+
     let docType = 'quotation';
     if (!doc) {
-        doc = await Invoice.findOne({ publicToken: token });
+        doc = await Invoice.findOne({ publicToken: token })
+            .populate('customerId', 'displayName companyName primaryContact billingAddress')
+            .populate('items.productId', 'name productCode uom basePrice sku')
+            .lean();
         docType = 'invoice';
     }
     
@@ -72,16 +81,14 @@ router.get('/documents/:token/download', asyncHandler(async (req, res) => {
         throw new Error('Document not found');
     }
     
-    const docCode = doc.quotationCode || doc.invoiceNumber || doc._id.toString();
-    const filename = `${docType}_${docCode.replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
-    const dir = path.resolve('backend/backups/pdfs');
-    const filePath = path.join(dir, filename);
+    const docCode = doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || doc._id.toString();
+    const filename = `${docType}_${String(docCode).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
     
-    if (!fs.existsSync(filePath)) {
-        await backupDocumentAsPdf(doc, docType);
-    }
+    const pdfBuffer = await generateDocumentPDF({ doc, docType, settings });
     
-    res.download(filePath, filename);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
 }));
 
 export default router;
