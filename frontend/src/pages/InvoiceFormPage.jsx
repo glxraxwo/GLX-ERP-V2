@@ -168,6 +168,12 @@ export default function InvoiceFormPage() {
     // Temporary fields for Add Customer Modal
     const [custModalTab, setCustModalTab] = useState('existing'); // 'existing' | 'direct'
     const [tempCustSearch, setTempCustSearch] = useState('');
+    const [highlightedCustIndex, setHighlightedCustIndex] = useState(0);
+    const customerItemRefs = useRef([]);
+    const custSearchInputRef = useRef(null);
+    const directCustNameInputRef = useRef(null);
+    const exCustomerRadioRef = useRef(null);
+    const directCustomerRadioRef = useRef(null);
     const [tempCustName, setTempCustName] = useState('');
     const [tempCustPhone, setTempCustPhone] = useState('');
     const [tempCustEmail, setTempCustEmail] = useState('');
@@ -488,6 +494,105 @@ export default function InvoiceFormPage() {
         handleSelectCustomer(cust);
         setIsAddCustomerModalOpen(false);
         toast.success(`Customer "${cust.displayName || cust.companyName}" added to ${docTypeLower}!`);
+    };
+
+    // Reset highlighted customer index on search or modal open
+    useEffect(() => {
+        setHighlightedCustIndex(0);
+    }, [tempCustSearch, isAddCustomerModalOpen, custModalTab]);
+
+    // Auto-scroll highlighted customer into view
+    useEffect(() => {
+        if (isAddCustomerModalOpen && custModalTab === 'existing' && customerItemRefs.current[highlightedCustIndex]) {
+            customerItemRefs.current[highlightedCustIndex]?.scrollIntoView({
+                block: 'nearest',
+                behavior: 'smooth'
+            });
+        }
+    }, [highlightedCustIndex, isAddCustomerModalOpen, custModalTab]);
+
+    // Keyboard shortcuts to switch tabs in Add Customer Modal (F3, Ctrl+Tab, Alt+1/Alt+E, Alt+2/Alt+D)
+    useEffect(() => {
+        if (!isAddCustomerModalOpen) return;
+
+        const handleModalKeyDown = (e) => {
+            if (e.key === 'F3' || (e.ctrlKey && e.key === 'Tab')) {
+                e.preventDefault();
+                setCustModalTab((prev) => (prev === 'existing' ? 'direct' : 'existing'));
+            } else if (e.altKey && (e.key === '1' || e.key.toLowerCase() === 'e')) {
+                e.preventDefault();
+                setCustModalTab('existing');
+            } else if (e.altKey && (e.key === '2' || e.key.toLowerCase() === 'd')) {
+                e.preventDefault();
+                setCustModalTab('direct');
+            }
+        };
+
+        window.addEventListener('keydown', handleModalKeyDown);
+        return () => window.removeEventListener('keydown', handleModalKeyDown);
+    }, [isAddCustomerModalOpen]);
+
+    // Focus corresponding input when switching tabs
+    useEffect(() => {
+        if (!isAddCustomerModalOpen) return;
+        const timer = setTimeout(() => {
+            if (custModalTab === 'existing') {
+                custSearchInputRef.current?.focus();
+            } else {
+                directCustNameInputRef.current?.focus();
+            }
+        }, 50);
+        return () => clearTimeout(timer);
+    }, [custModalTab, isAddCustomerModalOpen]);
+
+    const handleRadioKeyDown = (e, currentTab) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            const nextTab = currentTab === 'existing' ? 'direct' : 'existing';
+            setCustModalTab(nextTab);
+            if (nextTab === 'existing') {
+                exCustomerRadioRef.current?.focus();
+            } else {
+                directCustomerRadioRef.current?.focus();
+            }
+        } else if (e.key === 'Enter' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (currentTab === 'existing') {
+                custSearchInputRef.current?.focus();
+            } else {
+                directCustNameInputRef.current?.focus();
+            }
+        }
+    };
+
+    const handleCustomerSearchKeyDown = (e) => {
+        if (custModalTab !== 'existing') return;
+
+        if (e.key === 'ArrowUp' && (highlightedCustIndex <= 0 || modalCustomerSuggestions.length === 0)) {
+            e.preventDefault();
+            e.stopPropagation();
+            exCustomerRadioRef.current?.focus();
+            return;
+        }
+
+        if (modalCustomerSuggestions.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            e.stopPropagation();
+            setHighlightedCustIndex((prev) => (prev < modalCustomerSuggestions.length - 1 ? prev + 1 : 0));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            setHighlightedCustIndex((prev) => (prev > 0 ? prev - 1 : modalCustomerSuggestions.length - 1));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            const target = modalCustomerSuggestions[highlightedCustIndex];
+            if (target) {
+                handleApplyExistingCustomer(target);
+            }
+        }
     };
 
     const handleApplyManualCustomer = async () => {
@@ -1757,18 +1862,7 @@ export default function InvoiceFormPage() {
                                     <span className="font-mono text-gray-900 dark:text-white font-bold">{fmt(totals.sub)}</span>
                                 </div>
 
-                                <div className="flex justify-between items-center text-gray-700 dark:text-slate-300">
-                                    <span>Labor Cost / Workmanship</span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        className="w-24 px-2 py-0.5 border border-gray-300 dark:border-slate-600 rounded text-right font-mono text-xs bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 font-bold focus:ring-1 focus:ring-emerald-500 outline-none"
-                                        value={laborCost || ''}
-                                        placeholder="0.00"
-                                        onChange={(e) => setLaborCost(Number(e.target.value))}
-                                    />
-                                </div>
+
 
                                 {totals.discount > 0 && (
                                     <div className="flex justify-between items-center text-red-600 dark:text-red-400 font-medium">
@@ -1895,30 +1989,57 @@ export default function InvoiceFormPage() {
             >
                 <div className="space-y-4">
                     {/* Radios: Select Ex Customer vs Direct Customer */}
-                    <div className="flex items-center gap-6 py-2 px-1 border-b border-gray-200 dark:border-slate-700">
-                        <label className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-gray-800 dark:text-slate-200 cursor-pointer select-none">
-                            <input
-                                type="radio"
-                                name="customerModalSource"
-                                value="existing"
-                                checked={custModalTab === 'existing'}
-                                onChange={() => setCustModalTab('existing')}
-                                className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                            />
-                            <span>Select Ex Customer</span>
-                        </label>
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-700">
+                        <div className="flex items-center gap-3">
+                            <label
+                                className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg border text-xs sm:text-sm font-semibold cursor-pointer transition-all select-none ${
+                                    custModalTab === 'existing'
+                                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300 shadow-sm'
+                                        : 'border-transparent text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                                }`}
+                            >
+                                <input
+                                    ref={exCustomerRadioRef}
+                                    type="radio"
+                                    name="customerModalSource"
+                                    value="existing"
+                                    checked={custModalTab === 'existing'}
+                                    onChange={() => setCustModalTab('existing')}
+                                    onKeyDown={(e) => handleRadioKeyDown(e, 'existing')}
+                                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <span>Select Ex Customer</span>
+                                <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-gray-200/80 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
+                                    Alt+1
+                                </span>
+                            </label>
 
-                        <label className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-gray-800 dark:text-slate-200 cursor-pointer select-none">
-                            <input
-                                type="radio"
-                                name="customerModalSource"
-                                value="direct"
-                                checked={custModalTab === 'direct'}
-                                onChange={() => setCustModalTab('direct')}
-                                className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                            />
-                            <span>Direct Customer</span>
-                        </label>
+                            <label
+                                className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg border text-xs sm:text-sm font-semibold cursor-pointer transition-all select-none ${
+                                    custModalTab === 'direct'
+                                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300 shadow-sm'
+                                        : 'border-transparent text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+                                }`}
+                            >
+                                <input
+                                    ref={directCustomerRadioRef}
+                                    type="radio"
+                                    name="customerModalSource"
+                                    value="direct"
+                                    checked={custModalTab === 'direct'}
+                                    onChange={() => setCustModalTab('direct')}
+                                    onKeyDown={(e) => handleRadioKeyDown(e, 'direct')}
+                                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <span>Direct Customer</span>
+                                <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-gray-200/80 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
+                                    Alt+2
+                                </span>
+                            </label>
+                        </div>
+                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500">
+                            Switch: <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 font-mono text-[10px] text-gray-600 dark:text-slate-300">F3</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 font-mono text-[10px] text-gray-600 dark:text-slate-300">Ctrl+Tab</kbd>
+                        </span>
                     </div>
 
                     {custModalTab === 'existing' ? (
@@ -1926,10 +2047,12 @@ export default function InvoiceFormPage() {
                             <div className="relative">
                                 <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400" />
                                 <input
+                                    ref={custSearchInputRef}
                                     type="text"
                                     placeholder="Search customer by name, phone number, or code..."
                                     value={tempCustSearch}
                                     onChange={(e) => setTempCustSearch(e.target.value)}
+                                    onKeyDown={handleCustomerSearchKeyDown}
                                     className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                                     autoFocus
                                 />
@@ -1941,15 +2064,22 @@ export default function InvoiceFormPage() {
                                         No matching customers found. You can switch to &quot;Direct Customer&quot; above to enter details directly.
                                     </div>
                                 ) : (
-                                    modalCustomerSuggestions.map((c) => {
+                                    modalCustomerSuggestions.map((c, idx) => {
                                         const phone = c.primaryContact?.phone || c.billingAddress?.phone || '';
                                         const isSelected = selectedCustomer?._id === c._id;
+                                        const isHighlighted = idx === highlightedCustIndex;
                                         return (
                                             <div
                                                 key={c._id}
+                                                ref={(el) => (customerItemRefs.current[idx] = el)}
+                                                onMouseEnter={() => setHighlightedCustIndex(idx)}
                                                 onClick={() => handleApplyExistingCustomer(c)}
-                                                className={`p-3 hover:bg-blue-50/80 dark:hover:bg-slate-800/80 cursor-pointer transition flex items-center justify-between gap-3 ${
-                                                    isSelected ? 'bg-blue-50/90 dark:bg-blue-950/70 border-l-4 border-blue-600' : ''
+                                                className={`p-3 cursor-pointer transition-all flex items-center justify-between gap-3 ${
+                                                    isHighlighted
+                                                        ? 'bg-blue-100/90 dark:bg-blue-900/50 ring-2 ring-inset ring-blue-500'
+                                                        : isSelected
+                                                        ? 'bg-blue-50/90 dark:bg-blue-950/70 border-l-4 border-blue-600'
+                                                        : 'hover:bg-blue-50/80 dark:hover:bg-slate-800/80'
                                                 }`}
                                             >
                                                 <div className="min-w-0 flex-1">
@@ -1963,6 +2093,11 @@ export default function InvoiceFormPage() {
                                                         {isSelected && (
                                                             <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 rounded flex items-center gap-0.5">
                                                                 <CheckCircle2 size={10} /> Currently Selected
+                                                            </span>
+                                                        )}
+                                                        {isHighlighted && (
+                                                            <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-200/60 dark:bg-blue-800/60 px-1.5 py-0.2 rounded font-mono">
+                                                                ↵ Enter to Select
                                                             </span>
                                                         )}
                                                     </div>
@@ -1987,12 +2122,16 @@ export default function InvoiceFormPage() {
                                                 <Button
                                                     type="button"
                                                     size="sm"
-                                                    variant="outline"
+                                                    variant={isHighlighted ? 'primary' : 'outline'}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleApplyExistingCustomer(c);
                                                     }}
-                                                    className="bg-white dark:bg-slate-800 hover:bg-blue-600 hover:text-white border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs shrink-0"
+                                                    className={`text-xs shrink-0 ${
+                                                        isHighlighted
+                                                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
+                                                            : 'bg-white dark:bg-slate-800 hover:bg-blue-600 hover:text-white border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                                                    }`}
                                                 >
                                                     Select for {docTypeLabel}
                                                 </Button>
@@ -2011,10 +2150,17 @@ export default function InvoiceFormPage() {
                                         Customer Name <span className="text-red-500">*</span>
                                     </label>
                                     <input
+                                        ref={directCustNameInputRef}
                                         type="text"
                                         placeholder="Customer Name"
                                         value={tempCustName}
                                         onChange={(e) => setTempCustName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'ArrowUp') {
+                                                e.preventDefault();
+                                                directCustomerRadioRef.current?.focus();
+                                            }
+                                        }}
                                         className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-medium text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                         autoFocus
                                     />

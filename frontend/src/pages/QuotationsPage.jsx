@@ -193,13 +193,10 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     const [projectAdvanceReference, setProjectAdvanceReference] = useState('');
     const [bankAccounts, setBankAccounts] = useState([]);
 
-    // Convert to Invoice Dialog State
-    const [isConvertToInvoiceOpen, setIsConvertToInvoiceOpen] = useState(false);
-    const [selectedConvertQuoteForInvoice, setSelectedConvertQuoteForInvoice] = useState(null);
-    const [convertInvoiceType, setConvertInvoiceType] = useState('commercial');
-    const [convertInvoiceAdvanceAmount, setConvertInvoiceAdvanceAmount] = useState(0);
-    const [convertInvoicePaymentMethod, setConvertInvoicePaymentMethod] = useState('cash');
-    const [convertInvoiceReference, setConvertInvoiceReference] = useState('');
+    // Convert to Invoice Confirmation State
+    const [convertingQuote, setConvertingQuote] = useState(null);
+    const [convertingType, setConvertingType] = useState('commercial');
+    const [converting, setConverting] = useState(false);
 
     // Cancel Quotation / Project Modal State
     const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -653,34 +650,19 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         }
     };
 
-    const handleOpenConvertToInvoiceModal = (quote, defaultType = 'commercial') => {
-        setSelectedConvertQuoteForInvoice(quote);
-        setConvertInvoiceType(defaultType);
-        setConvertInvoiceAdvanceAmount(quote?.advanceAmount || 0);
-        setConvertInvoicePaymentMethod('cash');
-        setConvertInvoiceBankAccountId('');
-        setConvertInvoiceReference('');
-        setIsConvertToInvoiceOpen(true);
-    };
-
-    const handleConvertToInvoiceSubmit = async (e) => {
-        e.preventDefault();
-        const targetQuote = selectedConvertQuoteForInvoice || previewQuote;
-        if (!targetQuote) return;
-        setSaving(true);
+    const handleConfirmDirectConvert = async () => {
+        if (!convertingQuote) return;
+        setConverting(true);
         try {
             const payload = {
-                invoiceType: convertInvoiceType,
-                advanceAmount: Number(convertInvoiceAdvanceAmount) || 0,
-                paymentMethod: convertInvoicePaymentMethod,
-                bankAccountId: convertInvoicePaymentMethod !== 'cash' ? (convertInvoiceBankAccountId || undefined) : undefined,
-                paymentReference: convertInvoiceReference || undefined
+                invoiceType: convertingType || 'commercial',
+                advanceAmount: Number(convertingQuote.advanceAmount || 0),
+                paymentMethod: 'cash'
             };
 
-            const { data } = await api.post(`/crm/quotations/${targetQuote._id}/convert-to-invoice`, payload);
-            toast.success(`Successfully converted to ${convertInvoiceType === 'proforma' ? 'Proforma' : 'Commercial'} Invoice!`);
-            setIsConvertToInvoiceOpen(false);
-            setSelectedConvertQuoteForInvoice(null);
+            const { data } = await api.post(`/crm/quotations/${convertingQuote._id}/convert-to-invoice`, payload);
+            toast.success(`Successfully converted to ${convertingType === 'proforma' ? 'Proforma' : 'Commercial'} Invoice!`);
+            setConvertingQuote(null);
             setIsPreviewOpen(false);
             fetchQuotations();
             if (data.data?._id) {
@@ -689,7 +671,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to convert to invoice');
         } finally {
-            setSaving(false);
+            setConverting(false);
         }
     };
 
@@ -1015,8 +997,12 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         canEdit && r.status !== 'cancelled' && (
                             <div className="flex items-center gap-1">
                                 <button
-                                    onClick={() => handleOpenConvertToInvoiceModal(r, 'commercial')}
-                                    className="px-2 py-1 text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition flex items-center gap-1 shadow-xs"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setConvertingType('commercial');
+                                        setConvertingQuote(r);
+                                    }}
+                                    className="px-2 py-1 text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition flex items-center gap-1 shadow-xs cursor-pointer"
                                     title="Convert to Commercial Invoice"
                                 >
                                     <ShoppingCart size={12} /> Invoice
@@ -1061,7 +1047,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
     return (
         <div className="space-y-6">
-            {!embedded ? (
+            {!embedded && (
                 <PageHeader
                     title="Quotations & Estimates"
                     description="Manage vehicle body engineering quotations, insurance estimates & convert to invoices"
@@ -1076,21 +1062,10 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         </div>
                     )}
                 />
-            ) : (
-                <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-[#111F33] p-4 rounded-xl border border-gray-200 dark:border-slate-800 shadow-xs mb-2">
-                    <div>
-                        <h2 className="text-base font-bold text-gray-900">
-                            {activeTab === 'estimate' ? 'Cost Estimates' : activeTab === 'quotation' ? 'Price Quotations' : 'Quotations & Estimates'}
-                        </h2>
-                        <p className="text-xs text-gray-500">
-                            {activeTab === 'estimate' ? 'Manage insurance & vehicle repair cost estimates' : 'Manage body engineering quotations & convert directly to invoice'}
-                        </p>
-                    </div>
-                </div>
             )}
 
             {/* KPI Summary Banner (Matching Invoices Page aging/kpi summary) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {[
                     {
                         key: 'all',
@@ -1125,13 +1100,13 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         key={b.key}
                         type="button"
                         onClick={() => setActiveTab(b.key)}
-                        className={`border rounded-xl p-3.5 text-left transition-all ${b.color} ${
+                        className={`border rounded-lg py-2 px-3 text-left transition-all ${b.color} ${
                             activeTab === b.key ? 'ring-2 ring-offset-1 ring-primary-500 shadow-xs' : 'hover:opacity-90'
                         }`}
                     >
-                        <p className="text-xs font-semibold uppercase tracking-wide opacity-75">{b.label}</p>
-                        <p className="text-xl font-bold mt-1 font-mono">{fmt(b.val)}</p>
-                        <p className="text-xs opacity-75 mt-0.5">{b.count} documents</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide opacity-75 leading-tight">{b.label}</p>
+                        <p className="text-base font-bold my-0.5 font-mono leading-tight">{fmt(b.val)}</p>
+                        <p className="text-[11px] opacity-75 leading-tight">{b.count} documents</p>
                     </button>
                 ))}
             </div>
@@ -1451,7 +1426,16 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         ) : (
                                             canEdit && quote.status !== 'cancelled' && (
                                                 <>
-                                                    <Button variant="primary" size="sm" className="flex-1 bg-purple-600 hover:bg-purple-700 text-white" onClick={() => { setPreviewQuote(quote); setIsPreviewOpen(true); }}>
+                                                    <Button 
+                                                        variant="primary" 
+                                                        size="sm" 
+                                                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white" 
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            setConvertingType('commercial'); 
+                                                            setConvertingQuote(quote); 
+                                                        }}
+                                                    >
                                                         <ShoppingCart size={14} className="mr-1" /> Convert
                                                     </Button>
                                                     <Button 
@@ -2098,15 +2082,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <span>Items Subtotal</span>
                                 <span className="font-mono text-gray-900">LKR {formData.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
-                            <div className="flex justify-between items-center font-semibold text-gray-700">
-                                <span>Labor Cost / Workmanship</span>
-                                <input 
-                                    type="number" 
-                                    className="w-28 px-2 py-1 border border-gray-300 dark:border-slate-700 rounded text-right font-mono text-xs bg-white dark:bg-[#132238] text-emerald-700 dark:text-emerald-400 font-bold"
-                                    value={formData.laborCost} 
-                                    onChange={(e) => handleFormChange('laborCost', Number(e.target.value))}
-                                />
-                            </div>
+
                             <div className="flex justify-between items-center font-semibold text-red-600">
                                 <span>Total Discounts</span>
                                 <span className="font-mono font-bold">-LKR {formData.discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
@@ -2317,8 +2293,11 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         {previewQuote.status !== 'cancelled' && (
                                             <div className="flex items-center gap-1.5 bg-purple-50 border border-purple-100 rounded-xl p-1">
                                                 <button
-                                                    onClick={() => handleOpenConvertToInvoiceModal(previewQuote, 'commercial')}
-                                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-all duration-150 shadow-sm"
+                                                    onClick={() => {
+                                                        setConvertingType('commercial');
+                                                        setConvertingQuote(previewQuote);
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-all duration-150 shadow-sm cursor-pointer"
                                                     title="Convert to Commercial Invoice"
                                                 >
                                                     <FileText size={13} />
@@ -2326,8 +2305,11 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                                 </button>
                                                 <div className="w-px h-5 bg-purple-200" />
                                                 <button
-                                                    onClick={() => handleOpenConvertToInvoiceModal(previewQuote, 'proforma')}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 rounded-lg hover:bg-purple-100 transition-all duration-150"
+                                                    onClick={() => {
+                                                        setConvertingType('proforma');
+                                                        setConvertingQuote(previewQuote);
+                                                    }}
+                                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-purple-700 rounded-lg hover:bg-purple-100 transition-all duration-150 cursor-pointer"
                                                     title="Convert to Proforma Invoice"
                                                 >
                                                     <FileText size={13} />
@@ -2610,106 +2592,75 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 </div>
             )}
 
-            {/* Convert to Invoice Modal */}
-            {isConvertToInvoiceOpen && (selectedConvertQuoteForInvoice || previewQuote) && (() => {
-                const targetQuote = selectedConvertQuoteForInvoice || previewQuote;
-                return (
-                    <div className="fixed inset-0 bg-black/45 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-                        <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-[slideUp_0.2s_ease-out]">
-                            <div className="flex justify-between items-center mb-4 border-b pb-2">
-                                <h3 className="text-lg font-bold text-slate-800">Convert to Invoice</h3>
-                                <button onClick={() => { setIsConvertToInvoiceOpen(false); setSelectedConvertQuoteForInvoice(null); }} className="text-gray-400 hover:text-slate-600 text-lg font-bold">×</button>
+            {/* Fast Permission & Confirmation Modal for Direct Convert to Invoice */}
+            {convertingQuote && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-800 text-gray-900 dark:text-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
+                                <ShoppingCart size={20} />
                             </div>
-                            <form onSubmit={handleConvertToInvoiceSubmit} className="space-y-4">
-                                <div className="p-3 bg-purple-50 rounded-xl border border-purple-200">
-                                    <p className="text-xs font-bold text-purple-900 uppercase">Document: {targetQuote.quoteNumber || targetQuote.quotationCode}</p>
-                                    <p className="text-sm font-bold text-purple-950 mt-0.5">Grand Total: LKR {(targetQuote.grandTotal || targetQuote.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                                    {convertingType === 'proforma' ? 'Convert to Proforma Invoice' : 'Convert to Invoice'}
+                                </h3>
+                                <p className="text-xs text-gray-500 dark:text-slate-400">Permission & Confirmation / අනුමැතිය</p>
+                            </div>
+                            <button 
+                                type="button"
+                                disabled={converting}
+                                onClick={() => setConvertingQuote(null)} 
+                                className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 text-lg font-bold"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <p className="text-sm text-gray-700 dark:text-slate-300 mb-4">
+                            ඔබට <strong>{convertingQuote.quoteNumber || convertingQuote.quotationCode}</strong> Quotation එක {convertingType === 'proforma' ? 'Proforma' : 'Commercial'} Invoice එකක් බවට Convert කිරීමට අවශ්‍ය බව තහවුරු කරන්න ද?
+                        </p>
+
+                        <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-xl border border-purple-200 dark:border-purple-800/50 mb-5 text-xs space-y-1.5">
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-500 dark:text-slate-400">Customer:</span>
+                                <span className="font-semibold text-gray-900 dark:text-white">{convertingQuote.vehicleOwner || convertingQuote.customerName || 'N/A'}</span>
+                            </div>
+                            {convertingQuote.vehicleNo && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-500 dark:text-slate-400">Vehicle No:</span>
+                                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{convertingQuote.vehicleNo}</span>
                                 </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-700 uppercase">Invoice Type</label>
-                                <select
-                                    value={convertInvoiceType}
-                                    onChange={(e) => setConvertInvoiceType(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
-                                >
-                                    <option value="commercial">Commercial / Standard Tax Invoice</option>
-                                    <option value="proforma">Proforma Invoice (PI)</option>
-                                </select>
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-gray-700 uppercase">Advance Payment Amount (LKR)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={convertInvoiceAdvanceAmount}
-                                    onChange={(e) => setConvertInvoiceAdvanceAmount(e.target.value)}
-                                    placeholder="e.g. 50000"
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-bold font-mono bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
-                                />
-                                <p className="text-[11px] text-gray-500">Entering an advance amount will deduct it from the total invoice amount and show balance due.</p>
-                            </div>
-
-                            {Number(convertInvoiceAdvanceAmount) > 0 && (
-                                <>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-700 uppercase">Payment Method</label>
-                                        <select
-                                            value={convertInvoicePaymentMethod}
-                                            onChange={(e) => setConvertInvoicePaymentMethod(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
-                                        >
-                                            <option value="cash">Cash</option>
-                                            <option value="bank_transfer">Bank Transfer</option>
-                                            <option value="card">Card</option>
-                                            <option value="cheque">Cheque</option>
-                                        </select>
-                                    </div>
-
-                                    {(convertInvoicePaymentMethod === 'bank_transfer' || convertInvoicePaymentMethod === 'cheque') && (
-                                        <div className="space-y-1">
-                                            <label className="text-xs font-bold text-gray-700 uppercase">Company Bank Account</label>
-                                            <select
-                                                value={convertInvoiceBankAccountId}
-                                                onChange={(e) => setConvertInvoiceBankAccountId(e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
-                                            >
-                                                <option value="">-- Select Bank Account --</option>
-                                                {bankAccounts.map((acc) => (
-                                                    <option key={acc._id} value={acc._id}>
-                                                        {acc.bankName} ({acc.accountNumber}) - Bal: LKR {acc.balance?.toLocaleString()}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-700 uppercase">Payment Reference / Notes</label>
-                                        <input
-                                            type="text"
-                                            value={convertInvoiceReference}
-                                            onChange={(e) => setConvertInvoiceReference(e.target.value)}
-                                            placeholder="Txn ID, cheque #, or reference"
-                                            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
-                                        />
-                                    </div>
-                                </>
                             )}
-
-                            <div className="flex justify-end gap-2 pt-3 border-t">
-                                <Button variant="outline" type="button" onClick={() => { setIsConvertToInvoiceOpen(false); setSelectedConvertQuoteForInvoice(null); }}>Cancel</Button>
-                                <Button variant="primary" type="submit" loading={saving} className="bg-purple-600 hover:bg-purple-700 text-white font-bold">
-                                    Confirm Conversion
-                                </Button>
+                            <div className="flex justify-between items-center pt-1 border-t border-purple-200/60 dark:border-purple-800/40">
+                                <span className="text-gray-500 dark:text-slate-400">Total Amount:</span>
+                                <span className="font-mono font-bold text-purple-700 dark:text-purple-300 text-sm">
+                                    LKR {(convertingQuote.grandTotal || convertingQuote.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
                             </div>
-                        </form>
+                        </div>
+
+                        <div className="flex justify-end gap-2.5">
+                            <Button 
+                                variant="outline" 
+                                type="button" 
+                                disabled={converting}
+                                onClick={() => setConvertingQuote(null)}
+                            >
+                                Cancel / අවලංගු කරන්න
+                            </Button>
+                            <Button 
+                                variant="primary" 
+                                type="button" 
+                                loading={converting} 
+                                className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
+                                onClick={handleConfirmDirectConvert}
+                            >
+                                Yes, Convert / තහවුරු කරන්න
+                            </Button>
+                        </div>
                     </div>
                 </div>
-                );
-            })()}
+            )}
 
             <ConfirmDialog isOpen={!!deleting} onClose={() => setDeleting(null)} onConfirm={handleDelete}
                 title="Delete Document" message={`Permanently remove ${deleting?.quoteNumber || deleting?.quotationCode}?`} />

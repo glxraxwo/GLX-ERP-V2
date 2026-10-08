@@ -350,7 +350,6 @@ export default function InvoicesPage() {
         <div>
             <PageHeader
                 title="Invoices, Quotes & Estimates"
-                description="Manage customer billing invoices, vehicle body quotations & repair cost estimates in one place"
                 actions={canCreate && (
                     <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" onClick={() => navigate('/invoices/from-sales-order')}>
@@ -421,7 +420,7 @@ export default function InvoicesPage() {
             ) : (
                 <>
                     {/* Aging summary */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
                         {[
                             { key: 'current', label: 'Current', color: 'bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60' },
                             { key: '1_30', label: '1-30 days', color: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60' },
@@ -431,10 +430,10 @@ export default function InvoicesPage() {
                         ].map((b) => (
                             <button key={b.key}
                                 onClick={() => setFilters((f) => ({ ...f, agingBucket: f.agingBucket === b.key ? '' : b.key, page: 1 }))}
-                                className={`border rounded-lg p-3 text-left transition ${b.color} ${filters.agingBucket === b.key ? 'ring-2 ring-offset-1 ring-primary-500' : ''}`}>
-                                <p className="text-xs opacity-75">{b.label}</p>
-                                <p className="text-lg font-bold mt-1">{fmt(aging.buckets?.[b.key] || 0)}</p>
-                                <p className="text-xs opacity-60 mt-0.5">{aging.counts?.[b.key] || 0} invoices</p>
+                                className={`border rounded-lg py-2 px-3 text-left transition ${b.color} ${filters.agingBucket === b.key ? 'ring-2 ring-offset-1 ring-primary-500' : ''}`}>
+                                <p className="text-[11px] opacity-75 leading-tight">{b.label}</p>
+                                <p className="text-base font-bold my-0.5 font-mono leading-tight">{fmt(aging.buckets?.[b.key] || 0)}</p>
+                                <p className="text-[11px] opacity-60 leading-tight">{aging.counts?.[b.key] || 0} invoices</p>
                             </button>
                         ))}
                     </div>
