@@ -1989,57 +1989,34 @@ export default function InvoiceFormPage() {
             >
                 <div className="space-y-4">
                     {/* Radios: Select Ex Customer vs Direct Customer */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-200 dark:border-slate-700">
-                        <div className="flex items-center gap-3">
-                            <label
-                                className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg border text-xs sm:text-sm font-semibold cursor-pointer transition-all select-none ${
-                                    custModalTab === 'existing'
-                                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300 shadow-sm'
-                                        : 'border-transparent text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
-                                }`}
-                            >
-                                <input
-                                    ref={exCustomerRadioRef}
-                                    type="radio"
-                                    name="customerModalSource"
-                                    value="existing"
-                                    checked={custModalTab === 'existing'}
-                                    onChange={() => setCustModalTab('existing')}
-                                    onKeyDown={(e) => handleRadioKeyDown(e, 'existing')}
-                                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                />
-                                <span>Select Ex Customer</span>
-                                <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-gray-200/80 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
-                                    Alt+1
-                                </span>
-                            </label>
+                    <div className="flex items-center gap-6 py-2 px-1 border-b border-gray-200 dark:border-slate-700">
+                        <label className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-gray-800 dark:text-slate-200 cursor-pointer select-none">
+                            <input
+                                ref={exCustomerRadioRef}
+                                type="radio"
+                                name="customerModalSource"
+                                value="existing"
+                                checked={custModalTab === 'existing'}
+                                onChange={() => setCustModalTab('existing')}
+                                onKeyDown={(e) => handleRadioKeyDown(e, 'existing')}
+                                className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <span>Select Ex Customer</span>
+                        </label>
 
-                            <label
-                                className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg border text-xs sm:text-sm font-semibold cursor-pointer transition-all select-none ${
-                                    custModalTab === 'direct'
-                                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300 shadow-sm'
-                                        : 'border-transparent text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
-                                }`}
-                            >
-                                <input
-                                    ref={directCustomerRadioRef}
-                                    type="radio"
-                                    name="customerModalSource"
-                                    value="direct"
-                                    checked={custModalTab === 'direct'}
-                                    onChange={() => setCustModalTab('direct')}
-                                    onKeyDown={(e) => handleRadioKeyDown(e, 'direct')}
-                                    className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                />
-                                <span>Direct Customer</span>
-                                <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-gray-200/80 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
-                                    Alt+2
-                                </span>
-                            </label>
-                        </div>
-                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500">
-                            Switch: <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 font-mono text-[10px] text-gray-600 dark:text-slate-300">F3</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 font-mono text-[10px] text-gray-600 dark:text-slate-300">Ctrl+Tab</kbd>
-                        </span>
+                        <label className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-gray-800 dark:text-slate-200 cursor-pointer select-none">
+                            <input
+                                ref={directCustomerRadioRef}
+                                type="radio"
+                                name="customerModalSource"
+                                value="direct"
+                                checked={custModalTab === 'direct'}
+                                onChange={() => setCustModalTab('direct')}
+                                onKeyDown={(e) => handleRadioKeyDown(e, 'direct')}
+                                className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <span>Direct Customer</span>
+                        </label>
                     </div>
 
                     {custModalTab === 'existing' ? (
