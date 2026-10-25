@@ -95,6 +95,36 @@ export const useTabStore = create(
                 if (navigate) {
                     navigate('/');
                 }
+            },
+
+            switchToNextTab: (navigate) => {
+                const { tabs, activeTab } = get();
+                if (tabs.length <= 1) return;
+                const currentIndex = tabs.findIndex(t => t.path === activeTab);
+                const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % tabs.length;
+                const nextTab = tabs[nextIndex];
+                if (nextTab) {
+                    set({ activeTab: nextTab.path });
+                    if (navigate) navigate(nextTab.path);
+                }
+            },
+
+            switchToPrevTab: (navigate) => {
+                const { tabs, activeTab } = get();
+                if (tabs.length <= 1) return;
+                const currentIndex = tabs.findIndex(t => t.path === activeTab);
+                const prevIndex = currentIndex <= 0 ? tabs.length - 1 : currentIndex - 1;
+                const prevTab = tabs[prevIndex];
+                if (prevTab) {
+                    set({ activeTab: prevTab.path });
+                    if (navigate) navigate(prevTab.path);
+                }
+            },
+
+            closeActiveTab: (navigate) => {
+                const { activeTab, closeTab } = get();
+                if (activeTab === '/') return;
+                closeTab(activeTab, navigate);
             }
         }),
         {

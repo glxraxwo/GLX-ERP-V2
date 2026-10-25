@@ -2323,6 +2323,12 @@ export default function InvoiceFormPage() {
                                     quantityInputRef.current?.select();
                                 }, 60);
                             }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    focusAndSelect(productNameInputRef.current);
+                                }
+                            }}
                         />
                     </div>
 

@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User as UserIcon, Palette, Check, AlertTriangle } from 'lucide-react';
+import { LogOut, User as UserIcon, Palette, Check, AlertTriangle, Keyboard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useThemeStore, THEME_MODES } from '../../store/themeStore';
 import { useTabStore } from '../../store/tabStore';
+import { useKeyboardStore } from '../../store/keyboardStore';
 import { usePermission } from '../../hooks/usePermission';
 import { useLowStockAlertCount } from '../../features/stock/useStock';
 import { authApi } from '../../features/auth/authApi';
@@ -17,6 +18,7 @@ export default function Header() {
     const { user, logout } = useAuthStore();
     const { themeMode, setThemeMode } = useThemeStore();
     const { openTab } = useTabStore();
+    const { openShortcutsModal } = useKeyboardStore();
     const { hasPermission, isAdmin } = usePermission();
     const { data: settingsData } = useSettings();
     const settings = settingsData?.data;
@@ -90,7 +92,7 @@ export default function Header() {
                 <div 
                     onClick={() => navigate('/')}
                     className="flex items-center gap-2.5 cursor-pointer select-none group"
-                    title="Go to App Hub"
+                    title="Go to App Hub (Alt + H)"
                 >
                     <img
                         src={settings?.companyLogo || logo}
@@ -98,9 +100,14 @@ export default function Header() {
                         alt="Logo"
                     />
                     <div className="hidden sm:block">
-                        <h2 className="font-bold text-sm text-slate-900 dark:text-white leading-tight truncate max-w-[150px] uppercase">
-                            {settings?.companyName || 'GLX INDUSTRIES'}
-                        </h2>
+                        <div className="flex items-center gap-1.5">
+                            <h2 className="font-bold text-sm text-slate-900 dark:text-white leading-tight truncate max-w-[150px] uppercase">
+                                {settings?.companyName || 'GLX INDUSTRIES'}
+                            </h2>
+                            <kbd className="hidden lg:inline-block font-mono text-[9px] px-1 py-0.2 rounded bg-slate-200/70 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-600">
+                                Alt+H
+                            </kbd>
+                        </div>
                         <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">
                             ERP System
                         </p>
@@ -133,6 +140,23 @@ export default function Header() {
                     </button>
                 )}
 
+                {/* Keyboard Shortcuts Trigger Button */}
+                <button
+                    onClick={openShortcutsModal}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg border transition shadow-2xs cursor-pointer ${
+                        isDark
+                            ? 'bg-slate-800 border-slate-700 text-sky-300 hover:bg-slate-700'
+                            : isSoft
+                                ? 'bg-slate-200/80 hover:bg-slate-300/80 border-slate-300 text-blue-900'
+                                : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-blue-900'
+                    }`}
+                    title="Keyboard Shortcuts Guide (? or F1)"
+                >
+                    <Keyboard size={14} className="text-blue-500 dark:text-sky-400" />
+                    <span className="hidden md:inline">Shortcuts</span>
+                    <kbd className="hidden sm:inline-block font-mono text-[10px] px-1 py-0.2 rounded bg-black/5 dark:bg-white/10 border border-slate-300 dark:border-slate-600">?</kbd>
+                </button>
+
                 {/* Theme / Background Tone Selector */}
                 <div className="relative" ref={themeMenuRef}>
                     <button
@@ -144,7 +168,7 @@ export default function Header() {
                                     ? 'bg-slate-200/80 hover:bg-slate-300/80 border-slate-300 text-slate-800'
                                     : 'bg-gray-100 hover:bg-gray-200 border-gray-200 text-gray-700'
                         }`}
-                        title="Change Background Tone"
+                        title="Change Background Tone (Alt + T)"
                     >
                         <Palette size={14} className={isDark ? "text-sky-400" : "text-slate-600"} />
                         <span className="hidden sm:inline">

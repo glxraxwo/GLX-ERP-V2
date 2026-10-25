@@ -531,6 +531,110 @@ export default function AppHubPage() {
         }).filter(Boolean);
     }, [pinnedPaths, allItemsMap, user?.role, isAdmin, hasPermission, hasAnyPermission]);
 
+    // Flat list of all navigable cards in current view (pinned + visible category items)
+    const allNavigableCards = useMemo(() => {
+        const cards = [];
+        pinnedItems.forEach(item => {
+            cards.push({ ...item, isPinned: true });
+        });
+        displayedCategories.forEach(cat => {
+            cat.items.forEach(item => {
+                cards.push({ ...item, isPinned: false, categoryId: cat.id, categoryLabel: cat.label });
+            });
+        });
+        return cards;
+    }, [pinnedItems, displayedCategories]);
+
+    const [focusedCardIndex, setFocusedCardIndex] = useState(-1);
+
+    // Scroll active card into view when arrow keys move selection
+    useEffect(() => {
+        if (focusedCardIndex >= 0) {
+            const cardEl = document.querySelector(`[data-hub-card-index="${focusedCardIndex}"]`);
+            if (cardEl) {
+                cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+    }, [focusedCardIndex]);
+
+    // Reset focused card when search or category changes
+    useEffect(() => {
+        setFocusedCardIndex(-1);
+    }, [hubSearchQuery, hubCategory]);
+
+    // Keyboard Arrow Keys navigation controller for App Hub
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            const target = e.target;
+            const isTyping = 
+                target && (
+                    target.tagName === 'INPUT' || 
+                    target.tagName === 'TEXTAREA' || 
+                    target.tagName === 'SELECT' || 
+                    target.isContentEditable
+                );
+
+            if (isTyping) return; // Typing in input handled separately
+
+            const total = allNavigableCards.length;
+            if (total === 0) return;
+
+            // Dynamic grid column calculation matching Tailwind grid (1 on mobile, 2 on sm, 3 on lg, 4 on xl)
+            const width = window.innerWidth;
+            const columns = width >= 1280 ? 4 : width >= 1024 ? 3 : width >= 640 ? 2 : 1;
+
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                setFocusedCardIndex(prev => {
+                    if (prev === -1) return 0;
+                    return (prev + 1) % total;
+                });
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                setFocusedCardIndex(prev => {
+                    if (prev <= 0) return total - 1;
+                    return prev - 1;
+                });
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setFocusedCardIndex(prev => {
+                    if (prev === -1) return 0;
+                    const next = prev + columns;
+                    return next < total ? next : prev;
+                });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setFocusedCardIndex(prev => {
+                    if (prev === -1) return 0;
+                    const next = prev - columns;
+                    return next >= 0 ? next : 0;
+                });
+            } else if (e.key === 'Enter') {
+                if (focusedCardIndex >= 0 && focusedCardIndex < total) {
+                    e.preventDefault();
+                    handleCardClick(allNavigableCards[focusedCardIndex]);
+                }
+            } else if (e.key === '[' || (e.shiftKey && e.key === 'ArrowLeft')) {
+                // Switch category left
+                e.preventDefault();
+                const catIds = ['all', ...filteredCategories.map(c => c.id)];
+                const currentIdx = catIds.indexOf(hubCategory);
+                const prevCat = catIds[currentIdx <= 0 ? catIds.length - 1 : currentIdx - 1];
+                setHubCategory(prevCat);
+            } else if (e.key === ']' || (e.shiftKey && e.key === 'ArrowRight')) {
+                // Switch category right
+                e.preventDefault();
+                const catIds = ['all', ...filteredCategories.map(c => c.id)];
+                const currentIdx = catIds.indexOf(hubCategory);
+                const nextCat = catIds[(currentIdx + 1) % catIds.length];
+                setHubCategory(nextCat);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [allNavigableCards, focusedCardIndex, hubCategory, filteredCategories]);
+
     const handleCardClick = (item) => {
         // Save current scroll position before leaving App Hub
         const mainEl = document.getElementById('main-content');
@@ -603,12 +707,22 @@ export default function AppHubPage() {
                             {pinnedItems.map((item, idx) => {
                                 const IconComponent = item.icon;
                                 const colorStyle = PINNED_ICON_PALETTES[idx % PINNED_ICON_PALETTES.length];
+                                const isFocused = focusedCardIndex === idx;
+
                                 return (
                                     <div
                                         key={item.path}
+                                        data-hub-card-index={idx}
                                         onClick={() => handleCardClick(item)}
-                                        className={`group relative p-3 sm:p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex items-center justify-between gap-3 shadow-xs ${colorStyle.cardBg}`}
+                                        className={`group relative p-3 sm:p-3.5 rounded-xl border cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md flex items-center justify-between gap-3 shadow-xs ${colorStyle.cardBg} ${
+                                            isFocused ? 'ring-4 ring-blue-600/80 dark:ring-sky-400 scale-[1.02] shadow-xl border-blue-600 dark:border-sky-400 z-20' : ''
+                                        }`}
                                     >
+                                        {isFocused && (
+                                            <span className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full bg-blue-600 dark:bg-sky-500 text-white font-mono text-[10px] font-bold shadow-md animate-pulse z-30">
+                                                Enter ↵
+                                            </span>
+                                        )}
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105 ${colorStyle.icon}`}>
                                                 <IconComponent size={20} />
@@ -771,30 +885,58 @@ export default function AppHubPage() {
                     {isWrapped ? <ListFilter size={14} /> : <LayoutGrid size={14} />}
                     <span className="hidden sm:inline">{isWrapped ? 'Collapse' : 'Show All'}</span>
                 </button>
+
+                {/* Category switch shortcut hint */}
+                <span className="hidden lg:inline-flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500 font-medium px-2 py-1 rounded-lg border border-dashed border-slate-200 dark:border-slate-800 select-none flex-shrink-0" title="Use Shift + Left/Right Arrow or [ / ] to switch categories">
+                    <kbd className="px-1 py-0.2 bg-slate-100 dark:bg-slate-800 rounded font-mono text-[9px] border border-slate-300 dark:border-slate-700">Shift + ← / →</kbd>
+                    <span>Categories</span>
+                </span>
             </div>
 
             {/* ── Search Bar (Above Dashboard & Overview) ── */}
             <div className="relative w-full max-w-2xl">
                 <Search className={`absolute left-4 top-3.5 h-4 w-4 pointer-events-none ${isDark ? 'text-slate-400' : 'text-slate-400'}`} />
                 <input
+                    id="hub-search-input"
+                    data-shortcut="search"
                     type="text"
                     value={hubSearchQuery}
                     onChange={(e) => setHubSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                            if (allNavigableCards.length > 0) {
+                                e.preventDefault();
+                                e.currentTarget.blur();
+                                setFocusedCardIndex(0);
+                            }
+                        } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            setHubSearchQuery('');
+                            e.currentTarget.blur();
+                        }
+                    }}
                     placeholder="Search modules, actions or features (e.g. Products, Invoices, Employees, Payroll)..."
-                    className={`w-full pl-11 pr-10 py-3 rounded-xl text-sm font-medium outline-none transition-all ${
+                    className={`w-full pl-11 pr-14 py-3 rounded-xl text-sm font-medium outline-none transition-all ${
                         isDark
                             ? 'bg-[#132238] border border-slate-700 text-white placeholder-slate-400 focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400'
                             : 'bg-white dark:bg-[#132238] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-[#000865]/20 focus:border-[#000865] shadow-xs'
                     }`}
                 />
-                {hubSearchQuery && (
+                {hubSearchQuery ? (
                     <button
                         onClick={() => setHubSearchQuery('')}
                         className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-200 transition cursor-pointer"
-                        title="Clear search"
+                        title="Clear search (Esc)"
                     >
                         <X size={16} />
                     </button>
+                ) : (
+                    <kbd 
+                        className="absolute right-3.5 top-3.5 hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-700 pointer-events-none shadow-2xs"
+                        title="Press / or Ctrl+K to focus search"
+                    >
+                        /
+                    </kbd>
                 )}
             </div>
 
@@ -847,18 +989,30 @@ export default function AppHubPage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                     {category.items.map((item) => {
                                         const IconComponent = item.icon;
+                                        const cardIndex = allNavigableCards.findIndex(c => !c.isPinned && c.path === item.path);
+                                        const isFocused = focusedCardIndex === cardIndex;
+
                                         return (
                                             <div
                                                 key={item.path}
+                                                data-hub-card-index={cardIndex}
                                                 onClick={() => handleCardClick(item)}
                                                 className={`group relative p-4 sm:p-5 rounded-2xl border cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${
-                                                    isDark
-                                                        ? `bg-[#152338] border-slate-700 ${themeStyles.cardBorder} hover:bg-[#1A2D48] shadow-sm`
-                                                        : isSoft
-                                                            ? `bg-white dark:bg-[#152338] border-slate-200 dark:border-slate-700 ${themeStyles.cardBorder} hover:shadow-slate-300/40`
-                                                            : `bg-white dark:bg-[#152338] border-slate-200 dark:border-slate-700 ${themeStyles.cardBorder} hover:shadow-slate-200`
+                                                    isFocused
+                                                        ? 'ring-4 ring-blue-600/80 dark:ring-sky-400 scale-[1.02] shadow-2xl border-blue-600 dark:border-sky-400 z-20'
+                                                        : isDark
+                                                            ? `bg-[#152338] border-slate-700 ${themeStyles.cardBorder} hover:bg-[#1A2D48] shadow-sm`
+                                                            : isSoft
+                                                                ? `bg-white dark:bg-[#152338] border-slate-200 dark:border-slate-700 ${themeStyles.cardBorder} hover:shadow-slate-300/40`
+                                                                : `bg-white dark:bg-[#152338] border-slate-200 dark:border-slate-700 ${themeStyles.cardBorder} hover:shadow-slate-200`
                                                 }`}
                                             >
+                                                {isFocused && (
+                                                    <span className="absolute -top-2.5 right-4 px-2.5 py-0.5 rounded-full bg-blue-600 dark:bg-sky-500 text-white font-mono text-[10px] font-bold shadow-lg animate-pulse z-30 flex items-center gap-1">
+                                                        Enter ↵
+                                                    </span>
+                                                )}
+
                                                 <div className="flex items-start justify-between gap-3">
                                                     {/* Icon container */}
                                                     <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105 border ${themeStyles.icon}`}>
@@ -906,12 +1060,27 @@ export default function AppHubPage() {
 
                                                 {/* Card Footer action bar */}
                                                 <div className={`mt-3.5 pt-2.5 border-t flex items-center justify-between text-xs font-semibold transition-colors ${
-                                                    isDark 
-                                                        ? 'border-slate-700/80 text-sky-400 group-hover:text-sky-300' 
-                                                        : 'border-slate-100 text-slate-500 group-hover:text-[#000865]'
+                                                    isFocused
+                                                        ? 'border-blue-500 text-blue-600 dark:text-sky-400 font-bold'
+                                                        : isDark 
+                                                            ? 'border-slate-700/80 text-sky-400 group-hover:text-sky-300' 
+                                                            : 'border-slate-100 text-slate-500 group-hover:text-[#000865]'
                                                 }`}>
-                                                    <span>Open Tab</span>
-                                                    <span className="font-mono text-[11px] opacity-70">↵</span>
+                                                    <span className="flex items-center gap-1.5">
+                                                        <span>Open Tab</span>
+                                                        {isFocused && (
+                                                            <span className="px-1.5 py-0.2 rounded bg-blue-600 text-white dark:bg-sky-500 text-[10px] font-bold">
+                                                                SELECTED
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <span className={`font-mono text-[11px] px-1.5 py-0.5 rounded border transition-all ${
+                                                        isFocused
+                                                            ? 'bg-blue-600 text-white dark:bg-sky-500 border-blue-600 shadow-xs font-bold'
+                                                            : 'opacity-70 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                                                    }`}>
+                                                        Enter ↵
+                                                    </span>
                                                 </div>
                                             </div>
                                         );

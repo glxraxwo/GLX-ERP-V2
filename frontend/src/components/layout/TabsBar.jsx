@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutGrid, X, MoreHorizontal, RotateCcw } from 'lucide-react';
+import { LayoutGrid, X, MoreHorizontal, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTabStore } from '../../store/tabStore';
 import { findNavigationItem } from '../../config/navigationConfig';
 import { useThemeStore, THEME_MODES } from '../../store/themeStore';
@@ -9,7 +9,17 @@ export default function TabsBar() {
     const location = useLocation();
     const navigate = useNavigate();
     const scrollContainerRef = useRef(null);
-    const { tabs, activeTab, openTab, closeTab, closeOthers, closeAll, setActiveTab } = useTabStore();
+    const { 
+        tabs, 
+        activeTab, 
+        openTab, 
+        closeTab, 
+        closeOthers, 
+        closeAll, 
+        setActiveTab, 
+        switchToPrevTab, 
+        switchToNextTab 
+    } = useTabStore();
     const { themeMode } = useThemeStore();
 
     const isDark = themeMode === THEME_MODES.DARK;
@@ -78,6 +88,20 @@ export default function TabsBar() {
 
     return (
         <div className={`no-print flex items-center justify-between px-3 sm:px-6 py-1.5 ${barBg} transition-colors select-none`}>
+            {/* Previous tab arrow (Alt + ArrowLeft) */}
+            {tabs.length > 1 && (
+                <button
+                    onClick={() => switchToPrevTab(navigate)}
+                    className={`hidden sm:flex items-center justify-center p-1 mr-1 rounded-md transition text-slate-400 hover:text-slate-800 dark:hover:text-white ${
+                        isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-200'
+                    }`}
+                    title="Previous Tab (Alt + ←)"
+                    aria-label="Previous tab"
+                >
+                    <ChevronLeft size={14} />
+                </button>
+            )}
+
             {/* Scrollable Tabs List */}
             <div 
                 ref={scrollContainerRef}
@@ -103,7 +127,7 @@ export default function TabsBar() {
                             data-active={isActive ? "true" : "false"}
                             onClick={() => handleTabClick(tab)}
                             className={`group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs cursor-pointer transition-all duration-150 flex-shrink-0 border border-transparent ${tabClass}`}
-                            title={tab.title}
+                            title={isHub ? "App Hub (Alt + H)" : isActive ? `${tab.title} (Active - Alt + W to close)` : tab.title}
                         >
                             {isHub ? (
                                 <LayoutGrid size={14} className={isActive ? (isDark ? 'text-sky-400' : 'text-[#000865]') : (isDark ? 'text-slate-400' : 'text-slate-500')} />
@@ -117,7 +141,7 @@ export default function TabsBar() {
                                 <button
                                     onClick={(e) => handleTabClose(e, tab)}
                                     className="p-0.5 rounded-full hover:bg-slate-400/20 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
-                                    title="Close tab"
+                                    title={isActive ? "Close tab (Alt + W)" : "Close tab"}
                                     aria-label={`Close ${tab.title}`}
                                 >
                                     <X size={12} />
@@ -127,6 +151,20 @@ export default function TabsBar() {
                     );
                 })}
             </div>
+
+            {/* Next tab arrow (Alt + ArrowRight) */}
+            {tabs.length > 1 && (
+                <button
+                    onClick={() => switchToNextTab(navigate)}
+                    className={`hidden sm:flex items-center justify-center p-1 ml-1 rounded-md transition text-slate-400 hover:text-slate-800 dark:hover:text-white ${
+                        isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-200'
+                    }`}
+                    title="Next Tab (Alt + →)"
+                    aria-label="Next tab"
+                >
+                    <ChevronRight size={14} />
+                </button>
+            )}
 
             {/* Quick Actions (Close Others / Close All) */}
             {tabs.length > 2 && (
@@ -138,7 +176,7 @@ export default function TabsBar() {
                                 ? 'text-slate-400 hover:text-white hover:bg-slate-800' 
                                 : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'
                         }`}
-                        title="Close all other tabs except active"
+                        title="Close all other tabs except active (Alt + Shift + W)"
                     >
                         Close Others
                     </button>
