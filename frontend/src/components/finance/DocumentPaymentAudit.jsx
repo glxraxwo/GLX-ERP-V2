@@ -1,14 +1,22 @@
-import { useState, useEffect } from 'react';
-import { ShieldCheck, FileCheck, DollarSign, Clock, UserCheck, AlertCircle, Download } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ShieldCheck, FileCheck, DollarSign, Clock, UserCheck, AlertCircle, Download, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getApiUrl } from '../../api/config';
 import { paymentsApi } from '../../features/payments/paymentsApi';
+import Modal from '../ui/Modal';
+import PaymentReceiptPrintView from '../print/PaymentReceiptPrintView';
+import { printElementAsPDF } from '../../utils/dataExport';
+import { useSettings } from '../../features/settings/useSettings';
 
 export default function DocumentPaymentAudit({ documentId, title = 'Payment History' }) {
     const [summary, setSummary] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [previewPayment, setPreviewPayment] = useState(null);
+    const printModalRef = useRef(null);
+    const { data: settingsData } = useSettings();
+    const companyInfo = settingsData?.data;
 
     useEffect(() => {
         if (!documentId) return;
@@ -49,6 +57,25 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
             console.error('Download error:', err);
             toast.error('Failed to download PDF', { id: 'audit-receipt' });
         });
+    };
+
+    const handlePrintReceipt = async (paymentId, paymentObj) => {
+        const token = localStorage.getItem('token');
+        toast.loading('Loading receipt...', { id: 'audit-receipt' });
+        try {
+            const res = await axios.get(`${getApiUrl()}/payments/${paymentId}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+            if (res.data?.data) {
+                setPreviewPayment(res.data.data);
+            } else {
+                setPreviewPayment(paymentObj);
+            }
+            toast.dismiss('audit-receipt');
+        } catch (err) {
+            setPreviewPayment(paymentObj);
+            toast.dismiss('audit-receipt');
+        }
     };
 
     if (!documentId) return null;
@@ -145,15 +172,26 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                                                         {p.signatureNote || p.notes || '-'}
                                                     </td>
                                                     <td className="p-3 text-center">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleDownloadReceipt(p.paymentId, p.paymentNumber, isVoucher)}
-                                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 transition"
-                                                            title="Download Official PDF Receipt"
-                                                        >
-                                                            <Download className="w-3 h-3" />
-                                                            PDF
-                                                        </button>
+                                                        <div className="flex items-center justify-center gap-1.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handlePrintReceipt(p.paymentId, p)}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-700 transition cursor-pointer"
+                                                                title="Print Official Receipt"
+                                                            >
+                                                                <Printer className="w-3.5 h-3.5" />
+                                                                Print
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDownloadReceipt(p.paymentId, p.paymentNumber, isVoucher)}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 transition cursor-pointer"
+                                                                title="Download Official PDF Receipt"
+                                                            >
+                                                                <Download className="w-3.5 h-3.5" />
+                                                                PDF
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -169,6 +207,45 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                     </>
                 ) : null}
             </div>
+
+            {/* Print Official Receipt Modal */}
+            <Modal
+                isOpen={!!previewPayment}
+                onClose={() => setPreviewPayment(null)}
+                title={`Print ${previewPayment?.direction === 'paid' ? 'Payment Voucher' : 'Payment Receipt'} - ${previewPayment?.paymentNumber || ''}`}
+                size="xl"
+            >
+                {previewPayment && (
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center bg-gray-50 dark:bg-slate-800/80 p-3 rounded-lg border border-gray-200 dark:border-slate-700 no-print">
+                            <div className="text-xs text-gray-600 dark:text-slate-300 font-medium">
+                                Review official receipt layout below with your company letterhead options.
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (printModalRef.current) {
+                                        printElementAsPDF(printModalRef.current);
+                                    } else {
+                                        window.print();
+                                    }
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition cursor-pointer"
+                            >
+                                <Printer size={15} /> Print Now
+                            </button>
+                        </div>
+                        <div className="overflow-x-auto bg-gray-100 dark:bg-slate-900/60 p-2 sm:p-4 rounded-xl flex justify-center">
+                            <PaymentReceiptPrintView
+                                ref={printModalRef}
+                                payment={previewPayment}
+                                companyInfo={companyInfo}
+                                hideToolbar={false}
+                            />
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }

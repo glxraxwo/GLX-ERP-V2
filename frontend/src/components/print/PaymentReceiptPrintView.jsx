@@ -2,6 +2,7 @@ import React, { forwardRef, useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '../../store/authStore';
 import { useSettings } from '../../features/settings/useSettings';
+import { printElementAsPDF } from '../../utils/dataExport';
 
 export const DOCUMENT_FONT_FAMILY = "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif";
 
@@ -74,7 +75,7 @@ const convertNumberToWords = (amount) => {
     return words + ' Only';
 };
 
-const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar = false, hideLetterheadHeader = false }, ref) => {
+const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar = false, hideLetterheadHeader = false, onPrint }, ref) => {
     if (!payment) return null;
 
     const { user: currentUser } = useAuthStore();
@@ -83,6 +84,16 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
     useEffect(() => {
         setShowLH(!hideLetterheadHeader);
     }, [hideLetterheadHeader]);
+
+    const handlePrintClick = () => {
+        if (onPrint) {
+            onPrint();
+        } else if (ref && ref.current) {
+            printElementAsPDF(ref.current);
+        } else {
+            window.print();
+        }
+    };
 
     const isVoucher = payment.direction === 'paid' || !!payment.voucherType;
     const docTitle = isVoucher ? 'PAYMENT VOUCHER' : 'PAYMENT RECEIPT';
@@ -271,12 +282,26 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                             type="button" 
                             onClick={() => setShowLH(p => !p)} 
                             style={{
-                                padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 11, cursor: 'pointer', border: '1px solid #cbd5e1',
+                                padding: '5px 12px', borderRadius: 7, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', border: '1px solid #cbd5e1',
                                 background: !showLetterheadHeader ? '#b45309' : '#fff',
                                 color: !showLetterheadHeader ? '#fff' : '#374151',
                             }}
                         >
                             {!showLetterheadHeader ? '✓ Without Header (Pre-printed)' : 'With Header (Letterhead)'}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={handlePrintClick}
+                            style={{
+                                padding: '5px 14px', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', border: 'none',
+                                background: '#059669', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6,
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                            }}
+                            title="Print this receipt directly"
+                        >
+                            <span>🖨️</span>
+                            <span>Print Receipt</span>
                         </button>
                     </div>
                 </div>
