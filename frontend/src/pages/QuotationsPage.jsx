@@ -355,9 +355,22 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
     useEffect(() => {
         fetchQuotations();
-        fetchData();
-        fetchVehicleAndInsuranceData();
+        // Defer secondary master data to keep initial quotation list loading instantaneous
+        const timer = setTimeout(() => {
+            fetchVehicleAndInsuranceData();
+        }, 150);
+        return () => clearTimeout(timer);
     }, []);
+
+    // Lazy-load heavy product, customer, employee, and bank data only when form or conversion modal opens
+    useEffect(() => {
+        if (isFormOpen || isConvertToProjectOpen || editing) {
+            if (products.length === 0 || customers.length === 0) {
+                fetchData();
+                fetchVehicleAndInsuranceData();
+            }
+        }
+    }, [isFormOpen, isConvertToProjectOpen, editing]);
 
     const calculateTotals = (items, extraDiscount = 0, tax = 0, laborCost = 0, advanceAmount = 0) => {
         const subtotal = items.reduce((acc, item) => acc + (Number(item.quantity || 0) * Number(item.unitPrice || 0)), 0);

@@ -150,7 +150,8 @@ export const getQuotations = asyncHandler(async (req, res) => {
             .populate('createdBy', 'firstName lastName signature jobTitle')
             .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(Number(limit)),
+            .limit(Number(limit))
+            .lean(),
         Quotation.countDocuments(filter)
     ]);
 
@@ -176,7 +177,8 @@ export const getQuotationById = asyncHandler(async (req, res) => {
         .populate('items.product', 'name productCode uom basePrice sku')
         .populate('createdBy', 'firstName lastName signature jobTitle')
         .populate('updatedBy', 'firstName lastName username role email')
-        .populate('editHistory.editedBy', 'firstName lastName username role email');
+        .populate('editHistory.editedBy', 'firstName lastName username role email')
+        .lean();
 
     if (!quotation) {
         res.status(404);
@@ -300,7 +302,8 @@ export const updateQuotation = asyncHandler(async (req, res) => {
         .populate('items.product', 'name productCode uom basePrice sku')
         .populate('createdBy', 'firstName lastName signature jobTitle')
         .populate('updatedBy', 'firstName lastName username role email')
-        .populate('editHistory.editedBy', 'firstName lastName username role email');
+        .populate('editHistory.editedBy', 'firstName lastName username role email')
+        .lean();
 
     res.json({ success: true, data: populated || quotation });
 });

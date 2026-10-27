@@ -139,4 +139,13 @@ quotationSchema.pre('validate', async function () {
     this.balanceAmount = Math.max(0, +( (this.grandTotal || 0) - (this.advanceAmount || 0) ).toFixed(2));
 });
 
+// Indexes for fast list queries, sorting, and search
+quotationSchema.index({ deletedAt: 1, createdAt: -1 });
+quotationSchema.index({ deletedAt: 1, documentType: 1, createdAt: -1 });
+quotationSchema.index({ deletedAt: 1, status: 1, createdAt: -1 });
+quotationSchema.index({ quoteNumber: 1 });
+quotationSchema.index({ quotationCode: 1 });
+quotationSchema.index({ vehicleNo: 1 });
+quotationSchema.index({ customerId: 1, createdAt: -1 });
+
 export default mongoose.model('Quotation', quotationSchema);

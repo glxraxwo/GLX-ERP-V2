@@ -9,40 +9,40 @@ export default function Table({ columns, data = [], onRowClick, maxHeight, conta
         setSelectedIdx(-1);
     }, [data]);
 
-    // Handle keyboard arrow navigation inside table
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            const target = e.target;
-            const isTyping = target && (
-                target.tagName === 'INPUT' || 
-                target.tagName === 'TEXTAREA' || 
-                target.tagName === 'SELECT' || 
-                target.isContentEditable
-            );
-            if (isTyping) return;
-            if (!data || data.length === 0) return;
+    // Handle keyboard arrow navigation ONLY when the table container itself has focus
+    const handleKeyDown = (e) => {
+        const target = e.target;
+        const isTyping = target && (
+            target.tagName === 'INPUT' || 
+            target.tagName === 'TEXTAREA' || 
+            target.tagName === 'SELECT' || 
+            target.isContentEditable
+        );
+        if (isTyping) return;
+        if (!data || data.length === 0) return;
 
-            if (e.key === 'ArrowDown') {
+        if (e.key === 'ArrowDown') {
+            // Only capture arrow key if a row is already actively selected inside the table
+            if (selectedIdx >= 0 && selectedIdx < data.length - 1) {
                 e.preventDefault();
-                setSelectedIdx(prev => (prev < data.length - 1 ? prev + 1 : prev));
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setSelectedIdx(prev => (prev > 0 ? prev - 1 : 0));
-            } else if (e.key === 'Enter') {
-                if (selectedIdx >= 0 && selectedIdx < data.length && onRowClick) {
-                    e.preventDefault();
-                    onRowClick(data[selectedIdx]);
-                }
-            } else if (e.key === 'Escape') {
-                setSelectedIdx(-1);
+                setSelectedIdx(prev => prev + 1);
             }
-        };
+        } else if (e.key === 'ArrowUp') {
+            if (selectedIdx > 0) {
+                e.preventDefault();
+                setSelectedIdx(prev => prev - 1);
+            }
+        } else if (e.key === 'Enter') {
+            if (selectedIdx >= 0 && selectedIdx < data.length && onRowClick) {
+                e.preventDefault();
+                onRowClick(data[selectedIdx]);
+            }
+        } else if (e.key === 'Escape') {
+            setSelectedIdx(-1);
+        }
+    };
 
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [data, selectedIdx, onRowClick]);
-
-    // Scroll active row into view
+    // Scroll active row into view if selected by arrow navigation
     useEffect(() => {
         if (selectedIdx >= 0 && tableRef.current) {
             const rowEl = tableRef.current.querySelector(`[data-row-index="${selectedIdx}"]`);
@@ -55,7 +55,10 @@ export default function Table({ columns, data = [], onRowClick, maxHeight, conta
     return (
         <div 
             ref={tableRef}
-            className={`overflow-auto min-w-full -mx-4 sm:mx-0 shadow-xs border-b sm:border border-gray-200 dark:border-slate-700 sm:rounded-lg ${maxHeight || 'max-h-[calc(100vh-220px)] sm:max-h-[72vh]'} ${containerClassName || ''}`}
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
+            style={{ overscrollBehavior: 'auto', WebkitOverflowScrolling: 'touch' }}
+            className={`overflow-auto min-w-full -mx-4 sm:mx-0 shadow-xs border-b sm:border border-gray-200 dark:border-slate-700 sm:rounded-lg outline-none focus:ring-1 focus:ring-blue-400/20 ${maxHeight || 'max-h-[calc(100vh-220px)] sm:max-h-[72vh]'} ${containerClassName || ''}`}
         >
             <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 border-separate border-spacing-0">
                 <thead className="bg-gray-50 dark:bg-slate-800 sticky top-0 z-20">
@@ -99,16 +102,7 @@ export default function Table({ columns, data = [], onRowClick, maxHeight, conta
                                             col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'
                                         }`}
                                     >
-                                        <div className="flex items-center gap-2">
-                                            {colIdx === 0 && isSelected && onRowClick && (
-                                                <span className="font-mono text-[9px] px-1 py-0.2 rounded bg-blue-600 text-white dark:bg-sky-500 font-bold flex-shrink-0 animate-pulse">
-                                                    ↵
-                                                </span>
-                                            )}
-                                            <div className="min-w-0">
-                                                {col.render ? col.render(row) : (row[col.key] ?? '-')}
-                                            </div>
-                                        </div>
+                                        {col.render ? col.render(row, idx) : (row[col.key] !== undefined && row[col.key] !== null ? String(row[col.key]) : '—')}
                                     </td>
                                 ))}
                             </tr>
@@ -116,25 +110,6 @@ export default function Table({ columns, data = [], onRowClick, maxHeight, conta
                     })}
                 </tbody>
             </table>
-
-            {/* Subtle Keyboard Navigation Hint in Table Footer */}
-            {data && data.length > 0 && onRowClick && (
-                <div className="sticky bottom-0 z-10 flex items-center justify-between px-3.5 py-1.5 bg-slate-50/95 dark:bg-slate-800/95 border-t border-gray-200 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400 backdrop-blur-xs select-none">
-                    <div className="flex items-center gap-1.5">
-                        <kbd className="px-1 py-0.2 rounded bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 font-mono text-[9px] font-bold">↑</kbd>
-                        <kbd className="px-1 py-0.2 rounded bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 font-mono text-[9px] font-bold">↓</kbd>
-                        <span>Navigate rows</span>
-                        <span className="mx-1 opacity-50">•</span>
-                        <kbd className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 font-mono text-[9px] font-bold">Enter ↵</kbd>
-                        <span>Open details</span>
-                    </div>
-                    {selectedIdx >= 0 && (
-                        <span className="font-semibold text-blue-600 dark:text-sky-400">
-                            Row {selectedIdx + 1} of {data.length} selected
-                        </span>
-                    )}
-                </div>
-            )}
         </div>
     );
 }

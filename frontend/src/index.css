@@ -608,13 +608,24 @@ textarea {
   div.overflow-auto:has(table:not(.no-sticky-height)):not([class*="max-h-"]):not(.print-container):not(.print-area):not(.quotation-print-area):not(.employee-payment-sheet-print) {
     max-height: calc(100vh - 220px);
     overflow-y: auto;
-    overscroll-behavior-y: contain;
+    overscroll-behavior: auto !important;
   }
 
   @media (max-width: 640px) {
     div.overflow-x-auto:has(table:not(.no-sticky-height)):not([class*="max-h-"]):not(.print-container):not(.print-area):not(.quotation-print-area):not(.employee-payment-sheet-print),
     div.overflow-auto:has(table:not(.no-sticky-height)):not([class*="max-h-"]):not(.print-container):not(.print-area):not(.quotation-print-area):not(.employee-payment-sheet-print) {
       max-height: calc(100vh - 180px);
+      overscroll-behavior: auto !important;
     }
+  }
+
+  /* Prevent number input scroll from locking page scrolling */
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button, 
+  input[type="number"]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
   }
 }

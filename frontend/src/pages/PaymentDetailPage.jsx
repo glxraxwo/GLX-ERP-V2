@@ -1,5 +1,6 @@
+import { useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getApiUrl } from '../api/config';
@@ -10,18 +11,34 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import { useQuery } from '@tanstack/react-query';
 import { paymentsApi } from '../features/payments/paymentsApi';
+import { useSettings } from '../features/settings/useSettings';
+import PaymentReceiptPrintView from '../components/print/PaymentReceiptPrintView';
+import { printElementAsPDF } from '../utils/dataExport';
 
 export default function PaymentDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const printRef = useRef(null);
 
     const { data, isLoading } = useQuery({
         queryKey: ['payment', id], queryFn: () => paymentsApi.getById(id),
     });
+    const { data: settingsData } = useSettings();
+    const companyInfo = settingsData?.data;
+
     const p = data?.data;
 
     const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
     const fmtDate = (d) => new Date(d).toLocaleDateString('en-LK');
+
+    const handlePrintReceipt = () => {
+        toast.dismiss();
+        if (printRef.current) {
+            printElementAsPDF(printRef.current);
+        } else {
+            window.print();
+        }
+    };
 
     const handleDownloadReceipt = () => {
         if (!p) return;
@@ -64,12 +81,15 @@ export default function PaymentDetailPage() {
                 </span>}
                 description={`${fmtDate(p.paymentDate)}${p.method ? ' · ' + p.method.replace(/_/g, ' ') : ''}`}
                 actions={
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <Button variant="outline" onClick={() => navigate('/payments')}>
                             <ArrowLeft size={16} className="mr-1.5" /> Back
                         </Button>
+                        <Button onClick={handlePrintReceipt} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs">
+                            <Printer size={16} className="mr-1.5" /> Print {isVoucher ? 'Voucher' : 'Receipt'}
+                        </Button>
                         <Button onClick={handleDownloadReceipt} className="bg-blue-600 hover:bg-blue-700 text-white">
-                            <Download size={16} className="mr-1.5" /> Download {isVoucher ? 'Voucher PDF' : 'Receipt PDF'}
+                            <Download size={16} className="mr-1.5" /> Download PDF
                         </Button>
                         {p.publicToken && (
                             <a
@@ -86,7 +106,7 @@ export default function PaymentDetailPage() {
                 }
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
                 <div className="lg:col-span-2 space-y-5">
                     <Card className="p-5">
                         <h3 className="text-sm font-semibold text-gray-700 mb-4">Details</h3>
@@ -124,7 +144,7 @@ export default function PaymentDetailPage() {
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {p.allocations.map((a) => (
-                                            <tr key={a._id} className="hover:bg-gray-50">
+                                             <tr key={a._id} className="hover:bg-gray-50">
                                                 <td className="px-5 py-3 font-mono text-sm">
                                                     <button onClick={() => navigate(`/${a.documentType}s/${a.documentId}`)}
                                                         className="text-primary-600 hover:underline">{a.documentNumber}</button>
@@ -184,6 +204,28 @@ export default function PaymentDetailPage() {
                     </Card>
                 </div>
             </div>
+
+            {/* ── Official Letterhead Print & Preview Section ── */}
+            <Card className="p-4 sm:p-6 overflow-x-auto">
+                <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-200 dark:border-slate-800">
+                    <div>
+                        <h3 className="text-base font-bold text-gray-900 dark:text-white">Official {isVoucher ? 'Payment Voucher' : 'Payment Receipt'} Print Preview</h3>
+                        <p className="text-xs text-gray-500">Review official layout or print directly with company letterhead</p>
+                    </div>
+                    <Button onClick={handlePrintReceipt} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+                        <Printer size={16} className="mr-1.5" /> Print Now
+                    </Button>
+                </div>
+
+                <div className="bg-gray-100 dark:bg-slate-900/60 p-2 sm:p-6 rounded-xl flex justify-center">
+                    <PaymentReceiptPrintView
+                        ref={printRef}
+                        payment={p}
+                        companyInfo={companyInfo}
+                        hideToolbar={false}
+                    />
+                </div>
+            </Card>
         </div>
     );
 }
