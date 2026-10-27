@@ -327,10 +327,12 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
                 const range = pdfDoc.bufferedPageRange();
                 for (let i = range.start; i < range.start + range.count; i++) {
                     pdfDoc.switchToPage(i);
-                    pdfDoc.moveTo(36, pdfDoc.page.height - 30).lineTo(pdfDoc.page.width - 36, pdfDoc.page.height - 30).lineWidth(0.5).strokeColor('#E2E8F0').stroke();
+                    pdfDoc.page.margins.bottom = 0;
+                    const footerY = pdfDoc.page.height - 22;
+                    pdfDoc.moveTo(36, footerY - 4).lineTo(pdfDoc.page.width - 36, footerY - 4).lineWidth(0.5).strokeColor('#E2E8F0').stroke();
                     pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7)
-                        .text('GLX TRUCK BODY ENGINEERS - Computer Generated Official Document', 36, pdfDoc.page.height - 24);
-                    pdfDoc.text(`Page ${i + 1} of ${range.count}`, 36, pdfDoc.page.height - 24, { align: 'right' });
+                        .text('GLX TRUCK BODY ENGINEERS - Computer Generated Official Document', 36, footerY, { lineBreak: false });
+                    pdfDoc.text(`Page ${i + 1} of ${range.count}`, 36, footerY, { align: 'right', lineBreak: false });
                 }
 
                 pdfDoc.end();
@@ -620,10 +622,12 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 const range = pdfDoc.bufferedPageRange();
                 for (let i = range.start; i < range.start + range.count; i++) {
                     pdfDoc.switchToPage(i);
-                    pdfDoc.moveTo(36, pdfDoc.page.height - 30).lineTo(pdfDoc.page.width - 36, pdfDoc.page.height - 30).lineWidth(0.5).strokeColor('#E2E8F0').stroke();
+                    pdfDoc.page.margins.bottom = 0;
+                    const footerY = pdfDoc.page.height - 22;
+                    pdfDoc.moveTo(36, footerY - 4).lineTo(pdfDoc.page.width - 36, footerY - 4).lineWidth(0.5).strokeColor('#E2E8F0').stroke();
                     pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7)
-                        .text('GLX TRUCK BODY ENGINEERS - Computer Generated Official Receipt', 36, pdfDoc.page.height - 24);
-                    pdfDoc.text(`Page ${i + 1} of ${range.count}`, 36, pdfDoc.page.height - 24, { align: 'right' });
+                        .text('GLX TRUCK BODY ENGINEERS - Computer Generated Official Receipt', 36, footerY, { lineBreak: false });
+                    pdfDoc.text(`Page ${i + 1} of ${range.count}`, 36, footerY, { align: 'right', lineBreak: false });
                 }
 
                 pdfDoc.end();

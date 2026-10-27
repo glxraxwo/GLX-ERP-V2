@@ -77,9 +77,20 @@ function PaymentsPage() {
         setPage(1);
     };
 
-    const handlePrintReceipt = (e, row) => {
+    const handlePrintReceipt = async (e, row) => {
         e.stopPropagation();
         setPreviewPayment(row);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${getApiUrl()}/payments/${row._id}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+            if (res.data?.data) {
+                setPreviewPayment(res.data.data);
+            }
+        } catch (err) {
+            // Fallback to row
+        }
     };
 
     const handleDownloadReceipt = (e, row) => {
