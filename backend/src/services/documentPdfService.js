@@ -332,7 +332,9 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
                     pdfDoc.moveTo(36, footerY - 4).lineTo(pdfDoc.page.width - 36, footerY - 4).lineWidth(0.5).strokeColor('#E2E8F0').stroke();
                     pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7)
                         .text('GLX TRUCK BODY ENGINEERS - Computer Generated Official Document', 36, footerY, { lineBreak: false });
-                    pdfDoc.text(`Page ${i + 1} of ${range.count}`, 36, footerY, { align: 'right', lineBreak: false });
+                    const pageText = `Page ${i + 1} of ${range.count}`;
+                    const pageTextWidth = pdfDoc.widthOfString(pageText);
+                    pdfDoc.text(pageText, pdfDoc.page.width - 36 - pageTextWidth, footerY, { lineBreak: false });
                 }
 
                 pdfDoc.end();
@@ -627,7 +629,9 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                     pdfDoc.moveTo(36, footerY - 4).lineTo(pdfDoc.page.width - 36, footerY - 4).lineWidth(0.5).strokeColor('#E2E8F0').stroke();
                     pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7)
                         .text('GLX TRUCK BODY ENGINEERS - Computer Generated Official Receipt', 36, footerY, { lineBreak: false });
-                    pdfDoc.text(`Page ${i + 1} of ${range.count}`, 36, footerY, { align: 'right', lineBreak: false });
+                    const pageText = `Page ${i + 1} of ${range.count}`;
+                    const pageTextWidth = pdfDoc.widthOfString(pageText);
+                    pdfDoc.text(pageText, pdfDoc.page.width - 36 - pageTextWidth, footerY, { lineBreak: false });
                 }
 
                 pdfDoc.end();
