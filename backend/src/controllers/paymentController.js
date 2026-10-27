@@ -128,6 +128,16 @@ export const createPayment = asyncHandler(async (req, res) => {
             .populate('supplierId', 'displayName supplierCode')
             .populate('bankAccountId', 'bankName accountNumber accountName');
 
+        // Automatically dispatch payment receipt SMS with public view link to customer
+        if (direction === 'received') {
+            const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+            import('../services/smsService.js').then(({ sendPaymentReceiptSms }) => {
+                sendPaymentReceiptSms(populated || payment, hostOrigin).catch((err) =>
+                    console.error('[Payment Receipt SMS Trigger Error]:', err.message)
+                );
+            }).catch(() => {});
+        }
+
         res.status(201).json({ success: true, data: populated });
     } catch (err) {
         res.status(400);
@@ -708,4 +718,37 @@ export const getDocumentPaymentSummary = asyncHandler(async (req, res) => {
         count: auditLogs.length,
         payments: auditLogs,
     });
+});
+
+/**
+ * GET /api/payments/:id/receipt
+ * Download official PDF receipt/voucher
+ */
+export const downloadPaymentReceipt = asyncHandler(async (req, res) => {
+    const payment = await Payment.findById(req.params.id)
+        .populate('customerId', 'displayName companyName primaryContact billingAddress customerCode')
+        .populate('supplierId', 'displayName companyName primaryContact address')
+        .populate('employeeId', 'firstName lastName callingName')
+        .populate('bankAccountId', 'bankName accountNumber accountName branch')
+        .populate('receivedBy', 'name email')
+        .populate('createdBy', 'name email')
+        .lean();
+
+    if (!payment) {
+        res.status(404);
+        throw new Error('Payment record not found');
+    }
+
+    const Settings = (await import('../models/Settings.js')).default;
+    const settings = await Settings.findOne().lean();
+    const { generatePaymentReceiptPDF } = await import('../services/documentPdfService.js');
+    const pdfBuffer = await generatePaymentReceiptPDF({ payment, settings });
+
+    const isVoucher = payment.direction === 'paid' || !!payment.voucherType;
+    const docType = isVoucher ? 'Voucher' : 'Receipt';
+    const filename = `${docType}_${String(payment.paymentNumber || payment._id).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
 });

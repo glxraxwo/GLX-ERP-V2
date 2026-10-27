@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ShieldCheck, FileCheck, DollarSign, Clock, UserCheck, AlertCircle } from 'lucide-react';
+import { ShieldCheck, FileCheck, DollarSign, Clock, UserCheck, AlertCircle, Download } from 'lucide-react';
+import toast from 'react-hot-toast';
+import axios from 'axios';
+import { getApiUrl } from '../../api/config';
 import { paymentsApi } from '../../features/payments/paymentsApi';
 
 export default function DocumentPaymentAudit({ documentId, title = 'Payment & Voucher Audit Trail' }) {
@@ -23,6 +26,30 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment & Vo
                 setIsLoading(false);
             });
     }, [documentId]);
+
+    const handleDownloadReceipt = (paymentId, paymentNumber, isVoucher) => {
+        const token = localStorage.getItem('token');
+        const prefix = isVoucher ? 'Voucher' : 'Receipt';
+        const docNum = paymentNumber || paymentId;
+
+        toast.loading('Downloading PDF...', { id: 'audit-receipt' });
+        axios.get(`${getApiUrl()}/payments/${paymentId}/receipt`, {
+            responseType: 'blob',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        }).then((res) => {
+            const blob = new Blob([res.data], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = `${prefix}_${docNum}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success('Downloaded successfully', { id: 'audit-receipt' });
+        }).catch((err) => {
+            console.error('Download error:', err);
+            toast.error('Failed to download PDF', { id: 'audit-receipt' });
+        });
+    };
 
     if (!documentId) return null;
 
@@ -73,6 +100,7 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment & Vo
                                             <th className="p-3 text-right">Amount (LKR)</th>
                                             <th className="p-3">Handled By</th>
                                             <th className="p-3">Signature / Remarks</th>
+                                            <th className="p-3 text-center">Receipt</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700 text-slate-800 dark:text-slate-200">
@@ -115,6 +143,17 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment & Vo
                                                     </td>
                                                     <td className="p-3 italic text-slate-600 dark:text-slate-400">
                                                         {p.signatureNote || p.notes || '-'}
+                                                    </td>
+                                                    <td className="p-3 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDownloadReceipt(p.paymentId, p.paymentNumber, isVoucher)}
+                                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 transition"
+                                                            title="Download Official PDF Receipt"
+                                                        >
+                                                            <Download className="w-3 h-3" />
+                                                            PDF
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             );

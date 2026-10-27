@@ -567,3 +567,175 @@ export const sendProjectDeliveredSms = async (project, clientPhone) => {
         console.error('[SMS Service] Failed to send project delivery SMS:', err.message);
     }
 };
+
+/**
+ * Dispatch SMS helper with gateway call, database logging, and manager duplicate copy
+ */
+export const dispatchSmsNotification = async ({ contactPhone, recipientName, message }) => {
+    let formattedContact = formatSmsContact(contactPhone);
+    let status = 'sent';
+    const { SMS_USER_ID, SMS_API_KEY, SMS_SENDER_ID, SMS_GATEWAY_URL } = process.env;
+
+    if (SMS_USER_ID && SMS_API_KEY && SMS_SENDER_ID && SMS_GATEWAY_URL && formattedContact) {
+        console.log(`[SMS Gateway] Dispatched SMS to: ${formattedContact}`);
+        try {
+            const response = await fetch(SMS_GATEWAY_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: SMS_USER_ID,
+                    api_key: SMS_API_KEY,
+                    sender_id: SMS_SENDER_ID,
+                    contact: formattedContact,
+                    message: message
+                })
+            });
+            const data = await response.json();
+            if (response.status !== 200 || !data.success) {
+                status = 'failed';
+            }
+        } catch (err) {
+            console.error('[SMS Gateway] Failed request:', err.message);
+            status = 'failed';
+        }
+    } else {
+        console.log(`[SMS Gateway Simulated] To: ${contactPhone || 'N/A'} | Msg: ${message}`);
+        if (!contactPhone) status = 'failed';
+    }
+
+    try {
+        await SmsLog.create({
+            supplierName: recipientName || 'Valued Party',
+            supplierPhone: contactPhone || '0770000000',
+            message: message,
+            status: status
+        });
+    } catch (err) {
+        console.error('[SMS Service] Failed to save SmsLog:', err.message);
+    }
+
+    // Manager duplicate copy
+    try {
+        const Settings = mongoose.model('Settings');
+        const settings = await Settings.findOne();
+        if (settings && settings.managerSmsPhone) {
+            let managerContact = formatSmsContact(settings.managerSmsPhone);
+            const managerMsg = `[Manager Copy] Alert sent to ${contactPhone || 'client'} (${recipientName}): ${message}`;
+            if (SMS_USER_ID && SMS_API_KEY && SMS_SENDER_ID && SMS_GATEWAY_URL && managerContact) {
+                fetch(SMS_GATEWAY_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: SMS_USER_ID,
+                        api_key: SMS_API_KEY,
+                        sender_id: SMS_SENDER_ID,
+                        contact: managerContact,
+                        message: managerMsg
+                    })
+                }).catch(e => console.error('[SMS Service] Manager copy failed:', e.message));
+            } else {
+                console.log(`[SMS Gateway Simulated Manager Duplicate] To: ${settings.managerSmsPhone} | Msg: ${managerMsg}`);
+            }
+        }
+    } catch (err) {
+        // ignore manager copy errors
+    }
+
+    return status;
+};
+
+/**
+ * Automatically send invoice notification SMS to customer when invoice is created or converted
+ */
+export const sendInvoiceCreationSms = async (invoice, hostOrigin = '') => {
+    try {
+        if (!invoice) return;
+        let clientPhone = invoice.customerSnapshot?.phone || invoice.customerSnapshot?.mobile || invoice.customerPhone || invoice.contactNumber;
+        let clientName = invoice.customerSnapshot?.name || invoice.customerName || invoice.vehicleOwner || 'Valued Customer';
+
+        if (!clientPhone && invoice.customerId) {
+            const Customer = mongoose.model('Customer');
+            const cust = await Customer.findById(invoice.customerId);
+            if (cust) {
+                clientPhone = cust.primaryContact?.mobile || cust.primaryContact?.phone;
+                clientName = cust.displayName || cust.companyName || clientName;
+            }
+        }
+
+        if (!clientPhone) {
+            console.log('[SMS Service] No phone number available for invoice SMS:', invoice.invoiceNumber);
+            return;
+        }
+
+        const origin = hostOrigin || process.env.FRONTEND_URL || 'http://localhost:5173';
+        const link = invoice.publicToken ? `${origin}/public/documents/${invoice.publicToken}` : '';
+        const total = (invoice.total || invoice.grandTotal || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 });
+        const dueDate = invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('en-GB') : 'Immediate';
+
+        const message = `Dear ${clientName}, your Invoice (${invoice.invoiceNumber}) for Rs. ${total} has been generated. Due Date: ${dueDate}.${link ? ' View invoice: ' + link : ''} Thank you for choosing GLX Industries!`;
+
+        await dispatchSmsNotification({
+            contactPhone: clientPhone,
+            recipientName: clientName,
+            message
+        });
+    } catch (error) {
+        console.error('[SMS Service] Failed in sendInvoiceCreationSms:', error.message);
+    }
+};
+
+/**
+ * Automatically send payment receipt SMS to customer with public view link when payment is received
+ */
+export const sendPaymentReceiptSms = async (payment, hostOrigin = '') => {
+    try {
+        if (!payment) return;
+        let clientPhone = payment.customerPhone || payment.contactNumber;
+        let clientName = payment.partyName || 'Valued Customer';
+
+        if (!clientPhone && payment.customerId) {
+            const Customer = mongoose.model('Customer');
+            const cust = await Customer.findById(payment.customerId);
+            if (cust) {
+                clientPhone = cust.primaryContact?.mobile || cust.primaryContact?.phone;
+                clientName = cust.displayName || cust.companyName || clientName;
+            }
+        }
+
+        if (!clientPhone) {
+            console.log('[SMS Service] No phone number available for payment receipt SMS:', payment.paymentNumber);
+            return;
+        }
+
+        const origin = hostOrigin || process.env.FRONTEND_URL || 'http://localhost:5173';
+        const link = payment.publicToken ? `${origin}/public/documents/${payment.publicToken}` : '';
+        const amount = (payment.amount || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 });
+
+        let methodText = 'Cash';
+        if (payment.method === 'cheque') {
+            const chqDate = payment.chequeDate ? ` dated ${new Date(payment.chequeDate).toLocaleDateString('en-GB')}` : '';
+            methodText = `Cheque (#${payment.chequeNumber || 'N/A'}${chqDate})`;
+        } else if (payment.method === 'bank_transfer') {
+            const refText = payment.transactionReference ? ` (Ref: ${payment.transactionReference})` : '';
+            methodText = `Bank Transfer${refText}`;
+        } else if (payment.method === 'online') {
+            methodText = 'Online Transfer';
+        }
+
+        const allocDocs = (payment.allocations || [])
+            .map(a => a.documentNumber)
+            .filter(Boolean)
+            .join(', ');
+        const allocText = allocDocs ? ` (Applied to ${allocDocs})` : '';
+
+        const message = `Dear ${clientName}, payment of Rs. ${amount} received via ${methodText}. Receipt: ${payment.paymentNumber}.${allocText}${link ? ' View official receipt: ' + link : ''} Thank you for your business!`;
+
+        await dispatchSmsNotification({
+            contactPhone: clientPhone,
+            recipientName: clientName,
+            message
+        });
+    } catch (error) {
+        console.error('[SMS Service] Failed in sendPaymentReceiptSms:', error.message);
+    }
+};

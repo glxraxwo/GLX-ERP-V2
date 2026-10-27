@@ -1,5 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink } from 'lucide-react';
+import toast from 'react-hot-toast';
+import axios from 'axios';
+import { getApiUrl } from '../api/config';
 
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -20,7 +23,35 @@ export default function PaymentDetailPage() {
     const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
     const fmtDate = (d) => new Date(d).toLocaleDateString('en-LK');
 
+    const handleDownloadReceipt = () => {
+        if (!p) return;
+        const token = localStorage.getItem('token');
+        const isVoucher = p.direction === 'paid' || !!p.voucherType;
+        const prefix = isVoucher ? 'Voucher' : 'Receipt';
+        const docNum = p.paymentNumber || p._id;
+
+        toast.loading('Generating PDF...', { id: 'pdetail-receipt' });
+        axios.get(`${getApiUrl()}/payments/${p._id}/receipt`, {
+            responseType: 'blob',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        }).then((res) => {
+            const blob = new Blob([res.data], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = `${prefix}_${docNum}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success('Downloaded successfully', { id: 'pdetail-receipt' });
+        }).catch((err) => {
+            console.error('Download error:', err);
+            toast.error('Failed to download PDF', { id: 'pdetail-receipt' });
+        });
+    };
+
     if (isLoading || !p) return <div className="py-16 text-center text-gray-500">Loading...</div>;
+
+    const isVoucher = p.direction === 'paid' || !!p.voucherType;
 
     return (
         <div>
@@ -32,9 +63,27 @@ export default function PaymentDetailPage() {
                     </Badge>
                 </span>}
                 description={`${fmtDate(p.paymentDate)}${p.method ? ' · ' + p.method.replace(/_/g, ' ') : ''}`}
-                actions={<Button variant="outline" onClick={() => navigate('/payments')}>
-                    <ArrowLeft size={16} className="mr-1.5" /> Back
-                </Button>}
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => navigate('/payments')}>
+                            <ArrowLeft size={16} className="mr-1.5" /> Back
+                        </Button>
+                        <Button onClick={handleDownloadReceipt} className="bg-blue-600 hover:bg-blue-700 text-white">
+                            <Download size={16} className="mr-1.5" /> Download {isVoucher ? 'Voucher PDF' : 'Receipt PDF'}
+                        </Button>
+                        {p.publicToken && (
+                            <a
+                                href={`/public/documents/${p.publicToken}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition"
+                            >
+                                <ExternalLink size={15} />
+                                <span>Public View</span>
+                            </a>
+                        )}
+                    </div>
+                }
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

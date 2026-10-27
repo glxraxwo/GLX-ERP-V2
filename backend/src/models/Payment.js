@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { getNextSequence } from './Counter.js';
 
 const paymentAllocationSchema = new mongoose.Schema({
@@ -71,6 +72,13 @@ const paymentSchema = new mongoose.Schema({
     signatureNote: String,
     receiptImageUrl: String,
 
+    publicToken: {
+        type: String,
+        unique: true,
+        sparse: true,
+        index: true,
+    },
+
     receivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     deletedAt: { type: Date, default: null },
@@ -83,6 +91,10 @@ paymentSchema.index({ direction: 1, status: 1 });
 paymentSchema.index({ voucherType: 1 });
 
 paymentSchema.pre('save', async function () {
+    if (!this.publicToken) {
+        this.publicToken = crypto.randomBytes(16).toString('hex');
+    }
+
     if (this.isNew && !this.paymentNumber) {
         const isVoucher = this.direction === 'paid' || !!this.voucherType;
         const seqKey = isVoucher ? 'voucher' : 'payment_receipt';

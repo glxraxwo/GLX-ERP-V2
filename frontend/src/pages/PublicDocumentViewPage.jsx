@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import DocumentPrintView from '../components/print/DocumentPrintView';
+import PaymentReceiptPrintView from '../components/print/PaymentReceiptPrintView';
 import { exportElementToPDF } from '../utils/dataExport';
 import { getApiUrl } from '../api/config';
 import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
@@ -60,6 +61,18 @@ export default function PublicDocumentViewPage() {
 
     const handleDownloadPDF = async () => {
         setDownloading(true);
+        if (docType === 'payment_receipt') {
+            const directUrl = `${getApiUrl()}/public/documents/${token}/download`;
+            const link = document.createElement('a');
+            link.href = directUrl;
+            link.download = `receipt_${String(doc.paymentNumber || 'REC').replace(/[\/\\:]/g, '_')}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setDownloading(false);
+            return;
+        }
+
         try {
             if (printRef.current) {
                 const docNum = doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'document';
@@ -111,16 +124,25 @@ export default function PublicDocumentViewPage() {
         );
     }
 
+    const isPaymentReceipt = docType === 'payment_receipt';
+    const isVoucher = isPaymentReceipt && (doc.direction === 'paid' || !!doc.voucherType);
+
     const printDoc = {
         ...doc,
         documentType: docType
     };
 
-    const docNumber = doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'Document';
-    const docDisplayTitle = docType === 'estimate' ? 'Estimate' : (docType === 'invoice' ? 'Invoice' : 'Quotation');
-    const customerName = doc.customerName || doc.vehicleOwner || doc.customerSnapshot?.name || 'Customer';
-    const customerPhone = doc.customerPhone || doc.customerSnapshot?.contactName || '';
-    const customerAddress = doc.customerAddress || doc.billingAddress?.line1 || '';
+    const docNumber = isPaymentReceipt
+        ? (doc.paymentNumber || (isVoucher ? 'VOU-001' : 'REC-001'))
+        : (doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'Document');
+
+    const docDisplayTitle = isPaymentReceipt
+        ? (isVoucher ? 'Payment Voucher' : 'Payment Receipt')
+        : (docType === 'estimate' ? 'Estimate' : (docType === 'invoice' ? 'Invoice' : 'Quotation'));
+
+    const customerName = doc.partyName || doc.customerName || doc.vehicleOwner || doc.customerSnapshot?.name || doc.customerId?.displayName || 'Customer';
+    const customerPhone = doc.customerPhone || doc.customerSnapshot?.contactName || doc.customerId?.primaryContact?.phone || '';
+    const customerAddress = doc.customerAddress || doc.billingAddress?.line1 || doc.customerId?.billingAddress?.line1 || '';
     const vehicleNo = doc.vehicleNo || '';
     const vehicleModel = doc.vehicleModel || '';
     const insuranceCompany = doc.insuranceCompany || '';
@@ -228,7 +250,151 @@ export default function PublicDocumentViewPage() {
                 {/* ══════════════════════════════════════════════════════
                     1. MOBILE-FRIENDLY VIEW (Shown by default on phones)
                 ══════════════════════════════════════════════════════ */}
-                {viewMode === 'mobile' && (
+                {viewMode === 'mobile' && isPaymentReceipt && (
+                    <div className="space-y-3 no-print md:hidden">
+                        {/* Company Card */}
+                        <div className="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200">
+                            <div className="flex items-start gap-3 pb-3 border-b border-slate-100">
+                                <img 
+                                    src="/logo.jpg" 
+                                    alt="GLX" 
+                                    className="w-12 h-12 object-contain rounded-lg border border-slate-100 p-0.5 shrink-0" 
+                                />
+                                <div className="min-w-0">
+                                    <h1 className="text-sm font-black text-slate-900 leading-tight">GLX TRUCK BODY ENGINEERS</h1>
+                                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Aluminium, Steel &amp; Freezer Box Manufacture</p>
+                                </div>
+                            </div>
+                            
+                            <div className="pt-2.5 text-[11px] text-slate-600 grid grid-cols-2 gap-2">
+                                <a href="tel:0716666888" className="flex items-center gap-1.5 text-blue-600 font-medium">
+                                    <Phone size={12} className="shrink-0 text-slate-400" /> 071 6666 888
+                                </a>
+                                <a href="tel:0117404446" className="flex items-center gap-1.5 text-blue-600 font-medium">
+                                    <Phone size={12} className="shrink-0 text-slate-400" /> 011 740 4446
+                                </a>
+                                <div className="flex items-center gap-1.5 text-slate-500 col-span-2">
+                                    <MapPin size={12} className="shrink-0 text-slate-400" /> Ja-Ela (Thudella &amp; Kotugoda), Sri Lanka
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Receipt Overview Banner */}
+                        <div className="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200 space-y-3">
+                            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                                <div>
+                                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded-md">
+                                        {docDisplayTitle}
+                                    </span>
+                                    <h2 className="text-sm font-black text-slate-900 font-mono mt-1">{docNumber}</h2>
+                                </div>
+                                <div className="text-right text-[11px] text-slate-500">
+                                    <div className="flex items-center gap-1 justify-end font-medium">
+                                        <Calendar size={11} className="text-slate-400" /> {fmtDate(doc.paymentDate || doc.createdAt)}
+                                    </div>
+                                    <span className="inline-block mt-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                        {(doc.status || 'confirmed').toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Total Paid Hero */}
+                            <div className="p-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+                                <div>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-100 block">Total Amount Paid</span>
+                                    <span className="text-xl font-black font-mono">Rs. {fmt(doc.amount)}</span>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200 block">Method</span>
+                                    <span className="text-xs font-bold uppercase bg-white/20 px-2 py-0.5 rounded">
+                                        {(doc.method || 'cash').replace(/_/g, ' ')}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Party Details */}
+                            <div className="pt-2 text-xs text-slate-700 space-y-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Customer / Payer:</span>
+                                <p className="font-bold text-slate-900 text-sm">{doc.partyName || doc.customerId?.displayName || 'Valued Customer'}</p>
+                                {(doc.customerPhone || doc.customerId?.primaryContact?.phone) && (
+                                    <p className="text-slate-500">Phone: {doc.customerPhone || doc.customerId?.primaryContact?.phone}</p>
+                                )}
+                            </div>
+
+                            {/* Method Details */}
+                            <div className="pt-2 border-t border-slate-100 text-xs text-slate-600 space-y-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Payment Particulars:</span>
+                                {doc.method === 'cheque' && (
+                                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-0.5">
+                                        <p><span className="font-semibold text-slate-700">Cheque #:</span> {doc.chequeNumber || '—'}</p>
+                                        <p><span className="font-semibold text-slate-700">Cheque Date:</span> {fmtDate(doc.chequeDate)}</p>
+                                        <p><span className="font-semibold text-slate-700">Bank:</span> {doc.bankName || '—'}</p>
+                                    </div>
+                                )}
+                                {doc.method === 'bank_transfer' && (
+                                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 space-y-0.5">
+                                        <p><span className="font-semibold text-slate-700">Transaction Ref:</span> {doc.transactionReference || '—'}</p>
+                                        {doc.bankName && <p><span className="font-semibold text-slate-700">Bank:</span> {doc.bankName}</p>}
+                                    </div>
+                                )}
+                                {doc.bankAccountId && (
+                                    <div className="bg-blue-50/60 p-2 rounded-lg border border-blue-100 text-[11px] text-blue-900">
+                                        <span className="font-bold">Deposited To GLX Account:</span> {doc.bankAccountId.bankName || 'Bank'} ({doc.bankAccountId.accountNumber || ''})
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Allocations / Applied Invoices */}
+                            <div className="pt-2 border-t border-slate-100">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Applied Documents:</span>
+                                <div className="space-y-1.5">
+                                    {(doc.allocations || []).length > 0 ? (
+                                        doc.allocations.map((alloc, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                                                <div>
+                                                    <span className="font-mono font-bold text-blue-600">{alloc.documentNumber || `ID: ${String(alloc.documentId).slice(-6)}`}</span>
+                                                    <span className="text-[10px] text-slate-400 uppercase ml-2">({alloc.documentType || 'Invoice'})</span>
+                                                </div>
+                                                <span className="font-mono font-bold text-slate-900">Rs. {fmt(alloc.amount)}</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-xs text-slate-500 italic">Advance payment credited on customer account.</p>
+                                    )}
+                                </div>
+                                {doc.unallocatedAmount > 0 && (
+                                    <div className="mt-2 flex items-center justify-between text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-200">
+                                        <span>Remaining Credit Balance:</span>
+                                        <span className="font-mono">Rs. {fmt(doc.unallocatedAmount)}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Notes */}
+                            {doc.notes && (
+                                <div className="pt-2 border-t border-slate-100 text-xs text-slate-600">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Remarks:</span>
+                                    <p className="mt-0.5">{doc.notes}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Action Button */}
+                        <div className="pt-2">
+                            <button
+                                type="button"
+                                disabled={downloading}
+                                onClick={handleDownloadPDF}
+                                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-70"
+                            >
+                                <Download size={16} />
+                                {downloading ? 'Preparing Official PDF...' : 'Download Official PDF Receipt'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {viewMode === 'mobile' && !isPaymentReceipt && (
                     <div className="space-y-3 no-print md:hidden">
                         {/* Company Card */}
                         <div className="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200">
@@ -476,7 +642,11 @@ export default function PublicDocumentViewPage() {
 
                     <div className="bg-white shadow-sm border border-slate-200 rounded-2xl print:shadow-none print:border-0 print:p-0 overflow-x-auto">
                         <div className="min-w-[760px] p-2 sm:p-6 md:p-8 mx-auto">
-                            <DocumentPrintView ref={printRef} document={printDoc} companyInfo={companyInfo} hideToolbar={true} />
+                            {isPaymentReceipt ? (
+                                <PaymentReceiptPrintView ref={printRef} payment={doc} companyInfo={companyInfo} />
+                            ) : (
+                                <DocumentPrintView ref={printRef} document={printDoc} companyInfo={companyInfo} hideToolbar={true} />
+                            )}
                         </div>
                     </div>
                 </div>

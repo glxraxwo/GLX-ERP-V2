@@ -181,6 +181,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     const [customerSearch, setCustomerSearch] = useState('');
     const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
     const [showProductSuggestions, setShowProductSuggestions] = useState(null);
+    const [hoveredProductSuggestion, setHoveredProductSuggestion] = useState(null);
 
     // Convert to Project Dialog State
     const [isConvertToProjectOpen, setIsConvertToProjectOpen] = useState(false);
@@ -1815,63 +1816,91 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                             onBlur={() => setTimeout(() => setShowProductSuggestions(null), 250)}
                                         />
                                         {showProductSuggestions === index && (
-                                            <div className="absolute z-50 left-0 right-0 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg mt-1 divide-y shadow-blue-500/10">
-                                                {products
-                                                    .filter(p => {
-                                                        const search = (item.productName || '').toLowerCase().trim();
-                                                        if (!search) return true;
-                                                        const name = (p.name || p.productName || p.title || '').toLowerCase();
-                                                        const sName = (p.sinhalaName || '').toLowerCase();
-                                                        const code = (p.productCode || p.code || p.sku || '').toLowerCase();
-                                                        return name.includes(search) || sName.includes(search) || code.includes(search);
-                                                    })
-                                                    .slice(0, 10)
-                                                    .map(p => {
-                                                        const pName = p.name || p.productName || 'Item';
-                                                        const pSinhalaName = p.sinhalaName || '';
-                                                        const pPrice = Number(p.basePrice || p.sellingPrice || p.retailPrice || p.costs?.lastPurchaseCost || p.costs?.averageCost || p.unitPrice || p.price || 0);
-                                                        const pCode = p.productCode || p.code || 'NO-CODE';
-                                                        return (
-                                                            <button
-                                                                key={p._id}
-                                                                type="button"
-                                                                onMouseDown={() => {
-                                                                    const newItems = [...formData.items];
-                                                                    const qty = Number(newItems[index].quantity || 1);
-                                                                    const disc = Number(newItems[index].discount || 0);
-                                                                    newItems[index].product = p._id;
-                                                                    newItems[index].productName = pName;
-                                                                    if (pSinhalaName) {
-                                                                        newItems[index].productTranslation = pSinhalaName;
-                                                                    }
-                                                                    if (p.description) {
-                                                                        newItems[index].description = p.description;
-                                                                    }
-                                                                    newItems[index].unitPrice = pPrice;
-                                                                    newItems[index].quantity = qty;
-                                                                    newItems[index].subtotal = (qty * pPrice) - (qty * disc);
-                                                                    
-                                                                    const { subtotal, totalDiscount, grandTotal } = calculateTotals(newItems, formData.extraDiscount, formData.tax);
-                                                                    setFormData({ ...formData, items: newItems, totalAmount: subtotal, discount: totalDiscount, grandTotal });
-                                                                    setShowProductSuggestions(null);
-                                                                }}
-                                                                className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition cursor-pointer"
-                                                            >
-                                                                <div className="font-bold text-gray-800 flex items-center justify-between">
-                                                                    <span>{pName}</span>
-                                                                    <span className="font-mono text-blue-600 font-semibold">LKR {pPrice.toLocaleString()}</span>
-                                                                </div>
-                                                                {pSinhalaName && (
-                                                                    <div className="text-xs font-semibold text-emerald-700 mt-0.5">
-                                                                        {pSinhalaName}
+                                            <div className="relative">
+                                                <div className="absolute z-50 left-0 right-0 max-h-48 overflow-y-auto bg-white dark:bg-[#111F33] border border-gray-200 dark:border-slate-700 rounded-lg shadow-xl mt-1 divide-y divide-gray-100 dark:divide-slate-800 shadow-blue-500/10">
+                                                    {products
+                                                        .filter(p => {
+                                                            const search = (item.productName || '').toLowerCase().trim();
+                                                            if (!search) return true;
+                                                            const name = (p.name || p.productName || p.title || '').toLowerCase();
+                                                            const sName = (p.sinhalaName || '').toLowerCase();
+                                                            const code = (p.productCode || p.code || p.sku || '').toLowerCase();
+                                                            return name.includes(search) || sName.includes(search) || code.includes(search);
+                                                        })
+                                                        .slice(0, 10)
+                                                        .map(p => {
+                                                            const pName = p.name || p.productName || 'Item';
+                                                            const pSinhalaName = p.sinhalaName || '';
+                                                            const pPrice = Number(p.basePrice || p.sellingPrice || p.retailPrice || p.costs?.lastPurchaseCost || p.costs?.averageCost || p.unitPrice || p.price || 0);
+                                                            const pCode = p.productCode || p.code || 'NO-CODE';
+                                                            return (
+                                                                <button
+                                                                    key={p._id}
+                                                                    type="button"
+                                                                    onMouseEnter={() => setHoveredProductSuggestion(p)}
+                                                                    onMouseLeave={() => setHoveredProductSuggestion(null)}
+                                                                    onMouseDown={() => {
+                                                                        const newItems = [...formData.items];
+                                                                        const qty = Number(newItems[index].quantity || 1);
+                                                                        const disc = Number(newItems[index].discount || 0);
+                                                                        newItems[index].product = p._id;
+                                                                        newItems[index].productName = pName;
+                                                                        if (pSinhalaName) {
+                                                                            newItems[index].productTranslation = pSinhalaName;
+                                                                        }
+                                                                        if (p.description) {
+                                                                            newItems[index].description = p.description;
+                                                                        }
+                                                                        newItems[index].unitPrice = pPrice;
+                                                                        newItems[index].quantity = qty;
+                                                                        newItems[index].subtotal = (qty * pPrice) - (qty * disc);
+                                                                        
+                                                                        const { subtotal, totalDiscount, grandTotal } = calculateTotals(newItems, formData.extraDiscount, formData.tax);
+                                                                        setFormData({ ...formData, items: newItems, totalAmount: subtotal, discount: totalDiscount, grandTotal });
+                                                                        setShowProductSuggestions(null);
+                                                                        setHoveredProductSuggestion(null);
+                                                                    }}
+                                                                    className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                                                                >
+                                                                    <div className="font-bold text-gray-800 dark:text-white flex items-center justify-between">
+                                                                        <span>{pName}</span>
+                                                                        <span className="font-mono text-blue-600 dark:text-blue-400 font-semibold">LKR {pPrice.toLocaleString()}</span>
                                                                     </div>
-                                                                )}
-                                                                <div className="text-gray-500 text-[11px] mt-0.5">
-                                                                    <span>Code: {pCode}</span>
-                                                                </div>
-                                                            </button>
-                                                        );
-                                                    })}
+                                                                    {pSinhalaName && (
+                                                                        <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5">
+                                                                            {pSinhalaName}
+                                                                        </div>
+                                                                    )}
+                                                                    <div className="text-gray-500 dark:text-slate-400 text-[11px] mt-0.5">
+                                                                        <span>Code: {pCode}</span>
+                                                                    </div>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                </div>
+
+                                                {/* Side Description Popup Preview */}
+                                                {hoveredProductSuggestion?.description && (
+                                                    <div className="hidden lg:block absolute left-[102%] top-1 w-80 max-h-56 overflow-y-auto bg-white dark:bg-[#16253b] border-2 border-blue-500 rounded-xl shadow-2xl p-3 z-50 animate-in fade-in slide-in-from-left-2">
+                                                        <div className="flex items-center gap-1.5 pb-1 border-b border-gray-100 dark:border-slate-700 mb-1.5">
+                                                            <FileText size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                                                            <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                                                                Description Preview
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs font-bold text-gray-900 dark:text-white mb-0.5">
+                                                            {hoveredProductSuggestion.name || hoveredProductSuggestion.productName}
+                                                        </div>
+                                                        {hoveredProductSuggestion.productCode && (
+                                                            <div className="text-[10px] font-mono text-gray-500 dark:text-slate-400 mb-1">
+                                                                Code: {hoveredProductSuggestion.productCode}
+                                                            </div>
+                                                        )}
+                                                        <p className="text-xs text-gray-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed font-sans bg-slate-50 dark:bg-slate-900/60 p-2 rounded border border-slate-200 dark:border-slate-800 max-h-36 overflow-y-auto">
+                                                            {hoveredProductSuggestion.description}
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -1942,11 +1971,23 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 {/* Full-width 15-line Description Area */}
                                 <div className="col-span-12 pt-2 border-t border-gray-200/70 mt-1">
                                     <div className="flex justify-between items-center mb-1">
-                                        <label className="text-[10px] font-bold text-gray-600 uppercase">
+                                        <label className="text-[10px] font-bold text-gray-600 uppercase flex items-center gap-1.5">
+                                            <FileText size={12} className="text-blue-600" />
                                             Detailed Description / Specifications (Scope of Work)
                                         </label>
                                         <span className="text-[10px] text-gray-400">Multiline description (15 lines visible)</span>
                                     </div>
+                                    {item.description ? (
+                                        <div className="mb-2 p-2 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center justify-between text-xs text-blue-900 animate-in fade-in">
+                                            <span className="font-semibold text-[11px] flex items-center gap-1">
+                                                <FileText size={13} className="text-blue-600" />
+                                                Description Auto-Filled: {item.description.length} characters
+                                            </span>
+                                            <span className="text-[10px] font-mono text-blue-600 bg-white px-1.5 py-0.5 rounded border border-blue-200">
+                                                Scope Ready
+                                            </span>
+                                        </div>
+                                    ) : null}
                                     <textarea 
                                         rows={15} 
                                         className="w-full p-3 border border-gray-300 rounded-lg text-xs bg-white text-gray-800 font-calibri leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 min-h-[290px] resize-y"

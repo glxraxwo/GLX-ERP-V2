@@ -502,6 +502,18 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
         req
     });
 
+    const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+    import('../services/smsService.js').then(({ sendInvoiceCreationSms, sendPaymentReceiptSms }) => {
+        sendInvoiceCreationSms(invoice, hostOrigin).catch((err) =>
+            console.error('[Quotation-Invoice SMS Error]:', err.message)
+        );
+        if (payment) {
+            sendPaymentReceiptSms(payment, hostOrigin).catch((err) =>
+                console.error('[Quotation-Advance Payment SMS Error]:', err.message)
+            );
+        }
+    }).catch(() => {});
+
     res.status(201).json({ success: true, message: 'Converted to Invoice successfully', data: invoice });
 });
 
@@ -638,6 +650,16 @@ export const convertQuotationToProject = asyncHandler(async (req, res) => {
         description: `Converted ${quotation.documentType || 'quotation'} ${quotation.quoteNumber} to Project ${project.projectNumber}`,
         req
     });
+
+    if (advanceAmount > 0 && typeof payment !== 'undefined') {
+        const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+        import('../services/smsService.js').then(({ sendPaymentReceiptSms, sendInvoiceCreationSms }) => {
+            if (typeof invoice !== 'undefined' && invoice) {
+                sendInvoiceCreationSms(invoice, hostOrigin).catch(() => {});
+            }
+            sendPaymentReceiptSms(payment, hostOrigin).catch(() => {});
+        }).catch(() => {});
+    }
 
     res.status(201).json({ success: true, message: 'Converted to Project successfully', data: project });
 });

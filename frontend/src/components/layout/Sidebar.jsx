@@ -56,6 +56,8 @@ const menuGroups = [
         items: [
             { label: 'Invoices & Quotations', icon: Receipt, path: '/invoices', permission: 'invoices.view' },
             { label: 'Receipts & Vouchers', icon: Wallet, path: '/payments', permission: 'payments.view' },
+            { label: 'Bank Accounts', icon: Building2, path: '/finance/bank-accounts', permission: 'payments.view' },
+            { label: 'Bank Transactions', icon: ArrowLeftRight, path: '/finance/bank-transactions', permission: 'payments.view' },
             { label: 'Income & Expenses', icon: Wallet, path: '/finance/expenses', permission: 'payments.view' },
             { label: 'Export Centre', icon: Download, path: '/export-centre', permission: 'dashboard.view' },
         ],

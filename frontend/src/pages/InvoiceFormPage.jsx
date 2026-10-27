@@ -39,7 +39,7 @@ const defaultItemState = {
     unitPrice: 0,
     discount: 0,
     taxRate: 18,
-    taxable: true,
+    taxable: false, // Default tax is OFF; only added when tick/checkbox is checked
     unitOfMeasure: 'pcs',
 };
 
@@ -662,7 +662,7 @@ export default function InvoiceFormPage() {
                         next.description = p.description || '';
                         next.unitPrice = p.basePrice || p.costs?.lastPurchaseCost || p.costs?.averageCost || 0;
                         next.taxRate = p.tax?.taxRate ?? 18;
-                        next.taxable = p.tax?.taxable ?? true;
+                        next.taxable = false; // Default tax is OFF; tick/check the box to apply
                         next.unitOfMeasure = p.unitOfMeasure || 'pcs';
                     }
                 } else {
@@ -772,6 +772,7 @@ export default function InvoiceFormPage() {
             productCode: p.productCode,
             sinhalaName: p.sinhalaName,
             subtext: `Code: ${p.productCode} • Price: LKR ${p.basePrice || 0}`,
+            description: p.description || '',
         }));
 
     const totals = useMemo(() => {
@@ -2330,6 +2331,26 @@ export default function InvoiceFormPage() {
                                 }
                             }}
                         />
+
+                        {/* Item Description Side Popup Preview */}
+                        {modalItem.description ? (
+                            <div className="mt-2.5 p-2.5 bg-white/90 dark:bg-slate-900/90 border border-blue-200 dark:border-blue-800 rounded-lg shadow-xs flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1">
+                                <FileText size={15} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[11px] font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wide">
+                                            Item Description / Scope Preview
+                                        </span>
+                                        <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-100/70 dark:bg-blue-900/50 px-1.5 py-0.5 rounded">
+                                            Populated from Catalog
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed font-sans max-h-32 overflow-y-auto bg-slate-50 dark:bg-slate-800/60 p-2 rounded border border-slate-100 dark:border-slate-800">
+                                        {modalItem.description}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
 
                     {/* Item Name & Translation Grid */}

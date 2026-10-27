@@ -6,7 +6,7 @@ import {
     UserCircle, FileSpreadsheet, Briefcase, ShoppingCart, RotateCcw, AlertTriangle,
     Factory, Layers,
     Users, Calendar, Plane, Clock, BadgeCheck, Building2, UserCheck, Award,
-    ShieldCheck, Upload, Mail, Settings, LayoutGrid, Wrench
+    ShieldCheck, Upload, Mail, Settings, LayoutGrid, Wrench, ArrowLeftRight
 } from 'lucide-react';
 
 export const NAVIGATION_CATEGORIES = [
@@ -166,6 +166,22 @@ export const NAVIGATION_CATEGORIES = [
                 path: '/payments',
                 icon: Wallet,
                 description: 'Customer payment receipts, supplier voucher payouts & payment receipts',
+                permission: 'payments.view',
+                category: 'finance'
+            },
+            {
+                title: 'Bank Accounts',
+                path: '/finance/bank-accounts',
+                icon: Building2,
+                description: 'Manage corporate bank accounts, cash registers, account balances and bank branches',
+                permission: 'payments.view',
+                category: 'finance'
+            },
+            {
+                title: 'Bank Transactions',
+                path: '/finance/bank-transactions',
+                icon: ArrowLeftRight,
+                description: 'Full ledger of bank account deposits, withdrawals, cheques and internal transfers',
                 permission: 'payments.view',
                 category: 'finance'
             },

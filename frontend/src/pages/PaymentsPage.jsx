@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ArrowLeft, ArrowRight, Filter } from 'lucide-react';
+import { Plus, Search, ArrowLeft, ArrowRight, Filter, Download, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
+import axios from 'axios';
+import { getApiUrl } from '../api/config';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import PageHeader from '../components/ui/PageHeader';
@@ -115,7 +117,61 @@ function PaymentsPage() {
             label: 'Reference',
             render: (row) => row.transactionReference || row.chequeNumber || '-',
         },
+        {
+            key: 'actions',
+            label: 'Receipt / Voucher',
+            render: (row) => (
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                        type="button"
+                        onClick={(e) => handleDownloadReceipt(e, row)}
+                        title="Download Official PDF Receipt"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition"
+                    >
+                        <Download size={12} />
+                        <span>PDF</span>
+                    </button>
+                    {row.publicToken && (
+                        <a
+                            href={`/public/documents/${row.publicToken}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="View Online Receipt"
+                            className="p-1 text-gray-500 hover:text-blue-600 rounded-md hover:bg-gray-100 transition"
+                        >
+                            <ExternalLink size={14} />
+                        </a>
+                    )}
+                </div>
+            ),
+        },
     ];
+
+    const handleDownloadReceipt = (e, row) => {
+        e.stopPropagation();
+        const token = localStorage.getItem('token');
+        const isVoucher = row.direction === 'paid' || !!row.voucherType;
+        const prefix = isVoucher ? 'Voucher' : 'Receipt';
+        const docNum = row.paymentNumber || row._id;
+        
+        toast.loading('Generating PDF...', { id: 'receipt-dl' });
+        axios.get(`${getApiUrl()}/payments/${row._id}/receipt`, {
+            responseType: 'blob',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        }).then((res) => {
+            const blob = new Blob([res.data], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = `${prefix}_${docNum}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success('Downloaded successfully', { id: 'receipt-dl' });
+        }).catch((err) => {
+            console.error('Download error:', err);
+            toast.error('Failed to download PDF', { id: 'receipt-dl' });
+        });
+    };
 
     return (
         <div>

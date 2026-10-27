@@ -1,4 +1,4 @@
-import { backupDocumentAsPdf } from '../services/smsService.js';
+import { backupDocumentAsPdf, sendInvoiceCreationSms } from '../services/smsService.js';
 import asyncHandler from 'express-async-handler';
 import mongoose from 'mongoose';
 import Invoice from '../models/Invoice.js';
@@ -238,6 +238,9 @@ export const createInvoice = asyncHandler(async (req, res) => {
         .populate('customerId', 'displayName customerCode')
         .populate('salesOrderIds', 'orderNumber');
 
+    const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+    sendInvoiceCreationSms(populated || invoice, hostOrigin).catch((err) => console.error('[Invoice SMS Trigger error]:', err.message));
+
     res.status(201).json({ success: true, data: populated });
 });
 
@@ -343,6 +346,9 @@ export const createFromSalesOrder = asyncHandler(async (req, res) => {
     const populated = await Invoice.findById(invoice._id)
         .populate('customerId', 'displayName customerCode')
         .populate('salesOrderIds', 'orderNumber');
+
+    const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+    sendInvoiceCreationSms(populated || invoice, hostOrigin).catch((err) => console.error('[Invoice SMS Trigger error]:', err.message));
 
     res.status(201).json({ success: true, data: populated });
 });
@@ -697,11 +703,17 @@ export const convertProformaToCommercial = asyncHandler(async (req, res) => {
     invoice.invoiceType = 'standard';
     // If it was a PI- number, generate an official commercial invoice number
     if (invoice.invoiceNumber && (invoice.invoiceNumber.startsWith('PI-') || invoice.invoiceNumber.includes('PI/'))) {
+        const rawCust = invoice.customerSnapshot?.name || invoice.customerName || invoice.vehicleOwner || '';
+        const cleanCust = String(rawCust).trim().replace(/^(?:mr\.?|mrs\.?|ms\.?|dr\.?|m\/s\.?)\s+/i, '');
+        const firstWord = cleanCust.split(/[\s,._\-\/]+/)[0] || '';
+        const custSnippet = firstWord.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
+        const prefix = custSnippet ? `JA/INV/${custSnippet}` : 'JA/INV';
+
         let seq = await getNextSequence('invoice');
-        let candidate = `JA/INV/${seq}`;
+        let candidate = `${prefix}/${seq}`;
         while (await Invoice.findOne({ invoiceNumber: candidate, _id: { $ne: invoice._id } })) {
             seq = await getNextSequence('invoice');
-            candidate = `JA/INV/${seq}`;
+            candidate = `${prefix}/${seq}`;
         }
         invoice.invoiceNumber = candidate;
     }
@@ -730,8 +742,14 @@ export const convertInvoiceToProforma = asyncHandler(async (req, res) => {
     invoice.invoiceType = 'proforma';
     // Generate a unique Proforma Invoice ID (JA/PI/xxxx) if not already assigned
     if (!invoice.proformaNumber || (!invoice.invoiceNumber.startsWith('PI-') && !invoice.invoiceNumber.includes('PI/'))) {
+        const rawCust = invoice.customerSnapshot?.name || invoice.customerName || invoice.vehicleOwner || '';
+        const cleanCust = String(rawCust).trim().replace(/^(?:mr\.?|mrs\.?|ms\.?|dr\.?|m\/s\.?)\s+/i, '');
+        const firstWord = cleanCust.split(/[\s,._\-\/]+/)[0] || '';
+        const custSnippet = firstWord.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
+        const prefix = custSnippet ? `JA/PI/${custSnippet}` : 'JA/PI';
+
         const seq = await getNextSequence('proforma_invoice');
-        const piNumber = `JA/PI/${seq}`;
+        const piNumber = `${prefix}/${seq}`;
         invoice.proformaNumber = piNumber;
         invoice.invoiceNumber = piNumber;
     }

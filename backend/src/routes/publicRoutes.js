@@ -4,6 +4,7 @@ import express from 'express';
 import asyncHandler from 'express-async-handler';
 import Quotation from '../models/Quotation.js';
 import Invoice from '../models/Invoice.js';
+import Payment from '../models/Payment.js';
 import Settings from '../models/Settings.js';
 
 const router = express.Router();
@@ -47,6 +48,25 @@ router.get('/documents/:token', asyncHandler(async (req, res) => {
         });
     }
 
+    // Search Payment Receipt
+    doc = await Payment.findOne({ publicToken: token })
+        .populate('customerId', 'displayName companyName primaryContact billingAddress customerCode')
+        .populate('supplierId', 'displayName companyName primaryContact address')
+        .populate('employeeId', 'firstName lastName callingName')
+        .populate('bankAccountId', 'bankName accountNumber accountName branch')
+        .populate('receivedBy', 'name email')
+        .populate('createdBy', 'name email')
+        .lean();
+
+    if (doc) {
+        return res.json({
+            success: true,
+            documentType: 'payment_receipt',
+            data: doc,
+            companyInfo: settings
+        });
+    }
+
     res.status(404);
     throw new Error('Document not found');
 }));
@@ -58,7 +78,6 @@ router.get('/documents/:token', asyncHandler(async (req, res) => {
  */
 router.get('/documents/:token/download', asyncHandler(async (req, res) => {
     const { token } = req.params;
-    const { generateDocumentPDF } = await import('../services/documentPdfService.js');
     const settings = await Settings.findOne().lean();
     
     let doc = await Quotation.findOne({ publicToken: token })
@@ -73,7 +92,19 @@ router.get('/documents/:token/download', asyncHandler(async (req, res) => {
             .populate('customerId', 'displayName companyName primaryContact billingAddress')
             .populate('items.productId', 'name productCode uom basePrice sku')
             .lean();
-        docType = 'invoice';
+        if (doc) docType = 'invoice';
+    }
+
+    if (!doc) {
+        doc = await Payment.findOne({ publicToken: token })
+            .populate('customerId', 'displayName companyName primaryContact billingAddress customerCode')
+            .populate('supplierId', 'displayName companyName primaryContact address')
+            .populate('employeeId', 'firstName lastName callingName')
+            .populate('bankAccountId', 'bankName accountNumber accountName branch')
+            .populate('receivedBy', 'name email')
+            .populate('createdBy', 'name email')
+            .lean();
+        if (doc) docType = 'payment_receipt';
     }
     
     if (!doc) {
@@ -81,10 +112,17 @@ router.get('/documents/:token/download', asyncHandler(async (req, res) => {
         throw new Error('Document not found');
     }
     
-    const docCode = doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || doc._id.toString();
+    const docCode = doc.paymentNumber || doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || doc._id.toString();
     const filename = `${docType}_${String(docCode).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
     
-    const pdfBuffer = await generateDocumentPDF({ doc, docType, settings });
+    let pdfBuffer;
+    if (docType === 'payment_receipt') {
+        const { generatePaymentReceiptPDF } = await import('../services/documentPdfService.js');
+        pdfBuffer = await generatePaymentReceiptPDF({ payment: doc, settings });
+    } else {
+        const { generateDocumentPDF } = await import('../services/documentPdfService.js');
+        pdfBuffer = await generateDocumentPDF({ doc, docType, settings });
+    }
     
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
