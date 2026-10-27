@@ -594,12 +594,12 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#000000').text('Yours Faithfully,', 36, bottomY);
                 pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(`GLX INDUSTRIES - ${branchVal}`, 36, bottomY + 11);
 
-                // Embed official seal image if available - placed to the right, clear of company name
+                // Embed official seal image if available - placed to the right, sitting above the dotted line
                 const sealData = settings?.companySeal;
                 if (sealData && sealData.includes('base64,')) {
                     try {
                         const sealBuffer = Buffer.from(sealData.split('base64,')[1], 'base64');
-                        pdfDoc.image(sealBuffer, 135, bottomY + 22, { width: 52, height: 52 });
+                        pdfDoc.image(sealBuffer, 140, bottomY + 13, { width: 45, height: 45 });
                     } catch (e) {}
                 }
 
@@ -608,15 +608,15 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 if (sigData && sigData.includes('base64,')) {
                     try {
                         const sigBuffer = Buffer.from(sigData.split('base64,')[1], 'base64');
-                        pdfDoc.image(sigBuffer, 36, bottomY + 24, { width: 105, height: 32 });
+                        pdfDoc.image(sigBuffer, 36, bottomY + 25, { width: 100, height: 31 });
                     } catch (e) {}
                 }
 
                 pdfDoc.fillColor('#444444').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 58);
                 const signerTitle = payment.receivedBy?.firstName ? handledBy : (settings?.bossName || handledBy);
-                pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(8).text(`Authorized Signature (${signerTitle})`, 36, bottomY + 70);
+                pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(8).text(`Authorized Signature (${signerTitle})`, 36, bottomY + 72);
 
-                pdfDoc.fillColor('#DC2626').font('Helvetica-Bold').fontSize(8).text(`Printed at    ${printTimestamp}`, 36, bottomY + 84);
+                pdfDoc.fillColor('#DC2626').font('Helvetica-Bold').fontSize(8).text(`Printed at    ${printTimestamp}`, 36, bottomY + 86);
 
                 // Multi-page bottom disclaimer
                 const range = pdfDoc.bufferedPageRange();

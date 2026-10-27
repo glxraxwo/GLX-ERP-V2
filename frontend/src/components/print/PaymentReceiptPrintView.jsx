@@ -556,10 +556,10 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                         alt="Official Company Seal"
                                         style={{ 
                                             position: 'absolute', 
-                                            bottom: 2, 
+                                            bottom: 8, 
                                             left: 125, 
-                                            width: 58, 
-                                            height: 58, 
+                                            width: 52, 
+                                            height: 52, 
                                             objectFit: 'contain', 
                                             opacity: 0.85, 
                                             pointerEvents: 'none', 
@@ -588,7 +588,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                     ............................................................
                                 </div>
                             </div>
-                            <div style={{ fontSize: 10.5, color: '#0f172a', marginTop: 4, fontWeight: 600 }}>
+                            <div style={{ fontSize: 10.5, color: '#0f172a', marginTop: 6, fontWeight: 600 }}>
                                 Authorized Signature ({signerName})
                             </div>
 
