@@ -697,8 +697,8 @@ export const generateElementPDF = async (element) => {
     const pdfHeight = pdf.internal.pageSize.height;
 
     // Check if the target element contains multi-page (.print-page) elements
-    let pageElements = Array.from(element.querySelectorAll('.print-page'));
-    if (pageElements.length === 0 && element.classList?.contains('print-page')) {
+    let pageElements = Array.from(element.querySelectorAll('.print-page, .receipt-print-page, .single-page-doc'));
+    if (pageElements.length === 0 && (element.classList?.contains('print-page') || element.classList?.contains('receipt-print-page') || element.classList?.contains('single-page-doc'))) {
         pageElements = [element];
     }
 

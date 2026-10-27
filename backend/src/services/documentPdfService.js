@@ -531,7 +531,7 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
 
             const renderReceiptSummaryAndFooter = () => {
                 pdfDoc.moveDown(0.5);
-                const summaryY = Math.max(pdfDoc.y + 10, 420);
+                const summaryY = pdfDoc.y + 12;
                 const summaryWidth = 220;
                 const summaryX = pdfDoc.page.width - 36 - summaryWidth;
 
@@ -588,12 +588,31 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 }
 
                 // Bottom: Signatures and red print timestamp (Placed at end of content)
-                const bottomY = Math.max(pdfDoc.y + 25, rY + 25);
+                const bottomY = Math.max(pdfDoc.y + 16, rY + 16);
                 pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#000000').text('Yours Faithfully,', 36, bottomY);
                 pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(`GLX INDUSTRIES - ${branchVal}`, 36, bottomY + 12);
 
+                // Embed official seal image if available
+                const sealData = settings?.companySeal;
+                if (sealData && sealData.includes('base64,')) {
+                    try {
+                        const sealBuffer = Buffer.from(sealData.split('base64,')[1], 'base64');
+                        pdfDoc.image(sealBuffer, 120, bottomY + 8, { width: 55, height: 55 });
+                    } catch (e) {}
+                }
+
+                // Embed signature image if available
+                const sigData = payment.receivedBy?.signature || payment.createdBy?.signature || settings?.bossSignature;
+                if (sigData && sigData.includes('base64,')) {
+                    try {
+                        const sigBuffer = Buffer.from(sigData.split('base64,')[1], 'base64');
+                        pdfDoc.image(sigBuffer, 36, bottomY + 14, { width: 120, height: 38 });
+                    } catch (e) {}
+                }
+
                 pdfDoc.fillColor('#444444').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 38);
-                pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(8).text(`Authorized Signature (${handledBy})`, 36, bottomY + 50);
+                const signerTitle = payment.receivedBy?.firstName ? handledBy : (settings?.bossName || handledBy);
+                pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(8).text(`Authorized Signature (${signerTitle})`, 36, bottomY + 50);
 
                 pdfDoc.fillColor('#DC2626').font('Helvetica-Bold').fontSize(8).text(`Printed at    ${printTimestamp}`, 36, bottomY + 64);
 

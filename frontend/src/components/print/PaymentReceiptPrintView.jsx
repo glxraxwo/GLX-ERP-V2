@@ -1,6 +1,7 @@
 import React, { forwardRef, useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '../../store/authStore';
+import { useSettings } from '../../features/settings/useSettings';
 
 export const DOCUMENT_FONT_FAMILY = "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif";
 
@@ -138,21 +139,36 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
         methodDetails = `Txn Ref: ${payment.transactionReference || 'N/A'}${payment.bankName ? ` (${payment.bankName})` : ''}`;
     }
 
+    // Fallback: Fetch company settings internally if not passed or empty
+    const { data: internalSettingsData } = useSettings();
+    const resolvedCompany = (companyInfo && (companyInfo.companyName || companyInfo.bossSignature || companyInfo.companySeal))
+        ? companyInfo
+        : (internalSettingsData?.data || companyInfo || {});
+
     // Resolve Active Signature and Seal
     const activeSignature = payment.receivedBy?.signature || 
         payment.createdBy?.signature || 
         currentUser?.signature || 
-        companyInfo?.bossSignature || 
+        resolvedCompany?.bossSignature || 
         '';
 
-    const activeSeal = companyInfo?.companySeal || '';
+    const activeSeal = resolvedCompany?.companySeal || '';
 
     const handledBy = (payment.receivedBy?.firstName ? `${payment.receivedBy.firstName} ${payment.receivedBy.lastName || ''}`.trim() : null) || 
         (payment.createdBy?.firstName ? `${payment.createdBy.firstName} ${payment.createdBy.lastName || ''}`.trim() : null) || 
         currentUser?.fullName || 
         payment.receivedBy?.name || 
         payment.createdBy?.name || 
+        resolvedCompany?.bossName ||
         'Cashier Desk';
+
+    const signerName = (payment.receivedBy?.firstName ? `${payment.receivedBy.firstName} ${payment.receivedBy.lastName || ''}`.trim() : null) || 
+        (payment.createdBy?.firstName ? `${payment.createdBy.firstName} ${payment.createdBy.lastName || ''}`.trim() : null) || 
+        currentUser?.fullName || 
+        payment.receivedBy?.name || 
+        payment.createdBy?.name || 
+        resolvedCompany?.bossName || 
+        'Managing Director';
 
     const branchVal = payment.branch || 'JA-ELA';
     const printTimestamp = fmtPrintTs();
@@ -167,7 +183,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
             margin: 6mm 8mm;
         }
         @media screen {
-            .print-page {
+            .receipt-print-page {
                 background: #fff;
                 box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
                 border: 1px solid #e2e8f0;
@@ -187,23 +203,36 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                 print-color-adjust: exact !important;
             }
             .no-print { display: none !important; }
-            .print-page {
+            .receipt-print-wrapper {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .receipt-print-page {
                 width: 100% !important;
                 max-width: 100% !important;
                 height: auto !important;
                 min-height: auto !important;
-                padding: 0 !important;
+                max-height: 275mm !important;
+                padding: 4mm 6mm !important;
                 margin: 0 !important;
                 box-sizing: border-box !important;
                 box-shadow: none !important;
                 border: none !important;
+                overflow: hidden !important;
                 page-break-after: avoid !important;
+                page-break-before: avoid !important;
                 page-break-inside: avoid !important;
                 break-after: avoid !important;
+                break-before: avoid !important;
+                break-inside: avoid !important;
+            }
+            .receipt-print-page * {
+                page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
             .print-container table,
-            .print-page table,
+            .receipt-print-page table,
             table.print-table {
                 background-color: transparent !important;
                 background: transparent !important;
@@ -211,14 +240,14 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                 width: 100% !important;
             }
             .print-container table td,
-            .print-page table td,
+            .receipt-print-page table td,
             table.print-table td {
                 word-break: break-word !important;
                 overflow-wrap: anywhere !important;
             }
         }
         .print-container table tbody tr,
-        .print-page table tbody tr,
+        .receipt-print-page table tbody tr,
         table.print-table tbody tr {
             background-color: transparent !important;
             background: transparent !important;
@@ -254,12 +283,12 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
             )}
 
             {/* ── Printable Page Root (Compact Single Page Layout) ── */}
-            <div ref={ref} className="print-root-container">
+            <div ref={ref} className="receipt-print-wrapper" style={{ width: '100%', maxWidth: '200mm', margin: '0 auto' }}>
                 <div 
-                    className="print-page print-container" 
+                    className="receipt-print-page print-container single-page-doc" 
                     style={{ 
                         background: '#fff', 
-                        padding: showLetterheadHeader ? '10px 14px 10px 14px' : '20mm 14px 10px 14px', 
+                        padding: showLetterheadHeader ? '8px 12px 8px 12px' : '18mm 12px 8px 12px', 
                         width: '100%',
                         boxSizing: 'border-box',
                         margin: '0 auto',
@@ -510,30 +539,29 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                     </div>
 
                     {/* ── 5. FOOTER: Signatures (left) + QR Code (right) (Immediately after Totals, NOT at page bottom) ── */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, marginTop: 14, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 6, marginTop: 8, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <div>
-                            <div style={{ fontSize: 11.5, fontWeight: 500, marginBottom: 1, color: '#0f172a' }}>
+                            <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 1, color: '#0f172a' }}>
                                 Yours Faithfully,
                             </div>
-                            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f172a', marginBottom: 10, lineHeight: 1.2 }}>
-                                {companyInfo?.companyName || 'GLX INDUSTRIES'} - {branchVal}
+                            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f172a', marginBottom: 4, lineHeight: 1.2 }}>
+                                {resolvedCompany?.companyName || 'GLX INDUSTRIES'} - {branchVal}
                             </div>
 
                             {/* Seal + Signature image area */}
-                            <div style={{ position: 'relative', minHeight: 46, marginTop: 2 }}>
+                            <div style={{ position: 'relative', minHeight: 46, height: 48, marginTop: 2 }}>
                                 {activeSeal && (
                                     <img
                                         src={activeSeal}
                                         alt="Official Company Seal"
-                                        crossOrigin="anonymous"
                                         style={{ 
                                             position: 'absolute', 
-                                            bottom: 0, 
-                                            left: 110, 
-                                            width: 58, 
-                                            height: 58, 
+                                            bottom: -4, 
+                                            left: 105, 
+                                            width: 60, 
+                                            height: 60, 
                                             objectFit: 'contain', 
-                                            opacity: 0.82, 
+                                            opacity: 0.85, 
                                             pointerEvents: 'none', 
                                             zIndex: 1 
                                         }}
@@ -543,10 +571,9 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                     <img
                                         src={activeSignature}
                                         alt="Authorized Signature"
-                                        crossOrigin="anonymous"
                                         style={{ 
                                             height: 42, 
-                                            maxWidth: 190, 
+                                            maxWidth: 180, 
                                             objectFit: 'contain', 
                                             marginBottom: 2, 
                                             position: 'relative', 
@@ -555,25 +582,25 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                         }}
                                     />
                                 ) : (
-                                    <div style={{ height: 30 }} />
+                                    <div style={{ height: 32 }} />
                                 )}
                                 <div style={{ fontSize: 13, letterSpacing: 0.8, color: '#444', lineHeight: 0.8 }}>
                                     ............................................................
                                 </div>
                             </div>
-                            <div style={{ fontSize: 11, color: '#0f172a', marginTop: 3, fontWeight: 600 }}>
-                                Authorized Signature ({handledBy})
+                            <div style={{ fontSize: 10.5, color: '#0f172a', marginTop: 3, fontWeight: 600 }}>
+                                Authorized Signature ({signerName})
                             </div>
 
                             {/* Print timestamp in RED font */}
-                            <div style={{ fontSize: 10, color: '#dc2626', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', marginTop: 8, fontWeight: 600 }}>
+                            <div style={{ fontSize: 9.5, color: '#dc2626', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', marginTop: 4, fontWeight: 600 }}>
                                 Printed at &nbsp;&nbsp;&nbsp;&nbsp; {printTimestamp}
                             </div>
                         </div>
 
                         {/* QR Code */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <QRCodeSVG value={qrString} size={92} level="M" />
+                            <QRCodeSVG value={qrString} size={80} level="M" />
                         </div>
                     </div>
                 </div>
