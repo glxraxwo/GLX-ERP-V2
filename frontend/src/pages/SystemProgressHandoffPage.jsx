@@ -28,8 +28,8 @@ export default function SystemProgressHandoffPage() {
         },
         {
             id: 'doc_linking_audit',
-            name: 'Document Linking & Payment History Audit',
-            description: 'Live document lookup for Invoices, Quotations, Estimates, Bills, GRNs and Payment Audit Trail',
+            name: 'Document Linking & Payment History',
+            description: 'Live document lookup for Invoices, Quotations, Estimates, Bills, GRNs and Payment History',
             progress: 100,
             status: 'verified',
             category: 'Finance',
@@ -162,7 +162,7 @@ export default function SystemProgressHandoffPage() {
 
                     <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-2 pl-4 list-disc">
                         <li>Receipts & Vouchers Module (Cash IN & Cash OUT with 4 Reason Types)</li>
-                        <li>Document Linking & Payment History Audit Trail</li>
+                        <li>Document Linking & Payment History</li>
                         <li>Barcode Scanner fast input and keyboard fallback integration</li>
                         <li>POS, Invoicing, Inventory & HR integration verified</li>
                     </ul>

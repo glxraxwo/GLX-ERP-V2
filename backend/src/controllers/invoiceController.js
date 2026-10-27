@@ -1,4 +1,4 @@
-import { backupDocumentAsPdf, sendInvoiceCreationSms } from '../services/smsService.js';
+import { backupDocumentAsPdf, sendInvoiceCreationSms, sendDocumentUpdateSms } from '../services/smsService.js';
 import asyncHandler from 'express-async-handler';
 import mongoose from 'mongoose';
 import Invoice from '../models/Invoice.js';
@@ -659,6 +659,26 @@ export const updateInvoice = asyncHandler(async (req, res) => {
         description: `Admin updated invoice ${invoice.invoiceNumber} (Edit #${currentEditCount})`,
         req
     });
+
+    // Auto-send SMS to customer with public view link upon invoice update
+    if (req.body.sendSms !== false) {
+        let hostOrigin = 'http://localhost:5173';
+        if (req.headers.origin) {
+            hostOrigin = req.headers.origin;
+        } else if (req.headers.referer) {
+            try {
+                hostOrigin = new URL(req.headers.referer).origin;
+            } catch {
+                hostOrigin = req.headers.referer;
+            }
+        } else if (process.env.FRONTEND_URL) {
+            hostOrigin = process.env.FRONTEND_URL.split(',')[0].trim();
+        }
+
+        sendDocumentUpdateSms(invoice, 'invoice', hostOrigin)
+            .then(() => console.log(`[Invoice Auto-Update SMS] Dispatched to customer for ${invoice.invoiceNumber}`))
+            .catch(err => console.error('[Invoice Update SMS Error]:', err.message));
+    }
 
     const populated = await Invoice.findById(invoice._id)
         .populate('customerId', 'displayName customerCode')

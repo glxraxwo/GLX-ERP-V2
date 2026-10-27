@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { backupDocumentAsPdf, sendPublicDocumentSms } from '../services/smsService.js';
+import { backupDocumentAsPdf, sendPublicDocumentSms, sendDocumentUpdateSms } from '../services/smsService.js';
 import asyncHandler from 'express-async-handler';
 import Quotation from '../models/Quotation.js';
 import { createAuditLog } from '../utils/auditLogger.js';
@@ -272,6 +272,26 @@ export const updateQuotation = asyncHandler(async (req, res) => {
         description: `Updated quotation ${quotation.quoteNumber}`,
         req
     });
+
+    // Auto-send SMS to customer with public view link upon quotation/estimate update
+    if (req.body.sendSms !== false) {
+        let hostOrigin = 'http://localhost:5173';
+        if (req.headers.origin) {
+            hostOrigin = req.headers.origin;
+        } else if (req.headers.referer) {
+            try {
+                hostOrigin = new URL(req.headers.referer).origin;
+            } catch {
+                hostOrigin = req.headers.referer;
+            }
+        } else if (process.env.FRONTEND_URL) {
+            hostOrigin = process.env.FRONTEND_URL.split(',')[0].trim();
+        }
+
+        sendDocumentUpdateSms(quotation, quotation.documentType || 'quotation', hostOrigin)
+            .then(() => console.log(`[Quotation/Estimate Auto-Update SMS] Dispatched to customer for ${quotation.quoteNumber || quotation.quotationCode}`))
+            .catch(err => console.error('[Quotation/Estimate Update SMS Error]:', err.message));
+    }
 
     const populated = await Quotation.findById(quotation._id)
         .populate('customerId', 'displayName companyName primaryContact billingAddress introducer introducerName')

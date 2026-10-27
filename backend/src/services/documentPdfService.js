@@ -74,17 +74,17 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
             pdfDoc.rect(36, startY, colWidth, 18).fill('#F8FAFC');
             pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(8.5).text('CUSTOMER DETAILS', 44, startY + 5);
 
-            pdfDoc.fillColor('#475569').font('Helvetica-Bold').fontSize(8).text('Name:', 44, startY + 24);
+            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Name:', 44, startY + 24);
             pdfDoc.fillColor('#0F172A').font('Helvetica').text(custName, 95, startY + 24, { width: colWidth - 105, lineBreak: false });
 
-            pdfDoc.fillColor('#475569').font('Helvetica-Bold').fontSize(8).text('Phone:', 44, startY + 38);
+            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Phone:', 44, startY + 38);
             pdfDoc.fillColor('#0F172A').font('Helvetica').text(custPhone, 95, startY + 38);
 
-            pdfDoc.fillColor('#475569').font('Helvetica-Bold').fontSize(8).text('Address:', 44, startY + 52);
+            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Address:', 44, startY + 52);
             pdfDoc.fillColor('#0F172A').font('Helvetica').text(custAddress, 95, startY + 52, { width: colWidth - 105, lineBreak: false });
 
             if (doc.vatNumber || doc.brNumber) {
-                pdfDoc.fillColor('#475569').font('Helvetica-Bold').fontSize(8).text('VAT/BR:', 44, startY + 66);
+                pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('VAT/BR:', 44, startY + 66);
                 pdfDoc.fillColor('#0F172A').font('Helvetica').text(`${doc.vatNumber || ''} ${doc.brNumber ? `| BR: ${doc.brNumber}` : ''}`, 95, startY + 66);
             }
 
@@ -94,16 +94,16 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
             pdfDoc.rect(rightX, startY, colWidth, 18).fill('#F8FAFC');
             pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(8.5).text('VEHICLE & WORK DETAILS', rightX + 8, startY + 5);
 
-            pdfDoc.fillColor('#475569').font('Helvetica-Bold').fontSize(8).text('Vehicle No:', rightX + 8, startY + 24);
+            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Vehicle No:', rightX + 8, startY + 24);
             pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').text(vehicleNo, rightX + 75, startY + 24);
 
-            pdfDoc.fillColor('#475569').font('Helvetica-Bold').fontSize(8).text('Model:', rightX + 8, startY + 38);
+            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Model:', rightX + 8, startY + 38);
             pdfDoc.fillColor('#0F172A').font('Helvetica').text(vehicleModel, rightX + 75, startY + 38);
 
-            pdfDoc.fillColor('#475569').font('Helvetica-Bold').fontSize(8).text('Job/Caption:', rightX + 8, startY + 52);
+            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Job/Caption:', rightX + 8, startY + 52);
             pdfDoc.fillColor('#0F172A').font('Helvetica').text(jobCaption, rightX + 75, startY + 52, { width: colWidth - 85, lineBreak: false });
 
-            pdfDoc.fillColor('#475569').font('Helvetica-Bold').fontSize(8).text('Branch / Rep:', rightX + 8, startY + 66);
+            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Branch / Rep:', rightX + 8, startY + 66);
             pdfDoc.fillColor('#0F172A').font('Helvetica').text(`${branch} / ${salesRep}`, rightX + 75, startY + 66);
 
             pdfDoc.y = startY + 100;

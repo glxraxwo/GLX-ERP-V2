@@ -739,3 +739,75 @@ export const sendPaymentReceiptSms = async (payment, hostOrigin = '') => {
         console.error('[SMS Service] Failed in sendPaymentReceiptSms:', error.message);
     }
 };
+
+/**
+ * Automatically send SMS to customer when an invoice, quotation, or estimate is edited/updated
+ */
+export const sendDocumentUpdateSms = async (doc, documentType = 'quotation', hostOrigin = '') => {
+    try {
+        if (!doc) return;
+
+        // Ensure publicToken exists
+        if (!doc.publicToken) {
+            doc.publicToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            try {
+                if (typeof doc.save === 'function') {
+                    await doc.save();
+                } else {
+                    const isInv = documentType === 'invoice' || !!doc.invoiceNumber;
+                    const Model = isInv ? mongoose.model('Invoice') : mongoose.model('Quotation');
+                    await Model.updateOne({ _id: doc._id }, { $set: { publicToken: doc.publicToken } });
+                }
+            } catch (saveErr) {
+                console.warn('[SMS Service] Could not persist generated publicToken on update:', saveErr.message);
+            }
+        }
+
+        // Determine client phone & name
+        let clientPhone = doc.customerSnapshot?.phone || doc.customerSnapshot?.mobile || doc.customerPhone || doc.contactNumber || doc.whatsappNum;
+        let clientName = doc.customerSnapshot?.name || doc.customerName || doc.vehicleOwner || 'Valued Customer';
+
+        if (!clientPhone && doc.customerId) {
+            try {
+                const Customer = mongoose.model('Customer');
+                const cust = await Customer.findById(doc.customerId);
+                if (cust) {
+                    clientPhone = cust.primaryContact?.mobile || cust.primaryContact?.phone;
+                    clientName = cust.displayName || cust.companyName || clientName;
+                }
+            } catch (custErr) {
+                console.warn('[SMS Service] Could not fetch customer details:', custErr.message);
+            }
+        }
+
+        if (!clientPhone) {
+            console.log('[SMS Service] No phone number available for document update SMS:', doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || doc._id);
+            return;
+        }
+
+        const origin = hostOrigin || (process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',')[0].trim() : 'http://localhost:5173');
+        const link = doc.publicToken ? `${origin}/public/documents/${doc.publicToken}` : '';
+
+        const isInvoice = documentType === 'invoice' || !!doc.invoiceNumber;
+        const isEstimate = (documentType === 'estimate' || doc.documentType === 'estimate') && !isInvoice;
+        const docTypeTitle = isInvoice ? 'Invoice' : (isEstimate ? 'Estimate' : 'Quotation');
+        const docCode = doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'document';
+
+        let message = '';
+        if (isInvoice) {
+            const total = (doc.total || doc.grandTotal || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 });
+            message = `Dear ${clientName}, your Invoice (${docCode}) has been updated. Total: Rs. ${total}.${link ? ' View updated invoice: ' + link : ''} - GLX Industries`;
+        } else {
+            const grandTotal = (doc.grandTotal || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 });
+            message = `Dear ${clientName}, your ${docTypeTitle} (${docCode}) has been updated. Total: Rs. ${grandTotal}.${link ? ' View updated ' + docTypeTitle.toLowerCase() + ': ' + link : ''} - GLX Industries`;
+        }
+
+        await dispatchSmsNotification({
+            contactPhone: clientPhone,
+            recipientName: clientName,
+            message
+        });
+    } catch (error) {
+        console.error('[SMS Service] Failed in sendDocumentUpdateSms:', error.message);
+    }
+};

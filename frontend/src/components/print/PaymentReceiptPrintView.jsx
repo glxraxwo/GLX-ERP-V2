@@ -1,9 +1,11 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
-const fmt = (num) => {
+export const DOCUMENT_FONT_FAMILY = "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif";
+
+const fmt = (num, min = 2, max = 2) => {
     if (num === null || num === undefined || isNaN(num)) return '0.00';
-    return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return Number(num).toLocaleString('en-US', { minimumFractionDigits: min, maximumFractionDigits: max });
 };
 
 const fmtDate = (dateStr) => {
@@ -13,6 +15,37 @@ const fmtDate = (dateStr) => {
         const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         return `${String(d.getDate()).padStart(2,'0')}/${months[d.getMonth()]}/${d.getFullYear()}`;
     } catch { return String(dateStr); }
+};
+
+const fmtTime = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) return '';
+        return d.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Colombo'
+        });
+    } catch { return ''; }
+};
+
+const fmtPrintTs = (d = new Date()) => {
+    try {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const day   = String(d.getDate()).padStart(2,'0');
+        const mon   = months[d.getMonth()];
+        const yr    = d.getFullYear();
+        let h       = d.getHours();
+        const mi    = String(d.getMinutes()).padStart(2,'0');
+        const se    = String(d.getSeconds()).padStart(2,'0');
+        const ampm  = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${day}/${mon}/${yr}    ${h}:${mi}:${se}${ampm}`;
+    } catch { return new Date().toLocaleString(); }
 };
 
 const convertNumberToWords = (amount) => {
@@ -39,8 +72,14 @@ const convertNumberToWords = (amount) => {
     return words + ' Only';
 };
 
-const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo }, ref) => {
+const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar = false, hideLetterheadHeader = false }, ref) => {
     if (!payment) return null;
+
+    const [showLetterheadHeader, setShowLH] = useState(!hideLetterheadHeader);
+
+    useEffect(() => {
+        setShowLH(!hideLetterheadHeader);
+    }, [hideLetterheadHeader]);
 
     const isVoucher = payment.direction === 'paid' || !!payment.voucherType;
     const docTitle = isVoucher ? 'PAYMENT VOUCHER' : 'OFFICIAL PAYMENT RECEIPT';
@@ -49,14 +88,14 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo }, ref) => {
     const partyName = payment.partyName || 
         payment.customerId?.displayName || payment.customerId?.companyName || 
         payment.supplierId?.displayName || payment.supplierId?.companyName || 
-        payment.employeeId?.callingName || 'Valued Customer';
+        payment.employeeId?.callingName || `${payment.employeeId?.firstName || ''} ${payment.employeeId?.lastName || ''}`.trim() || 
+        'Valued Customer';
 
     const partyPhone = payment.customerPhone || 
         payment.customerId?.primaryContact?.phone || payment.customerId?.primaryContact?.mobile || 
-        payment.supplierId?.primaryContact?.phone || '—';
+        payment.supplierId?.primaryContact?.phone || payment.supplierId?.primaryContact?.mobile || '—';
 
-    const partyAddress = payment.customerId?.billingAddress?.line1 || 
-        payment.customerId?.billingAddress?.city || 
+    const partyAddress = payment.customerId?.billingAddress?.line1 || payment.customerId?.billingAddress?.city || 
         payment.supplierId?.address?.line1 || '—';
 
     const paymentDate = payment.paymentDate || payment.createdAt || new Date();
@@ -65,194 +104,411 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo }, ref) => {
     const totalAllocated = allocations.reduce((s, a) => s + (Number(a.amount) || 0), 0);
     const unallocated = Number(payment.unallocatedAmount !== undefined ? payment.unallocatedAmount : Math.max(0, totalAmount - totalAllocated));
 
-    const methodLabel = (payment.method || 'cash').toUpperCase().replace('_', ' ');
+    let methodLabel = (payment.method || 'cash').toUpperCase().replace('_', ' ');
+    let methodDetails = '';
+    if (payment.method === 'cheque') {
+        const chqDate = payment.chequeDate ? ` dated ${fmtDate(payment.chequeDate)}` : '';
+        methodDetails = `Cheque #${payment.chequeNumber || 'N/A'}${chqDate}${payment.bankName ? ` (${payment.bankName})` : ''}`;
+    } else if (payment.method === 'bank_transfer') {
+        methodDetails = `Ref: ${payment.transactionReference || 'N/A'}${payment.bankName ? ` (${payment.bankName})` : ''}`;
+    }
+
+    const handledBy = payment.receivedBy?.name || 
+        `${payment.receivedBy?.firstName || ''} ${payment.receivedBy?.lastName || ''}`.trim() || 
+        payment.createdBy?.name || 
+        `${payment.createdBy?.firstName || ''} ${payment.createdBy?.lastName || ''}`.trim() || 
+        'Cashier Desk';
+
+    const branchVal = payment.branch || 'JA-ELA';
+    const printTimestamp = fmtPrintTs();
+
+    const qrString = typeof window !== 'undefined' 
+        ? (payment.publicToken ? `${window.location.origin}/public/documents/${payment.publicToken}` : window.location.href) 
+        : `https://glxgroup.lk/public/documents/${payment.publicToken || docCode}`;
+
+    const printStyles = `
+        @page {
+            size: A4 portrait;
+            margin: 0.25in;
+        }
+        @media screen {
+            .print-page {
+                background: #fff;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+                border: 1px solid #e2e8f0;
+                margin-bottom: 24px;
+                box-sizing: border-box;
+                min-width: 760px !important;
+            }
+        }
+        @media print {
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print { display: none !important; }
+            .print-page {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: calc(297mm - 0.5in) !important;
+                padding: 10px 14px !important;
+                margin: 0 auto !important;
+                box-sizing: border-box !important;
+                box-shadow: none !important;
+                border: none !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+            .print-container table,
+            .print-page table,
+            table.print-table {
+                background-color: transparent !important;
+                background: transparent !important;
+                table-layout: fixed !important;
+                width: 100% !important;
+            }
+            .print-container table td,
+            .print-page table td,
+            table.print-table td {
+                word-break: break-word !important;
+                overflow-wrap: anywhere !important;
+            }
+        }
+        .print-container table tbody tr,
+        .print-page table tbody tr,
+        table.print-table tbody tr {
+            background-color: transparent !important;
+            background: transparent !important;
+        }
+    `;
 
     return (
-        <div ref={ref} className="bg-white text-slate-800 p-8 font-sans max-w-[800px] mx-auto border border-slate-200 rounded-xl shadow-sm print:border-0 print:shadow-none print:p-0">
-            {/* ── Top Header Banner ── */}
-            <div className="flex items-start justify-between pb-4 border-b-2 border-slate-900 mb-6">
-                <div className="flex items-center gap-3">
-                    <img 
-                        src="/logo.jpg" 
-                        alt="GLX" 
-                        className="w-14 h-14 object-contain rounded-lg border border-slate-200 p-0.5" 
-                    />
+        <div style={{ fontFamily: DOCUMENT_FONT_FAMILY, color: '#1e293b', background: '#fff', width: '100%', maxWidth: 'calc(210mm - 0.5in)', margin: '0 auto', fontSize: 12.5 }}>
+            <style>{printStyles}</style>
+
+            {/* ── Toolbar (no-print) ── */}
+            {!hideToolbar && (
+                <div className="no-print" style={{ marginBottom: 12, padding: '10px 14px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, fontSize: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontWeight: 600, color: '#475569' }}>Document Type:</span>
+                        <span style={{ fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' }}>{docTitle}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        {/* Letterhead Header Toggle */}
+                        <button 
+                            type="button" 
+                            onClick={() => setShowLH(p => !p)} 
+                            style={{
+                                padding: '4px 12px', borderRadius: 7, fontWeight: 600, fontSize: 11, cursor: 'pointer', border: '1px solid #cbd5e1',
+                                background: !showLetterheadHeader ? '#b45309' : '#fff',
+                                color: !showLetterheadHeader ? '#fff' : '#374151',
+                            }}
+                        >
+                            {!showLetterheadHeader ? '✓ Without Header (Pre-printed)' : 'With Header (Letterhead)'}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Printable Page Root ── */}
+            <div ref={ref} className="print-root-container">
+                <div 
+                    className="print-page print-container" 
+                    style={{ 
+                        background: '#fff', 
+                        padding: showLetterheadHeader ? '14px 18px 12px 18px' : '28mm 18px 12px 18px', 
+                        width: '100%',
+                        maxWidth: 'calc(210mm - 0.5in)',
+                        minHeight: 'calc(297mm - 0.5in)',
+                        boxSizing: 'border-box',
+                        margin: '0 auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between'
+                    }}
+                >
                     <div>
-                        <h1 className="text-xl font-black text-slate-950 tracking-tight leading-none">GLX TRUCK BODY ENGINEERS</h1>
-                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">Aluminium, Steel &amp; Freezer Box Manufacture</p>
-                        <p className="text-[11px] text-slate-600 mt-0.5">Ja-Ela, Sri Lanka | Tel: 071 6666 888 / 011 740 4446 | info@glxgroup.lk</p>
-                    </div>
-                </div>
-
-                <div className="text-right flex flex-col items-end">
-                    <span className="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
-                        {docTitle}
-                    </span>
-                    <h2 className="text-lg font-black font-mono text-slate-900 mt-1">{docCode}</h2>
-                    <p className="text-xs text-slate-500 font-medium mt-0.5">Date: {fmtDate(paymentDate)}</p>
-                </div>
-            </div>
-
-            {/* ── Meta Boxes Grid ── */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-                {/* Box A: Party Details */}
-                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/60">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                        {isVoucher ? 'PAID TO (BENEFICIARY)' : 'RECEIVED FROM (CUSTOMER)'}
-                    </span>
-                    <h3 className="text-sm font-bold text-slate-900 leading-snug">{partyName}</h3>
-                    <div className="text-xs text-slate-600 space-y-0.5 mt-1.5">
-                        <p><span className="font-medium text-slate-500">Phone:</span> {partyPhone}</p>
-                        <p><span className="font-medium text-slate-500">Address:</span> {partyAddress}</p>
-                        {payment.customerId?.customerCode && (
-                            <p><span className="font-medium text-slate-500">Customer Code:</span> {payment.customerId.customerCode}</p>
+                        {/* ── 1. COMPANY HEADER (Exact same styling as DocumentPrintView) ── */}
+                        {showLetterheadHeader && (
+                            <div style={{ borderBottom: '1.5px solid #444', paddingBottom: 8, marginBottom: 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                                    <div style={{ flexShrink: 0, width: 72, marginTop: 2 }}>
+                                        <img src="/logo.jpg" alt="GLX Logo" crossOrigin="anonymous" style={{ width: '100%', height: 'auto', objectFit: 'contain', filter: 'grayscale(100%)' }} />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 700, fontSize: 16.5, letterSpacing: 0.4, lineHeight: 1.15, color: '#0f172a' }}>
+                                            GLX TRUCK BODY ENGINEERS
+                                        </div>
+                                        <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: 0.6, color: '#475569', marginBottom: 5 }}>
+                                            ALUMINIUM , STEEL &amp; FREEZER BOX MANUFACTURE
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 11, lineHeight: 1.55, color: '#334155' }}>
+                                            <div>
+                                                No.14,Negambo Road,<br />
+                                                Thudella,Ja-Ela,<br />
+                                                Sri Lanka.<br />
+                                                (11350)
+                                            </div>
+                                            <div>
+                                                No.2020/3L,2,Seeduwa Road,<br />
+                                                Kotugoda,Ja-Ela.<br />
+                                                Sri Lanka.<br />
+                                                (11390)
+                                            </div>
+                                            <div style={{ fontSize: 11, lineHeight: 1.6 }}>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Mobile</span> : 071 6666 888</div>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Tel</span> : 011 740 4446</div>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Email</span> : glx.engi@gmail.com</div>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Web</span> : www.glx.lk</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         )}
-                    </div>
-                </div>
 
-                {/* Box B: Payment Particulars & Method */}
-                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/60">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
-                        PAYMENT METHOD &amp; DETAILS
-                    </span>
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded">
-                            {methodLabel}
-                        </span>
-                        <span className="text-[11px] font-semibold uppercase text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            {payment.status || 'Confirmed'}
-                        </span>
-                    </div>
+                        {/* ── 2. CUSTOMER + DOCUMENT META (Exact 2-column grid matching DocumentPrintView) ── */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, fontSize: 12.5 }}>
+                            {/* Left: Customer / Party Block */}
+                            <div style={{ maxWidth: '54%', lineHeight: 1.55 }}>
+                                <div style={{ fontWeight: 600, fontSize: 12.5, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4, color: '#334155' }}>
+                                    {isVoucher ? 'PAID TO (BENEFICIARY)' : 'RECEIVED FROM (CUSTOMER)'}
+                                </div>
+                                <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{partyName}</div>
+                                {partyAddress && partyAddress !== '—' && (
+                                    <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{partyAddress}</div>
+                                )}
+                                {partyPhone && partyPhone !== '—' && (
+                                    <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.45 }}>Phone: {partyPhone}</div>
+                                )}
+                                {payment.customerId?.customerCode && (
+                                    <div style={{ fontSize: 11.5, color: '#475569', marginTop: 2 }}>
+                                        Customer Code: <span style={{ fontWeight: 600, color: '#0f172a' }}>{payment.customerId.customerCode}</span>
+                                    </div>
+                                )}
+                            </div>
 
-                    <div className="text-xs text-slate-600 space-y-0.5 mt-2">
-                        {payment.method === 'cheque' && (
-                            <>
-                                <p><span className="font-medium text-slate-500">Cheque #:</span> {payment.chequeNumber || '—'}</p>
-                                <p><span className="font-medium text-slate-500">Cheque Date:</span> {fmtDate(payment.chequeDate)}</p>
-                                <p><span className="font-medium text-slate-500">Bank:</span> {payment.bankName || '—'} (Status: {payment.chequeStatus || 'Pending'})</p>
-                            </>
-                        )}
-                        {payment.method === 'bank_transfer' && (
-                            <>
-                                <p><span className="font-medium text-slate-500">Transaction Ref:</span> {payment.transactionReference || '—'}</p>
-                                {payment.bankName && <p><span className="font-medium text-slate-500">Bank Name:</span> {payment.bankName}</p>}
-                            </>
-                        )}
-                        {payment.bankAccountId && (
-                            <p>
-                                <span className="font-medium text-slate-500">Deposited To:</span> {payment.bankAccountId.bankName || 'Company Bank Account'} ({payment.bankAccountId.accountNumber || ''})
-                            </p>
-                        )}
-                        <p><span className="font-medium text-slate-500">Handled By:</span> {payment.receivedBy?.name || payment.createdBy?.name || 'Cashier Desk'}</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Table of Applied Invoices / Documents ── */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden mb-6">
-                <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-slate-200">
-                        <tr>
-                            <th className="p-3 w-10 text-center">#</th>
-                            <th className="p-3">Document Type</th>
-                            <th className="p-3">Reference Number</th>
-                            <th className="p-3">Particulars / Notes</th>
-                            <th className="p-3 text-right">Applied Amount (LKR)</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-800">
-                        {allocations.length > 0 ? (
-                            allocations.map((alloc, idx) => (
-                                <tr key={idx} className="hover:bg-slate-50/50">
-                                    <td className="p-3 text-center text-slate-400 font-mono">{idx + 1}</td>
-                                    <td className="p-3 font-semibold uppercase text-slate-700">{alloc.documentType || 'Invoice'}</td>
-                                    <td className="p-3 font-mono font-bold text-blue-600">{alloc.documentNumber || `ID: ${String(alloc.documentId).slice(-6)}`}</td>
-                                    <td className="p-3 text-slate-500">Settlement of {alloc.documentType || 'Invoice'}</td>
-                                    <td className="p-3 text-right font-mono font-bold">{fmt(alloc.amount)}</td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td className="p-3 text-center text-slate-400 font-mono">1</td>
-                                <td className="p-3 font-semibold uppercase text-slate-700">{isVoucher ? 'Voucher' : 'Advance'}</td>
-                                <td className="p-3 font-mono font-bold text-slate-900">ON ACCOUNT</td>
-                                <td className="p-3 text-slate-500">{payment.notes || 'Unallocated Advance Deposit / Available Account Credit'}</td>
-                                <td className="p-3 text-right font-mono font-bold">{fmt(totalAmount)}</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* ── Summary & Words Grid ── */}
-            <div className="grid grid-cols-12 gap-4 mb-8 items-start">
-                {/* Words & Notes on Left */}
-                <div className="col-span-7 space-y-3">
-                    <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Amount in Words:</span>
-                        <p className="text-xs font-bold text-slate-800 italic mt-0.5">{convertNumberToWords(totalAmount)}</p>
-                    </div>
-
-                    {payment.notes && (
-                        <div className="text-xs text-slate-600 bg-slate-50/50 border border-slate-200 rounded-xl p-3">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Notes / Remarks:</span>
-                            <p className="mt-0.5 whitespace-pre-wrap">{payment.notes}</p>
-                        </div>
-                    )}
-
-                    {payment.publicToken && (
-                        <div className="flex items-center gap-3 pt-2">
-                            <QRCodeSVG 
-                                value={typeof window !== 'undefined' ? window.location.href : `https://glxgroup.lk/public/documents/${payment.publicToken}`} 
-                                size={52} 
-                                level="M" 
-                            />
-                            <div className="text-[10px] text-slate-400">
-                                <span className="font-bold text-slate-600 block">Digital Verification QR</span>
-                                Scan to verify official receipt on GLX Secure Portal
+                            {/* Right: Meta Details */}
+                            <div style={{ textAlign: 'left', minWidth: 230 }}>
+                                {[
+                                    [isVoucher ? 'Voucher No' : 'Receipt No', docCode],
+                                    ['Payment Date', <>
+                                        <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmtDate(paymentDate)}</span>
+                                        {fmtTime(paymentDate) && <><br/><span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5 }}>{fmtTime(paymentDate)}</span></>}
+                                    </>],
+                                    ['Method', methodLabel],
+                                    ['Status', (payment.status || 'Confirmed').toUpperCase()],
+                                    ['Handled By', handledBy],
+                                    ['Branch', branchVal],
+                                ].map(([label, value]) => (
+                                    <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 12.5 }}>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>{label}</span>
+                                        <span style={{ color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>&nbsp;&nbsp;{value}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    )}
-                </div>
 
-                {/* Totals Box on Right */}
-                <div className="col-span-5 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
-                    <div className="bg-blue-600 text-white rounded-lg p-2.5 flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wide">Total Paid:</span>
-                        <span className="text-sm font-black font-mono">LKR {fmt(totalAmount)}</span>
+                        {/* ── 3. ALLOCATIONS / PARTICULARS TABLE ── */}
+                        <table className="no-zebra print-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 12.5, marginBottom: 4, background: 'transparent' }}>
+                            <colgroup>
+                                <col style={{ width: 'auto' }} />
+                                <col style={{ width: 140 }} />
+                                <col style={{ width: 130 }} />
+                                <col style={{ width: 115 }} />
+                            </colgroup>
+                            <thead>
+                                <tr style={{ background: 'transparent', borderBottom: '1.5px solid #cbd5e1' }}>
+                                    <th style={{ padding: '6px 4px 6px 0', textAlign: 'left', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, color: '#334155', background: 'transparent' }}>
+                                        DESCRIPTION / PARTICULARS
+                                    </th>
+                                    <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 140, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                        DOCUMENT REF #
+                                    </th>
+                                    <th style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 130, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                        ALLOCATION DETAILS
+                                    </th>
+                                    <th style={{ padding: '6px 0 6px 8px', textAlign: 'right', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 115, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                        APPLIED (LKR)
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody style={{ background: 'transparent' }}>
+                                {allocations.length > 0 ? (
+                                    allocations.map((alloc, idx) => {
+                                        const docTypeStr = (alloc.documentType || 'Invoice').toUpperCase();
+                                        const docRef = alloc.documentNumber || `ID: ${String(alloc.documentId).slice(-6)}`;
+                                        const amt = Number(alloc.amount || 0);
+
+                                        return (
+                                            <tr key={idx} style={{ verticalAlign: 'top', background: 'transparent' }}>
+                                                <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                                    <div style={{ fontWeight: 500, color: '#0f172a' }}>
+                                                        Settlement for {docTypeStr}
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '6px 8px 2px', textAlign: 'left', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 140, whiteSpace: 'nowrap' }}>
+                                                    {docRef}
+                                                </td>
+                                                <td style={{ padding: '6px 8px 2px', textAlign: 'left', fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 11.5, color: '#475569', background: 'transparent', width: 130, whiteSpace: 'nowrap' }}>
+                                                    Direct Settlement
+                                                </td>
+                                                <td style={{ padding: '6px 0 2px 8px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 115, whiteSpace: 'nowrap' }}>
+                                                    {fmt(amt)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                ) : (
+                                    <tr style={{ verticalAlign: 'top', background: 'transparent' }}>
+                                        <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                            <div style={{ fontWeight: 500, color: '#0f172a' }}>
+                                                {isVoucher ? 'Expense / Voucher Payment' : 'Customer Advance Payment Deposit'}
+                                            </div>
+                                            <div style={{ fontSize: 11.5, color: '#475569', marginTop: 1 }}>
+                                                {payment.notes || 'Unallocated Advance Deposit / Available Account Credit'}
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '6px 8px 2px', textAlign: 'left', fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 12, color: '#475569', background: 'transparent', width: 140, whiteSpace: 'nowrap' }}>
+                                            ON ACCOUNT
+                                        </td>
+                                        <td style={{ padding: '6px 8px 2px', textAlign: 'left', fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 11.5, color: '#475569', background: 'transparent', width: 130, whiteSpace: 'nowrap' }}>
+                                            {methodLabel}
+                                        </td>
+                                        <td style={{ padding: '6px 0 2px 8px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 115, whiteSpace: 'nowrap' }}>
+                                            {fmt(totalAmount)}
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+
+                        {/* ── 4. SUBTOTALS + WORDS BLOCK (Exact same layout as DocumentPrintView) ── */}
+                        <div style={{ marginTop: 10, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, fontSize: 12.5 }}>
+                            {/* Left: Amount in Words & Notes */}
+                            <div style={{ maxWidth: '52%', lineHeight: 1.6 }}>
+                                <div style={{ marginBottom: 4 }}>
+                                    <span style={{ fontWeight: 600, color: '#334155' }}>Amount in Words:</span>
+                                    <div style={{ fontSize: 11.5, color: '#0f172a', fontStyle: 'italic', marginTop: 1 }}>
+                                        {convertNumberToWords(totalAmount)}
+                                    </div>
+                                </div>
+
+                                {methodDetails && (
+                                    <div style={{ fontSize: 11.5, color: '#475569', marginTop: 4 }}>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>Particulars: </span>
+                                        {methodDetails}
+                                    </div>
+                                )}
+
+                                {payment.bankAccountId && (
+                                    <div style={{ fontSize: 11.5, color: '#475569', marginTop: 2 }}>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>Deposited To: </span>
+                                        {payment.bankAccountId.bankName || 'GLX Bank Account'} ({payment.bankAccountId.accountNumber || ''})
+                                    </div>
+                                )}
+
+                                {payment.notes && (
+                                    <div style={{ marginTop: 4, fontSize: 11.5, color: '#475569' }}>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>Remarks: </span>
+                                        {payment.notes}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Right: Totals block */}
+                            <div style={{ minWidth: 260 }}>
+                                {/* TOTAL RECEIVED */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: 13, color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: 4 }}>
+                                    <span>{isVoucher ? 'TOTAL PAID' : 'TOTAL RECEIVED'}</span>
+                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 13.5 }}>{fmt(totalAmount)}</span>
+                                </div>
+
+                                {/* TOTAL APPLIED */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, marginTop: 4, color: '#475569', fontSize: 12 }}>
+                                    <span>TOTAL APPLIED</span>
+                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>{fmt(totalAllocated)}</span>
+                                </div>
+
+                                {/* BALANCE CREDIT */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 2, color: '#166534', fontSize: 12 }}>
+                                    <span>BALANCE CREDIT</span>
+                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(unallocated)}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs text-slate-600 pt-1">
-                        <span>Total Applied:</span>
-                        <span className="font-mono font-semibold">LKR {fmt(totalAllocated)}</span>
+                    {/* ── 5. FOOTER: Signatures & Verification QR (Exact match to DocumentPrintView) ── */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, marginTop: 20, pageBreakInside: 'avoid' }}>
+                        {/* Cashier Signature block */}
+                        <div>
+                            <div style={{ fontSize: 11.5, fontWeight: 400, marginBottom: 2, color: '#475569' }}>
+                                Yours Faithfully,
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 16, lineHeight: 1.2 }}>
+                                {companyInfo?.companyName || 'GLX INDUSTRIES'} - ACCOUNTS DESK
+                            </div>
+
+                            <div style={{ position: 'relative', minHeight: 48, marginTop: 8 }}>
+                                {companyInfo?.companySeal && (
+                                    <img
+                                        src={companyInfo.companySeal}
+                                        alt="Official Company Seal"
+                                        crossOrigin="anonymous"
+                                        style={{ 
+                                            position: 'absolute', 
+                                            bottom: 2, 
+                                            left: 130, 
+                                            width: 68, 
+                                            height: 68, 
+                                            objectFit: 'contain', 
+                                            opacity: 0.82, 
+                                            pointerEvents: 'none', 
+                                            zIndex: 1 
+                                        }}
+                                    />
+                                )}
+                                <div style={{ height: 36 }} />
+                                <div style={{ fontSize: 14, letterSpacing: 1, color: '#94a3b8', lineHeight: 0.8 }}>
+                                    ............................................................
+                                </div>
+                            </div>
+                            <div style={{ fontSize: 11.5, color: '#334155', marginTop: 4, fontWeight: 500 }}>
+                                Authorized Cashier / GLX Signature
+                            </div>
+
+                            {/* Print timestamp in RED font */}
+                            <div style={{ fontSize: 10, color: '#dc2626', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', marginTop: 14, fontWeight: 500 }}>
+                                Printed at &nbsp;&nbsp;&nbsp;&nbsp; {printTimestamp}
+                            </div>
+                        </div>
+
+                        {/* Customer / Payer Signature Block in Center */}
+                        <div style={{ textAlign: 'center', marginBottom: 18 }}>
+                            <div style={{ fontSize: 14, letterSpacing: 1, color: '#94a3b8', lineHeight: 0.8, marginBottom: 4 }}>
+                                ............................................................
+                            </div>
+                            <div style={{ fontSize: 11.5, color: '#334155', fontWeight: 500 }}>
+                                Customer / Payer Signature
+                            </div>
+                        </div>
+
+                        {/* QR Code */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <QRCodeSVG value={qrString} size={100} level="M" />
+                            <span style={{ fontSize: 9.5, color: '#64748b', marginTop: 4, fontWeight: 500 }}>Secure Verification</span>
+                        </div>
                     </div>
-
-                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200">
-                        <span className="text-emerald-700 font-semibold">Balance Credit:</span>
-                        <span className="font-mono font-bold text-emerald-700">LKR {fmt(unallocated)}</span>
-                    </div>
                 </div>
-            </div>
-
-            {/* ── Signatures ── */}
-            <div className="pt-8 border-t border-slate-200 grid grid-cols-2 gap-8 text-center text-xs text-slate-500">
-                <div>
-                    <div className="h-10 border-b border-dashed border-slate-300 mb-1.5"></div>
-                    <p className="font-medium">Customer / Payer Signature</p>
-                </div>
-                <div>
-                    <div className="h-10 border-b border-dashed border-slate-300 mb-1.5"></div>
-                    <p className="font-medium">Authorized Cashier / GLX Signature</p>
-                </div>
-            </div>
-
-            {/* ── Footer Notice ── */}
-            <div className="mt-6 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
-                <span>GLX TRUCK BODY ENGINEERS - Computer Generated Official Receipt</span>
-                <span>Valid without physical stamp if digitally verified</span>
             </div>
         </div>
     );
 });
 
+PaymentReceiptPrintView.displayName = 'PaymentReceiptPrintView';
 export default PaymentReceiptPrintView;

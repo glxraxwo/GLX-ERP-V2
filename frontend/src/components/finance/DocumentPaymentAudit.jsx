@@ -5,7 +5,7 @@ import axios from 'axios';
 import { getApiUrl } from '../../api/config';
 import { paymentsApi } from '../../features/payments/paymentsApi';
 
-export default function DocumentPaymentAudit({ documentId, title = 'Payment & Voucher Audit Trail' }) {
+export default function DocumentPaymentAudit({ documentId, title = 'Payment History' }) {
     const [summary, setSummary] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -21,7 +21,7 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment & Vo
                 setIsLoading(false);
             })
             .catch((err) => {
-                console.error('Failed to load document payment audit summary:', err);
+                console.error('Failed to load document payment history summary:', err);
                 setError('Unable to fetch payment history.');
                 setIsLoading(false);
             });
@@ -63,7 +63,7 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment & Vo
                     </div>
                     <div>
                         <h3 className="font-bold text-base">{title}</h3>
-                        <p className="text-xs text-slate-400">Verified system receipts and voucher payments audit log</p>
+                        <p className="text-xs text-slate-400">Verified payment and receipt transaction history</p>
                     </div>
                 </div>
                 {summary && (

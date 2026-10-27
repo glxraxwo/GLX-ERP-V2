@@ -58,6 +58,8 @@ const fmtPrintTs = (d = new Date()) => {
     } catch { return new Date().toLocaleString(); }
 };
 
+export const DOCUMENT_FONT_FAMILY = "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif";
+
 /* ─── component ───────────────────────────────────────────────────── */
 const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLanguage = false, hideToolbar = false, hideLetterheadHeader = false }, ref) => {
     if (!doc) return null;
@@ -355,7 +357,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     `;
 
     return (
-        <div style={{ fontFamily: "'Calibri', 'Segoe UI', Arial, Helvetica, sans-serif", color: '#111', background: '#fff', width: '100%', maxWidth: 'calc(210mm - 0.5in)', margin: '0 auto', fontSize: 12.5 }}>
+        <div style={{ fontFamily: DOCUMENT_FONT_FAMILY, color: '#1e293b', background: '#fff', width: '100%', maxWidth: 'calc(210mm - 0.5in)', margin: '0 auto', fontSize: 12.5 }}>
             <style>{printStyles}</style>
 
             {/* ── Toolbar (no-print) ── */}
@@ -571,13 +573,13 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                         <img src="/logo.jpg" alt="GLX Logo" crossOrigin="anonymous" style={{ width: '100%', height: 'auto', objectFit: 'contain', filter: 'grayscale(100%)' }} />
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 800, fontSize: 17, letterSpacing: 0.5, lineHeight: 1.1 }}>
+                                        <div style={{ fontWeight: 700, fontSize: 16.5, letterSpacing: 0.4, lineHeight: 1.15, color: '#0f172a' }}>
                                             GLX TRUCK BODY ENGINEERS
                                         </div>
-                                        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.8, color: '#444', marginBottom: 5 }}>
+                                        <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: 0.6, color: '#475569', marginBottom: 5 }}>
                                             ALUMINIUM , STEEL &amp; FREEZER BOX MANUFACTURE
                                         </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 11, lineHeight: 1.55 }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 11, lineHeight: 1.55, color: '#334155' }}>
                                             <div>
                                                 No.14,Negambo Road,<br />
                                                 Thudella,Ja-Ela,<br />
@@ -591,10 +593,10 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                                 (11390)
                                             </div>
                                             <div style={{ fontSize: 11, lineHeight: 1.6 }}>
-                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 600 }}>Mobile</span> : 071 6666 888</div>
-                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 600 }}>Tel</span> : 011 740 4446</div>
-                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 600 }}>Email</span> : glx.engi@gmail.com</div>
-                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 600 }}>Web</span> : www.glx.lk</div>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Mobile</span> : 071 6666 888</div>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Tel</span> : 011 740 4446</div>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Email</span> : glx.engi@gmail.com</div>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Web</span> : www.glx.lk</div>
                                             </div>
                                         </div>
                                     </div>
@@ -606,7 +608,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, fontSize: 12.5 }}>
                             {/* Left: Customer Block */}
                             <div style={{ maxWidth: '54%', lineHeight: 1.55 }}>
-                                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: '#000' }}>{t.billTo || 'Customer'}</div>
+                                <div style={{ fontWeight: 600, fontSize: 12.5, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4, color: '#334155' }}>{t.billTo || 'Customer'}</div>
                                 {isQuickEdit ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
                                         <input
@@ -635,16 +637,16 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                             value={vehicleNoVal}
                                             onChange={(e) => setEditedValues(prev => ({ ...prev, vehicleNo: e.target.value }))}
                                             placeholder="Vehicle Number (e.g. WP LC - 1757)"
-                                            className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40 font-mono font-bold"
+                                            className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40 font-bold"
                                         />
                                     </div>
                                 ) : (
                                     <>
-                                        <div style={{ fontWeight: 500, fontSize: 13, color: '#000' }}>{customerNameVal}</div>
-                                        {customerAddressVal && <div style={{ fontSize: 12.5, color: '#222' }}>{customerAddressVal}</div>}
-                                        {customerPhoneVal   && <div style={{ fontSize: 12.5, color: '#222' }}>{customerPhoneVal}</div>}
+                                        <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{customerNameVal}</div>
+                                        {customerAddressVal && <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{customerAddressVal}</div>}
+                                        {customerPhoneVal   && <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{customerPhoneVal}</div>}
                                         {vehicleNoVal && (
-                                            <div style={{ fontWeight: 700, fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 13.5, marginTop: 8, color: '#000' }}>
+                                            <div style={{ fontWeight: 600, fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 13, marginTop: 6, color: '#0f172a', letterSpacing: 0.4 }}>
                                                 {vehicleNoVal}
                                             </div>
                                         )}
@@ -673,13 +675,13 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                         />
                                     ) : branchVal],
                                     [t.date || 'Date', <>
-                                        <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmtDate(docDate)}</span>
-                                        {fmtTime(doc.createdAt) && <><br/><span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 11.5 }}>{fmtTime(doc.createdAt)}</span></>}
+                                        <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmtDate(docDate)}</span>
+                                        {fmtTime(doc.createdAt) && <><br/><span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5 }}>{fmtTime(doc.createdAt)}</span></>}
                                     </>],
                                 ].map(([label, value]) => (
                                     <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 12.5 }}>
-                                        <span style={{ fontWeight: 700, color: '#000' }}>{label}</span>
-                                        <span style={{ color: '#000' }}>&nbsp;&nbsp;{value}</span>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>{label}</span>
+                                        <span style={{ color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>&nbsp;&nbsp;{value}</span>
                                     </div>
                                 ))}
                                 {latestEdit && (
@@ -688,10 +690,11 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                             onClick={() => setIsEditLogOpen(true)}
                                             style={{ 
                                                 color: '#dc2626', 
-                                                fontWeight: 800, 
+                                                fontWeight: 700, 
                                                 fontSize: 11.5, 
                                                 lineHeight: 1.5,
-                                                fontFamily: "'Consolas', 'Segoe UI Mono', monospace",
+                                                fontFamily: DOCUMENT_FONT_FAMILY,
+                                                fontVariantNumeric: 'tabular-nums',
                                                 cursor: 'pointer'
                                             }}
                                             title="Click to view complete revision history & audit log"
@@ -712,17 +715,17 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                 <col style={{ width: 105 }} />
                             </colgroup>
                             <thead>
-                                <tr style={{ background: 'transparent' }}>
-                                    <th style={{ padding: '6px 4px 6px 0', textAlign: 'left',   fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#000', background: 'transparent' }}>
+                                <tr style={{ background: 'transparent', borderBottom: '1.5px solid #cbd5e1' }}>
+                                    <th style={{ padding: '6px 4px 6px 0', textAlign: 'left',   fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, color: '#334155', background: 'transparent' }}>
                                         {t.description || 'DESCRIPTION'}
                                     </th>
-                                    <th style={{ padding: '6px 8px', textAlign: 'right',  fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 95, color: '#000', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                    <th style={{ padding: '6px 8px', textAlign: 'right',  fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 95, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
                                         {t.rate || 'RATE'}
                                     </th>
-                                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 55, color: '#000', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 55, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
                                         {t.qty || 'QTY'}
                                     </th>
-                                    <th style={{ padding: '6px 0 6px 8px', textAlign: 'right',  fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, width: 105, color: '#000', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                    <th style={{ padding: '6px 0 6px 8px', textAlign: 'right',  fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 105, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
                                         {t.amount || 'AMOUNT'}
                                     </th>
                                 </tr>
@@ -753,13 +756,13 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                         <React.Fragment key={idx}>
                                             <tr style={{ verticalAlign: 'top', background: 'transparent' }}>
                                                 <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                                                    <div style={{ fontWeight: 500, color: '#000', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                                    <div style={{ fontWeight: 500, color: '#0f172a', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                                         <span>{title}</span>
                                                         {subtitle && (
                                                             <span style={{ 
                                                                 color: lang === 'si' ? '#475569' : '#047857', 
-                                                                fontWeight: 600, 
-                                                                fontSize: 12,
+                                                                fontWeight: 500, 
+                                                                fontSize: 11.5,
                                                                 marginLeft: 6,
                                                                 wordBreak: 'break-word'
                                                             }}>
@@ -768,21 +771,21 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                                         )}
                                                     </div>
                                                     {descExtra && (
-                                                        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', fontSize: 12, color: '#333', marginTop: 1 }}>
+                                                        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', fontSize: 11.5, color: '#475569', marginTop: 1 }}>
                                                             {descExtra}
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>{fmt(rate)}</td>
-                                                <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>{qty}</td>
-                                                <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", fontSize: 12.5, color: '#000', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>{fmt(grossAmt)}</td>
+                                                <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>{fmt(rate)}</td>
+                                                <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>{qty}</td>
+                                                <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>{fmt(grossAmt)}</td>
                                             </tr>
                                             {(discAmt > 0 || effDiscRate > 0) && (
                                                 <tr style={{ color: '#dc2626', background: 'transparent' }}>
-                                                    <td style={{ paddingBottom: 6, paddingRight: 4, color: '#dc2626', fontSize: 12, fontWeight: 500, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>Discount</td>
-                                                    <td style={{ textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 8px 6px', color: '#dc2626', fontSize: 12, background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>-{fmt(effDiscRate)}</td>
-                                                    <td style={{ textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 8px 6px', color: '#dc2626', fontSize: 12, background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>{qty}</td>
-                                                    <td style={{ textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", padding: '0 0 6px 8px', color: '#dc2626', fontSize: 12, background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>-{fmt(discAmt)}</td>
+                                                    <td style={{ paddingBottom: 6, paddingRight: 4, color: '#dc2626', fontSize: 11.5, fontWeight: 500, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>Discount</td>
+                                                    <td style={{ textAlign: 'right',  fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', padding: '0 8px 6px', color: '#dc2626', fontSize: 11.5, background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>-{fmt(effDiscRate)}</td>
+                                                    <td style={{ textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', padding: '0 8px 6px', color: '#dc2626', fontSize: 11.5, background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>{qty}</td>
+                                                    <td style={{ textAlign: 'right',  fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', padding: '0 0 6px 8px', color: '#dc2626', fontSize: 11.5, background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>-{fmt(discAmt)}</td>
                                                 </tr>
                                             )}
                                         </React.Fragment>
@@ -791,10 +794,10 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
 
                                 {laborCost > 0 && (
                                     <tr style={{ verticalAlign: 'top', background: 'transparent' }}>
-                                        <td style={{ padding: '6px 4px 2px 0', fontWeight: 500, color: '#000', background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>Labor Charge / Workmanship</td>
-                                        <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>{fmt(laborCost)}</td>
-                                        <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>1</td>
-                                        <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: "'Consolas', 'Segoe UI Mono', monospace", color: '#000', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>{fmt(laborCost)}</td>
+                                        <td style={{ padding: '6px 4px 2px 0', fontWeight: 500, color: '#0f172a', background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>Labor Charge / Workmanship</td>
+                                        <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', color: '#1e293b', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>{fmt(laborCost)}</td>
+                                        <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', color: '#1e293b', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>1</td>
+                                        <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', color: '#1e293b', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>{fmt(laborCost)}</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -804,7 +807,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                         <div style={{ marginTop: 10, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, fontSize: 12.5 }}>
                             {/* Left: Remarks */}
                             <div style={{ maxWidth: '45%', lineHeight: 1.6 }}>
-                                <span style={{ fontWeight: 700, color: '#000' }}>{t.remarks || 'Remarks'} &nbsp;&nbsp;&nbsp;&nbsp;:</span>
+                                <span style={{ fontWeight: 600, color: '#334155' }}>{t.remarks || 'Remarks'} &nbsp;&nbsp;&nbsp;&nbsp;:</span>
                                 {isQuickEdit ? (
                                     <input
                                         type="text"
@@ -814,40 +817,40 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                         className="w-full text-xs p-1 mt-1 border border-blue-300 rounded bg-blue-50/40"
                                     />
                                 ) : (
-                                    remarksText ? <span style={{ marginLeft: 6, color: '#000' }}>{remarksText}</span> : null
+                                    remarksText ? <span style={{ marginLeft: 6, color: '#1e293b' }}>{remarksText}</span> : null
                                 )}
                             </div>
 
                             {/* Right: Totals block */}
                             <div style={{ minWidth: 260 }}>
                                 {/* SUB TOTAL */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: 4, color: '#000' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: 4, color: '#475569', fontSize: 12 }}>
                                     <span>SUB TOTAL</span>
-                                    <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmt(subtotal + laborCost)}</span>
+                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', color: '#1e293b', fontWeight: 500 }}>{fmt(subtotal + laborCost)}</span>
                                 </div>
                                 {/* DISCOUNT (in RED) */}
                                 {totalDiscount > 0 && (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: 4, color: '#dc2626' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: 4, color: '#dc2626', fontSize: 12 }}>
                                         <span>DISCOUNT</span>
-                                        <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>-{fmt(totalDiscount)}</span>
+                                        <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>-{fmt(totalDiscount)}</span>
                                     </div>
                                 )}
                                 {/* GRAND TOTAL */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 13.5, color: '#000', marginTop: 4 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: 13, color: '#0f172a', marginTop: 4, borderTop: '1px solid #cbd5e1', paddingTop: 4 }}>
                                     <span>GRAND TOTAL</span>
-                                    <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmt(grandTotal)}</span>
+                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 13.5 }}>{fmt(grandTotal)}</span>
                                 </div>
 
                                 {/* Optional Advance Paid & Balance Due */}
                                 {(advancePaid > 0 && (doc.showAdvanceOnInvoice || isInvoice)) && (
                                     <>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 4, color: '#166534' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, marginTop: 4, color: '#166534', fontSize: 12 }}>
                                             <span>ADVANCE PAID</span>
-                                            <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>-{fmt(advancePaid)}</span>
+                                            <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>-{fmt(advancePaid)}</span>
                                         </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 2, color: '#92400e' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 2, color: '#92400e', fontSize: 12 }}>
                                             <span>BALANCE DUE</span>
-                                            <span style={{ fontFamily: "'Consolas', 'Segoe UI Mono', monospace" }}>{fmt(balanceDue)}</span>
+                                            <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(balanceDue)}</span>
                                         </div>
                                     </>
                                 )}
@@ -859,8 +862,8 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                             {!isInvoice && (
                                 <>
                                     <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start' }}>
-                                        <span style={{ fontWeight: 700, color: '#000' }}>{t.conditionOfPayments || 'Condition of Payments'}</span>
-                                        <span style={{ fontWeight: 700, color: '#000' }}>:</span>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>{t.conditionOfPayments || 'Condition of Payments'}</span>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>:</span>
                                         <div>
                                             {isQuickEdit ? (
                                                 <textarea
@@ -870,13 +873,13 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                                     className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
                                                 />
                                             ) : (
-                                                <div style={{ whiteSpace: 'pre-line', fontWeight: 500, color: '#000' }}>{conditionOfPayments}</div>
+                                                <div style={{ whiteSpace: 'pre-line', fontWeight: 400, color: '#1e293b' }}>{conditionOfPayments}</div>
                                             )}
                                         </div>
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start', marginTop: 4 }}>
-                                        <span style={{ fontWeight: 700, color: '#000' }}>{t.completionOfWork || 'Completion of Work'}</span>
-                                        <span style={{ fontWeight: 700, color: '#000' }}>:</span>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>{t.completionOfWork || 'Completion of Work'}</span>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>:</span>
                                         <div>
                                             {isQuickEdit ? (
                                                 <input
@@ -886,13 +889,13 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                                     className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
                                                 />
                                             ) : (
-                                                <div style={{ fontWeight: 500, color: '#000' }}>{completionOfWork}</div>
+                                                <div style={{ fontWeight: 400, color: '#1e293b' }}>{completionOfWork}</div>
                                             )}
                                         </div>
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start', marginTop: 4 }}>
-                                        <span style={{ fontWeight: 700, color: '#000' }}>{t.validity || 'Validity'} &nbsp;({isInvoice || isProforma ? 'Invoice' : isEstimate ? 'Estimate' : 'Quotation'})</span>
-                                        <span style={{ fontWeight: 700, color: '#000' }}>:</span>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>{t.validity || 'Validity'} &nbsp;({isInvoice || isProforma ? 'Invoice' : isEstimate ? 'Estimate' : 'Quotation'})</span>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>:</span>
                                         <div>
                                             {isQuickEdit ? (
                                                 <input
@@ -902,15 +905,15 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                                     className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40 font-semibold"
                                                 />
                                             ) : (
-                                                <div style={{ fontWeight: 700, color: '#000' }}>{validityQuotation}</div>
+                                                <div style={{ fontWeight: 400, color: '#1e293b' }}>{validityQuotation}</div>
                                             )}
                                         </div>
                                     </div>
                                 </>
                             )}
                             <div style={{ display: 'grid', gridTemplateColumns: '175px 15px 1fr', gap: '2px 4px', alignItems: 'start', marginTop: 4 }}>
-                                <span style={{ fontWeight: 700, color: '#000' }}>{t.warranty || 'Warranty'}</span>
-                                <span style={{ fontWeight: 700, color: '#000' }}>:</span>
+                                <span style={{ fontWeight: 600, color: '#334155' }}>{t.warranty || 'Warranty'}</span>
+                                <span style={{ fontWeight: 600, color: '#334155' }}>:</span>
                                 <div>
                                     {isQuickEdit ? (
                                         <textarea
@@ -920,7 +923,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                             className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
                                         />
                                     ) : (
-                                        <div style={{ whiteSpace: 'pre-line', fontWeight: 500, color: '#000' }}>{warrantyCondition}</div>
+                                        <div style={{ whiteSpace: 'pre-line', fontWeight: 400, color: '#1e293b' }}>{warrantyCondition}</div>
                                     )}
                                 </div>
                             </div>
@@ -931,10 +934,10 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, marginTop: 20, pageBreakInside: 'avoid' }}>
                         {/* Signature block */}
                         <div>
-                            <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 2, color: '#000' }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 400, marginBottom: 2, color: '#475569' }}>
                                 {lang === 'si' ? 'ඔබේ විශ්වාසවන්ත,' : lang === 'ta' ? 'உங்கள் உண்மையுள்ள,' : 'Yours Faithfully,'}
                             </div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#000', marginBottom: 16, lineHeight: 1.2 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 16, lineHeight: 1.2 }}>
                                 {companyInfo?.companyName || 'GLX INDUSTRIES'} - {branchVal}
                             </div>
 
@@ -977,14 +980,14 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                     <div style={{ height: 40 }} />
                                 )}
                                 {/* Dotted signature line matching physical print */}
-                                <div style={{ fontSize: 14, letterSpacing: 1, color: '#444', lineHeight: 0.8 }}>
+                                <div style={{ fontSize: 14, letterSpacing: 1, color: '#94a3b8', lineHeight: 0.8 }}>
                                     ............................................................
                                 </div>
                             </div>
-                            <div style={{ fontSize: 11.5, color: '#000', marginTop: 4, fontWeight: 700 }}>
+                            <div style={{ fontSize: 11.5, color: '#334155', marginTop: 4, fontWeight: 500 }}>
                                 {signerName ? (
                                     <span>
-                                        <strong>{signerName}</strong> &nbsp;—&nbsp; {signerTitle || (lang === 'si' ? 'බලයලත් නිලධාරී' : 'Authorized Person')}
+                                        <strong style={{ fontWeight: 600, color: '#0f172a' }}>{signerName}</strong> &nbsp;—&nbsp; {signerTitle || (lang === 'si' ? 'බලයලත් නිලධාරී' : 'Authorized Person')}
                                     </span>
                                 ) : (
                                     <span>
@@ -995,7 +998,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                             </div>
 
                             {/* Print timestamp in RED font */}
-                            <div style={{ fontSize: 10.5, color: '#dc2626', fontFamily: "'Consolas', monospace", marginTop: 14, fontWeight: 600 }}>
+                            <div style={{ fontSize: 10, color: '#dc2626', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', marginTop: 14, fontWeight: 500 }}>
                                 Printed at &nbsp;&nbsp;&nbsp;&nbsp; {printTimestamp}
                             </div>
                         </div>
@@ -1024,28 +1027,29 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                             margin: '20px auto 0 auto',
                             display: 'flex',
                             flexDirection: 'column',
-                            justifyContent: 'space-between'
+                            justifyContent: 'space-between',
+                            fontFamily: DOCUMENT_FONT_FAMILY
                         }}
                     >
                         <div>
                             {/* Page 2 Header */}
-                            <div style={{ borderBottom: '1.5px solid #1e293b', paddingBottom: 8, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ borderBottom: '1.5px solid #cbd5e1', paddingBottom: 8, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div>
-                                    <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: 0.5, color: '#0f172a' }}>
+                                    <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: 0.4, color: '#0f172a' }}>
                                         {companyInfo?.companyName || 'GLX TRUCK BODY ENGINEERS'}
                                     </div>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                                    <div style={{ fontSize: 10.5, fontWeight: 600, color: '#2563eb', textTransform: 'uppercase', letterSpacing: 0.6 }}>
                                         VEHICLE VERIFICATION &amp; INSPECTION PHOTO ATTACHMENTS
                                     </div>
                                 </div>
-                                <div style={{ textAlign: 'right', fontSize: 11, color: '#475569', lineHeight: 1.5 }}>
+                                <div style={{ textAlign: 'right', fontSize: 11, color: '#475569', lineHeight: 1.5, fontVariantNumeric: 'tabular-nums' }}>
                                     <div><strong>{docNumberLabel}:</strong> {docNumber}</div>
                                     <div><strong>Date:</strong> {fmtDate(docDate)}</div>
                                     {latestEdit && (
                                         <div style={{ marginTop: 2 }}>
                                             <div 
                                                 onClick={() => setIsEditLogOpen(true)}
-                                                style={{ color: '#dc2626', fontWeight: 800, fontSize: 10.5, fontFamily: "'Consolas', monospace", cursor: 'pointer' }}
+                                                style={{ color: '#dc2626', fontWeight: 600, fontSize: 10.5, fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', cursor: 'pointer' }}
                                                 title="Click to view complete revision history & audit log"
                                             >
                                                 • {formatEditItem(latestEdit, latestEditNumber)}
@@ -1066,13 +1070,13 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                 fontSize: 11.5 
                             }}>
                                 <div>
-                                    <span style={{ color: '#64748b', fontWeight: 600 }}>Customer: </span>
-                                    <strong style={{ color: '#1e293b' }}>{customerNameVal}</strong>
+                                    <span style={{ color: '#64748b', fontWeight: 500 }}>Customer: </span>
+                                    <strong style={{ color: '#0f172a', fontWeight: 600 }}>{customerNameVal}</strong>
                                 </div>
                                 {vehicleNoVal && (
                                     <div>
-                                        <span style={{ color: '#64748b', fontWeight: 600 }}>Vehicle No: </span>
-                                        <strong style={{ fontFamily: 'monospace', color: '#1e293b', fontSize: 12.5 }}>{vehicleNoVal}</strong>
+                                        <span style={{ color: '#64748b', fontWeight: 500 }}>Vehicle No: </span>
+                                        <strong style={{ fontFamily: DOCUMENT_FONT_FAMILY, color: '#0f172a', fontWeight: 600, fontSize: 12, letterSpacing: 0.4 }}>{vehicleNoVal}</strong>
                                     </div>
                                 )}
                             </div>
