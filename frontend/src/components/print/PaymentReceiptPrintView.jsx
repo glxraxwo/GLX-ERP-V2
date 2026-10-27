@@ -541,25 +541,25 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                     {/* ── 5. FOOTER: Signatures (left) + QR Code (right) (Immediately after Totals, NOT at page bottom) ── */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 6, marginTop: 8, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <div>
-                            <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 1, color: '#0f172a' }}>
+                            <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 2, color: '#0f172a' }}>
                                 Yours Faithfully,
                             </div>
-                            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f172a', marginBottom: 4, lineHeight: 1.2 }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f172a', marginBottom: 12, lineHeight: 1.2 }}>
                                 {resolvedCompany?.companyName || 'GLX INDUSTRIES'} - {branchVal}
                             </div>
 
                             {/* Seal + Signature image area */}
-                            <div style={{ position: 'relative', minHeight: 46, height: 48, marginTop: 2 }}>
+                            <div style={{ position: 'relative', minHeight: 48, height: 50, marginTop: 4 }}>
                                 {activeSeal && (
                                     <img
                                         src={activeSeal}
                                         alt="Official Company Seal"
                                         style={{ 
                                             position: 'absolute', 
-                                            bottom: -4, 
-                                            left: 105, 
-                                            width: 60, 
-                                            height: 60, 
+                                            bottom: 2, 
+                                            left: 125, 
+                                            width: 58, 
+                                            height: 58, 
                                             objectFit: 'contain', 
                                             opacity: 0.85, 
                                             pointerEvents: 'none', 
@@ -572,8 +572,8 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                         src={activeSignature}
                                         alt="Authorized Signature"
                                         style={{ 
-                                            height: 42, 
-                                            maxWidth: 180, 
+                                            height: 38, 
+                                            maxWidth: 165, 
                                             objectFit: 'contain', 
                                             marginBottom: 2, 
                                             position: 'relative', 
@@ -582,13 +582,13 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                         }}
                                     />
                                 ) : (
-                                    <div style={{ height: 32 }} />
+                                    <div style={{ height: 34 }} />
                                 )}
                                 <div style={{ fontSize: 13, letterSpacing: 0.8, color: '#444', lineHeight: 0.8 }}>
                                     ............................................................
                                 </div>
                             </div>
-                            <div style={{ fontSize: 10.5, color: '#0f172a', marginTop: 3, fontWeight: 600 }}>
+                            <div style={{ fontSize: 10.5, color: '#0f172a', marginTop: 4, fontWeight: 600 }}>
                                 Authorized Signature ({signerName})
                             </div>
 

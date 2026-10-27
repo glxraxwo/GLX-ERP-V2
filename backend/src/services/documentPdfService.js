@@ -590,33 +590,33 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 }
 
                 // Bottom: Signatures and red print timestamp (Placed at end of content)
-                const bottomY = Math.max(pdfDoc.y + 16, rY + 16);
+                const bottomY = Math.max(pdfDoc.y + 14, rY + 14);
                 pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#000000').text('Yours Faithfully,', 36, bottomY);
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(`GLX INDUSTRIES - ${branchVal}`, 36, bottomY + 12);
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(`GLX INDUSTRIES - ${branchVal}`, 36, bottomY + 11);
 
-                // Embed official seal image if available
+                // Embed official seal image if available - placed to the right, clear of company name
                 const sealData = settings?.companySeal;
                 if (sealData && sealData.includes('base64,')) {
                     try {
                         const sealBuffer = Buffer.from(sealData.split('base64,')[1], 'base64');
-                        pdfDoc.image(sealBuffer, 120, bottomY + 8, { width: 55, height: 55 });
+                        pdfDoc.image(sealBuffer, 135, bottomY + 22, { width: 52, height: 52 });
                     } catch (e) {}
                 }
 
-                // Embed signature image if available
+                // Embed signature image if available - placed directly above dotted line, below company name
                 const sigData = payment.receivedBy?.signature || payment.createdBy?.signature || settings?.bossSignature;
                 if (sigData && sigData.includes('base64,')) {
                     try {
                         const sigBuffer = Buffer.from(sigData.split('base64,')[1], 'base64');
-                        pdfDoc.image(sigBuffer, 36, bottomY + 14, { width: 120, height: 38 });
+                        pdfDoc.image(sigBuffer, 36, bottomY + 24, { width: 105, height: 32 });
                     } catch (e) {}
                 }
 
-                pdfDoc.fillColor('#444444').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 38);
+                pdfDoc.fillColor('#444444').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 58);
                 const signerTitle = payment.receivedBy?.firstName ? handledBy : (settings?.bossName || handledBy);
-                pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(8).text(`Authorized Signature (${signerTitle})`, 36, bottomY + 50);
+                pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(8).text(`Authorized Signature (${signerTitle})`, 36, bottomY + 70);
 
-                pdfDoc.fillColor('#DC2626').font('Helvetica-Bold').fontSize(8).text(`Printed at    ${printTimestamp}`, 36, bottomY + 64);
+                pdfDoc.fillColor('#DC2626').font('Helvetica-Bold').fontSize(8).text(`Printed at    ${printTimestamp}`, 36, bottomY + 84);
 
                 // Multi-page bottom disclaimer
                 const range = pdfDoc.bufferedPageRange();
