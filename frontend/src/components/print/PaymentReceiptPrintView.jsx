@@ -355,7 +355,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                             <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Mobile</span> : 071 6666 888</div>
                                             <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Tel</span> : 011 740 4446</div>
                                             <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Email</span> : glx.engi@gmail.com</div>
-                                            <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Web</span> : www.glx.lk</div>
+                                            <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Web</span> : {companyInfo?.companyWebsite || 'www.glxgroup.lk'}</div>
                                         </div>
                                     </div>
                                 </div>

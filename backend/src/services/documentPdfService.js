@@ -80,7 +80,7 @@ const convertNumberToWords = (amount) => {
 /**
  * Renders the official GLX company letterhead matching media_1793119480998_7033f283.png
  */
-const drawOfficialHeader = (pdfDoc) => {
+const drawOfficialHeader = (pdfDoc, settings = null) => {
     // 1. Logo
     if (fs.existsSync(LOGO_PATH)) {
         try {
@@ -107,7 +107,8 @@ const drawOfficialHeader = (pdfDoc) => {
 
     pdfDoc.text('No.14,Negambo Road,\nThudella,Ja-Ela,\nSri Lanka.\n(11350)', col1X, colY, { width: 140 });
     pdfDoc.text('No.2020/3L,2,Seeduwa Road,\nKotugoda,Ja-Ela.\nSri Lanka.\n(11390)', col2X, colY, { width: 140 });
-    pdfDoc.text('Mobile : 071 6666 888\nTel        : 011 740 4446\nEmail   : glx.engi@gmail.com\nWeb     : www.glx.lk', col3X, colY, { width: 160 });
+    const webVal = settings?.companyWebsite || 'www.glxgroup.lk';
+    pdfDoc.text(`Mobile : 071 6666 888\nTel        : 011 740 4446\nEmail   : glx.engi@gmail.com\nWeb     : ${webVal}`, col3X, colY, { width: 160 });
 
     pdfDoc.lineGap(0);
 
@@ -160,7 +161,7 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
             const printTimestamp = fmtPrintTs();
 
             // ── 1. Official Header ───────────────────────────────────────────
-            drawOfficialHeader(pdfDoc);
+            drawOfficialHeader(pdfDoc, settings);
 
             // ── 2. Meta Info (Customer Left vs Document Details Right) ────────
             const metaY = 112;
@@ -430,7 +431,7 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
             const branchVal = payment.branch || 'JA-ELA';
 
             // ── 1. Official Header ───────────────────────────────────────────
-            drawOfficialHeader(pdfDoc);
+            drawOfficialHeader(pdfDoc, settings);
 
             // ── 2. Meta Info (Customer Left vs Document Details Right) ────────
             const metaY = 112;

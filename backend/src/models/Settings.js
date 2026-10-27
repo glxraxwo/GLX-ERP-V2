@@ -9,6 +9,10 @@ const settingsSchema = new mongoose.Schema({
     companyAddress: String,
     companyPhone: String,
     companyEmail: String,
+    companyWebsite: {
+        type: String,
+        default: 'www.glxgroup.lk'
+    },
     companyLogo: String,
     taxId: String,
     currency: {

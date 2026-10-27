@@ -208,7 +208,7 @@ export const exportDocumentToPDF = async (docData, documentType = 'invoice') => 
         'Mobile : 071 6666 888',
         'Tel      : 011 740 4446',
         'Email  : glx.engi@gmail.com',
-        'Web    : www.glx.lk'
+        'Web    : www.glxgroup.lk'
     ].join('\n');
     doc.text(rightText, 152, 12, { lineHeight: 1.4 });
     
@@ -557,7 +557,7 @@ export const printDocumentAsPDF = async (docData, documentType = 'invoice') => {
     doc.text('ALUMINIUM, STEEL & FREEZER BOX MANUFACTURE', pageWidth / 2, 19, { align: 'center' });
     doc.text('No.2020/3L, 2, Seeduwa Road, Kotugoda, Ja-Ela. Sri Lanka. (11390)', pageWidth / 2, 23, { align: 'center' });
     doc.setFontSize(7.5); doc.setTextColor(0);
-    doc.text(`Mobile: 071 6666 888  |  Tel: 011 740 4446  |  Email: glx.engi@gmail.com  |  Web: www.glx.lk`, pageWidth / 2, 27, { align: 'center' });
+    doc.text(`Mobile: 071 6666 888  |  Tel: 011 740 4446  |  Email: glx.engi@gmail.com  |  Web: www.glxgroup.lk`, pageWidth / 2, 27, { align: 'center' });
 
     // Divider
     doc.setDrawColor(180); doc.setLineWidth(0.4);

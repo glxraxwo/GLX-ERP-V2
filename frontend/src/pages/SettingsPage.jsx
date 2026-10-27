@@ -15,6 +15,7 @@ const settingsSchema = z.object({
     companyAddress: z.string().optional(),
     companyPhone: z.string().optional(),
     companyEmail: z.string().email('Invalid email').optional().or(z.literal('')),
+    companyWebsite: z.string().optional(),
     companyLogo: z.string().optional(),
     taxId: z.string().optional(),
     currency: z.string().min(1, 'Currency required'),
@@ -101,6 +102,7 @@ export default function SettingsPage() {
         resolver: zodResolver(settingsSchema),
         defaultValues: {
             companyName: 'GLX INDUSTRIES',
+            companyWebsite: 'www.glxgroup.lk',
             currency: 'LKR',
             currencySymbol: 'Rs.',
             defaultTaxRate: 0,
@@ -319,6 +321,13 @@ export default function SettingsPage() {
                                             placeholder="+94716666888"
                                             error={errors.managerSmsPhone?.message}
                                             registration={register('managerSmsPhone')}
+                                        />
+                                        <StyledInput
+                                            label="Website"
+                                            icon={Globe}
+                                            placeholder="www.glxgroup.lk"
+                                            error={errors.companyWebsite?.message}
+                                            registration={register('companyWebsite')}
                                         />
                                         <div className="col-span-2">
                                             <label className="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wide">Company Address</label>
