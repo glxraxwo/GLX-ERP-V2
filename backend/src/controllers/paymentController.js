@@ -372,12 +372,56 @@ export const getPayments = asyncHandler(async (req, res) => {
 
 export const getPaymentById = asyncHandler(async (req, res) => {
     const payment = await Payment.findById(req.params.id)
-        .populate('customerId', 'displayName customerCode companyName')
+        .populate('customerId', 'displayName customerCode companyName billingAddress primaryContact')
         .populate('supplierId', 'displayName supplierCode companyName')
         .populate('employeeId', 'firstName lastName employeeCode')
-        .populate('receivedBy', 'firstName lastName')
-        .populate('createdBy', 'firstName lastName');
+        .populate('receivedBy', 'firstName lastName signature jobTitle')
+        .populate('createdBy', 'firstName lastName signature jobTitle')
+        .populate('bankAccountId', 'bankName accountNumber accountName branch')
+        .lean();
     if (!payment) { res.status(404); throw new Error('Payment or Voucher not found'); }
+
+    // Enrich allocations with linked invoice/quotation totals & remaining balance due
+    if (Array.isArray(payment.allocations) && payment.allocations.length > 0) {
+        const Invoice = (await import('../models/Invoice.js')).default;
+        const Quotation = (await import('../models/Quotation.js')).default;
+
+        let totalDocAmount = 0;
+        let totalBalanceDue = 0;
+        let hasDocBalance = false;
+
+        for (const alloc of payment.allocations) {
+            if (alloc.documentType === 'invoice' && alloc.documentId) {
+                const inv = await Invoice.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount amountPaid invoiceNumber vehicleNo customerName').lean();
+                if (inv) {
+                    alloc.docTotal = Number(inv.grandTotal !== undefined ? inv.grandTotal : (inv.totalAmount || 0));
+                    alloc.balanceDue = Number(inv.balanceAmount !== undefined ? inv.balanceAmount : Math.max(0, alloc.docTotal - (inv.amountPaid || 0)));
+                    alloc.vehicleNo = inv.vehicleNo || '';
+                    if (!payment.vehicleNo && inv.vehicleNo) payment.vehicleNo = inv.vehicleNo;
+                    totalDocAmount += alloc.docTotal;
+                    totalBalanceDue += alloc.balanceDue;
+                    hasDocBalance = true;
+                }
+            } else if ((alloc.documentType === 'quotation' || alloc.documentType === 'estimate') && alloc.documentId) {
+                const quote = await Quotation.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount advanceAmount quoteNumber vehicleNo customerName').lean();
+                if (quote) {
+                    alloc.docTotal = Number(quote.grandTotal !== undefined ? quote.grandTotal : (quote.totalAmount || 0));
+                    alloc.balanceDue = Number(quote.balanceAmount !== undefined ? quote.balanceAmount : Math.max(0, alloc.docTotal - (quote.advanceAmount || 0)));
+                    alloc.vehicleNo = quote.vehicleNo || '';
+                    if (!payment.vehicleNo && quote.vehicleNo) payment.vehicleNo = quote.vehicleNo;
+                    totalDocAmount += alloc.docTotal;
+                    totalBalanceDue += alloc.balanceDue;
+                    hasDocBalance = true;
+                }
+            }
+        }
+
+        if (hasDocBalance) {
+            payment.totalDocAmount = totalDocAmount;
+            payment.totalBalanceDue = totalBalanceDue;
+        }
+    }
+
     res.json({ success: true, data: payment });
 });
 
@@ -730,13 +774,54 @@ export const downloadPaymentReceipt = asyncHandler(async (req, res) => {
         .populate('supplierId', 'displayName companyName primaryContact address')
         .populate('employeeId', 'firstName lastName callingName')
         .populate('bankAccountId', 'bankName accountNumber accountName branch')
-        .populate('receivedBy', 'name email')
-        .populate('createdBy', 'name email')
+        .populate('receivedBy', 'firstName lastName signature jobTitle')
+        .populate('createdBy', 'firstName lastName signature jobTitle')
         .lean();
 
     if (!payment) {
         res.status(404);
         throw new Error('Payment record not found');
+    }
+
+    // Enrich allocations with linked invoice/quotation totals & remaining balance due
+    if (Array.isArray(payment.allocations) && payment.allocations.length > 0) {
+        const Invoice = (await import('../models/Invoice.js')).default;
+        const Quotation = (await import('../models/Quotation.js')).default;
+
+        let totalDocAmount = 0;
+        let totalBalanceDue = 0;
+        let hasDocBalance = false;
+
+        for (const alloc of payment.allocations) {
+            if (alloc.documentType === 'invoice' && alloc.documentId) {
+                const inv = await Invoice.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount amountPaid invoiceNumber vehicleNo customerName').lean();
+                if (inv) {
+                    alloc.docTotal = Number(inv.grandTotal !== undefined ? inv.grandTotal : (inv.totalAmount || 0));
+                    alloc.balanceDue = Number(inv.balanceAmount !== undefined ? inv.balanceAmount : Math.max(0, alloc.docTotal - (inv.amountPaid || 0)));
+                    alloc.vehicleNo = inv.vehicleNo || '';
+                    if (!payment.vehicleNo && inv.vehicleNo) payment.vehicleNo = inv.vehicleNo;
+                    totalDocAmount += alloc.docTotal;
+                    totalBalanceDue += alloc.balanceDue;
+                    hasDocBalance = true;
+                }
+            } else if ((alloc.documentType === 'quotation' || alloc.documentType === 'estimate') && alloc.documentId) {
+                const quote = await Quotation.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount advanceAmount quoteNumber vehicleNo customerName').lean();
+                if (quote) {
+                    alloc.docTotal = Number(quote.grandTotal !== undefined ? quote.grandTotal : (quote.totalAmount || 0));
+                    alloc.balanceDue = Number(quote.balanceAmount !== undefined ? quote.balanceAmount : Math.max(0, alloc.docTotal - (quote.advanceAmount || 0)));
+                    alloc.vehicleNo = quote.vehicleNo || '';
+                    if (!payment.vehicleNo && quote.vehicleNo) payment.vehicleNo = quote.vehicleNo;
+                    totalDocAmount += alloc.docTotal;
+                    totalBalanceDue += alloc.balanceDue;
+                    hasDocBalance = true;
+                }
+            }
+        }
+
+        if (hasDocBalance) {
+            payment.totalDocAmount = totalDocAmount;
+            payment.totalBalanceDue = totalBalanceDue;
+        }
     }
 
     const Settings = (await import('../models/Settings.js')).default;

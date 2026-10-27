@@ -1,5 +1,6 @@
 import React, { forwardRef, useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { useAuthStore } from '../../store/authStore';
 
 export const DOCUMENT_FONT_FAMILY = "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif";
 
@@ -75,6 +76,7 @@ const convertNumberToWords = (amount) => {
 const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar = false, hideLetterheadHeader = false }, ref) => {
     if (!payment) return null;
 
+    const { user: currentUser } = useAuthStore();
     const [showLetterheadHeader, setShowLH] = useState(!hideLetterheadHeader);
 
     useEffect(() => {
@@ -101,10 +103,31 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
     const vehicleNo = payment.vehicleNo || payment.vehicleNumber || '';
 
     const paymentDate = payment.paymentDate || payment.createdAt || new Date();
-    const allocations = payment.allocations || [];
+    const allocations = Array.isArray(payment.allocations) ? payment.allocations : [];
     const totalAmount = Number(payment.amount || 0);
     const totalAllocated = allocations.reduce((s, a) => s + (Number(a.amount) || 0), 0);
     const unallocated = Number(payment.unallocatedAmount !== undefined ? payment.unallocatedAmount : Math.max(0, totalAmount - totalAllocated));
+
+    // Calculate invoice total & remaining balance left to be paid
+    let totalDocAmount = Number(payment.totalDocAmount || 0);
+    let totalBalanceDue = payment.totalBalanceDue !== undefined 
+        ? Number(payment.totalBalanceDue) 
+        : (allocations.length > 0 && allocations[0].balanceDue !== undefined ? Number(allocations[0].balanceDue) : -1);
+
+    if (totalBalanceDue < 0 && allocations.length > 0) {
+        let sumDoc = 0;
+        let sumBal = 0;
+        let hasBal = false;
+        allocations.forEach(a => {
+            if (a.docTotal !== undefined) sumDoc += Number(a.docTotal || 0);
+            if (a.balanceDue !== undefined) {
+                sumBal += Number(a.balanceDue || 0);
+                hasBal = true;
+            }
+        });
+        if (sumDoc > 0) totalDocAmount = sumDoc;
+        if (hasBal) totalBalanceDue = sumBal;
+    }
 
     let methodLabel = (payment.method || 'cash').toUpperCase().replace('_', ' ');
     let methodDetails = '';
@@ -115,8 +138,18 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
         methodDetails = `Txn Ref: ${payment.transactionReference || 'N/A'}${payment.bankName ? ` (${payment.bankName})` : ''}`;
     }
 
+    // Resolve Active Signature and Seal
+    const activeSignature = payment.receivedBy?.signature || 
+        payment.createdBy?.signature || 
+        currentUser?.signature || 
+        companyInfo?.bossSignature || 
+        '';
+
+    const activeSeal = companyInfo?.companySeal || '';
+
     const handledBy = (payment.receivedBy?.firstName ? `${payment.receivedBy.firstName} ${payment.receivedBy.lastName || ''}`.trim() : null) || 
         (payment.createdBy?.firstName ? `${payment.createdBy.firstName} ${payment.createdBy.lastName || ''}`.trim() : null) || 
+        currentUser?.fullName || 
         payment.receivedBy?.name || 
         payment.createdBy?.name || 
         'Cashier Desk';
@@ -131,7 +164,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
     const printStyles = `
         @page {
             size: A4 portrait;
-            margin: 0.25in;
+            margin: 6mm 8mm;
         }
         @media screen {
             .print-page {
@@ -140,7 +173,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                 border: 1px solid #e2e8f0;
                 margin-bottom: 24px;
                 box-sizing: border-box;
-                min-width: 760px !important;
+                min-width: 740px !important;
             }
         }
         @media print {
@@ -148,6 +181,8 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #fff !important;
+                height: auto !important;
+                overflow: visible !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
@@ -155,14 +190,17 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
             .print-page {
                 width: 100% !important;
                 max-width: 100% !important;
-                min-height: calc(297mm - 0.5in) !important;
-                padding: 10px 14px !important;
-                margin: 0 auto !important;
+                height: auto !important;
+                min-height: auto !important;
+                padding: 0 !important;
+                margin: 0 !important;
                 box-sizing: border-box !important;
                 box-shadow: none !important;
                 border: none !important;
                 page-break-after: avoid !important;
+                page-break-inside: avoid !important;
                 break-after: avoid !important;
+                break-inside: avoid !important;
             }
             .print-container table,
             .print-page table,
@@ -188,24 +226,23 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
     `;
 
     return (
-        <div style={{ fontFamily: DOCUMENT_FONT_FAMILY, color: '#111', background: '#fff', width: '100%', maxWidth: 'calc(210mm - 0.5in)', margin: '0 auto', fontSize: 12.5 }}>
+        <div style={{ fontFamily: DOCUMENT_FONT_FAMILY, color: '#111', background: '#fff', width: '100%', maxWidth: 'calc(210mm - 0.4in)', margin: '0 auto', fontSize: 12 }}>
             <style>{printStyles}</style>
 
             {/* ── Toolbar (no-print) ── */}
             {!hideToolbar && (
-                <div className="no-print" style={{ marginBottom: 12, padding: '10px 14px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, fontSize: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="no-print" style={{ marginBottom: 12, padding: '8px 12px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, fontSize: 11.5 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontWeight: 600, color: '#475569' }}>Document Type:</span>
                         <span style={{ fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' }}>{docTitle}</span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        {/* Letterhead Header Toggle */}
                         <button 
                             type="button" 
                             onClick={() => setShowLH(p => !p)} 
                             style={{
-                                padding: '4px 12px', borderRadius: 7, fontWeight: 600, fontSize: 11, cursor: 'pointer', border: '1px solid #cbd5e1',
+                                padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 11, cursor: 'pointer', border: '1px solid #cbd5e1',
                                 background: !showLetterheadHeader ? '#b45309' : '#fff',
                                 color: !showLetterheadHeader ? '#fff' : '#374151',
                             }}
@@ -216,290 +253,285 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                 </div>
             )}
 
-            {/* ── Printable Page Root ── */}
+            {/* ── Printable Page Root (Compact Single Page Layout) ── */}
             <div ref={ref} className="print-root-container">
                 <div 
                     className="print-page print-container" 
                     style={{ 
                         background: '#fff', 
-                        padding: showLetterheadHeader ? '14px 18px 12px 18px' : '28mm 18px 12px 18px', 
+                        padding: showLetterheadHeader ? '10px 14px 10px 14px' : '20mm 14px 10px 14px', 
                         width: '100%',
-                        maxWidth: 'calc(210mm - 0.5in)',
-                        minHeight: 'calc(297mm - 0.5in)',
                         boxSizing: 'border-box',
                         margin: '0 auto',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between'
                     }}
                 >
-                    <div>
-                        {/* ── 1. COMPANY HEADER (100% Matching Invoice Layout) ── */}
-                        {showLetterheadHeader && (
-                            <div style={{ borderBottom: '1.5px solid #444', paddingBottom: 8, marginBottom: 14 }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                                    <div style={{ flexShrink: 0, width: 72, marginTop: 2 }}>
-                                        <img 
-                                            src="/logo.jpg" 
-                                            alt="GLX Logo" 
-                                            crossOrigin="anonymous" 
-                                            style={{ width: '100%', height: 'auto', objectFit: 'contain' }} 
-                                        />
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 700, fontSize: 16.5, letterSpacing: 0.4, lineHeight: 1.15, color: '#0f172a' }}>
-                                            GLX TRUCK BODY ENGINEERS
-                                        </div>
-                                        <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: 0.6, color: '#475569', marginBottom: 5 }}>
-                                            ALUMINIUM , STEEL &amp; FREEZER BOX MANUFACTURE
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 11, lineHeight: 1.55, color: '#334155' }}>
-                                            <div>
-                                                No.14,Negambo Road,<br />
-                                                Thudella,Ja-Ela,<br />
-                                                Sri Lanka.<br />
-                                                (11350)
-                                            </div>
-                                            <div>
-                                                No.2020/3L,2,Seeduwa Road,<br />
-                                                Kotugoda,Ja-Ela.<br />
-                                                Sri Lanka.<br />
-                                                (11390)
-                                            </div>
-                                            <div style={{ fontSize: 11, lineHeight: 1.6 }}>
-                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Mobile</span> : 071 6666 888</div>
-                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Tel</span> : 011 740 4446</div>
-                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Email</span> : glx.engi@gmail.com</div>
-                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Web</span> : www.glx.lk</div>
-                                            </div>
-                                        </div>
-                                    </div>
+                    {/* ── 1. COMPANY HEADER ── */}
+                    {showLetterheadHeader && (
+                        <div style={{ borderBottom: '1.5px solid #444', paddingBottom: 6, marginBottom: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                                <div style={{ flexShrink: 0, width: 62, marginTop: 1 }}>
+                                    <img 
+                                        src="/logo.jpg" 
+                                        alt="GLX Logo" 
+                                        crossOrigin="anonymous" 
+                                        style={{ width: '100%', height: 'auto', objectFit: 'contain' }} 
+                                    />
                                 </div>
-                            </div>
-                        )}
-
-                        {/* ── 2. CUSTOMER + DOCUMENT META (Exact Match to media_1793119480998_7033f283.png) ── */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, fontSize: 12.5 }}>
-                            {/* Left: Customer / Party Block */}
-                            <div style={{ maxWidth: '54%', lineHeight: 1.55 }}>
-                                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2, color: '#0f172a' }}>
-                                    {isVoucher ? 'PAID TO / BENEFICIARY' : 'BILL TO / CUSTOMER'}
-                                </div>
-                                <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{partyName}</div>
-                                {partyAddress && partyAddress !== '—' && (
-                                    <div style={{ fontSize: 12.5, color: '#334155' }}>{partyAddress}</div>
-                                )}
-                                {partyPhone && partyPhone !== '—' && (
-                                    <div style={{ fontSize: 12.5, color: '#334155' }}>{partyPhone}</div>
-                                )}
-                                {vehicleNo && (
-                                    <div style={{ fontWeight: 600, fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 13, marginTop: 6, color: '#0f172a', letterSpacing: 0.4 }}>
-                                        {vehicleNo}
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 700, fontSize: 15.5, letterSpacing: 0.3, lineHeight: 1.15, color: '#0f172a' }}>
+                                        GLX TRUCK BODY ENGINEERS
                                     </div>
-                                )}
-                            </div>
-
-                            {/* Right: Meta Details (Invoice/Receipt No, Sales, Branch, Date) */}
-                            <div style={{ textAlign: 'left', minWidth: 230 }}>
-                                {[
-                                    [isVoucher ? 'Voucher No.' : 'Receipt No.', docCode],
-                                    ['Sales', handledBy],
-                                    ['Branch', branchVal],
-                                    ['Date', <>
-                                        <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmtDate(paymentDate)}</span>
-                                        {fmtTime(paymentDate) && <><br/><span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5 }}>{fmtTime(paymentDate)}</span></>}
-                                    </>],
-                                ].map(([label, value]) => (
-                                    <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 12.5 }}>
-                                        <span style={{ fontWeight: 600, color: '#475569' }}>{label}</span>
-                                        <span style={{ color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>&nbsp;&nbsp;{value}</span>
+                                    <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: 0.5, color: '#475569', marginBottom: 4 }}>
+                                        ALUMINIUM , STEEL &amp; FREEZER BOX MANUFACTURE
                                     </div>
-                                ))}
-
-                                <div style={{ marginTop: 6, paddingTop: 4, borderTop: '1px dashed #fca5a5' }}>
-                                    <div style={{ color: '#059669', fontWeight: 600, fontSize: 11, fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>
-                                        • Method: {methodLabel} (CONFIRMED)
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 10.5, lineHeight: 1.45, color: '#334155' }}>
+                                        <div>
+                                            No.14,Negambo Road,<br />
+                                            Thudella,Ja-Ela,<br />
+                                            Sri Lanka.<br />
+                                            (11350)
+                                        </div>
+                                        <div>
+                                            No.2020/3L,2,Seeduwa Road,<br />
+                                            Kotugoda,Ja-Ela.<br />
+                                            Sri Lanka.<br />
+                                            (11390)
+                                        </div>
+                                        <div style={{ fontSize: 10.5, lineHeight: 1.5 }}>
+                                            <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Mobile</span> : 071 6666 888</div>
+                                            <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Tel</span> : 011 740 4446</div>
+                                            <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Email</span> : glx.engi@gmail.com</div>
+                                            <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Web</span> : www.glx.lk</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    )}
 
-                        {/* ── 3. ITEMS TABLE (Exact columns: DESCRIPTION, RATE, QTY, AMOUNT) ── */}
-                        <table className="no-zebra print-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 12.5, marginBottom: 4, background: 'transparent' }}>
-                            <colgroup>
-                                <col style={{ width: 'auto' }} />
-                                <col style={{ width: 95 }} />
-                                <col style={{ width: 55 }} />
-                                <col style={{ width: 105 }} />
-                            </colgroup>
-                            <thead>
-                                <tr style={{ background: 'transparent', borderBottom: '1.5px solid #cbd5e1' }}>
-                                    <th style={{ padding: '6px 4px 6px 0', textAlign: 'left', fontWeight: 700, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.5, color: '#000', background: 'transparent' }}>
-                                        DESCRIPTION
-                                    </th>
-                                    <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.5, width: 95, color: '#000', background: 'transparent', whiteSpace: 'nowrap' }}>
-                                        RATE
-                                    </th>
-                                    <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 700, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.5, width: 55, color: '#000', background: 'transparent', whiteSpace: 'nowrap' }}>
-                                        QTY
-                                    </th>
-                                    <th style={{ padding: '6px 0 6px 8px', textAlign: 'right', fontWeight: 700, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.5, width: 105, color: '#000', background: 'transparent', whiteSpace: 'nowrap' }}>
-                                        AMOUNT
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody style={{ background: 'transparent' }}>
-                                {allocations.length > 0 ? (
-                                    allocations.map((alloc, idx) => {
-                                        const docTypeStr = (alloc.documentType || 'Invoice').toUpperCase();
-                                        const docNum = alloc.documentNumber || `ID: ${String(alloc.documentId).slice(-6)}`;
-                                        const amt = Number(alloc.amount || 0);
-
-                                        return (
-                                            <tr key={idx} style={{ verticalAlign: 'top', background: 'transparent' }}>
-                                                <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                                                    <div style={{ fontWeight: 600, color: '#000' }}>
-                                                        Payment Received — Settlement for {docTypeStr} {docNum}
-                                                    </div>
-                                                    <div style={{ fontSize: 11.5, color: '#333', marginTop: 1 }}>
-                                                        Payment Method: {methodLabel}{methodDetails ? ` (${methodDetails})` : ''}
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '6px 8px 2px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#000', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>
-                                                    {fmt(amt)}
-                                                </td>
-                                                <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#000', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>
-                                                    1
-                                                </td>
-                                                <td style={{ padding: '6px 0 2px 8px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#000', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>
-                                                    {fmt(amt)}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                ) : (
-                                    <tr style={{ verticalAlign: 'top', background: 'transparent' }}>
-                                        <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                                            <div style={{ fontWeight: 600, color: '#000' }}>
-                                                {isVoucher ? 'Expense / Voucher Payment' : 'Customer Advance Payment Deposit / Credit on Account'}
-                                            </div>
-                                            <div style={{ fontSize: 11.5, color: '#333', marginTop: 1 }}>
-                                                Payment Method: {methodLabel}{methodDetails ? ` (${methodDetails})` : ''}{payment.notes ? ` · ${payment.notes}` : ''}
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '6px 8px 2px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#000', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>
-                                            {fmt(totalAmount)}
-                                        </td>
-                                        <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#000', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>
-                                            1
-                                        </td>
-                                        <td style={{ padding: '6px 0 2px 8px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#000', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>
-                                            {fmt(totalAmount)}
-                                        </td>
-                                    </tr>
-                                )}
-
-                                {/* If there is an unallocated portion in a multi-allocation receipt */}
-                                {allocations.length > 0 && unallocated > 0 && (
-                                    <tr style={{ verticalAlign: 'top', background: 'transparent' }}>
-                                        <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                                            <div style={{ fontWeight: 600, color: '#000' }}>
-                                                Unallocated Payment Balance / Available Account Credit
-                                            </div>
-                                            <div style={{ fontSize: 11.5, color: '#475569', marginTop: 1 }}>
-                                                Retained on customer account for future invoices
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '6px 8px 2px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#000', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>
-                                            {fmt(unallocated)}
-                                        </td>
-                                        <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#000', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>
-                                            1
-                                        </td>
-                                        <td style={{ padding: '6px 0 2px 8px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#000', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>
-                                            {fmt(unallocated)}
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-
-                        {/* ── 4. SUBTOTALS + REMARKS (Clean layout matching media_1793119480998_7033f283.png) ── */}
-                        <div style={{ marginTop: 10, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, fontSize: 12.5 }}>
-                            {/* Left: Remarks & Words */}
-                            <div style={{ maxWidth: '48%', lineHeight: 1.6 }}>
-                                <div style={{ marginBottom: 4 }}>
-                                    <span style={{ fontWeight: 700, color: '#000' }}>Remarks &nbsp;&nbsp;&nbsp;&nbsp;:</span>
-                                    <span style={{ marginLeft: 6, color: '#000' }}>
-                                        {payment.notes || (allocations.length > 0 ? `Settlement for ${allocations.map(a => a.documentNumber).filter(Boolean).join(', ')}` : 'Payment received with thanks')}
-                                    </span>
-                                </div>
-
-                                <div style={{ marginTop: 4 }}>
-                                    <span style={{ fontWeight: 700, color: '#000' }}>Amount in Words:</span>
-                                    <div style={{ fontStyle: 'italic', color: '#222', marginTop: 1, fontSize: 12 }}>
-                                        {convertNumberToWords(totalAmount)}
-                                    </div>
-                                </div>
-
-                                {payment.bankAccountId && (
-                                    <div style={{ marginTop: 4, color: '#333', fontSize: 11.5 }}>
-                                        <span style={{ fontWeight: 700 }}>Deposited To:</span> {payment.bankAccountId.bankName || 'GLX Account'} ({payment.bankAccountId.accountNumber || ''})
-                                    </div>
-                                )}
+                    {/* ── 2. CUSTOMER + DOCUMENT META ── */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, fontSize: 12 }}>
+                        {/* Left: Customer / Party Block */}
+                        <div style={{ maxWidth: '54%', lineHeight: 1.45 }}>
+                            <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 2, color: '#0f172a' }}>
+                                {isVoucher ? 'PAID TO / BENEFICIARY' : 'BILL TO / CUSTOMER'}
                             </div>
-
-                            {/* Right: Totals block */}
-                            <div style={{ minWidth: 260 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, marginBottom: 4, color: '#000', fontSize: 12.5 }}>
-                                    <span>SUB TOTAL</span>
-                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalAmount)}</span>
+                            <div style={{ fontWeight: 600, fontSize: 12.5, color: '#0f172a' }}>{partyName}</div>
+                            {partyAddress && partyAddress !== '—' && (
+                                <div style={{ fontSize: 11.5, color: '#334155' }}>{partyAddress}</div>
+                            )}
+                            {partyPhone && partyPhone !== '—' && (
+                                <div style={{ fontSize: 11.5, color: '#334155' }}>{partyPhone}</div>
+                            )}
+                            {vehicleNo && (
+                                <div style={{ fontWeight: 600, fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 12.5, marginTop: 4, color: '#0f172a', letterSpacing: 0.3 }}>
+                                    Vehicle No: {vehicleNo}
                                 </div>
+                            )}
+                        </div>
 
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 13.5, color: '#000', marginTop: 4, borderTop: '1px solid #000', paddingTop: 4 }}>
-                                    <span>{isVoucher ? 'TOTAL PAID' : 'GRAND TOTAL'}</span>
-                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalAmount)}</span>
+                        {/* Right: Meta Details (Invoice/Receipt No, Sales, Branch, Date) */}
+                        <div style={{ textAlign: 'left', minWidth: 220 }}>
+                            {[
+                                [isVoucher ? 'Voucher No.' : 'Receipt No.', docCode],
+                                ['Sales', handledBy],
+                                ['Branch', branchVal],
+                                ['Date', <>
+                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmtDate(paymentDate)}</span>
+                                    {fmtTime(paymentDate) && <><br/><span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{fmtTime(paymentDate)}</span></>}
+                                </>],
+                            ].map(([label, value]) => (
+                                <div key={label} style={{ display: 'grid', gridTemplateColumns: '100px 1fr', columnGap: 4, lineHeight: 1.5, fontSize: 11.5 }}>
+                                    <span style={{ fontWeight: 600, color: '#475569' }}>{label}</span>
+                                    <span style={{ color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>&nbsp;&nbsp;{value}</span>
                                 </div>
+                            ))}
 
-                                {allocations.length > 0 && totalAllocated > 0 && (
-                                    <>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 4, color: '#166534', fontSize: 12 }}>
-                                            <span>ADVANCE APPLIED</span>
-                                            <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>-{fmt(totalAllocated)}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 2, color: '#92400e', fontSize: 12 }}>
-                                            <span>BALANCE CREDIT</span>
-                                            <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmt(unallocated)}</span>
-                                        </div>
-                                    </>
-                                )}
+                            <div style={{ marginTop: 4, paddingTop: 3, borderTop: '1px dashed #cbd5e1' }}>
+                                <div style={{ color: '#059669', fontWeight: 600, fontSize: 10.5, fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>
+                                    • Method: {methodLabel} (CONFIRMED)
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* ── 5. FOOTER: Signatures (left) + QR Code (right) (100% Matching Invoice Layout) ── */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, marginTop: 24, pageBreakInside: 'avoid' }}>
+                    {/* ── 3. ITEMS TABLE ── */}
+                    <table className="no-zebra print-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 12, marginBottom: 4, background: 'transparent' }}>
+                        <colgroup>
+                            <col style={{ width: 'auto' }} />
+                            <col style={{ width: 95 }} />
+                            <col style={{ width: 50 }} />
+                            <col style={{ width: 105 }} />
+                        </colgroup>
+                        <thead>
+                            <tr style={{ background: 'transparent', borderBottom: '1.5px solid #cbd5e1' }}>
+                                <th style={{ padding: '5px 4px 5px 0', textAlign: 'left', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, color: '#0f172a', background: 'transparent' }}>
+                                    DESCRIPTION
+                                </th>
+                                <th style={{ padding: '5px 6px', textAlign: 'right', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, width: 95, color: '#0f172a', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                    RATE
+                                </th>
+                                <th style={{ padding: '5px 6px', textAlign: 'center', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, width: 50, color: '#0f172a', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                    QTY
+                                </th>
+                                <th style={{ padding: '5px 0 5px 6px', textAlign: 'right', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, width: 105, color: '#0f172a', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                    AMOUNT
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody style={{ background: 'transparent' }}>
+                            {allocations.length > 0 ? (
+                                allocations.map((alloc, idx) => {
+                                    const docTypeStr = (alloc.documentType || 'Invoice').toUpperCase();
+                                    const docNum = alloc.documentNumber || `ID: ${String(alloc.documentId).slice(-6)}`;
+                                    const amt = Number(alloc.amount || 0);
+
+                                    return (
+                                        <tr key={idx} style={{ verticalAlign: 'top', background: 'transparent' }}>
+                                            <td style={{ padding: '5px 4px 2px 0', lineHeight: 1.4, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                                <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                                                    Payment Received — Settlement for {docTypeStr} {docNum}
+                                                </div>
+                                                <div style={{ fontSize: 11, color: '#475569', marginTop: 1 }}>
+                                                    Payment Method: {methodLabel}{methodDetails ? ` (${methodDetails})` : ''}
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '5px 6px 2px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>
+                                                {fmt(amt)}
+                                            </td>
+                                            <td style={{ padding: '5px 6px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 50, whiteSpace: 'nowrap' }}>
+                                                1
+                                            </td>
+                                            <td style={{ padding: '5px 0 2px 6px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>
+                                                {fmt(amt)}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            ) : (
+                                <tr style={{ verticalAlign: 'top', background: 'transparent' }}>
+                                    <td style={{ padding: '5px 4px 2px 0', lineHeight: 1.4, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                        <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                                            {isVoucher ? 'Expense / Voucher Payment' : 'Customer Advance Payment Deposit / Credit on Account'}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: '#475569', marginTop: 1 }}>
+                                            Payment Method: {methodLabel}{methodDetails ? ` (${methodDetails})` : ''}{payment.notes ? ` · ${payment.notes}` : ''}
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '5px 6px 2px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>
+                                        {fmt(totalAmount)}
+                                    </td>
+                                    <td style={{ padding: '5px 6px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 50, whiteSpace: 'nowrap' }}>
+                                        1
+                                    </td>
+                                    <td style={{ padding: '5px 0 2px 6px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>
+                                        {fmt(totalAmount)}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+
+                    {/* ── 4. SUBTOTALS + REMARKS + BALANCE DUE ── */}
+                    <div style={{ marginTop: 8, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, fontSize: 12 }}>
+                        {/* Left: Remarks & Words */}
+                        <div style={{ maxWidth: '48%', lineHeight: 1.5 }}>
+                            <div style={{ marginBottom: 3 }}>
+                                <span style={{ fontWeight: 600, color: '#0f172a' }}>Remarks &nbsp;&nbsp;&nbsp;&nbsp;:</span>
+                                <span style={{ marginLeft: 6, color: '#334155' }}>
+                                    {payment.notes || (allocations.length > 0 ? `Settlement for ${allocations.map(a => a.documentNumber).filter(Boolean).join(', ')}` : 'Payment received with thanks')}
+                                </span>
+                            </div>
+
+                            <div style={{ marginTop: 3 }}>
+                                <span style={{ fontWeight: 600, color: '#0f172a' }}>Amount in Words:</span>
+                                <div style={{ fontStyle: 'italic', color: '#334155', marginTop: 1, fontSize: 11.5 }}>
+                                    {convertNumberToWords(totalAmount)}
+                                </div>
+                            </div>
+
+                            {payment.bankAccountId && (
+                                <div style={{ marginTop: 3, color: '#475569', fontSize: 11 }}>
+                                    <span style={{ fontWeight: 600 }}>Deposited To:</span> {payment.bankAccountId.bankName || 'GLX Account'} ({payment.bankAccountId.accountNumber || ''})
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Right: Totals block with Invoice Total & Balance Due */}
+                        <div style={{ minWidth: 260 }}>
+                            {totalDocAmount > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569', fontSize: 11.5, marginBottom: 3 }}>
+                                    <span>INVOICE TOTAL (මුළු එකතුව)</span>
+                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(totalDocAmount)}</span>
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: 3, color: '#0f172a', fontSize: 12 }}>
+                                <span>SUB TOTAL</span>
+                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalAmount)}</span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 12.5, color: '#0f172a', marginTop: 3, borderTop: '1px solid #0f172a', paddingTop: 3 }}>
+                                <span>{isVoucher ? 'TOTAL PAID' : 'AMOUNT RECEIVED (ගෙවූ මුදල)'}</span>
+                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalAmount)}</span>
+                            </div>
+
+                            {/* Remaining Balance Due on the invoice */}
+                            {totalBalanceDue >= 0 ? (
+                                <div style={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'space-between', 
+                                    fontWeight: 700, 
+                                    marginTop: 4, 
+                                    paddingTop: 3, 
+                                    borderTop: '1px dashed #cbd5e1', 
+                                    color: totalBalanceDue > 0 ? '#b91c1c' : '#15803d', 
+                                    fontSize: 12 
+                                }}>
+                                    <span>{totalBalanceDue > 0 ? 'BALANCE DUE (තව ගෙවීමට ඇති ශේෂය)' : 'BALANCE DUE (සම්පූර්ණයි)'}</span>
+                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalBalanceDue)}</span>
+                                </div>
+                            ) : (
+                                allocations.length > 0 && totalAllocated > 0 && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 3, color: '#166534', fontSize: 11.5 }}>
+                                        <span>ADVANCE APPLIED</span>
+                                        <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>-{fmt(totalAllocated)}</span>
+                                    </div>
+                                )
+                            )}
+
+                            {unallocated > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 3, color: '#92400e', fontSize: 11.5 }}>
+                                    <span>UNALLOCATED CREDIT</span>
+                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmt(unallocated)}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ── 5. FOOTER: Signatures (left) + QR Code (right) (Immediately after Totals, NOT at page bottom) ── */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, marginTop: 14, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <div>
-                            <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 2, color: '#000' }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 500, marginBottom: 1, color: '#0f172a' }}>
                                 Yours Faithfully,
                             </div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#000', marginBottom: 16, lineHeight: 1.2 }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f172a', marginBottom: 10, lineHeight: 1.2 }}>
                                 {companyInfo?.companyName || 'GLX INDUSTRIES'} - {branchVal}
                             </div>
 
                             {/* Seal + Signature image area */}
-                            <div style={{ position: 'relative', minHeight: 56, marginTop: 8 }}>
-                                {companyInfo?.companySeal && (
+                            <div style={{ position: 'relative', minHeight: 46, marginTop: 2 }}>
+                                {activeSeal && (
                                     <img
-                                        src={companyInfo.companySeal}
+                                        src={activeSeal}
                                         alt="Official Company Seal"
                                         crossOrigin="anonymous"
                                         style={{ 
                                             position: 'absolute', 
-                                            bottom: 2, 
-                                            left: 130, 
-                                            width: 68, 
-                                            height: 68, 
+                                            bottom: 0, 
+                                            left: 110, 
+                                            width: 58, 
+                                            height: 58, 
                                             objectFit: 'contain', 
                                             opacity: 0.82, 
                                             pointerEvents: 'none', 
@@ -507,14 +539,14 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                         }}
                                     />
                                 )}
-                                {companyInfo?.bossSignature ? (
+                                {activeSignature ? (
                                     <img
-                                        src={companyInfo.bossSignature}
+                                        src={activeSignature}
                                         alt="Authorized Signature"
                                         crossOrigin="anonymous"
                                         style={{ 
-                                            height: 48, 
-                                            maxWidth: 210, 
+                                            height: 42, 
+                                            maxWidth: 190, 
                                             objectFit: 'contain', 
                                             marginBottom: 2, 
                                             position: 'relative', 
@@ -523,25 +555,25 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                         }}
                                     />
                                 ) : (
-                                    <div style={{ height: 40 }} />
+                                    <div style={{ height: 30 }} />
                                 )}
-                                <div style={{ fontSize: 14, letterSpacing: 1, color: '#444', lineHeight: 0.8 }}>
+                                <div style={{ fontSize: 13, letterSpacing: 0.8, color: '#444', lineHeight: 0.8 }}>
                                     ............................................................
                                 </div>
                             </div>
-                            <div style={{ fontSize: 11.5, color: '#000', marginTop: 4, fontWeight: 700 }}>
+                            <div style={{ fontSize: 11, color: '#0f172a', marginTop: 3, fontWeight: 600 }}>
                                 Authorized Signature ({handledBy})
                             </div>
 
                             {/* Print timestamp in RED font */}
-                            <div style={{ fontSize: 10.5, color: '#dc2626', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', marginTop: 14, fontWeight: 600 }}>
+                            <div style={{ fontSize: 10, color: '#dc2626', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', marginTop: 8, fontWeight: 600 }}>
                                 Printed at &nbsp;&nbsp;&nbsp;&nbsp; {printTimestamp}
                             </div>
                         </div>
 
                         {/* QR Code */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <QRCodeSVG value={qrString} size={110} level="M" />
+                            <QRCodeSVG value={qrString} size={92} level="M" />
                         </div>
                     </div>
                 </div>

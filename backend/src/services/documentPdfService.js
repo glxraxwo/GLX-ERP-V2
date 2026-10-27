@@ -555,6 +555,13 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
 
                 // Right: Totals
                 let rY = summaryY;
+
+                if (payment.totalDocAmount > 0) {
+                    pdfDoc.font('Helvetica').fontSize(8).fillColor('#475569').text('INVOICE TOTAL', summaryX, rY);
+                    pdfDoc.text(fmtNum(payment.totalDocAmount), summaryX, rY, { width: summaryWidth, align: 'right' });
+                    rY += 14;
+                }
+
                 pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text('SUB TOTAL', summaryX, rY);
                 pdfDoc.text(fmtNum(totalPaid), summaryX, rY, { width: summaryWidth, align: 'right' });
 
@@ -562,10 +569,15 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(0.8).strokeColor('#000000').stroke();
                 rY += 5;
 
-                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000').text(isVoucher ? 'TOTAL PAID' : 'GRAND TOTAL', summaryX, rY);
+                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000').text(isVoucher ? 'TOTAL PAID' : 'AMOUNT RECEIVED', summaryX, rY);
                 pdfDoc.text(fmtNum(totalPaid), summaryX, rY, { width: summaryWidth, align: 'right' });
 
-                if (allocations.length > 0 && totalAlloc > 0) {
+                if (payment.totalBalanceDue !== undefined && payment.totalBalanceDue >= 0) {
+                    rY += 16;
+                    pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor(payment.totalBalanceDue > 0 ? '#B91C1C' : '#059669')
+                        .text('BALANCE DUE', summaryX, rY);
+                    pdfDoc.text(fmtNum(payment.totalBalanceDue), summaryX, rY, { width: summaryWidth, align: 'right' });
+                } else if (allocations.length > 0 && totalAlloc > 0) {
                     rY += 16;
                     pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#166534').text('ADVANCE APPLIED', summaryX, rY);
                     pdfDoc.text(`-${fmtNum(totalAlloc)}`, summaryX, rY, { width: summaryWidth, align: 'right' });
@@ -575,15 +587,15 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                     pdfDoc.text(fmtNum(unalloc), summaryX, rY, { width: summaryWidth, align: 'right' });
                 }
 
-                // Bottom: Signatures and red print timestamp
-                const bottomY = Math.max(pdfDoc.y + 40, pdfDoc.page.height - 110);
+                // Bottom: Signatures and red print timestamp (Placed at end of content)
+                const bottomY = Math.max(pdfDoc.y + 25, rY + 25);
                 pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#000000').text('Yours Faithfully,', 36, bottomY);
                 pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(`GLX INDUSTRIES - ${branchVal}`, 36, bottomY + 12);
 
-                pdfDoc.fillColor('#444444').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 40);
-                pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(8).text(`Authorized Signature (${handledBy})`, 36, bottomY + 52);
+                pdfDoc.fillColor('#444444').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 38);
+                pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(8).text(`Authorized Signature (${handledBy})`, 36, bottomY + 50);
 
-                pdfDoc.fillColor('#DC2626').font('Helvetica-Bold').fontSize(8).text(`Printed at    ${printTimestamp}`, 36, bottomY + 68);
+                pdfDoc.fillColor('#DC2626').font('Helvetica-Bold').fontSize(8).text(`Printed at    ${printTimestamp}`, 36, bottomY + 64);
 
                 // Multi-page bottom disclaimer
                 const range = pdfDoc.bufferedPageRange();
