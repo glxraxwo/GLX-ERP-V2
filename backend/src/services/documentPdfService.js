@@ -1,249 +1,56 @@
 import PdfPrinter from 'pdfkit-table';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-/**
- * Generate a professional, clean A4 PDF buffer for any Quotation, Estimate, or Invoice.
- * Uses pdfkit-table for reliable rendering across all environments.
- * 
- * @param {Object} params
- * @param {Object} params.doc - Quotation or Invoice document model/object
- * @param {string} params.docType - 'quotation' | 'estimate' | 'invoice' | 'proforma'
- * @param {Object} [params.settings] - Company settings (optional)
- * @returns {Promise<Buffer>}
- */
-export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings = null }) => {
-    return new Promise((resolve, reject) => {
-        try {
-            const pdfDoc = new PdfPrinter({
-                margin: 36,
-                size: 'A4',
-                layout: 'portrait',
-                info: {
-                    Title: `${docType.toUpperCase()} - ${doc.quotationCode || doc.invoiceNumber || 'Document'}`,
-                    Author: 'GLX TRUCK BODY ENGINEERS',
-                    Subject: `${docType.toUpperCase()}`,
-                }
-            });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const LOGO_PATH = path.join(__dirname, '../assets/logo.jpg');
 
-            const buffers = [];
-            pdfDoc.on('data', buffers.push.bind(buffers));
-            pdfDoc.on('end', () => resolve(Buffer.concat(buffers)));
-            pdfDoc.on('error', reject);
+/* ─── Helpers ────────────────────────────────────────────────────────── */
+const fmtNum = (num, min = 2, max = 2) => {
+    if (num === null || num === undefined || isNaN(num)) return '0.00';
+    return Number(num).toLocaleString('en-US', { minimumFractionDigits: min, maximumFractionDigits: max });
+};
 
-            const isInvoice = docType === 'invoice' || doc.invoiceNumber;
-            const docTitle = (docType === 'estimate' ? 'ESTIMATE' : (isInvoice ? 'INVOICE' : 'QUOTATION')).toUpperCase();
-            const docCode = doc.quotationCode || doc.quoteNumber || doc.invoiceNumber || 'DOC-001';
-            
-            const custName = doc.customerName || doc.customerSnapshot?.name || doc.customerId?.displayName || doc.customerId?.companyName || 'Valued Customer';
-            const custPhone = doc.customerPhone || doc.customerSnapshot?.phone || doc.customerId?.primaryContact?.phone || doc.customerId?.primaryContact?.mobile || '—';
-            const custAddress = doc.customerAddress || doc.billingAddress?.line1 || doc.customerId?.billingAddress?.line1 || '—';
-            const vehicleNo = doc.vehicleNo || '—';
-            const vehicleModel = doc.vehicleModel || '—';
-            const insuranceCo = doc.insuranceCompany || '—';
-            const jobCaption = doc.jobCaption || '—';
-            const salesRep = doc.salesRep || doc.salesRepId?.name || '—';
-            const branch = doc.branch || 'JA-ELA';
-            const rawDate = doc.date || doc.invoiceDate || doc.createdAt || new Date();
-            const docDate = new Date(rawDate).toLocaleDateString('en-GB');
+const fmtDate = (dateStr) => {
+    if (!dateStr) return '—';
+    try {
+        const d = new Date(dateStr);
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return `${String(d.getDate()).padStart(2,'0')}/${months[d.getMonth()]}/${d.getFullYear()}`;
+    } catch { return String(dateStr); }
+};
 
-            // ── 1. Header Banner & Branding ──────────────────────────────────
-            pdfDoc.rect(0, 0, pdfDoc.page.width, 70).fill('#1E293B'); // Slate-800
-            
-            pdfDoc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(18)
-                .text('GLX TRUCK BODY ENGINEERS', 36, 16);
-            pdfDoc.fillColor('#94A3B8').font('Helvetica').fontSize(9)
-                .text('Aluminium, Steel & Freezer Box Manufacture | Ja-Ela, Sri Lanka', 36, 38);
-            pdfDoc.fillColor('#38BDF8').font('Helvetica-Bold').fontSize(8)
-                .text('Phone: 077 780 2000 / 011 224 4555 | Email: info@glxgroup.lk', 36, 50);
+const fmtTime = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) return '';
+        return d.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Colombo'
+        });
+    } catch { return ''; }
+};
 
-            // Document Title in Header
-            pdfDoc.fillColor('#38BDF8').font('Helvetica-Bold').fontSize(16)
-                .text(docTitle, 36, 16, { align: 'right' });
-            pdfDoc.fillColor('#FFFFFF').font('Helvetica').fontSize(10)
-                .text(docCode, 36, 36, { align: 'right' });
-            pdfDoc.fillColor('#94A3B8').font('Helvetica').fontSize(8)
-                .text(`Date: ${docDate}`, 36, 50, { align: 'right' });
-
-            pdfDoc.y = 82;
-
-            // ── 2. Meta Info Grid (Customer & Vehicle Info) ──────────────────
-            const startY = pdfDoc.y;
-            const colWidth = (pdfDoc.page.width - 72 - 16) / 2;
-
-            // Box A: Customer Details
-            pdfDoc.roundedRect(36, startY, colWidth, 90, 4).strokeColor('#E2E8F0').lineWidth(1).stroke();
-            pdfDoc.rect(36, startY, colWidth, 18).fill('#F8FAFC');
-            pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(8.5).text('CUSTOMER DETAILS', 44, startY + 5);
-
-            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Name:', 44, startY + 24);
-            pdfDoc.fillColor('#0F172A').font('Helvetica').text(custName, 95, startY + 24, { width: colWidth - 105, lineBreak: false });
-
-            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Phone:', 44, startY + 38);
-            pdfDoc.fillColor('#0F172A').font('Helvetica').text(custPhone, 95, startY + 38);
-
-            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Address:', 44, startY + 52);
-            pdfDoc.fillColor('#0F172A').font('Helvetica').text(custAddress, 95, startY + 52, { width: colWidth - 105, lineBreak: false });
-
-            if (doc.vatNumber || doc.brNumber) {
-                pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('VAT/BR:', 44, startY + 66);
-                pdfDoc.fillColor('#0F172A').font('Helvetica').text(`${doc.vatNumber || ''} ${doc.brNumber ? `| BR: ${doc.brNumber}` : ''}`, 95, startY + 66);
-            }
-
-            // Box B: Vehicle & Job Details
-            const rightX = 36 + colWidth + 16;
-            pdfDoc.roundedRect(rightX, startY, colWidth, 90, 4).strokeColor('#E2E8F0').lineWidth(1).stroke();
-            pdfDoc.rect(rightX, startY, colWidth, 18).fill('#F8FAFC');
-            pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(8.5).text('VEHICLE & WORK DETAILS', rightX + 8, startY + 5);
-
-            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Vehicle No:', rightX + 8, startY + 24);
-            pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').text(vehicleNo, rightX + 75, startY + 24);
-
-            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Model:', rightX + 8, startY + 38);
-            pdfDoc.fillColor('#0F172A').font('Helvetica').text(vehicleModel, rightX + 75, startY + 38);
-
-            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Job/Caption:', rightX + 8, startY + 52);
-            pdfDoc.fillColor('#0F172A').font('Helvetica').text(jobCaption, rightX + 75, startY + 52, { width: colWidth - 85, lineBreak: false });
-
-            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Branch / Rep:', rightX + 8, startY + 66);
-            pdfDoc.fillColor('#0F172A').font('Helvetica').text(`${branch} / ${salesRep}`, rightX + 75, startY + 66);
-
-            pdfDoc.y = startY + 100;
-
-            // ── 3. Line Items Table ──────────────────────────────────────────
-            const items = Array.isArray(doc.items) ? doc.items : [];
-            let calcSubtotal = 0;
-            let calcTotalDisc = 0;
-
-            const tableRows = items.map((item, idx) => {
-                const qty = Number(item.quantity || item.qty || 1);
-                const rate = Number(item.unitPrice || item.rate || 0);
-                const gross = qty * rate;
-                const disc = Number(item.discount || item.discountAmount || 0);
-                const lineTotal = item.subtotal !== undefined ? Number(item.subtotal) : (gross - disc);
-                calcSubtotal += gross;
-                calcTotalDisc += disc;
-
-                const name = item.productName || item.product?.name || item.productId?.name || item.description || `Item #${idx + 1}`;
-                const desc = item.description && item.description !== name ? `\n${item.description}` : '';
-
-                return {
-                    num: String(idx + 1),
-                    description: `${name}${desc}`,
-                    quantity: String(qty),
-                    unitPrice: rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                    discount: disc > 0 ? disc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—',
-                    amount: lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                };
-            });
-
-            // If empty items, display placeholder row
-            if (tableRows.length === 0) {
-                tableRows.push({
-                    num: '1',
-                    description: doc.jobCaption || 'General Engineering / Repair Service',
-                    quantity: '1',
-                    unitPrice: (doc.grandTotal || doc.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                    discount: '—',
-                    amount: (doc.grandTotal || doc.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                });
-            }
-
-            const table = {
-                title: '',
-                headers: [
-                    { label: '#', property: 'num', width: 25 },
-                    { label: 'ITEM / DESCRIPTION', property: 'description', width: 220 },
-                    { label: 'QTY', property: 'quantity', width: 45, align: 'center' },
-                    { label: 'UNIT PRICE (LKR)', property: 'unitPrice', width: 85, align: 'right' },
-                    { label: 'DISC (LKR)', property: 'discount', width: 65, align: 'right' },
-                    { label: 'AMOUNT (LKR)', property: 'amount', width: 80, align: 'right' },
-                ],
-                datas: tableRows,
-                options: {
-                    padding: 5,
-                    columnSpacing: 5,
-                    divider: {
-                        header: { disabled: false, width: 1.5, opacity: 0.8 },
-                        horizontal: { disabled: false, width: 0.5, opacity: 0.2 }
-                    }
-                }
-            };
-
-            const renderSummaryAndFooter = () => {
-                pdfDoc.moveDown(0.8);
-                const summaryY = pdfDoc.y;
-                const summaryWidth = 240;
-                const summaryX = pdfDoc.page.width - 36 - summaryWidth;
-
-                const grandTotal = Number(doc.grandTotal !== undefined ? doc.grandTotal : (doc.totalAmount || calcSubtotal - calcTotalDisc));
-                const advance = Number(doc.advanceAmount || doc.amountPaid || 0);
-                const balance = Number(doc.balanceAmount !== undefined ? doc.balanceAmount : Math.max(0, grandTotal - advance));
-
-                // Summary box
-                pdfDoc.roundedRect(summaryX, summaryY, summaryWidth, 80, 4).fillAndStroke('#F8FAFC', '#E2E8F0');
-
-                pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8.5).text('Subtotal:', summaryX + 12, summaryY + 8);
-                pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').text(`LKR ${(calcSubtotal || grandTotal).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, summaryX, summaryY + 8, { width: summaryWidth - 12, align: 'right' });
-
-                if (calcTotalDisc > 0 || doc.totalDiscount > 0) {
-                    const dAmt = calcTotalDisc || doc.totalDiscount;
-                    pdfDoc.fillColor('#DC2626').font('Helvetica').text('Discount:', summaryX + 12, summaryY + 22);
-                    pdfDoc.font('Helvetica-Bold').text(`- LKR ${dAmt.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, summaryX, summaryY + 22, { width: summaryWidth - 12, align: 'right' });
-                }
-
-                pdfDoc.rect(summaryX, summaryY + 36, summaryWidth, 24).fill('#2563EB'); // Blue total bar
-                pdfDoc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(10).text('GRAND TOTAL:', summaryX + 12, summaryY + 42);
-                pdfDoc.text(`LKR ${grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, summaryX, summaryY + 42, { width: summaryWidth - 12, align: 'right' });
-
-                pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text(`Advance Paid: LKR ${advance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, summaryX + 12, summaryY + 65);
-                pdfDoc.font('Helvetica-Bold').fillColor(balance > 0 ? '#B91C1C' : '#059669')
-                    .text(`Balance Due: LKR ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, summaryX, summaryY + 65, { width: summaryWidth - 12, align: 'right' });
-
-                // Notes / Terms
-                pdfDoc.y = summaryY;
-                const termsWidth = summaryX - 36 - 16;
-                pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(8.5).text('TERMS & CONDITIONS:', 36, summaryY);
-                pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7.5);
-                
-                const termsText = doc.conditionOfPayments || 
-                    (isInvoice ? 'Payment is strictly due according to agreed credit terms.\nCheques payable to GLX TRUCK BODY ENGINEERS.' : 
-                    '• 50% Advance with order confirmation.\n• Balance on completion before delivery.\n• Quotation valid for 30 days from date of issue.');
-                
-                pdfDoc.text(termsText, 36, summaryY + 12, { width: termsWidth });
-
-                // Page numbering & Bottom signature bar
-                const range = pdfDoc.bufferedPageRange();
-                for (let i = range.start; i < range.start + range.count; i++) {
-                    pdfDoc.switchToPage(i);
-                    pdfDoc.rect(36, pdfDoc.page.height - 35, pdfDoc.page.width - 72, 0.5).fill('#CBD5E1');
-                    pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7.5)
-                        .text('GLX TRUCK BODY ENGINEERS - Computer Generated Official Document', 36, pdfDoc.page.height - 26);
-                    pdfDoc.text(`Page ${i + 1} of ${range.count}`, 36, pdfDoc.page.height - 26, { align: 'right' });
-                }
-
-                pdfDoc.end();
-            };
-
-            try {
-                const tableResult = pdfDoc.table(table, {
-                    prepareHeader: () => pdfDoc.font('Helvetica-Bold').fontSize(8).fillColor('#1E293B'),
-                    prepareRow: (row, index, column, rectRow, rectCell) => {
-                        pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#334155');
-                    }
-                });
-
-                if (tableResult instanceof Promise) {
-                    tableResult.then(renderSummaryAndFooter).catch(reject);
-                } else {
-                    renderSummaryAndFooter();
-                }
-            } catch (tableErr) {
-                renderSummaryAndFooter();
-            }
-
-        } catch (err) {
-            reject(err);
-        }
-    });
+const fmtPrintTs = (d = new Date()) => {
+    try {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const day   = String(d.getDate()).padStart(2,'0');
+        const mon   = months[d.getMonth()];
+        const yr    = d.getFullYear();
+        let h       = d.getHours();
+        const mi    = String(d.getMinutes()).padStart(2,'0');
+        const se    = String(d.getSeconds()).padStart(2,'0');
+        const ampm  = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${day}/${mon}/${yr}    ${h}:${mi}:${se}${ampm}`;
+    } catch { return new Date().toLocaleString(); }
 };
 
 const convertNumberToWords = (amount) => {
@@ -271,12 +78,288 @@ const convertNumberToWords = (amount) => {
 };
 
 /**
+ * Renders the official GLX company letterhead matching media_1793119480998_7033f283.png
+ */
+const drawOfficialHeader = (pdfDoc) => {
+    // 1. Logo
+    if (fs.existsSync(LOGO_PATH)) {
+        try {
+            pdfDoc.image(LOGO_PATH, 36, 24, { width: 54, height: 54, fit: [54, 54] });
+        } catch (e) {
+            // fallback if image fail
+        }
+    }
+
+    // 2. Company Title & Subtitle
+    const textX = 100;
+    pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(14)
+        .text('GLX TRUCK BODY ENGINEERS', textX, 24, { characterSpacing: 0.3 });
+    pdfDoc.fillColor('#333333').font('Helvetica-Bold').fontSize(7.5)
+        .text('ALUMINIUM , STEEL & FREEZER BOX MANUFACTURE', textX, 40, { characterSpacing: 0.5 });
+
+    // 3. 3-Column Address Block
+    const colY = 54;
+    const col1X = textX;
+    const col2X = 248;
+    const col3X = 398;
+
+    pdfDoc.fillColor('#222222').font('Helvetica').fontSize(7).lineGap(1.5);
+
+    pdfDoc.text('No.14,Negambo Road,\nThudella,Ja-Ela,\nSri Lanka.\n(11350)', col1X, colY, { width: 140 });
+    pdfDoc.text('No.2020/3L,2,Seeduwa Road,\nKotugoda,Ja-Ela.\nSri Lanka.\n(11390)', col2X, colY, { width: 140 });
+    pdfDoc.text('Mobile : 071 6666 888\nTel        : 011 740 4446\nEmail   : glx.engi@gmail.com\nWeb     : www.glx.lk', col3X, colY, { width: 160 });
+
+    pdfDoc.lineGap(0);
+
+    // 4. Horizontal Divider Line
+    const dividerY = 102;
+    pdfDoc.moveTo(36, dividerY).lineTo(pdfDoc.page.width - 36, dividerY).lineWidth(1.2).strokeColor('#333333').stroke();
+};
+
+/**
+ * Generate a professional, clean A4 PDF buffer for any Quotation, Estimate, or Invoice.
+ * 100% Matches GLX Physical Print Letterhead.
+ */
+export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings = null }) => {
+    return new Promise((resolve, reject) => {
+        try {
+            const pdfDoc = new PdfPrinter({
+                margin: 36,
+                size: 'A4',
+                layout: 'portrait',
+                info: {
+                    Title: `${docType.toUpperCase()} - ${doc.quotationCode || doc.quoteNumber || doc.invoiceNumber || 'Document'}`,
+                    Author: 'GLX TRUCK BODY ENGINEERS',
+                    Subject: `${docType.toUpperCase()}`,
+                }
+            });
+
+            const buffers = [];
+            pdfDoc.on('data', buffers.push.bind(buffers));
+            pdfDoc.on('end', () => resolve(Buffer.concat(buffers)));
+            pdfDoc.on('error', reject);
+
+            const isProforma = docType === 'proforma' || doc.invoiceType === 'proforma' || (doc.invoiceNumber && doc.invoiceNumber.startsWith('PI'));
+            const isEstimate = !isProforma && (docType === 'estimate' || (doc.quoteNumber && doc.quoteNumber.startsWith('EST')));
+            const isInvoice = !isProforma && !isEstimate && (docType === 'invoice' || !!doc.invoiceNumber);
+
+            const docNumberLabel = isInvoice ? 'Invoice No.' : (isEstimate ? 'Estimate No.' : (isProforma ? 'Proforma No.' : 'Quotation No.'));
+            const docCode = doc.quotationCode || doc.quoteNumber || doc.invoiceNumber || doc.proformaNumber || 'DOC-001';
+
+            const custName = doc.customerName || doc.customerSnapshot?.name || doc.customerId?.displayName || doc.customerId?.companyName || 'Valued Customer';
+            const custPhone = doc.customerPhone || doc.customerSnapshot?.phone || doc.customerId?.primaryContact?.phone || doc.customerId?.primaryContact?.mobile || '—';
+            const custAddress = doc.customerAddress || doc.billingAddress?.line1 || doc.customerId?.billingAddress?.line1 || '—';
+            const vehicleNo = doc.vehicleNo || '—';
+            const vehicleModel = doc.vehicleModel || '—';
+            const jobCaption = doc.jobCaption || '—';
+            const salesRep = doc.salesRep || doc.salesRepId?.name || 'Asanka';
+            const branch = doc.branch || 'JA-ELA';
+            const rawDate = doc.date || doc.invoiceDate || doc.createdAt || new Date();
+            const docDateStr = fmtDate(rawDate);
+            const docTimeStr = fmtTime(rawDate);
+            const printTimestamp = fmtPrintTs();
+
+            // ── 1. Official Header ───────────────────────────────────────────
+            drawOfficialHeader(pdfDoc);
+
+            // ── 2. Meta Info (Customer Left vs Document Details Right) ────────
+            const metaY = 112;
+
+            // Left Column: Customer details
+            pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#000000').text('BILL TO / CUSTOMER', 36, metaY);
+            pdfDoc.font('Helvetica-Bold').fontSize(10).fillColor('#000000').text(custName, 36, metaY + 14, { width: 280 });
+            
+            let curY = pdfDoc.y + 2;
+            if (custAddress && custAddress !== '—') {
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#222222').text(custAddress, 36, curY, { width: 280 });
+                curY = pdfDoc.y + 2;
+            }
+            if (custPhone && custPhone !== '—') {
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#222222').text(custPhone, 36, curY);
+                curY = pdfDoc.y + 2;
+            }
+            if (vehicleNo && vehicleNo !== '—') {
+                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000').text(vehicleNo, 36, curY);
+                curY = pdfDoc.y + 2;
+            }
+            if (jobCaption && jobCaption !== '—') {
+                pdfDoc.font('Helvetica').fontSize(8).fillColor('#444444').text(`Job: ${jobCaption}`, 36, curY, { width: 280 });
+                curY = pdfDoc.y + 2;
+            }
+
+            // Right Column: Document Details
+            const rightX = 350;
+            const rightWidth = pdfDoc.page.width - 36 - rightX;
+            let metaRightY = metaY;
+
+            const renderMetaRow = (label, val, subVal = '') => {
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(label, rightX, metaRightY, { width: 85 });
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#000000').text(val, rightX + 85, metaRightY, { width: rightWidth - 85 });
+                metaRightY += 14;
+                if (subVal) {
+                    pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#333333').text(subVal, rightX + 85, metaRightY - 1, { width: rightWidth - 85 });
+                    metaRightY += 12;
+                }
+            };
+
+            renderMetaRow(docNumberLabel, docCode);
+            renderMetaRow('Sales', salesRep);
+            renderMetaRow('Branch', branch);
+            renderMetaRow('Date', docDateStr, docTimeStr);
+
+            pdfDoc.y = Math.max(curY + 10, metaRightY + 8, 195);
+
+            // ── 3. Line Items Table ──────────────────────────────────────────
+            const items = Array.isArray(doc.items) ? doc.items : [];
+            let calcSubtotal = 0;
+            let calcTotalDisc = 0;
+
+            const tableRows = items.map((item, idx) => {
+                const qty = Number(item.quantity || item.qty || 1);
+                const rate = Number(item.unitPrice || item.rate || 0);
+                const gross = qty * rate;
+                const disc = Number(item.discount || item.discountAmount || 0);
+                const lineTotal = item.subtotal !== undefined ? Number(item.subtotal) : (gross - disc);
+                calcSubtotal += gross;
+                calcTotalDisc += disc;
+
+                const name = item.productName || item.product?.name || item.productId?.name || item.description || `Item #${idx + 1}`;
+                const desc = item.description && item.description !== name ? `\n${item.description}` : '';
+
+                return {
+                    description: `${name}${desc}`,
+                    rate: fmtNum(rate),
+                    qty: String(qty),
+                    amount: fmtNum(lineTotal)
+                };
+            });
+
+            if (tableRows.length === 0) {
+                tableRows.push({
+                    description: doc.jobCaption || 'General Engineering / Repair Service',
+                    rate: fmtNum(doc.grandTotal || doc.totalAmount || 0),
+                    qty: '1',
+                    amount: fmtNum(doc.grandTotal || doc.totalAmount || 0)
+                });
+            }
+
+            const table = {
+                headers: [
+                    { label: 'DESCRIPTION', property: 'description', width: 263, align: 'left', headerColor: '#FFFFFF', headerAlign: 'left' },
+                    { label: 'RATE', property: 'rate', width: 85, align: 'right', headerColor: '#FFFFFF', headerAlign: 'right' },
+                    { label: 'QTY', property: 'qty', width: 55, align: 'center', headerColor: '#FFFFFF', headerAlign: 'center' },
+                    { label: 'AMOUNT', property: 'amount', width: 120, align: 'right', headerColor: '#FFFFFF', headerAlign: 'right' },
+                ],
+                datas: tableRows,
+                options: {
+                    padding: 5,
+                    columnSpacing: 4,
+                    divider: {
+                        header: { disabled: false, width: 1.2, opacity: 1 },
+                        horizontal: { disabled: false, width: 0.5, opacity: 0.15 }
+                    }
+                }
+            };
+
+            const renderDocSummaryAndFooter = () => {
+                pdfDoc.moveDown(0.5);
+                const summaryY = Math.max(pdfDoc.y + 10, 420);
+                const summaryWidth = 220;
+                const summaryX = pdfDoc.page.width - 36 - summaryWidth;
+
+                const grandTotal = Number(doc.grandTotal !== undefined ? doc.grandTotal : (doc.totalAmount || calcSubtotal - calcTotalDisc));
+                const advance = Number(doc.advanceAmount || doc.amountPaid || 0);
+                const balance = Number(doc.balanceAmount !== undefined ? doc.balanceAmount : Math.max(0, grandTotal - advance));
+                const totalDisc = calcTotalDisc || Number(doc.totalDiscount || 0);
+
+                // Left: Remarks, Terms & Conditions
+                const leftWidth = summaryX - 36 - 20;
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text('Remarks        :', 36, summaryY);
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#111111').text(doc.remarks || doc.jobCaption || 'Thank you for your business.', 105, summaryY, { width: leftWidth - 70 });
+
+                const termsY = pdfDoc.y + 10;
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text('TERMS & CONDITIONS:', 36, termsY);
+                pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#444444');
+                const defaultTerms = isInvoice
+                    ? '1. Cheques payable to "GLX TRUCK BODY ENGINEERS".\n2. Goods received in good condition.\n3. Warranty covers manufacturing defects only.'
+                    : '1. 50% Advance with order confirmation.\n2. Balance on completion before delivery.\n3. Quotation valid for 30 days from date of issue.';
+                pdfDoc.text(doc.conditionOfPayments || defaultTerms, 36, termsY + 12, { width: leftWidth });
+
+                // Right: Totals
+                let rY = summaryY;
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text('SUB TOTAL', summaryX, rY);
+                pdfDoc.text(fmtNum(calcSubtotal || grandTotal), summaryX, rY, { width: summaryWidth, align: 'right' });
+
+                if (totalDisc > 0) {
+                    rY += 15;
+                    pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#DC2626').text('DISCOUNT', summaryX, rY);
+                    pdfDoc.text(`-${fmtNum(totalDisc)}`, summaryX, rY, { width: summaryWidth, align: 'right' });
+                }
+
+                rY += 15;
+                pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(0.8).strokeColor('#000000').stroke();
+                rY += 5;
+
+                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000').text('GRAND TOTAL', summaryX, rY);
+                pdfDoc.text(fmtNum(grandTotal), summaryX, rY, { width: summaryWidth, align: 'right' });
+
+                if (advance > 0) {
+                    rY += 16;
+                    pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#166534').text('ADVANCE PAID', summaryX, rY);
+                    pdfDoc.text(`-${fmtNum(advance)}`, summaryX, rY, { width: summaryWidth, align: 'right' });
+
+                    rY += 15;
+                    pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor(balance > 0 ? '#B91C1C' : '#059669').text('BALANCE DUE', summaryX, rY);
+                    pdfDoc.text(fmtNum(balance), summaryX, rY, { width: summaryWidth, align: 'right' });
+                }
+
+                // Bottom: Signatures and red print timestamp
+                const bottomY = Math.max(pdfDoc.y + 40, pdfDoc.page.height - 110);
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#000000').text('Yours Faithfully,', 36, bottomY);
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(`GLX INDUSTRIES - ${branch}`, 36, bottomY + 12);
+
+                pdfDoc.fillColor('#444444').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 40);
+                pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(8).text(`Authorized Signature (${salesRep})`, 36, bottomY + 52);
+
+                pdfDoc.fillColor('#DC2626').font('Helvetica-Bold').fontSize(8).text(`Printed at    ${printTimestamp}`, 36, bottomY + 68);
+
+                // Multi-page bottom disclaimer
+                const range = pdfDoc.bufferedPageRange();
+                for (let i = range.start; i < range.start + range.count; i++) {
+                    pdfDoc.switchToPage(i);
+                    pdfDoc.moveTo(36, pdfDoc.page.height - 30).lineTo(pdfDoc.page.width - 36, pdfDoc.page.height - 30).lineWidth(0.5).strokeColor('#E2E8F0').stroke();
+                    pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7)
+                        .text('GLX TRUCK BODY ENGINEERS - Computer Generated Official Document', 36, pdfDoc.page.height - 24);
+                    pdfDoc.text(`Page ${i + 1} of ${range.count}`, 36, pdfDoc.page.height - 24, { align: 'right' });
+                }
+
+                pdfDoc.end();
+            };
+
+            try {
+                const tableResult = pdfDoc.table(table, {
+                    prepareHeader: () => pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000'),
+                    prepareRow: () => pdfDoc.font('Helvetica').fontSize(8).fillColor('#111111')
+                });
+
+                if (tableResult instanceof Promise) {
+                    tableResult.then(renderDocSummaryAndFooter).catch(reject);
+                } else {
+                    renderDocSummaryAndFooter();
+                }
+            } catch (tableErr) {
+                renderDocSummaryAndFooter();
+            }
+
+        } catch (err) {
+            reject(err);
+        }
+    });
+};
+
+/**
  * Generate a professional, clean A4 PDF buffer for any Payment Receipt or Voucher.
- * 
- * @param {Object} params
- * @param {Object} params.payment - Payment model/object
- * @param {Object} [params.settings] - Company settings
- * @returns {Promise<Buffer>}
+ * 100% Matches GLX Physical Print Letterhead.
  */
 export const generatePaymentReceiptPDF = async ({ payment, settings = null }) => {
     return new Promise((resolve, reject) => {
@@ -298,7 +381,7 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
             pdfDoc.on('error', reject);
 
             const isVoucher = payment.direction === 'paid' || !!payment.voucherType;
-            const docTitle = isVoucher ? 'PAYMENT VOUCHER' : 'OFFICIAL PAYMENT RECEIPT';
+            const docTitle = isVoucher ? 'PAYMENT VOUCHER' : 'PAYMENT RECEIPT';
             const docCode = payment.paymentNumber || (isVoucher ? 'VOU-001' : 'REC-001');
 
             const partyName = payment.partyName || 
@@ -314,195 +397,202 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
             const partyAddress = payment.customerId?.billingAddress?.line1 || payment.customerId?.billingAddress?.city || 
                 payment.supplierId?.address?.line1 || '—';
 
+            const vehicleNo = payment.vehicleNo || payment.vehicleNumber || '';
             const rawDate = payment.paymentDate || payment.createdAt || new Date();
-            const docDate = new Date(rawDate).toLocaleDateString('en-GB');
+            const docDateStr = fmtDate(rawDate);
+            const docTimeStr = fmtTime(rawDate);
+            const printTimestamp = fmtPrintTs();
 
-            // ── 1. Header Banner & Branding ──────────────────────────────────
-            pdfDoc.rect(0, 0, pdfDoc.page.width, 70).fill('#1E293B');
-
-            pdfDoc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(18)
-                .text('GLX TRUCK BODY ENGINEERS', 36, 16);
-            pdfDoc.fillColor('#94A3B8').font('Helvetica').fontSize(9)
-                .text('Aluminium, Steel & Freezer Box Manufacture | Ja-Ela, Sri Lanka', 36, 38);
-            pdfDoc.fillColor('#38BDF8').font('Helvetica-Bold').fontSize(8)
-                .text('Phone: 077 780 2000 / 011 224 4555 | Email: info@glxgroup.lk', 36, 50);
-
-            // Document Title in Header
-            pdfDoc.fillColor('#38BDF8').font('Helvetica-Bold').fontSize(16)
-                .text(docTitle, 36, 16, { align: 'right' });
-            pdfDoc.fillColor('#FFFFFF').font('Helvetica').fontSize(10)
-                .text(docCode, 36, 36, { align: 'right' });
-            pdfDoc.fillColor('#94A3B8').font('Helvetica').fontSize(8)
-                .text(`Date: ${docDate}`, 36, 50, { align: 'right' });
-
-            pdfDoc.y = 82;
-
-            // ── 2. Meta Info Grid ─────────────────────────────────────────────
-            const startY = pdfDoc.y;
-            const colWidth = (pdfDoc.page.width - 72 - 16) / 2;
-
-            // Box A: Received From / Paid To Details
-            pdfDoc.roundedRect(36, startY, colWidth, 105, 4).strokeColor('#E2E8F0').lineWidth(1).stroke();
-            pdfDoc.rect(36, startY, colWidth, 18).fill('#F8FAFC');
-            pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(8.5)
-                .text(isVoucher ? 'PAID TO (BENEFICIARY)' : 'RECEIVED FROM (CUSTOMER)', 44, startY + 5);
-
-            let curY = startY + 24;
-            pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(10).text(partyName, 44, curY, { width: colWidth - 16 });
-            curY += 16;
-            pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8)
-                .text(`Phone / Mobile: ${partyPhone}`, 44, curY);
-            curY += 12;
-            pdfDoc.text(`Address: ${partyAddress}`, 44, curY, { width: colWidth - 16 });
-            curY += 12;
-            if (payment.customerId?.customerCode) {
-                pdfDoc.text(`Customer Code: ${payment.customerId.customerCode}`, 44, curY);
-            }
-
-            // Box B: Payment Particulars & Method Details
-            const colBX = 36 + colWidth + 16;
-            pdfDoc.roundedRect(colBX, startY, colWidth, 105, 4).strokeColor('#E2E8F0').lineWidth(1).stroke();
-            pdfDoc.rect(colBX, startY, colWidth, 18).fill('#F8FAFC');
-            pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(8.5)
-                .text('PAYMENT DETAILS & METHOD', colBX + 8, startY + 5);
-
-            let curBY = startY + 24;
-            const methodLabel = (payment.method || 'cash').toUpperCase().replace('_', ' ');
-            pdfDoc.fillColor('#2563EB').font('Helvetica-Bold').fontSize(9.5)
-                .text(`Method: ${methodLabel}`, colBX + 8, curBY);
-            curBY += 14;
-
-            if (payment.method === 'cheque') {
-                const chqDate = payment.chequeDate ? new Date(payment.chequeDate).toLocaleDateString('en-GB') : '—';
-                pdfDoc.fillColor('#334155').font('Helvetica').fontSize(8)
-                    .text(`Cheque No: ${payment.chequeNumber || '—'}  |  Date: ${chqDate}`, colBX + 8, curBY);
-                curBY += 12;
-                pdfDoc.text(`Bank: ${payment.bankName || '—'}  |  Status: ${(payment.chequeStatus || 'pending').toUpperCase()}`, colBX + 8, curBY);
-                curBY += 12;
-            } else if (payment.method === 'bank_transfer') {
-                pdfDoc.fillColor('#334155').font('Helvetica').fontSize(8)
-                    .text(`Txn Ref: ${payment.transactionReference || '—'}`, colBX + 8, curBY);
-                curBY += 12;
-                if (payment.bankName) {
-                    pdfDoc.text(`Bank: ${payment.bankName}`, colBX + 8, curBY);
-                    curBY += 12;
-                }
-            }
-
-            // Company Bank Account if linked
-            if (payment.bankAccountId) {
-                const bName = payment.bankAccountId.bankName || 'Company Account';
-                const bAcc = payment.bankAccountId.accountNumber || '';
-                pdfDoc.fillColor('#334155').font('Helvetica').fontSize(8)
-                    .text(`Deposited To: ${bName} (${bAcc})`, colBX + 8, curBY, { width: colWidth - 16 });
-                curBY += 12;
-            }
-
-            const recUser = payment.receivedBy?.name || payment.createdBy?.name || 'Cashier / Accounts Desk';
-            pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7.5)
-                .text(`Handled By: ${recUser}  |  Status: ${(payment.status || 'confirmed').toUpperCase()}`, colBX + 8, curBY);
-
-            pdfDoc.y = startY + 115;
-
-            // ── 3. Table of Allocations ───────────────────────────────────────
             const allocations = payment.allocations || [];
-            const tableRows = allocations.map((alloc, idx) => {
-                const docTypeStr = (alloc.documentType || 'Invoice').toUpperCase();
-                const docNo = alloc.documentNumber || `ID: ${String(alloc.documentId).slice(-6)}`;
-                const amt = Number(alloc.amount || 0);
+            const totalPaid = Number(payment.amount || 0);
+            const totalAlloc = allocations.reduce((s, a) => s + (Number(a.amount) || 0), 0);
+            const unalloc = Number(payment.unallocatedAmount !== undefined ? payment.unallocatedAmount : Math.max(0, totalPaid - totalAlloc));
 
-                return {
-                    num: String(idx + 1),
-                    docType: docTypeStr,
-                    docNumber: docNo,
-                    notes: `Settlement for ${docTypeStr}`,
-                    amount: amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                };
-            });
+            let methodLabel = (payment.method || 'cash').toUpperCase().replace('_', ' ');
+            let methodDetails = '';
+            if (payment.method === 'cheque') {
+                const chqDate = payment.chequeDate ? ` dated ${fmtDate(payment.chequeDate)}` : '';
+                methodDetails = `Cheque #${payment.chequeNumber || 'N/A'}${chqDate}${payment.bankName ? ` (${payment.bankName})` : ''}`;
+            } else if (payment.method === 'bank_transfer') {
+                methodDetails = `Txn Ref: ${payment.transactionReference || 'N/A'}${payment.bankName ? ` (${payment.bankName})` : ''}`;
+            }
 
-            if (tableRows.length === 0) {
+            const handledBy = (payment.receivedBy?.firstName ? `${payment.receivedBy.firstName} ${payment.receivedBy.lastName || ''}`.trim() : null) || 
+                (payment.createdBy?.firstName ? `${payment.createdBy.firstName} ${payment.createdBy.lastName || ''}`.trim() : null) || 
+                payment.receivedBy?.name || 
+                payment.createdBy?.name || 
+                'Cashier Desk';
+
+            const branchVal = payment.branch || 'JA-ELA';
+
+            // ── 1. Official Header ───────────────────────────────────────────
+            drawOfficialHeader(pdfDoc);
+
+            // ── 2. Meta Info (Customer Left vs Document Details Right) ────────
+            const metaY = 112;
+
+            // Left Column: Customer / Beneficiary
+            pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#000000')
+                .text(isVoucher ? 'PAID TO / BENEFICIARY' : 'BILL TO / CUSTOMER', 36, metaY);
+            pdfDoc.font('Helvetica-Bold').fontSize(10).fillColor('#000000')
+                .text(partyName, 36, metaY + 14, { width: 280 });
+
+            let curY = pdfDoc.y + 2;
+            if (partyAddress && partyAddress !== '—') {
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#222222').text(partyAddress, 36, curY, { width: 280 });
+                curY = pdfDoc.y + 2;
+            }
+            if (partyPhone && partyPhone !== '—') {
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#222222').text(partyPhone, 36, curY);
+                curY = pdfDoc.y + 2;
+            }
+            if (vehicleNo) {
+                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000').text(vehicleNo, 36, curY);
+                curY = pdfDoc.y + 2;
+            }
+
+            // Right Column: Receipt No, Sales, Branch, Date, Method
+            const rightX = 350;
+            const rightWidth = pdfDoc.page.width - 36 - rightX;
+            let metaRightY = metaY;
+
+            const renderMetaRow = (label, val, subVal = '') => {
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(label, rightX, metaRightY, { width: 85 });
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#000000').text(val, rightX + 85, metaRightY, { width: rightWidth - 85 });
+                metaRightY += 14;
+                if (subVal) {
+                    pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#333333').text(subVal, rightX + 85, metaRightY - 1, { width: rightWidth - 85 });
+                    metaRightY += 12;
+                }
+            };
+
+            renderMetaRow(isVoucher ? 'Voucher No.' : 'Receipt No.', docCode);
+            renderMetaRow('Sales', handledBy);
+            renderMetaRow('Branch', branchVal);
+            renderMetaRow('Date', docDateStr, docTimeStr);
+
+            // Method line
+            pdfDoc.font('Helvetica-Bold').fontSize(8).fillColor('#059669')
+                .text(`• Method: ${methodLabel} (CONFIRMED)`, rightX, metaRightY + 2);
+            metaRightY += 14;
+
+            pdfDoc.y = Math.max(curY + 10, metaRightY + 8, 195);
+
+            // ── 3. Table of Allocations (Exact Columns: DESCRIPTION, RATE, QTY, AMOUNT) ──
+            const tableRows = [];
+            if (allocations.length > 0) {
+                allocations.forEach(alloc => {
+                    const docTypeStr = (alloc.documentType || 'Invoice').toUpperCase();
+                    const docNum = alloc.documentNumber || `ID: ${String(alloc.documentId).slice(-6)}`;
+                    const amt = Number(alloc.amount || 0);
+
+                    tableRows.push({
+                        description: `Payment Received — Settlement for ${docTypeStr} ${docNum}\nPayment Method: ${methodLabel}${methodDetails ? ` (${methodDetails})` : ''}`,
+                        rate: fmtNum(amt),
+                        qty: '1',
+                        amount: fmtNum(amt)
+                    });
+                });
+            } else {
                 tableRows.push({
-                    num: '1',
-                    docType: isVoucher ? 'EXPENSE / VOUCHER' : 'ADVANCE PAYMENT',
-                    docNumber: 'ON ACCOUNT',
-                    notes: payment.notes || 'Unallocated Advance Deposit / Available Account Credit',
-                    amount: Number(payment.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    description: `${isVoucher ? 'Expense / Voucher Payment' : 'Customer Advance Payment Deposit / Credit on Account'}\nPayment Method: ${methodLabel}${methodDetails ? ` (${methodDetails})` : ''}${payment.notes ? ` · ${payment.notes}` : ''}`,
+                    rate: fmtNum(totalPaid),
+                    qty: '1',
+                    amount: fmtNum(totalPaid)
+                });
+            }
+
+            if (allocations.length > 0 && unalloc > 0) {
+                tableRows.push({
+                    description: `Unallocated Payment Balance / Available Account Credit\nRetained on customer account for future invoices`,
+                    rate: fmtNum(unalloc),
+                    qty: '1',
+                    amount: fmtNum(unalloc)
                 });
             }
 
             const table = {
-                title: '',
                 headers: [
-                    { label: '#', property: 'num', width: 25 },
-                    { label: 'DOCUMENT TYPE', property: 'docType', width: 110 },
-                    { label: 'REFERENCE NUMBER', property: 'docNumber', width: 140 },
-                    { label: 'PARTICULARS / NOTES', property: 'notes', width: 125 },
-                    { label: 'APPLIED (LKR)', property: 'amount', width: 100, align: 'right' },
+                    { label: 'DESCRIPTION', property: 'description', width: 263, align: 'left', headerColor: '#FFFFFF', headerAlign: 'left' },
+                    { label: 'RATE', property: 'rate', width: 85, align: 'right', headerColor: '#FFFFFF', headerAlign: 'right' },
+                    { label: 'QTY', property: 'qty', width: 55, align: 'center', headerColor: '#FFFFFF', headerAlign: 'center' },
+                    { label: 'AMOUNT', property: 'amount', width: 120, align: 'right', headerColor: '#FFFFFF', headerAlign: 'right' },
                 ],
                 datas: tableRows,
                 options: {
                     padding: 5,
-                    columnSpacing: 5,
+                    columnSpacing: 4,
                     divider: {
-                        header: { disabled: false, width: 1.5, opacity: 0.8 },
-                        horizontal: { disabled: false, width: 0.5, opacity: 0.2 }
+                        header: { disabled: false, width: 1.2, opacity: 1 },
+                        horizontal: { disabled: false, width: 0.5, opacity: 0.15 }
                     }
                 }
             };
 
             const renderReceiptSummaryAndFooter = () => {
-                pdfDoc.moveDown(0.8);
-                const summaryY = pdfDoc.y;
-                const summaryWidth = 240;
+                pdfDoc.moveDown(0.5);
+                const summaryY = Math.max(pdfDoc.y + 10, 420);
+                const summaryWidth = 220;
                 const summaryX = pdfDoc.page.width - 36 - summaryWidth;
 
-                const totalPaid = Number(payment.amount || 0);
-                const totalAlloc = (payment.allocations || []).reduce((s, a) => s + (Number(a.amount) || 0), 0);
-                const unalloc = Number(payment.unallocatedAmount !== undefined ? payment.unallocatedAmount : Math.max(0, totalPaid - totalAlloc));
+                // Left: Remarks & Amount in Words
+                const leftWidth = summaryX - 36 - 20;
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text('Remarks        :', 36, summaryY);
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#111111').text(
+                    payment.notes || (allocations.length > 0 ? `Settlement for ${allocations.map(a => a.documentNumber).filter(Boolean).join(', ')}` : 'Payment received with thanks'),
+                    105, summaryY, { width: leftWidth - 70 }
+                );
 
-                // Summary box
-                pdfDoc.roundedRect(summaryX, summaryY, summaryWidth, 80, 4).fillAndStroke('#F8FAFC', '#E2E8F0');
+                const wordsY = pdfDoc.y + 8;
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text('Amount in Words:', 36, wordsY);
+                pdfDoc.font('Helvetica-Oblique').fontSize(8).fillColor('#222222').text(convertNumberToWords(totalPaid), 36, wordsY + 12, { width: leftWidth });
 
-                pdfDoc.rect(summaryX, summaryY + 8, summaryWidth, 24).fill('#2563EB');
-                pdfDoc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(10.5).text('AMOUNT RECEIVED:', summaryX + 12, summaryY + 14);
-                pdfDoc.text(`LKR ${totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, summaryX, summaryY + 14, { width: summaryWidth - 12, align: 'right' });
-
-                pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8.5).text('Total Applied:', summaryX + 12, summaryY + 40);
-                pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').text(`LKR ${totalAlloc.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, summaryX, summaryY + 40, { width: summaryWidth - 12, align: 'right' });
-
-                pdfDoc.fillColor('#059669').font('Helvetica').fontSize(8.5).text('Remaining Balance / Credit:', summaryX + 12, summaryY + 58);
-                pdfDoc.font('Helvetica-Bold').fillColor('#059669')
-                    .text(`LKR ${unalloc.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, summaryX, summaryY + 58, { width: summaryWidth - 12, align: 'right' });
-
-                // Amount in words box on left
-                pdfDoc.y = summaryY;
-                const wordsWidth = summaryX - 36 - 16;
-                pdfDoc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(8.5).text('AMOUNT IN WORDS:', 36, summaryY);
-                pdfDoc.fillColor('#334155').font('Helvetica-Oblique').fontSize(8.5)
-                    .text(convertNumberToWords(totalPaid), 36, summaryY + 14, { width: wordsWidth });
-
-                if (payment.notes) {
-                    pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7.5)
-                        .text(`Remarks / Notes: ${payment.notes}`, 36, summaryY + 42, { width: wordsWidth });
+                if (payment.bankAccountId) {
+                    const bName = payment.bankAccountId.bankName || 'GLX Account';
+                    const bAcc = payment.bankAccountId.accountNumber || '';
+                    pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#444444').text(`Deposited To: ${bName} (${bAcc})`, 36, pdfDoc.y + 6, { width: leftWidth });
                 }
 
-                // Signature lines
-                const signY = summaryY + 100;
-                pdfDoc.rect(36, signY, 150, 0.5).fill('#94A3B8');
-                pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Customer / Payer Signature', 36, signY + 6);
+                // Right: Totals
+                let rY = summaryY;
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text('SUB TOTAL', summaryX, rY);
+                pdfDoc.text(fmtNum(totalPaid), summaryX, rY, { width: summaryWidth, align: 'right' });
 
-                const rightSignX = pdfDoc.page.width - 36 - 150;
-                pdfDoc.rect(rightSignX, signY, 150, 0.5).fill('#94A3B8');
-                pdfDoc.fillColor('#475569').font('Helvetica').fontSize(8).text('Authorized Cashier / GLX', rightSignX, signY + 6, { align: 'right' });
+                rY += 15;
+                pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(0.8).strokeColor('#000000').stroke();
+                rY += 5;
 
-                // Page numbering & footer disclaimer
+                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000').text(isVoucher ? 'TOTAL PAID' : 'GRAND TOTAL', summaryX, rY);
+                pdfDoc.text(fmtNum(totalPaid), summaryX, rY, { width: summaryWidth, align: 'right' });
+
+                if (allocations.length > 0 && totalAlloc > 0) {
+                    rY += 16;
+                    pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#166534').text('ADVANCE APPLIED', summaryX, rY);
+                    pdfDoc.text(`-${fmtNum(totalAlloc)}`, summaryX, rY, { width: summaryWidth, align: 'right' });
+
+                    rY += 15;
+                    pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#92400E').text('BALANCE CREDIT', summaryX, rY);
+                    pdfDoc.text(fmtNum(unalloc), summaryX, rY, { width: summaryWidth, align: 'right' });
+                }
+
+                // Bottom: Signatures and red print timestamp
+                const bottomY = Math.max(pdfDoc.y + 40, pdfDoc.page.height - 110);
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#000000').text('Yours Faithfully,', 36, bottomY);
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(`GLX INDUSTRIES - ${branchVal}`, 36, bottomY + 12);
+
+                pdfDoc.fillColor('#444444').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 40);
+                pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(8).text(`Authorized Signature (${handledBy})`, 36, bottomY + 52);
+
+                pdfDoc.fillColor('#DC2626').font('Helvetica-Bold').fontSize(8).text(`Printed at    ${printTimestamp}`, 36, bottomY + 68);
+
+                // Multi-page bottom disclaimer
                 const range = pdfDoc.bufferedPageRange();
                 for (let i = range.start; i < range.start + range.count; i++) {
                     pdfDoc.switchToPage(i);
-                    pdfDoc.rect(36, pdfDoc.page.height - 35, pdfDoc.page.width - 72, 0.5).fill('#CBD5E1');
-                    pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7.5)
-                        .text('GLX TRUCK BODY ENGINEERS - Computer Generated Official Receipt', 36, pdfDoc.page.height - 26);
-                    pdfDoc.text(`Page ${i + 1} of ${range.count}`, 36, pdfDoc.page.height - 26, { align: 'right' });
+                    pdfDoc.moveTo(36, pdfDoc.page.height - 30).lineTo(pdfDoc.page.width - 36, pdfDoc.page.height - 30).lineWidth(0.5).strokeColor('#E2E8F0').stroke();
+                    pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7)
+                        .text('GLX TRUCK BODY ENGINEERS - Computer Generated Official Receipt', 36, pdfDoc.page.height - 24);
+                    pdfDoc.text(`Page ${i + 1} of ${range.count}`, 36, pdfDoc.page.height - 24, { align: 'right' });
                 }
 
                 pdfDoc.end();
@@ -510,10 +600,8 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
 
             try {
                 const tableResult = pdfDoc.table(table, {
-                    prepareHeader: () => pdfDoc.font('Helvetica-Bold').fontSize(8).fillColor('#1E293B'),
-                    prepareRow: (row, index, column, rectRow, rectCell) => {
-                        pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#334155');
-                    }
+                    prepareHeader: () => pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000'),
+                    prepareRow: () => pdfDoc.font('Helvetica').fontSize(8).fillColor('#111111')
                 });
 
                 if (tableResult instanceof Promise) {
