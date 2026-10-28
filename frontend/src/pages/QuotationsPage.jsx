@@ -642,6 +642,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         try {
             const payload = {
                 ...formData,
+                salesRep: (formData.salesRep || currentSalesPerson || '').trim(),
                 items: formData.items.map(item => {
                     const cleaned = { ...item };
                     if (!cleaned.product || cleaned.product === '') {
@@ -1624,8 +1625,19 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                             </div>
                         </div>
 
-                        {/* Introducer and Biller selection fields */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-gray-200 pt-3">
+                        {/* Sales Person, Introducer and Biller selection fields */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-gray-200 pt-3">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Sales Person (Sales Rep) *</label>
+                                <input
+                                    type="text"
+                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white font-medium"
+                                    value={formData.salesRep || currentSalesPerson}
+                                    placeholder="Sales Rep Name"
+                                    onChange={(e) => handleFormChange('salesRep', e.target.value)}
+                                />
+                            </div>
+
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Introducer (Employee)</label>
                                 <select
@@ -1843,11 +1855,18 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                                             const search = (item.productName || '').toLowerCase().trim();
                                                             if (!search) return true;
                                                             const tokens = search.split(/\s+/).filter(Boolean);
-                                                            const name = (p.name || p.productName || p.title || '').toLowerCase();
-                                                            const sName = (p.sinhalaName || '').toLowerCase();
-                                                            const code = (p.productCode || p.code || p.sku || '').toLowerCase();
-                                                            const desc = (p.description || '').toLowerCase();
-                                                            return tokens.every(t => name.includes(t) || sName.includes(t) || code.includes(t) || desc.includes(t));
+                                                            const nameCombined = `${p.name || p.productName || p.title || ''} ${p.sinhalaName || ''} ${p.productCode || p.code || p.sku || ''}`.toLowerCase();
+                                                            return tokens.every(t => nameCombined.includes(t));
+                                                        })
+                                                        .sort((a, b) => {
+                                                            const search = (item.productName || '').toLowerCase().trim();
+                                                            if (!search) return 0;
+                                                            const tokens = search.split(/\s+/).filter(Boolean);
+                                                            const aName = `${a.name || a.productName || ''} ${a.sinhalaName || ''}`.toLowerCase();
+                                                            const bName = `${b.name || b.productName || ''} ${b.sinhalaName || ''}`.toLowerCase();
+                                                            const aMatch = tokens.every(t => aName.includes(t)) ? 1 : 0;
+                                                            const bMatch = tokens.every(t => bName.includes(t)) ? 1 : 0;
+                                                            return bMatch - aMatch;
                                                         })
                                                         .slice(0, 10)
                                                         .map(p => {

@@ -1,27 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
-export default function Modal({ isOpen, onClose, title, children, size = 'md', closeOnBackdrop = false }) {
+export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+    const dialogRef = useRef(null);
+
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
+            // Focus the dialog container itself so browser doesn't automatically jump into child input fields
+            const timer = setTimeout(() => {
+                dialogRef.current?.focus();
+            }, 30);
+            return () => {
+                clearTimeout(timer);
+                document.body.style.overflow = 'unset';
+            };
         } else {
             document.body.style.overflow = 'unset';
         }
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
     }, [isOpen]);
-
-    useEffect(() => {
-        const handleEsc = (e) => {
-            if (e.key === 'Escape' && closeOnBackdrop) onClose();
-        };
-        if (isOpen) {
-            window.addEventListener('keydown', handleEsc);
-            return () => window.removeEventListener('keydown', handleEsc);
-        }
-    }, [isOpen, onClose, closeOnBackdrop]);
 
     if (!isOpen) return null;
 
@@ -36,14 +33,17 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', c
     return (
         <div 
             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-xs select-none sm:select-auto"
-            onClick={closeOnBackdrop ? onClose : undefined}
+            // Backdrop clicks intentionally DO NOT close modals — only explicit Close or 'X' buttons close the modal
         >
             <div
+                ref={dialogRef}
+                tabIndex={-1}
                 role="dialog"
                 aria-modal="true"
                 aria-label={title || 'Modal dialog'}
-                className={`bg-white dark:bg-[#111F33] rounded-t-2xl sm:rounded-xl shadow-2xl w-full ${sizes[size] || sizes.md} max-h-[92dvh] sm:max-h-[90dvh] flex flex-col overflow-hidden transform transition-all border border-gray-100 dark:border-slate-800 text-slate-800 dark:text-slate-100`}
+                className={`bg-white dark:bg-[#111F33] rounded-t-2xl sm:rounded-xl shadow-2xl w-full ${sizes[size] || sizes.md} max-h-[92dvh] sm:max-h-[90dvh] flex flex-col overflow-hidden transform transition-all border border-gray-100 dark:border-slate-800 text-slate-800 dark:text-slate-100 outline-none`}
                 onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-gray-200 dark:border-slate-700/80 flex-shrink-0 bg-gray-50/50 dark:bg-[#0E1A2B]">

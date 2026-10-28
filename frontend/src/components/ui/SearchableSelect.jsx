@@ -64,23 +64,30 @@ const SearchableSelect = forwardRef(({
         const q = searchTerm.toLowerCase().trim();
         const tokens = q.split(/\s+/).filter(Boolean);
 
-        return options.filter((opt) => {
+        const nameMatches = [];
+        const otherMatches = [];
+
+        for (const opt of options) {
             const labelStr = String(opt.label || '').toLowerCase();
-            const valueStr = String(opt.value || '').toLowerCase();
-            const codeStr = String(opt.productCode || opt.code || '').toLowerCase();
-            const skuStr = String(opt.sku || '').toLowerCase();
             const sinhalaStr = String(opt.sinhalaName || '').toLowerCase();
             const subtextStr = String(opt.subtext || '').toLowerCase();
-            const descStr = String(opt.description || '').toLowerCase();
+            const codeStr = String(opt.productCode || opt.code || '').toLowerCase();
+            const skuStr = String(opt.sku || '').toLowerCase();
 
-            const combined = `${labelStr} ${codeStr} ${skuStr} ${sinhalaStr} ${subtextStr} ${descStr} ${valueStr}`;
+            const nameCombined = `${labelStr} ${sinhalaStr} ${subtextStr}`;
+            const isNameMatch = tokens.every((token) => nameCombined.includes(token));
 
-            // If user types exact phrase, check that first
-            if (combined.includes(q)) return true;
+            if (isNameMatch) {
+                nameMatches.push(opt);
+            } else {
+                const idCombined = `${nameCombined} ${codeStr} ${skuStr}`;
+                if (tokens.every((token) => idCombined.includes(token))) {
+                    otherMatches.push(opt);
+                }
+            }
+        }
 
-            // Otherwise, all separate tokens must be present anywhere in the item details
-            return tokens.every((token) => combined.includes(token));
-        });
+        return [...nameMatches, ...otherMatches];
     }, [options, searchTerm]);
 
     const highlightedOption = filteredOptions[highlightedIndex] || null;

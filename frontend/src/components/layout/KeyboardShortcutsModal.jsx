@@ -130,7 +130,6 @@ export default function KeyboardShortcutsModal() {
     return (
         <div 
             className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-150"
-            onClick={closeShortcutsModal}
         >
             <div 
                 className={`relative w-full max-w-3xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${

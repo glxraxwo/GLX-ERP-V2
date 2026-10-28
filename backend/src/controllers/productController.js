@@ -97,7 +97,6 @@ export const getProducts = asyncHandler(async (req, res) => {
                         { productCode: { $regex: escaped, $options: 'i' } },
                         { sku: { $regex: escaped, $options: 'i' } },
                         { barcode: { $regex: escaped, $options: 'i' } },
-                        { description: { $regex: escaped, $options: 'i' } },
                     ],
                 };
             });
@@ -110,7 +109,6 @@ export const getProducts = asyncHandler(async (req, res) => {
                 { productCode: { $regex: escaped, $options: 'i' } },
                 { sku: { $regex: escaped, $options: 'i' } },
                 { barcode: { $regex: escaped, $options: 'i' } },
-                { description: { $regex: escaped, $options: 'i' } },
             ];
         }
     }

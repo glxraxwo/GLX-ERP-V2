@@ -166,12 +166,12 @@ export default function InvoiceFormPage() {
     useEffect(() => {
         if (user && !existingInvoice) {
             const uName = (user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim()) || '';
-            if (uName && !customerSalesRep) {
-                setCustomerSalesRep(uName);
-                setTempCustSalesRep(uName);
+            if (uName) {
+                setCustomerSalesRep(prev => (!prev || prev === 'Asanka' ? uName : prev));
+                setTempCustSalesRep(prev => (!prev || prev === 'Asanka' ? uName : prev));
             }
         }
-    }, [user, existingInvoice, customerSalesRep]);
+    }, [user, existingInvoice]);
 
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
@@ -269,12 +269,14 @@ export default function InvoiceFormPage() {
         return () => window.removeEventListener('keydown', handleGlobalKeyDown);
     }, [isAddItemModalOpen, isAddCustomerModalOpen, isVehicleModalOpen]);
 
-    // Focus catalog search when Add Item modal opens - do not auto-jump into Item Name / Title
+    // When Add Item modal opens, do not auto-focus into Item Name / Title (user will explicitly click with mouse if needed)
     useEffect(() => {
         if (isAddItemModalOpen) {
             const timer = setTimeout(() => {
-                catalogSelectTriggerRef.current?.focus();
-            }, 80);
+                if (document.activeElement === productNameInputRef.current) {
+                    productNameInputRef.current?.blur();
+                }
+            }, 50);
             return () => clearTimeout(timer);
         }
     }, [isAddItemModalOpen]);
@@ -838,7 +840,7 @@ export default function InvoiceFormPage() {
                     vatNumber: customerVatNumber || undefined,
                     brNumber: customerBrNumber || undefined,
                     idNumber: customerIdNumber || undefined,
-                    salesRep: customerSalesRep || undefined,
+                    salesRep: customerSalesRep || currentUserName || undefined,
                     customerSnapshot: {
                         name: finalCustomerName,
                         code: selectedCustomer?.customerCode,
@@ -848,7 +850,7 @@ export default function InvoiceFormPage() {
                         brNumber: customerBrNumber || undefined,
                         idNumber: customerIdNumber || undefined,
                         whatsappNum: customerWhatsapp || undefined,
-                        salesRep: customerSalesRep || undefined,
+                        salesRep: customerSalesRep || currentUserName || undefined,
                     },
                     invoiceType,
                     invoiceDate,
@@ -929,7 +931,7 @@ export default function InvoiceFormPage() {
                     vatNumber: customerVatNumber || undefined,
                     brNumber: customerBrNumber || undefined,
                     idNumber: customerIdNumber || undefined,
-                    salesRep: customerSalesRep || undefined,
+                    salesRep: customerSalesRep || currentUserName || undefined,
                     date: invoiceDate,
                     expiryDate: dueDate || undefined,
                     vehicleNo: vehicleNo || undefined,
@@ -1282,6 +1284,17 @@ export default function InvoiceFormPage() {
                             value={invoiceDate}
                             onChange={(e) => setInvoiceDate(e.target.value)}
                             className="bg-transparent border-0 text-xs font-semibold text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-0 p-0 cursor-pointer"
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/80 hover:bg-gray-100/80 dark:hover:bg-slate-700/80 transition-colors px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-slate-700">
+                        <label className="text-xs font-bold text-gray-500 dark:text-slate-400 whitespace-nowrap">Sales Person:</label>
+                        <input
+                            type="text"
+                            value={customerSalesRep || currentUserName}
+                            onChange={(e) => setCustomerSalesRep(e.target.value)}
+                            placeholder="Sales Person"
+                            className="bg-transparent border-0 text-xs font-semibold text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-0 p-0 cursor-text w-32"
                         />
                     </div>
 

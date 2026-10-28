@@ -54,11 +54,12 @@ export default function ProductAutocompleteSelect({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [wrapperRef]);
 
-    const filtered = products.filter(p =>
-        p.name?.toLowerCase().includes(inputValue.toLowerCase()) ||
-        p.sinhalaName?.toLowerCase().includes(inputValue.toLowerCase()) ||
-        p.productCode?.toLowerCase().includes(inputValue.toLowerCase())
-    );
+    const tokens = inputValue.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    const filtered = products.filter(p => {
+        if (!tokens.length) return true;
+        const nameStr = `${p.name || ''} ${p.sinhalaName || ''} ${p.shortName || ''} ${p.productCode || ''}`.toLowerCase();
+        return tokens.every(token => nameStr.includes(token));
+    });
 
     const handleSelectOption = (product) => {
         setInputValue(product.name);

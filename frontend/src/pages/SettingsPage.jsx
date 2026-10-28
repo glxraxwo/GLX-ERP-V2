@@ -133,7 +133,11 @@ export default function SettingsPage() {
                 jobTitle: profileJobTitle.trim(),
             });
             if (res.data) {
-                updateUser(res.data);
+                const updated = { ...currentUser, ...res.data, fullName: `${res.data.firstName} ${res.data.lastName}`.trim() };
+                updateUser(updated);
+                try {
+                    localStorage.setItem('user', JSON.stringify(updated));
+                } catch (e) {}
             }
             setProfileSaved(true);
             setTimeout(() => setProfileSaved(false), 3000);
