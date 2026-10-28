@@ -113,15 +113,20 @@ quotationSchema.pre('validate', async function () {
         const prefix = isEstimate ? 'JA/EST' : 'JA/QT';
         const seqKey = isEstimate ? 'estimate' : 'quotation';
         let seq = await getNextSequence(seqKey);
-        let code = `${prefix}/${seq}`;
+        let seqFormatted = String(seq).padStart(5, '0');
+        let code = `${prefix}/${seqFormatted}`;
         while (await mongoose.model('Quotation').findOne({ $or: [{ quotationCode: code }, { quoteNumber: code }] })) {
             seq = await getNextSequence(seqKey);
-            code = `${prefix}/${seq}`;
+            seqFormatted = String(seq).padStart(5, '0');
+            code = `${prefix}/${seqFormatted}`;
         }
         this.quotationCode = code;
         this.quoteNumber = this.quotationCode;
-    } else if (!this.quoteNumber || this.quoteNumber.trim() === '') {
-        this.quoteNumber = this.quotationCode;
+    } else {
+        // Ensure trailing number is padded to 5 digits
+        const formatted = this.quotationCode.replace(/(\d+)$/, (match) => match.length < 5 ? match.padStart(5, '0') : match);
+        this.quotationCode = formatted;
+        this.quoteNumber = formatted;
     }
     // Auto-calculate grand total & balance
     if (Array.isArray(this.items)) {

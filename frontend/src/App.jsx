@@ -287,7 +287,8 @@ function App() {
         <Route path="/import" element={<ProtectedRoute requiredPermission="admin.settings"><ImportDataPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute requiredPermission="admin.settings"><SettingsPage /></ProtectedRoute>} />
         <Route path="/audit-logs" element={<ProtectedRoute requiredPermission="view_audit_logs"><AuditLogPage /></ProtectedRoute>} />
-        <Route path="/audit-logs/sms" element={<ProtectedRoute requiredPermission="view_audit_logs"><SmsLogsPage /></ProtectedRoute>} />
+        <Route path="/audit-logs/sms" element={<ProtectedRoute><SmsLogsPage /></ProtectedRoute>} />
+        <Route path="/sms" element={<ProtectedRoute><SmsLogsPage /></ProtectedRoute>} />
 
         {/* Added sidebar routes */}
         <Route path="/analytics" element={<ProtectedRoute requiredPermission="dashboard.view" excludeRoles={['employee']}><AnalyticsPage /></ProtectedRoute>} />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, Users, AlertTriangle, Ban, CheckCircle } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Users, AlertTriangle, Ban, CheckCircle, Mail } from 'lucide-react';
+import ManualSmsModal from '../components/ManualSmsModal';
 
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -38,6 +39,8 @@ export default function CustomersPage() {
     });
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editing, setEditing] = useState(null);
+    const [isSmsModalOpen, setIsSmsModalOpen] = useState(false);
+    const [smsTargetCustomer, setSmsTargetCustomer] = useState(null);
     const [deleting, setDeleting] = useState(null);
     const [togglingHold, setTogglingHold] = useState(null);
     const [holdReason, setHoldReason] = useState('');
@@ -199,6 +202,13 @@ export default function CustomersPage() {
             key: 'actions', label: 'Actions', width: '120px', align: 'center',
             render: (r) => (
                 <div className="flex items-center justify-center gap-1">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setSmsTargetCustomer(r); setIsSmsModalOpen(true); }}
+                        className="p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-700 rounded transition"
+                        title="Send SMS to this customer"
+                    >
+                        <Mail size={15} />
+                    </button>
                     {canHoldCredit && (
                         <button
                             onClick={(e) => { e.stopPropagation(); setTogglingHold(r); setHoldReason(''); }}
@@ -262,6 +272,13 @@ export default function CustomersPage() {
                             onExportAllCSV={() => handleExportCSV(null, true, filters)}
                             isDisabled={customers.length === 0}
                         />
+                        <Button
+                            variant="outline"
+                            onClick={() => { setSmsTargetCustomer(null); setIsSmsModalOpen(true); }}
+                            className="flex items-center gap-1.5 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                        >
+                            <Mail size={16} className="text-emerald-600 dark:text-emerald-400" /> Send SMS
+                        </Button>
                         {canManage && (
                             <Button variant="primary" onClick={() => setIsFormOpen(true)}>
                                 <Plus size={16} className="mr-1.5" /> Add Customer
@@ -326,6 +343,12 @@ export default function CustomersPage() {
             </Card>
 
             <CustomerFormModal isOpen={isFormOpen} onClose={handleClose} customer={editing} />
+
+            <ManualSmsModal
+                isOpen={isSmsModalOpen}
+                onClose={() => { setIsSmsModalOpen(false); setSmsTargetCustomer(null); }}
+                initialCustomer={smsTargetCustomer}
+            />
 
             <ConfirmDialog
                 isOpen={!!deleting}

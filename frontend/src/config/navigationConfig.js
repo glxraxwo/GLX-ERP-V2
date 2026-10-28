@@ -213,6 +213,13 @@ export const NAVIGATION_CATEGORIES = [
                 permission: 'customers.view',
                 category: 'sales'
             },
+            {
+                title: 'SMS Centre (Send SMS)',
+                path: '/sms',
+                icon: Mail,
+                description: 'Send manual SMS to customers and suppliers with reusable message templates',
+                category: 'sales'
+            },
 
             {
                 title: 'Yard Projects (CRM)',

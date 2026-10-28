@@ -3,10 +3,8 @@ import api from '../api/axios';
 import { format } from 'date-fns';
 import { Mail, CheckCircle2, XCircle, Search, RefreshCw, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
-import Modal from '../components/ui/Modal';
-import Input from '../components/ui/Input';
-import Textarea from '../components/ui/Textarea';
 import DateRangeFilter from '../components/ui/DateRangeFilter';
+import ManualSmsModal from '../components/ManualSmsModal';
 
 export default function SmsLogsPage() {
     const [logs, setLogs] = useState([]);
@@ -17,12 +15,8 @@ export default function SmsLogsPage() {
     const [page, setPage] = useState(1);
     const [pages, setPages] = useState(1);
 
-    // Manual SMS States
+    // Manual SMS State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [manualContact, setManualContact] = useState('');
-    const [manualName, setManualName] = useState('');
-    const [manualMessage, setManualMessage] = useState('');
-    const [sending, setSending] = useState(false);
 
     const formatDateSafely = (dateStr) => {
         if (!dateStr) return '—';
@@ -55,36 +49,7 @@ export default function SmsLogsPage() {
         Promise.resolve().then(() => fetchLogs());
     }, [fetchLogs]);
 
-    const handleSendManualSms = async (e) => {
-        e.preventDefault();
-        if (!manualContact || !manualMessage) {
-            toast.error('Mobile number and message are required');
-            return;
-        }
 
-        setSending(true);
-        try {
-            const res = await api.post('/audit/sms/send-manual', {
-                contact: manualContact,
-                recipientName: manualName,
-                message: manualMessage
-            });
-
-            if (res.data?.success) {
-                toast.success('SMS sent successfully via SMSlenz!');
-                setIsModalOpen(false);
-                setManualContact('');
-                setManualName('');
-                setManualMessage('');
-                fetchLogs(); // refresh logs list
-            }
-        } catch (err) {
-            const errMsg = err.response?.data?.message || 'Failed to send manual SMS';
-            toast.error(errMsg);
-        } finally {
-            setSending(false);
-        }
-    };
 
     const filtered = logs.filter(log =>
         [log.supplierName, log.supplierPhone, log.message, log.grnId?.grnNumber].some(
@@ -97,8 +62,8 @@ export default function SmsLogsPage() {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">SMS Gateway Dispatch Logs</h2>
-                    <p className="text-sm text-gray-500">Audit trail of automated SMS receipts sent to suppliers upon QA approval</p>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">SMS Centre &amp; Dispatch Logs</h2>
+                    <p className="text-sm text-gray-500">Send manual customer &amp; supplier SMS, manage message templates, and view live gateway delivery logs</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -223,83 +188,12 @@ export default function SmsLogsPage() {
                 </div>
             )}
 
-            {/* Manual SMS Modal */}
-            <Modal
+            {/* Manual SMS Modal with Customer Selection & Preset Templates */}
+            <ManualSmsModal
                 isOpen={isModalOpen}
-                onClose={() => {
-                    if (!sending) setIsModalOpen(false);
-                }}
-                title="Send Custom Manual SMS"
-                size="md"
-            >
-                <form onSubmit={handleSendManualSms} className="p-6 space-y-4">
-                    <p className="text-xs text-gray-500 leading-normal">
-                        Enter a Sri Lankan mobile number and message to manually dispatch via the SMSlenz gateway. The number will be formatted to international format automatically.
-                    </p>
-
-                    <Input
-                        label="Recipient Mobile Number"
-                        placeholder="e.g. 0716666888 or +94716666888"
-                        required
-                        value={manualContact}
-                        onChange={(e) => setManualContact(e.target.value)}
-                        disabled={sending}
-                    />
-
-                    <Input
-                        label="Recipient Name / Description"
-                        placeholder="e.g. Golden Cafe Test (Optional)"
-                        value={manualName}
-                        onChange={(e) => setManualName(e.target.value)}
-                        disabled={sending}
-                    />
-
-                    <div className="space-y-1">
-                        <Textarea
-                            label="Message Content"
-                            placeholder="Type your message here..."
-                            required
-                            rows={4}
-                            value={manualMessage}
-                            onChange={(e) => setManualMessage(e.target.value)}
-                            disabled={sending}
-                            maxLength={1500}
-                        />
-                        <div className="flex justify-between text-[10px] text-gray-400">
-                            <span>Max 1500 characters</span>
-                            <span>{manualMessage.length} / 1500</span>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                        <button
-                            type="button"
-                            onClick={() => setIsModalOpen(false)}
-                            className="px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm font-semibold hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 transition"
-                            disabled={sending}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="flex items-center gap-1.5 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50"
-                            disabled={sending}
-                        >
-                            {sending ? (
-                                <>
-                                    <RefreshCw className="animate-spin" size={14} />
-                                    Sending...
-                                </>
-                            ) : (
-                                <>
-                                    <Mail size={14} />
-                                    Send SMS
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={fetchLogs}
+            />
         </div>
     );
 }

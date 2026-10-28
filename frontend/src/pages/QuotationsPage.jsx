@@ -17,6 +17,8 @@ import PageHeader from '../components/ui/PageHeader';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import CreatableCombobox from '../components/ui/CreatableCombobox';
 import { masterDataApi } from '../features/masterData/masterDataApi';
+import { getSalesRepOptions, saveSalesRep } from '../utils/salesRepService';
+import { getSavedTerms, saveDefaultTerms } from '../utils/termsService';
 import { useSettings } from '../features/settings/useSettings';
 import DocumentPrintView from '../components/print/DocumentPrintView';
 import ShareDocumentSmsModal from '../components/ShareDocumentSmsModal';
@@ -135,6 +137,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     };
 
     // Form inputs state
+    const initialSavedTerms = getSavedTerms('quotation');
     const [formData, setFormData] = useState({
         documentType: 'quotation',
         quoteNumber: '', 
@@ -156,11 +159,11 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         bodyDimensions: { length: '8 Feet 5 Inch', width: '67 Inch', height: '5 Feet 6 Inch' },
         specifications: ['Non Rivet White Color Body', 'Japan Model Original Corner Set Bar', 'Rear 2 Doors (Waterproof Board)', 'Rear Gutter & Footboard'],
         warrantyInfo: '10 Years For Body Structure, 10 Years Full Body Waterproofing, 03 Years For All Doors.',
-        conditionOfPayments: 'a). 0% Advance Payment with the firm Order.\nb). Balance Payment on Completion of Work',
-        completionOfWork: '4 to 6 working Days after the Order Confirmation.',
-        validityQuotation: '30 Working Days From the Issued Date..',
-        warrantyCondition: 'a). Please See the Description..\nb). Warranty Will be Issued with the Invoice.',
-        remarks: '',
+        conditionOfPayments: initialSavedTerms.conditionOfPayments,
+        completionOfWork: initialSavedTerms.completionOfWork,
+        validityQuotation: initialSavedTerms.validityQuotation,
+        warrantyCondition: initialSavedTerms.warrantyCondition,
+        remarks: initialSavedTerms.remarks,
         status: 'draft',
         items: [{ product: '', productName: '', productTranslation: '', description: '', quantity: 1, unitPrice: 0, discount: 0, subtotal: 0 }],
         totalAmount: 0, 
@@ -332,6 +335,43 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         return (insuranceCompanies || []).map(c => ({ value: c.name, label: c.name }));
     }, [insuranceCompanies]);
 
+    const [salesRepsVersion, setSalesRepsVersion] = useState(0);
+
+    useEffect(() => {
+        const handleRepsUpdated = () => setSalesRepsVersion(v => v + 1);
+        window.addEventListener('glx_sales_reps_updated', handleRepsUpdated);
+        return () => window.removeEventListener('glx_sales_reps_updated', handleRepsUpdated);
+    }, []);
+
+    const salesRepOptions = useMemo(() => {
+        const extra = [];
+        if (currentSalesPerson) extra.push(currentSalesPerson);
+        if (Array.isArray(employees)) {
+            employees.forEach(e => {
+                if (e.callingName) extra.push(e.callingName);
+                if (e.firstName) extra.push(`${e.firstName} ${e.lastName || ''}`.trim());
+            });
+        }
+        if (Array.isArray(users)) {
+            users.forEach(u => {
+                if (u.firstName) extra.push(`${u.firstName} ${u.lastName || ''}`.trim());
+            });
+        }
+        if (Array.isArray(quotations)) {
+            quotations.forEach(q => {
+                if (q.salesRep) extra.push(q.salesRep);
+            });
+        }
+        return getSalesRepOptions(extra);
+    }, [employees, users, quotations, currentSalesPerson, salesRepsVersion]);
+
+    const handleCreateSalesRep = async (name) => {
+        saveSalesRep(name);
+        handleFormChange('salesRep', name);
+        toast.success(`Sales person "${name}" saved to suggestions!`);
+        return { value: name, label: name };
+    };
+
     const handleCreateVehicleModel = async (name) => {
         try {
             const res = await masterDataApi.createVehicleModel({ name });
@@ -454,7 +494,17 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     };
 
     const addItem = () => {
-        setFormData({ ...formData, items: [...formData.items, { product: '', productName: '', productTranslation: '', description: '', quantity: 1, unitPrice: 0, discount: 0, subtotal: 0 }] });
+        const nextIndex = formData.items.length;
+        setFormData(prev => ({ 
+            ...prev, 
+            items: [...prev.items, { product: '', productName: '', productTranslation: '', description: '', quantity: 1, unitPrice: 0, discount: 0, subtotal: 0 }] 
+        }));
+        setTimeout(() => {
+            const inputEl = document.getElementById(`quote-item-name-${nextIndex}`);
+            if (inputEl) {
+                inputEl.focus();
+            }
+        }, 60);
     };
 
     const removeItem = (index) => {
@@ -486,6 +536,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     };
 
     const openForm = (quote = null, defaultType = 'quotation') => {
+        const savedTerms = getSavedTerms(defaultType);
         if (quote) {
             setEditing(quote);
             setCustomerSearch(quote.customerName || quote.vehicleOwner || quote.customerId?.companyName || '');
@@ -502,7 +553,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 vehicleNo: quote.vehicleNo || '',
                 vehicleModel: quote.vehicleModel || '',
                 jobCaption: quote.jobCaption || '',
-                salesRep: quote.salesRep || currentSalesPerson,
+                salesRep: quote.salesRep ?? '',
                 introducer: quote.introducer?._id || quote.introducer || '',
                 introducerName: quote.introducerName || '',
                 biller: quote.biller?._id || quote.biller || '',
@@ -514,11 +565,11 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 bodyDimensions: quote.bodyDimensions || { length: '8 Feet 5 Inch', width: '67 Inch', height: '5 Feet 6 Inch' },
                 specifications: quote.specifications?.length > 0 ? quote.specifications : ['Non Rivet White Color Body', 'Japan Model Original Corner Set Bar', 'Rear 2 Doors (Waterproof Board)', 'Rear Gutter & Footboard'],
                 warrantyInfo: quote.warrantyInfo || '10 Years For Body Structure, 10 Years Full Body Waterproofing, 03 Years For All Doors.',
-                conditionOfPayments: quote.conditionOfPayments || 'a). 0% Advance Payment with the firm Order.\nb). Balance Payment on Completion of Work',
-                completionOfWork: quote.completionOfWork || '4 to 6 working Days after the Order Confirmation.',
-                validityQuotation: quote.validityQuotation || '30 Working Days From the Issued Date..',
-                warrantyCondition: quote.warrantyCondition || quote.warrantyInfo || 'a). Please See the Description..\nb). Warranty Will be Issued with the Invoice.',
-                remarks: quote.remarks || quote.notes || '',
+                conditionOfPayments: quote.conditionOfPayments || savedTerms.conditionOfPayments,
+                completionOfWork: quote.completionOfWork || savedTerms.completionOfWork,
+                validityQuotation: quote.validityQuotation || savedTerms.validityQuotation,
+                warrantyCondition: quote.warrantyCondition || quote.warrantyInfo || savedTerms.warrantyCondition,
+                remarks: quote.remarks || quote.notes || savedTerms.remarks,
                 status: quote.status || 'draft',
                 items: quote.items?.length > 0 ? quote.items.map(item => ({
                     product: item.product?._id || item.product || '',
@@ -570,11 +621,11 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 bodyDimensions: { length: '8 Feet 5 Inch', width: '67 Inch', height: '5 Feet 6 Inch' },
                 specifications: ['Non Rivet White Color Body', 'Japan Model Original Corner Set Bar', 'Rear 2 Doors (Waterproof Board)', 'Rear Gutter & Footboard'],
                 warrantyInfo: '10 Years For Body Structure, 10 Years Full Body Waterproofing, 03 Years For All Doors.',
-                conditionOfPayments: 'a). 0% Advance Payment with the firm Order.\nb). Balance Payment on Completion of Work',
-                completionOfWork: '4 to 6 working Days after the Order Confirmation.',
-                validityQuotation: '30 Working Days From the Issued Date..',
-                warrantyCondition: 'a). Please See the Description..\nb). Warranty Will be Issued with the Invoice.',
-                remarks: '',
+                conditionOfPayments: savedTerms.conditionOfPayments,
+                completionOfWork: savedTerms.completionOfWork,
+                validityQuotation: savedTerms.validityQuotation,
+                warrantyCondition: savedTerms.warrantyCondition,
+                remarks: savedTerms.remarks,
                 status: 'draft',
                 items: [{ product: '', productName: '', productTranslation: '', description: '', quantity: 1, unitPrice: 0, discount: 0, subtotal: 0 }],
                 totalAmount: 0, 
@@ -590,20 +641,24 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         }
 
         setInitialQuoteTerms({
-            conditionOfPayments: quote ? (quote.conditionOfPayments || '') : 'a). 0% Advance Payment with the firm Order.\nb). Balance Payment on Completion of Work',
-            completionOfWork: quote ? (quote.completionOfWork || '') : '4 to 6 working Days after the Order Confirmation.',
-            validityQuotation: quote ? (quote.validityQuotation || '') : '30 Working Days From the Issued Date..',
-            warrantyCondition: quote ? (quote.warrantyCondition || quote.warrantyInfo || '') : 'a). Please See the Description..\nb). Warranty Will be Issued with the Invoice.',
-            remarks: quote ? (quote.remarks || quote.notes || '') : '',
+            conditionOfPayments: quote ? (quote.conditionOfPayments || savedTerms.conditionOfPayments) : savedTerms.conditionOfPayments,
+            completionOfWork: quote ? (quote.completionOfWork || savedTerms.completionOfWork) : savedTerms.completionOfWork,
+            validityQuotation: quote ? (quote.validityQuotation || savedTerms.validityQuotation) : savedTerms.validityQuotation,
+            warrantyCondition: quote ? (quote.warrantyCondition || quote.warrantyInfo || savedTerms.warrantyCondition) : savedTerms.warrantyCondition,
+            remarks: quote ? (quote.remarks || quote.notes || savedTerms.remarks) : savedTerms.remarks,
         });
 
         // Preload next auto sequence candidate if creating new
         if (!quote) {
             masterDataApi.getNextDocumentNumber(defaultType)
-                .then(res => setNextQuoteNumber(res?.nextNumber || ''))
+                .then(res => {
+                    const num = res?.nextNumber || '';
+                    setNextQuoteNumber(num.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m));
+                })
                 .catch(() => {});
         } else {
-            setNextQuoteNumber(quote.quoteNumber || quote.quotationCode || '');
+            const raw = quote.quoteNumber || quote.quotationCode || '';
+            setNextQuoteNumber(raw.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m));
         }
 
         setIsFormOpen(true);
@@ -653,9 +708,12 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
         setSaving(true);
         try {
+            const rawQuoteNum = (formData.quoteNumber || '').trim();
+            const paddedQuoteNum = rawQuoteNum ? rawQuoteNum.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m) : '';
             const payload = {
                 ...formData,
-                salesRep: (formData.salesRep || currentSalesPerson || '').trim(),
+                quoteNumber: paddedQuoteNum,
+                salesRep: (formData.salesRep || '').trim(),
                 items: formData.items.map(item => {
                     const cleaned = { ...item };
                     if (!cleaned.product || cleaned.product === '') {
@@ -673,6 +731,18 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     return cleaned;
                 })
             };
+
+            if (payload.salesRep) {
+                saveSalesRep(payload.salesRep);
+            }
+
+            saveDefaultTerms({
+                conditionOfPayments: payload.conditionOfPayments,
+                completionOfWork: payload.completionOfWork,
+                validityQuotation: payload.validityQuotation,
+                warrantyCondition: payload.warrantyCondition,
+                remarks: payload.remarks,
+            }, payload.documentType);
 
             if (editing) {
                 await api.put(`/crm/quotations/${editing._id}`, payload);
@@ -1521,7 +1591,10 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     setFormData(prev => ({ ...prev, documentType: 'quotation' }));
                                     if (!editing) {
                                         masterDataApi.getNextDocumentNumber('quotation')
-                                            .then(res => setNextQuoteNumber(res?.nextNumber || ''))
+                                            .then(res => {
+                                                const num = res?.nextNumber || '';
+                                                setNextQuoteNumber(num.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m));
+                                            })
                                             .catch(() => {});
                                     }
                                 }}
@@ -1535,7 +1608,10 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     setFormData(prev => ({ ...prev, documentType: 'estimate' }));
                                     if (!editing) {
                                         masterDataApi.getNextDocumentNumber('estimate')
-                                            .then(res => setNextQuoteNumber(res?.nextNumber || ''))
+                                            .then(res => {
+                                                const num = res?.nextNumber || '';
+                                                setNextQuoteNumber(num.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m));
+                                            })
                                             .catch(() => {});
                                     }
                                 }}
@@ -1650,13 +1726,16 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         {/* Sales Person, Introducer and Biller selection fields */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-gray-200 pt-3">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Sales Person (Sales Rep) *</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white font-medium"
-                                    value={formData.salesRep || currentSalesPerson}
-                                    placeholder="Sales Rep Name"
-                                    onChange={(e) => handleFormChange('salesRep', e.target.value)}
+                                <CreatableCombobox
+                                    label="Sales Person (Sales Rep)"
+                                    required={true}
+                                    allowFreeText={true}
+                                    options={salesRepOptions}
+                                    value={formData.salesRep ?? ''}
+                                    placeholder="Select or type Sales Person..."
+                                    onChange={(val) => handleFormChange('salesRep', val)}
+                                    onCreate={handleCreateSalesRep}
+                                    createLabel="+ Add New Sales Person"
                                 />
                             </div>
 
@@ -1843,7 +1922,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         </div>
                         <div className="overflow-x-auto space-y-2">
                         {formData.items.map((item, index) => (
-                            <div key={index} className="grid grid-cols-12 gap-3 items-start bg-gray-50/80 p-3 rounded-xl relative border border-gray-200 mb-2">
+                            <div key={index} className="grid grid-cols-12 gap-3 items-start bg-blue-50/60 dark:bg-blue-950/30 p-3.5 rounded-xl relative border-2 border-blue-200/90 dark:border-blue-800/70 mb-2.5 shadow-2xs">
                                 <div className="col-span-12 md:col-span-4 space-y-1">
                                     <div className="flex justify-between items-center">
                                         <label className="text-[10px] font-bold text-gray-500 uppercase">Item Name / Title *</label>
@@ -1857,9 +1936,10 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     </div>
                                     <div className="relative">
                                         <input 
+                                            id={`quote-item-name-${index}`}
                                             type="text" 
                                             required
-                                            className="w-full px-3 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white font-calibri"
+                                            className="w-full px-3 py-1.5 border-2 border-blue-300 dark:border-blue-700/80 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-50 focus:bg-white dark:focus:bg-[#132238] text-gray-900 dark:text-white font-calibri focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-2xs"
                                             placeholder="e.g. Repair Works / Cargo Lorry Body DOOR Reconstruction (Large)"
                                             value={item.productName}
                                             onChange={(e) => {
@@ -1969,7 +2049,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     </div>
                                     <input 
                                         type="text" 
-                                        className="w-full px-3 py-1 border border-dashed border-gray-300 rounded-lg text-xs bg-slate-50 text-blue-700 mt-1 font-calibri" 
+                                        className="w-full px-3 py-1 border-2 border-blue-200 dark:border-blue-800 rounded-lg text-xs bg-blue-50/70 dark:bg-blue-950/30 hover:bg-blue-50 focus:bg-white dark:focus:bg-[#132238] text-blue-700 dark:text-blue-300 mt-1 font-calibri shadow-2xs" 
                                         placeholder="Translation (Sinhala/Tamil)" 
                                         value={item.productTranslation || ''} 
                                         onChange={(e) => handleItemChange(index, 'productTranslation', e.target.value)} 
@@ -1982,7 +2062,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         type="number" 
                                         step="any" 
                                         min="0.01" 
-                                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white text-center font-semibold" 
+                                        className="w-full px-2 py-1.5 border-2 border-blue-300 dark:border-blue-700/80 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-50 focus:bg-white dark:focus:bg-[#132238] text-gray-900 dark:text-white text-center font-semibold shadow-2xs" 
                                         value={item.quantity} 
                                         onChange={e => handleItemChange(index, 'quantity', e.target.value)} 
                                     />
@@ -2010,10 +2090,10 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     <input 
                                         type="number" 
                                         step="any" 
-                                        className={`w-full px-2 py-1.5 border rounded-lg text-sm bg-white dark:bg-[#132238] font-mono ${
+                                        className={`w-full px-2 py-1.5 border-2 rounded-lg text-sm font-mono shadow-2xs ${
                                             Number(item.unitPrice || 0) < 0
-                                                ? 'border-rose-300 text-rose-600 font-bold dark:border-rose-900/60 dark:text-rose-400'
-                                                : 'border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white'
+                                                ? 'border-rose-300 bg-rose-50/80 dark:bg-rose-950/40 text-rose-600 font-bold dark:border-rose-900/60 dark:text-rose-400 focus:bg-white dark:focus:bg-[#132238]'
+                                                : 'border-blue-300 dark:border-blue-700/80 bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-50 focus:bg-white dark:focus:bg-[#132238] text-gray-900 dark:text-white'
                                         }`}
                                         value={item.unitPrice} 
                                         onChange={e => handleItemChange(index, 'unitPrice', e.target.value)} 
@@ -2027,10 +2107,10 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         step="any" 
                                         placeholder="0.00" 
                                         disabled={Number(item.unitPrice || 0) < 0}
-                                        className={`w-full px-2 py-1.5 border rounded-lg text-sm font-mono ${
+                                        className={`w-full px-2 py-1.5 border-2 rounded-lg text-sm font-mono shadow-2xs ${
                                             Number(item.unitPrice || 0) < 0
                                                 ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                                                : 'border-red-200 bg-white text-red-600 placeholder-red-300'
+                                                : 'border-blue-300 dark:border-blue-700/80 bg-blue-50/80 dark:bg-blue-950/40 hover:bg-blue-50 focus:bg-white dark:focus:bg-[#132238] text-red-600 placeholder-red-300'
                                         }`}
                                         value={Number(item.unitPrice || 0) < 0 ? '' : (item.discount || '')} 
                                         onChange={e => handleItemChange(index, 'discount', e.target.value)} 
@@ -2809,13 +2889,15 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 cancelText="Cancel"
                 variant="primary"
                 onConfirm={() => {
-                    setInitialQuoteTerms({
+                    const termsToSave = {
                         remarks: formData.remarks || '',
                         conditionOfPayments: formData.conditionOfPayments || '',
                         completionOfWork: formData.completionOfWork || '',
                         validityQuotation: formData.validityQuotation || '',
                         warrantyCondition: formData.warrantyCondition || '',
-                    });
+                    };
+                    saveDefaultTerms(termsToSave, formData.documentType);
+                    setInitialQuoteTerms(termsToSave);
                     setIsConfirmQuoteTermsOpen(false);
                     toast.success('Terms & Conditions confirmed and updated!');
                 }}

@@ -70,6 +70,7 @@ import gatePassRoutes from './routes/gatePassRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import vehicleModelRoutes from './routes/vehicleModelRoutes.js';
 import insuranceCompanyRoutes from './routes/insuranceCompanyRoutes.js';
+import smsRoutes from './routes/smsRoutes.js';
 
 import { seedDefaults } from './utils/seedDefaults.js';
 
@@ -278,6 +279,7 @@ app.use('/api/finance/bank-accounts', bankAccountRoutes);
 app.use('/api/production/machines', machineRoutes);
 app.use('/api/vehicle-models', vehicleModelRoutes);
 app.use('/api/insurance-companies', insuranceCompanyRoutes);
+app.use('/api/sms', smsRoutes);
 
 
 
@@ -386,14 +388,16 @@ app.get('/api/documents/next-number', protect, asyncHandler(async (req, res) => 
 
     const { default: Counter } = await import('./models/Counter.js');
     const counter = await Counter.findById(seqKey);
-    let currentSeq = counter ? counter.sequence : 1000;
+    let currentSeq = counter ? counter.sequence : 0;
     let nextSeq = currentSeq + 1;
-    let candidate = `${prefix}/${nextSeq}`;
+    let seqFormatted = String(nextSeq).padStart(5, '0');
+    let candidate = `${prefix}/${seqFormatted}`;
 
     const Model = mongoose.model(modelName);
     while (await Model.findOne({ [fieldName]: candidate })) {
         nextSeq++;
-        candidate = `${prefix}/${nextSeq}`;
+        seqFormatted = String(nextSeq).padStart(5, '0');
+        candidate = `${prefix}/${seqFormatted}`;
     }
 
     res.json({ success: true, nextNumber: candidate });

@@ -732,10 +732,12 @@ export const convertProformaToCommercial = asyncHandler(async (req, res) => {
         const prefix = custSnippet ? `JA/INV/${custSnippet}` : 'JA/INV';
 
         let seq = await getNextSequence('invoice');
-        let candidate = `${prefix}/${seq}`;
+        let seqFormatted = String(seq).padStart(5, '0');
+        let candidate = `${prefix}/${seqFormatted}`;
         while (await Invoice.findOne({ invoiceNumber: candidate, _id: { $ne: invoice._id } })) {
             seq = await getNextSequence('invoice');
-            candidate = `${prefix}/${seq}`;
+            seqFormatted = String(seq).padStart(5, '0');
+            candidate = `${prefix}/${seqFormatted}`;
         }
         invoice.invoiceNumber = candidate;
     }
@@ -771,7 +773,7 @@ export const convertInvoiceToProforma = asyncHandler(async (req, res) => {
         const prefix = custSnippet ? `JA/PI/${custSnippet}` : 'JA/PI';
 
         const seq = await getNextSequence('proforma_invoice');
-        const piNumber = `${prefix}/${seq}`;
+        const piNumber = `${prefix}/${String(seq).padStart(5, '0')}`;
         invoice.proformaNumber = piNumber;
         invoice.invoiceNumber = piNumber;
     }

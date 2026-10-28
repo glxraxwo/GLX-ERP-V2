@@ -22,6 +22,8 @@ import Textarea from '../components/ui/Textarea';
 import { customersApi } from '../features/customers/customersApi';
 import { productsApi } from '../features/products/productsApi';
 import { masterDataApi } from '../features/masterData/masterDataApi';
+import { getSalesRepOptions, saveSalesRep } from '../utils/salesRepService';
+import { getSavedTerms, saveDefaultTerms } from '../utils/termsService';
 import { useCreateInvoice } from '../features/invoices/useInvoices';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -163,12 +165,14 @@ export default function InvoiceFormPage() {
     const [customerIdNumber, setCustomerIdNumber] = useState('');
     const currentUserName = (user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim()) || '';
     const [customerSalesRep, setCustomerSalesRep] = useState(currentUserName);
+    const hasInitializedSalesRep = useRef(false);
     useEffect(() => {
-        if (user && !existingInvoice) {
+        if (user && !existingInvoice && !hasInitializedSalesRep.current) {
+            hasInitializedSalesRep.current = true;
             const uName = (user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim()) || '';
             if (uName) {
-                setCustomerSalesRep(prev => (!prev || prev === 'Asanka' ? uName : prev));
-                setTempCustSalesRep(prev => (!prev || prev === 'Asanka' ? uName : prev));
+                setCustomerSalesRep(uName);
+                setTempCustSalesRep(uName);
             }
         }
     }, [user, existingInvoice]);
@@ -199,6 +203,7 @@ export default function InvoiceFormPage() {
     // Keyboard navigation refs for Add Item modal (C# fast desktop style)
     const catalogSelectTriggerRef = useRef(null);
     const productNameInputRef = useRef(null);
+    const vehicleNoInputRef = useRef(null);
     const productTranslationInputRef = useRef(null);
     const descriptionInputRef = useRef(null);
     const quantityInputRef = useRef(null);
@@ -236,11 +241,12 @@ export default function InvoiceFormPage() {
     const [photos, setPhotos] = useState([]);
 
     // Terms & Conditions (for Quotation & Estimate)
-    const [remarks, setRemarks] = useState('');
-    const [conditionOfPayments, setConditionOfPayments] = useState('a). 0% Advance Payment with the firm Order.\nb). Balance Payment on Completion of Work');
-    const [completionOfWork, setCompletionOfWork] = useState('4 to 6 working Days after the Order Confirmation.');
-    const [validityQuotation, setValidityQuotation] = useState('30 Working Days From the Issued Date..');
-    const [warrantyCondition, setWarrantyCondition] = useState('a). Please See the Description..\nb). Warranty Will be Issued with the Invoice.');
+    const initialSavedTerms = getSavedTerms(initialDocType);
+    const [remarks, setRemarks] = useState(initialSavedTerms.remarks);
+    const [conditionOfPayments, setConditionOfPayments] = useState(initialSavedTerms.conditionOfPayments);
+    const [completionOfWork, setCompletionOfWork] = useState(initialSavedTerms.completionOfWork);
+    const [validityQuotation, setValidityQuotation] = useState(initialSavedTerms.validityQuotation);
+    const [warrantyCondition, setWarrantyCondition] = useState(initialSavedTerms.warrantyCondition);
     const [laborCost, setLaborCost] = useState(0);
 
     const [isVehicleInfoOpen, setIsVehicleInfoOpen] = useState(false);
@@ -269,17 +275,31 @@ export default function InvoiceFormPage() {
         return () => window.removeEventListener('keydown', handleGlobalKeyDown);
     }, [isAddItemModalOpen, isAddCustomerModalOpen, isVehicleModalOpen]);
 
-    // When Add Item modal opens, do not auto-focus into Item Name / Title (user will explicitly click with mouse if needed)
+    // When Add Item modal opens, auto-focus immediately so user can type the item directly
     useEffect(() => {
         if (isAddItemModalOpen) {
             const timer = setTimeout(() => {
-                if (document.activeElement === productNameInputRef.current) {
-                    productNameInputRef.current?.blur();
+                if (editingIndex !== null) {
+                    productNameInputRef.current?.focus();
+                    productNameInputRef.current?.select();
+                } else {
+                    catalogSelectTriggerRef.current?.focus();
                 }
-            }, 50);
+            }, 60);
             return () => clearTimeout(timer);
         }
-    }, [isAddItemModalOpen]);
+    }, [isAddItemModalOpen, editingIndex]);
+
+    // When Vehicle Details modal opens, auto-focus immediately so user can type vehicle info directly
+    useEffect(() => {
+        if (isVehicleModalOpen) {
+            const timer = setTimeout(() => {
+                vehicleNoInputRef.current?.focus();
+                vehicleNoInputRef.current?.select();
+            }, 60);
+            return () => clearTimeout(timer);
+        }
+    }, [isVehicleModalOpen]);
 
     // Helper to safely focus and select input element
     const focusAndSelect = (element) => {
@@ -359,6 +379,20 @@ export default function InvoiceFormPage() {
         const list = Array.isArray(insuranceData?.data) ? insuranceData.data : (Array.isArray(insuranceData) ? insuranceData : []);
         return list.map(c => ({ value: c.name, label: c.name }));
     }, [insuranceData]);
+
+    const [salesRepsVersion, setSalesRepsVersion] = useState(0);
+
+    useEffect(() => {
+        const handleRepsUpdated = () => setSalesRepsVersion((v) => v + 1);
+        window.addEventListener('glx_sales_reps_updated', handleRepsUpdated);
+        return () => window.removeEventListener('glx_sales_reps_updated', handleRepsUpdated);
+    }, []);
+
+    const salesRepOptions = useMemo(() => {
+        const extra = [];
+        if (currentUserName) extra.push(currentUserName);
+        return getSalesRepOptions(extra);
+    }, [currentUserName, salesRepsVersion]);
 
     const handleCreateVehicleModel = async (name) => {
         try {
@@ -829,6 +863,9 @@ export default function InvoiceFormPage() {
     const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
 
     const submit = async () => {
+        if (customerSalesRep) {
+            saveSalesRep(customerSalesRep);
+        }
         const finalCustomerName = (customerSearch || selectedCustomer?.displayName || selectedCustomer?.companyName || '').trim();
         if (!customerId && !finalCustomerName) {
             toast.error('Please enter customer name or select a customer');
@@ -858,7 +895,7 @@ export default function InvoiceFormPage() {
                     vatNumber: customerVatNumber || undefined,
                     brNumber: customerBrNumber || undefined,
                     idNumber: customerIdNumber || undefined,
-                    salesRep: customerSalesRep || currentUserName || undefined,
+                    salesRep: (customerSalesRep || '').trim() || undefined,
                     customerSnapshot: {
                         name: finalCustomerName,
                         code: selectedCustomer?.customerCode,
@@ -868,7 +905,7 @@ export default function InvoiceFormPage() {
                         brNumber: customerBrNumber || undefined,
                         idNumber: customerIdNumber || undefined,
                         whatsappNum: customerWhatsapp || undefined,
-                        salesRep: customerSalesRep || currentUserName || undefined,
+                        salesRep: (customerSalesRep || '').trim() || undefined,
                     },
                     invoiceType,
                     invoiceDate,
@@ -935,9 +972,19 @@ export default function InvoiceFormPage() {
                 }
             } else {
                 // docType === 'quotation' || docType === 'estimate'
+                saveDefaultTerms({
+                    remarks,
+                    conditionOfPayments,
+                    completionOfWork,
+                    validityQuotation,
+                    warrantyCondition,
+                }, docType);
+
+                const rawQuoteNumber = quoteNumber.trim();
+                const paddedQuoteNumber = rawQuoteNumber ? rawQuoteNumber.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m) : undefined;
                 const quotePayload = {
                     documentType: docType,
-                    quoteNumber: quoteNumber.trim() || undefined,
+                    quoteNumber: paddedQuoteNumber,
                     customerId: customerId || undefined,
                     customerName: finalCustomerName,
                     vehicleOwner: finalCustomerName,
@@ -950,7 +997,7 @@ export default function InvoiceFormPage() {
                     vatNumber: customerVatNumber || undefined,
                     brNumber: customerBrNumber || undefined,
                     idNumber: customerIdNumber || undefined,
-                    salesRep: customerSalesRep || currentUserName || undefined,
+                    salesRep: (customerSalesRep || '').trim() || undefined,
                     date: invoiceDate,
                     expiryDate: dueDate || undefined,
                     vehicleNo: vehicleNo || undefined,
@@ -1214,7 +1261,19 @@ export default function InvoiceFormPage() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => { setDocType('quotation'); setSearchParams({ type: 'quotation' }); }}
+                            onClick={() => {
+                                setDocType('quotation');
+                                setSearchParams({ type: 'quotation' });
+                                if (!isTermsModified) {
+                                    const t = getSavedTerms('quotation');
+                                    setRemarks(t.remarks);
+                                    setConditionOfPayments(t.conditionOfPayments);
+                                    setCompletionOfWork(t.completionOfWork);
+                                    setValidityQuotation(t.validityQuotation);
+                                    setWarrantyCondition(t.warrantyCondition);
+                                    setInitialTerms(t);
+                                }
+                            }}
                             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
                                 docType === 'quotation'
                                     ? 'bg-blue-600 text-white shadow-sm dark:bg-blue-600 dark:text-white'
@@ -1226,7 +1285,19 @@ export default function InvoiceFormPage() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => { setDocType('estimate'); setSearchParams({ type: 'estimate' }); }}
+                            onClick={() => {
+                                setDocType('estimate');
+                                setSearchParams({ type: 'estimate' });
+                                if (!isTermsModified) {
+                                    const t = getSavedTerms('estimate');
+                                    setRemarks(t.remarks);
+                                    setConditionOfPayments(t.conditionOfPayments);
+                                    setCompletionOfWork(t.completionOfWork);
+                                    setValidityQuotation(t.validityQuotation);
+                                    setWarrantyCondition(t.warrantyCondition);
+                                    setInitialTerms(t);
+                                }
+                            }}
                             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
                                 docType === 'estimate'
                                     ? 'bg-amber-600 text-white shadow-sm dark:bg-amber-600 dark:text-white'
@@ -1245,7 +1316,7 @@ export default function InvoiceFormPage() {
                                 {existingInvoice ? (existingInvoice.invoiceType === 'proforma' ? 'Editing Proforma' : 'Editing Invoice') : docType === 'invoice' ? (invoiceType === 'proforma' ? 'Proforma ID' : 'Invoice ID') : docType === 'estimate' ? 'Estimate ID' : 'Quotation ID'}
                             </span>
                             <span className="font-mono font-bold text-xs text-blue-950 dark:text-blue-100 mt-0.5">
-                                {existingInvoice ? existingInvoice.invoiceNumber : (docType !== 'invoice' && quoteNumber.trim() ? quoteNumber : (autoGeneratedDocId || 'Generating...'))}
+                                {existingInvoice ? (existingInvoice.invoiceNumber ? existingInvoice.invoiceNumber.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m) : '') : (docType !== 'invoice' && quoteNumber.trim() ? quoteNumber.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m) : (autoGeneratedDocId ? autoGeneratedDocId.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m) : 'Generating...'))}
                             </span>
                         </div>
                         {existingInvoice && (() => {
@@ -1311,11 +1382,20 @@ export default function InvoiceFormPage() {
                         <label className="text-xs font-bold text-gray-500 dark:text-slate-400 whitespace-nowrap">Sales Person:</label>
                         <input
                             type="text"
-                            value={customerSalesRep || currentUserName}
+                            list="sales-person-suggestions"
+                            value={customerSalesRep ?? ''}
                             onChange={(e) => setCustomerSalesRep(e.target.value)}
+                            onBlur={(e) => {
+                                if (e.target.value?.trim()) saveSalesRep(e.target.value.trim());
+                            }}
                             placeholder="Sales Person"
-                            className="bg-transparent border-0 text-xs font-semibold text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-0 p-0 cursor-text w-32"
+                            className="bg-transparent border-0 text-xs font-semibold text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-0 p-0 cursor-text w-36"
                         />
+                        <datalist id="sales-person-suggestions">
+                            {salesRepOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value} />
+                            ))}
+                        </datalist>
                     </div>
 
                     {docType !== 'invoice' && (
@@ -2353,6 +2433,7 @@ export default function InvoiceFormPage() {
                         </div>
                         <SearchableSelect
                             triggerRef={catalogSelectTriggerRef}
+                            triggerClassName="bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-300 dark:border-blue-700 hover:bg-blue-50 focus-within:bg-white dark:focus-within:bg-slate-900 shadow-2xs"
                             placeholder="Type to search catalog product..."
                             options={productOptions}
                             value={modalItem.productId || ''}
@@ -2366,7 +2447,11 @@ export default function InvoiceFormPage() {
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                     e.preventDefault();
-                                    focusAndSelect(quantityInputRef.current);
+                                    if (modalItem.productId) {
+                                        focusAndSelect(quantityInputRef.current);
+                                    } else {
+                                        focusAndSelect(productNameInputRef.current);
+                                    }
                                 }
                             }}
                         />
@@ -2392,83 +2477,90 @@ export default function InvoiceFormPage() {
                         ) : null}
                     </div>
 
-                    {/* Item Name & Translation Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
-                                Item Name / Title <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                ref={productNameInputRef}
-                                type="text"
-                                required
-                                placeholder="e.g. Repair Works / Lorry Door Reconstruction"
-                                value={modalItem.productName}
-                                onChange={(e) => updateModalItem('productName', e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === 'ArrowDown') {
-                                        e.preventDefault();
-                                        focusAndSelect(quantityInputRef.current);
-                                    } else if (e.key === 'ArrowUp') {
-                                        e.preventDefault();
-                                        catalogSelectTriggerRef.current?.focus();
-                                    }
-                                }}
-                                className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors placeholder:text-gray-400 dark:placeholder:text-slate-500"
-                            />
+                    {/* Item Name & Translation Grid - Distinct Light Blue Card */}
+                    <div className="bg-blue-50/70 dark:bg-blue-950/35 border-2 border-blue-200/90 dark:border-blue-800/80 rounded-xl p-3.5 sm:p-4 shadow-xs space-y-3">
+                        <div className="text-[11px] font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+                            <Layers size={13} className="text-blue-600 dark:text-blue-400" />
+                            Item Name &amp; Multilingual Details
                         </div>
-
-                        <div>
-                            <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300">
-                                    Translation (Sinhala / Tamil)
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
+                                    Item Name / Title <span className="text-red-500">*</span>
                                 </label>
-                                <button
-                                    type="button"
-                                    onClick={handleTranslateModalItem}
-                                    className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-bold bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2 py-0.5 rounded transition cursor-pointer"
-                                >
-                                    <Sparkles size={11} className="text-blue-500 dark:text-blue-400" />
-                                    Translate
-                                </button>
+                                <input
+                                    ref={productNameInputRef}
+                                    type="text"
+                                    required
+                                    placeholder="e.g. Repair Works / Lorry Door Reconstruction"
+                                    value={modalItem.productName}
+                                    onChange={(e) => updateModalItem('productName', e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                            e.preventDefault();
+                                            focusAndSelect(quantityInputRef.current);
+                                        } else if (e.key === 'ArrowUp') {
+                                            e.preventDefault();
+                                            catalogSelectTriggerRef.current?.focus();
+                                        }
+                                    }}
+                                    className="w-full h-10 px-3 border-2 border-blue-300/90 dark:border-blue-700 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all placeholder:text-blue-900/40 dark:placeholder:text-blue-300/40 shadow-2xs"
+                                />
                             </div>
-                            <input
-                                ref={productTranslationInputRef}
-                                type="text"
-                                placeholder="සිංහල / தமிழ் නම"
-                                value={modalItem.productTranslation || ''}
-                                onChange={(e) => updateModalItem('productTranslation', e.target.value)}
-                                onFocus={(e) => e.target.select()}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === 'ArrowDown') {
-                                        e.preventDefault();
-                                        focusAndSelect(quantityInputRef.current);
-                                    } else if (e.key === 'ArrowUp') {
-                                        e.preventDefault();
-                                        focusAndSelect(productNameInputRef.current);
-                                    }
-                                }}
-                                className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors placeholder:text-gray-400 dark:placeholder:text-slate-500 font-sans"
-                            />
+
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300">
+                                        Translation (Sinhala / Tamil)
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={handleTranslateModalItem}
+                                        className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-bold bg-blue-100/70 dark:bg-blue-900/60 hover:bg-blue-200/70 dark:hover:bg-blue-800/60 px-2 py-0.5 rounded transition cursor-pointer"
+                                    >
+                                        <Sparkles size={11} className="text-blue-500 dark:text-blue-400" />
+                                        Translate
+                                    </button>
+                                </div>
+                                <input
+                                    ref={productTranslationInputRef}
+                                    type="text"
+                                    placeholder="සිංහල / தமிழ் නම"
+                                    value={modalItem.productTranslation || ''}
+                                    onChange={(e) => updateModalItem('productTranslation', e.target.value)}
+                                    onFocus={(e) => e.target.select()}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                            e.preventDefault();
+                                            focusAndSelect(quantityInputRef.current);
+                                        } else if (e.key === 'ArrowUp') {
+                                            e.preventDefault();
+                                            focusAndSelect(productNameInputRef.current);
+                                        }
+                                    }}
+                                    className="w-full h-10 px-3 border-2 border-blue-300/90 dark:border-blue-700 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all placeholder:text-blue-900/40 dark:placeholder:text-blue-300/40 font-sans shadow-2xs"
+                                />
+                            </div>
                         </div>
                     </div>
 
                     {/* Side-by-side Grid: Description (Left) & Pricing Panel (Right) */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-                        {/* Left Column: Detailed Specifications / Multiline Description */}
-                        <div className="lg:col-span-7 flex flex-col">
+                        {/* Left Column: Detailed Specifications / Multiline Description - Light Blue Card */}
+                        <div className="lg:col-span-7 bg-blue-50/50 dark:bg-blue-950/25 border-2 border-blue-200/90 dark:border-blue-800/70 rounded-xl p-3.5 sm:p-4 flex flex-col shadow-xs">
                             <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300">
+                                <label className="block text-xs font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+                                    <FileText size={13} className="text-blue-600 dark:text-blue-400" />
                                     Detailed Description / Specifications
                                 </label>
-                                <span className="text-[11px] text-gray-400 dark:text-slate-500">
-                                    Multiline scope of work (15 lines visible)
+                                <span className="text-[11px] text-blue-600/80 dark:text-blue-400 font-medium">
+                                    (15 lines visible)
                                 </span>
                             </div>
                             <textarea
                                 ref={descriptionInputRef}
                                 rows={15}
-                                className="w-full p-3.5 border border-gray-300 dark:border-slate-700 rounded-lg text-xs leading-relaxed bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors font-sans placeholder:text-gray-400 dark:placeholder:text-slate-500 min-h-[280px] resize-y"
+                                className="w-full p-3.5 border-2 border-blue-300 dark:border-blue-700 rounded-xl text-xs leading-relaxed bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-sans placeholder:text-blue-900/40 dark:placeholder:text-blue-300/40 min-h-[280px] resize-y shadow-2xs"
                                 placeholder="Specifications or repair scope (e.g.&#10;01. Side shutter replacement&#10;02. Waterproof rubber bead fitting&#10;03. Aluminium corrugated sheet fitting&#10;04. Subframe reinforcement...)"
                                 value={modalItem.description || ''}
                                 onChange={(e) => updateModalItem('description', e.target.value)}
@@ -2481,10 +2573,10 @@ export default function InvoiceFormPage() {
                             />
                         </div>
 
-                        {/* Right Column: Pricing, Quantity & Calculations Card */}
-                        <div className="lg:col-span-5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 sm:p-4 space-y-3">
-                            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                                <Calculator size={13} className="text-slate-600 dark:text-slate-400" />
+                        {/* Right Column: Pricing, Quantity & Calculations Card - Light Blue Shade */}
+                        <div className="lg:col-span-5 bg-gradient-to-b from-blue-50/90 via-sky-50/60 to-blue-50/80 dark:from-blue-950/50 dark:via-sky-950/30 dark:to-blue-950/40 border-2 border-blue-200 dark:border-blue-800/80 rounded-xl p-3.5 sm:p-4 space-y-3 shadow-xs">
+                            <div className="text-[11px] font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+                                <Calculator size={13} className="text-blue-600 dark:text-blue-400" />
                                 Pricing &amp; Calculations
                             </div>
 
@@ -2511,7 +2603,7 @@ export default function InvoiceFormPage() {
                                                 focusAndSelect(productNameInputRef.current);
                                             }
                                         }}
-                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-mono font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full h-10 px-3 border-2 border-blue-300/90 dark:border-blue-700 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 font-mono font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all shadow-2xs"
                                     />
                                 </div>
 
@@ -2549,10 +2641,10 @@ export default function InvoiceFormPage() {
                                                 focusAndSelect(quantityInputRef.current);
                                             }
                                         }}
-                                        className={`w-full h-10 px-3 border rounded-lg text-sm bg-white dark:bg-slate-900 font-mono font-bold transition-colors ${
+                                        className={`w-full h-10 px-3 border-2 rounded-lg text-sm font-mono font-bold transition-all shadow-2xs ${
                                             +modalItem.unitPrice < 0 
-                                                ? 'border-rose-400 text-rose-600 dark:text-rose-400 focus:ring-rose-500/20 focus:border-rose-500'
-                                                : 'border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white focus:ring-blue-500/20 focus:border-blue-500'
+                                                ? 'border-rose-400 bg-rose-50/80 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-rose-500/20 focus:border-rose-500'
+                                                : 'border-blue-300/90 dark:border-blue-700 bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:ring-blue-500/30 focus:border-blue-500'
                                         }`}
                                     />
                                     {+modalItem.unitPrice < 0 && (
@@ -2595,10 +2687,10 @@ export default function InvoiceFormPage() {
                                                 focusAndSelect(unitPriceInputRef.current);
                                             }
                                         }}
-                                        className={`w-full h-10 px-3 border rounded-lg text-sm bg-white dark:bg-slate-900 font-mono font-semibold transition-colors ${
+                                        className={`w-full h-10 px-3 border-2 rounded-lg text-sm font-mono font-semibold transition-all shadow-2xs ${
                                             +modalItem.unitPrice < 0
                                                 ? 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 border-gray-200 dark:border-slate-700 cursor-not-allowed'
-                                                : 'border-gray-300 dark:border-slate-700 text-rose-600 dark:text-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400'
+                                                : 'border-blue-300/90 dark:border-blue-700 bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-rose-600 dark:text-rose-400 placeholder:text-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400'
                                         }`}
                                     />
                                     {+modalItem.unitPrice < 0 && (
@@ -2650,7 +2742,7 @@ export default function InvoiceFormPage() {
                                 </label>
 
                                 {modalItem.taxable && (
-                                    <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 rounded-lg px-2.5 py-1 shadow-xs focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                                    <div className="flex items-center gap-1.5 bg-blue-50/80 dark:bg-blue-950/50 border-2 border-blue-300 dark:border-blue-700 rounded-lg px-2.5 py-1 shadow-xs focus-within:bg-white dark:focus-within:bg-slate-900 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/30">
                                         <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Rate:</span>
                                         <input
                                             ref={taxRateInputRef}
@@ -2796,26 +2888,37 @@ export default function InvoiceFormPage() {
                 title="Vehicle & Photo Details"
                 size="xl"
             >
-                <div className="space-y-5 max-h-[78vh] overflow-y-auto px-1 pr-2">
+                <div
+                    className="space-y-5 max-h-[78vh] overflow-y-auto px-1 pr-2"
+                    onKeyDown={(e) => {
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                            e.preventDefault();
+                            setIsVehicleModalOpen(false);
+                            toast.success('Vehicle details saved!');
+                        }
+                    }}
+                >
                     {/* Section 1: Vehicle Information */}
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-gray-200 dark:border-slate-700 space-y-4">
+                    <div className="bg-blue-50/70 dark:bg-blue-950/35 p-4 rounded-xl border-2 border-blue-200/90 dark:border-blue-800/80 space-y-4 shadow-xs">
                         <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold">
+                            <div className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold">
                                 <Truck size={14} />
                             </div>
-                            <span className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wide">
+                            <span className="text-xs font-black text-blue-900 dark:text-blue-200 uppercase tracking-wide">
                                 Vehicle Information
                             </span>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 uppercase mb-1">
+                                <label className="block text-xs font-bold text-blue-900 dark:text-blue-300 uppercase mb-1">
                                     Vehicle Number (Plate No)
                                 </label>
                                 <input
+                                    ref={vehicleNoInputRef}
                                     type="text"
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-mono uppercase font-bold text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    autoFocus
+                                    className="w-full px-3 py-2 border-2 border-blue-300 dark:border-blue-700 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 focus:bg-white dark:focus:bg-slate-900 font-mono uppercase font-bold text-blue-700 dark:text-blue-300 focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-2xs"
                                     value={vehicleNo}
                                     placeholder="e.g. WP DAI-1974"
                                     onChange={(e) => setVehicleNo(e.target.value.toUpperCase())}
@@ -2854,7 +2957,7 @@ export default function InvoiceFormPage() {
                                 </label>
                                 <input
                                     type="text"
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    className="w-full px-3 py-2 border-2 border-blue-300 dark:border-blue-700 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-2xs"
                                     value={jobCaption}
                                     placeholder="e.g. Accident Repair / Body Construction"
                                     onChange={(e) => setJobCaption(e.target.value)}
@@ -3058,13 +3161,15 @@ export default function InvoiceFormPage() {
                 cancelLabel="Cancel"
                 confirmVariant="primary"
                 onConfirm={() => {
-                    setInitialTerms({
+                    const termsToSave = {
                         remarks,
                         conditionOfPayments,
                         completionOfWork,
                         validityQuotation,
                         warrantyCondition,
-                    });
+                    };
+                    saveDefaultTerms(termsToSave, docType);
+                    setInitialTerms(termsToSave);
                     setIsConfirmTermsModalOpen(false);
                     toast.success('Terms & Conditions confirmed and updated successfully!');
                 }}

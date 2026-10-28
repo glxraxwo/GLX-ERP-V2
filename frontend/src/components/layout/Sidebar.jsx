@@ -67,6 +67,7 @@ const menuGroups = [
         icon: ShoppingCart,
         items: [
             { label: 'Customers', icon: UserCircle, path: '/customers', permission: 'customers.view' },
+            { label: 'SMS Centre', icon: Mail, path: '/sms' },
             { label: 'Quotations', icon: FileSpreadsheet, path: '/crm/quotations', permission: 'sales.view' },
             { label: 'Yard Projects', icon: Briefcase, path: '/crm/projects', permission: 'sales.view' },
             { label: 'Sales Orders', icon: ShoppingCart, path: '/sales-orders', permission: 'sales.view' },

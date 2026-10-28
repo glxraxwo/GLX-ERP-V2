@@ -238,14 +238,22 @@ invoiceSchema.pre('save', async function () {
 
         const seqKey = isProforma ? 'proforma_invoice' : 'invoice';
         let seq = await getNextSequence(seqKey);
-        let num = `${prefix}/${seq}`;
+        let seqFormatted = String(seq).padStart(5, '0');
+        let num = `${prefix}/${seqFormatted}`;
         while (await mongoose.model('Invoice').findOne({ invoiceNumber: num })) {
             seq = await getNextSequence(seqKey);
-            num = `${prefix}/${seq}`;
+            seqFormatted = String(seq).padStart(5, '0');
+            num = `${prefix}/${seqFormatted}`;
         }
         this.invoiceNumber = num;
         if (isProforma) {
             this.proformaNumber = num;
+        }
+    } else if (this.invoiceNumber) {
+        // Ensure trailing number is padded to 5 digits
+        this.invoiceNumber = this.invoiceNumber.replace(/(\d+)$/, (match) => match.length < 5 ? match.padStart(5, '0') : match);
+        if (this.proformaNumber) {
+            this.proformaNumber = this.proformaNumber.replace(/(\d+)$/, (match) => match.length < 5 ? match.padStart(5, '0') : match);
         }
     }
 

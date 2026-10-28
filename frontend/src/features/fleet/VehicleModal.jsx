@@ -10,7 +10,7 @@ const VehicleModal = ({ isOpen, onClose, vehicle }) => {
     const createVehicle = useCreateVehicle();
     const updateVehicle = useUpdateVehicle();
 
-    const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    const { register, handleSubmit, reset, setFocus, formState: { errors } } = useForm({
         defaultValues: {
             registrationNo: '',
             type: 'truck',
@@ -46,6 +46,15 @@ const VehicleModal = ({ isOpen, onClose, vehicle }) => {
         }
     }, [vehicle, reset]);
 
+    useEffect(() => {
+        if (isOpen) {
+            const timer = setTimeout(() => {
+                setFocus('registrationNo');
+            }, 60);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen, setFocus]);
+
     const onSubmit = async (data) => {
         try {
             if (vehicle) {
@@ -71,6 +80,7 @@ const VehicleModal = ({ isOpen, onClose, vehicle }) => {
                     <Input
                         label="Registration No."
                         required
+                        autoFocus
                         error={errors.registrationNo?.message}
                         {...register('registrationNo', { required: 'Registration number is required' })}
                     />

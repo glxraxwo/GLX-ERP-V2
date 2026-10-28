@@ -4,7 +4,7 @@ import { protect, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-const ALLOWED_ROLES = ['admin', 'super_admin', 'manager', 'warehouse_manager', 'sales_manager', 'hr_manager', 'accountant'];
+const ALLOWED_ROLES = ['admin', 'super_admin', 'manager', 'warehouse_manager', 'sales_manager', 'hr_manager', 'accountant', 'sales_rep', 'cashier'];
 
 router.route('/sms')
     .get(protect, authorize(...ALLOWED_ROLES), getSmsLogs);
