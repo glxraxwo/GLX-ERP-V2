@@ -6,7 +6,7 @@ import { getApiUrl } from '../../api/config';
 import { paymentsApi } from '../../features/payments/paymentsApi';
 import Modal from '../ui/Modal';
 import PaymentReceiptPrintView from '../print/PaymentReceiptPrintView';
-import { printElementAsPDF } from '../../utils/dataExport';
+import { exportElementToPDF, printElementAsPDF } from '../../utils/dataExport';
 import { useSettings } from '../../features/settings/useSettings';
 
 export default function DocumentPaymentAudit({ documentId, title = 'Payment History' }) {
@@ -15,6 +15,8 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
     const [error, setError] = useState(null);
     const [previewPayment, setPreviewPayment] = useState(null);
     const printModalRef = useRef(null);
+    const directExportRef = useRef(null);
+    const [directExportPayment, setDirectExportPayment] = useState(null);
     const { data: settingsData } = useSettings();
     const companyInfo = settingsData?.data;
 
@@ -35,28 +37,51 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
             });
     }, [documentId]);
 
-    const handleDownloadReceipt = (paymentId, paymentNumber, isVoucher) => {
-        const token = localStorage.getItem('token');
+    const handleDownloadReceipt = async (paymentId, paymentNumber, isVoucher) => {
         const prefix = isVoucher ? 'Voucher' : 'Receipt';
         const docNum = paymentNumber || paymentId;
+        const filename = `${prefix}_${String(docNum).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
 
         toast.loading('Downloading PDF...', { id: 'audit-receipt' });
-        axios.get(`${getApiUrl()}/payments/${paymentId}/receipt`, {
-            responseType: 'blob',
-            headers: token ? { Authorization: `Bearer ${token}` } : {}
-        }).then((res) => {
-            const blob = new Blob([res.data], { type: 'application/pdf' });
-            const link = document.createElement('a');
-            link.href = window.URL.createObjectURL(blob);
-            link.download = `${prefix}_${docNum}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            toast.success('Downloaded successfully', { id: 'audit-receipt' });
-        }).catch((err) => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${getApiUrl()}/payments/${paymentId}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+            const fullPayment = res.data?.data || { _id: paymentId, paymentNumber, direction: isVoucher ? 'paid' : 'received' };
+
+            setDirectExportPayment(fullPayment);
+            setTimeout(async () => {
+                try {
+                    if (directExportRef.current) {
+                        await exportElementToPDF(directExportRef.current, filename);
+                        toast.success('Downloaded successfully', { id: 'audit-receipt' });
+                    } else {
+                        throw new Error('Export ref missing');
+                    }
+                } catch (err) {
+                    console.warn('In-browser PDF export failed, fallback to server:', err);
+                    const fallbackRes = await axios.get(`${getApiUrl()}/payments/${paymentId}/receipt`, {
+                        responseType: 'blob',
+                        headers: token ? { Authorization: `Bearer ${token}` } : {}
+                    });
+                    const blob = new Blob([fallbackRes.data], { type: 'application/pdf' });
+                    const link = document.createElement('a');
+                    link.href = window.URL.createObjectURL(blob);
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    toast.success('Downloaded successfully', { id: 'audit-receipt' });
+                } finally {
+                    setDirectExportPayment(null);
+                }
+            }, 500);
+        } catch (err) {
             console.error('Download error:', err);
             toast.error('Failed to download PDF', { id: 'audit-receipt' });
-        });
+            setDirectExportPayment(null);
+        }
     };
 
     const handlePrintReceipt = async (paymentId, paymentObj) => {
@@ -221,19 +246,34 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                             <div className="text-xs text-gray-600 dark:text-slate-300 font-medium">
                                 Review official receipt layout below with your company letterhead options.
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (printModalRef.current) {
-                                        printElementAsPDF(printModalRef.current);
-                                    } else {
-                                        window.print();
-                                    }
-                                }}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition cursor-pointer"
-                            >
-                                <Printer size={15} /> Print Now
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (printModalRef.current) {
+                                            printElementAsPDF(printModalRef.current);
+                                        } else {
+                                            window.print();
+                                        }
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition cursor-pointer"
+                                >
+                                    <Printer size={15} /> Print Now
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        if (!previewPayment || !printModalRef.current) return;
+                                        const isV = previewPayment.direction === 'paid' || !!previewPayment.voucherType;
+                                        const pfx = isV ? 'Voucher' : 'Receipt';
+                                        const dNum = previewPayment.paymentNumber || previewPayment._id;
+                                        await exportElementToPDF(printModalRef.current, `${pfx}_${String(dNum).replace(/[\\/:*?"<>|]/g, '_')}.pdf`);
+                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition cursor-pointer"
+                                >
+                                    <Download size={15} /> Download PDF
+                                </button>
+                            </div>
                         </div>
                         <div className="overflow-x-auto bg-gray-100 dark:bg-slate-900/60 p-2 sm:p-4 rounded-xl flex justify-center">
                             <PaymentReceiptPrintView
@@ -246,6 +286,19 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                     </div>
                 )}
             </Modal>
+
+            {/* Offscreen print renderer for direct row/card PDF downloads */}
+            {directExportPayment && (
+                <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '210mm', opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
+                    <PaymentReceiptPrintView
+                        ref={directExportRef}
+                        payment={directExportPayment}
+                        companyInfo={companyInfo}
+                        hideToolbar={true}
+                        hideLetterheadHeader={false}
+                    />
+                </div>
+            )}
         </div>
     );
 }

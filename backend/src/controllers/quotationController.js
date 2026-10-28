@@ -359,10 +359,11 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
     const invoiceItems = (quotation.items || []).map((item, index) => {
         const qty = Number(item.quantity || 1);
         const unitPrice = Number(item.unitPrice || 0);
-        const discRate = Number(item.discount || 0);
-        const discAmount = +(discRate * qty).toFixed(2);
+        const isTradeIn = unitPrice < 0;
+        const discRate = isTradeIn ? 0 : Math.max(0, Number(item.discount || 0));
+        const discAmount = isTradeIn ? 0 : +(discRate * qty).toFixed(2);
         const subtotal = +(qty * unitPrice).toFixed(2);
-        const total = +(subtotal - discAmount).toFixed(2);
+        const total = isTradeIn ? subtotal : +(subtotal - discAmount).toFixed(2);
 
         return {
             lineNumber: index + 1,

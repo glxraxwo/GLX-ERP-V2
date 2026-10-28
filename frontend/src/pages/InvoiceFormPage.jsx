@@ -676,6 +676,15 @@ export default function InvoiceFormPage() {
                 } else {
                     next.productId = '';
                 }
+            } else if (field === 'unitPrice') {
+                if (+value < 0) {
+                    next.discount = 0;
+                    next.taxable = false;
+                }
+            } else if (field === 'discount') {
+                if (+next.unitPrice < 0 || +value < 0) {
+                    next.discount = 0;
+                }
             }
             return next;
         });
@@ -724,10 +733,19 @@ export default function InvoiceFormPage() {
             return false;
         }
 
+        const p = +modalItem.unitPrice || 0;
+        const cleanedItem = {
+            ...modalItem,
+            quantity: q,
+            unitPrice: p,
+            discount: p < 0 ? 0 : Math.max(0, +modalItem.discount || 0),
+            taxable: p < 0 ? false : !!modalItem.taxable,
+        };
+
         if (editingIndex !== null) {
             setItems((prev) => {
                 const updated = [...prev];
-                updated[editingIndex] = { ...modalItem };
+                updated[editingIndex] = cleanedItem;
                 return updated;
             });
             toast.success(`Item #${editingIndex + 1} updated!`);
@@ -736,7 +754,7 @@ export default function InvoiceFormPage() {
             setIsAddItemModalOpen(false);
             return true;
         } else {
-            setItems((prev) => [...prev, { ...modalItem }]);
+            setItems((prev) => [...prev, cleanedItem]);
             toast.success(`Item #${items.length + 1} "${modalItem.productName}" added to ${docTypeLower}!`);
             setModalItem(defaultItemState);
             if (!addAnother) {
@@ -788,11 +806,11 @@ export default function InvoiceFormPage() {
         items.forEach((i) => {
             const q = +i.quantity || 0;
             const p = +i.unitPrice || 0;
-            const disc = +i.discount || 0;
             const lSub = q * p;
-            const lDisc = Math.min(lSub, disc * q);
-            const lTaxable = Math.max(0, lSub - lDisc);
-            const lTax = i.taxable ? lTaxable * (+i.taxRate || 0) / 100 : 0;
+            const disc = (p > 0 && lSub > 0) ? Math.max(0, +i.discount || 0) : 0;
+            const lDisc = (p > 0 && lSub > 0) ? Math.min(lSub, disc * q) : 0;
+            const lTaxable = (p > 0 && lSub > 0) ? Math.max(0, lSub - lDisc) : 0;
+            const lTax = (i.taxable && p > 0 && lSub > 0) ? lTaxable * (+i.taxRate || 0) / 100 : 0;
             sub += lSub;
             totalDisc += lDisc;
             tax += lTax;
@@ -856,7 +874,8 @@ export default function InvoiceFormPage() {
                     invoiceDate,
                     items: items.map((i) => {
                         const q = +i.quantity || 1;
-                        const d = +i.discount || 0;
+                        const p = +i.unitPrice || 0;
+                        const d = p > 0 ? Math.max(0, +i.discount || 0) : 0;
                         return {
                             productId: i.productId || undefined,
                             productCode: i.productCode || undefined,
@@ -865,11 +884,11 @@ export default function InvoiceFormPage() {
                             description: i.description || undefined,
                             quantity: q,
                             unitOfMeasure: i.unitOfMeasure || undefined,
-                            unitPrice: +i.unitPrice || 0,
+                            unitPrice: p,
                             discount: d,
                             discountAmount: +(d * q).toFixed(2),
-                            taxRate: +i.taxRate || 0,
-                            taxable: i.taxable,
+                            taxRate: p > 0 ? (+i.taxRate || 0) : 0,
+                            taxable: p > 0 ? i.taxable : false,
                         };
                     }),
                     shippingCost: +shippingCost || 0,
@@ -953,7 +972,8 @@ export default function InvoiceFormPage() {
                     items: items.map((i) => {
                         const q = +i.quantity || 1;
                         const p = +i.unitPrice || 0;
-                        const d = +i.discount || 0;
+                        const d = p > 0 ? Math.max(0, +i.discount || 0) : 0;
+                        const lineSub = p < 0 ? +(q * p).toFixed(2) : +(q * p - q * d).toFixed(2);
                         return {
                             product: i.productId || undefined,
                             productName: i.productName,
@@ -962,7 +982,7 @@ export default function InvoiceFormPage() {
                             quantity: q,
                             unitPrice: p,
                             discount: d,
-                            subtotal: +(q * p - q * d).toFixed(2),
+                            subtotal: lineSub,
                         };
                     }),
                     totalAmount: totals.sub,
@@ -1035,9 +1055,9 @@ export default function InvoiceFormPage() {
                     {items.map((item, idx) => {
                         const q = +item.quantity || 0;
                         const p = +item.unitPrice || 0;
-                        const d = +item.discount || 0;
+                        const d = p > 0 ? Math.max(0, +item.discount || 0) : 0;
                         const lGross = q * p;
-                        const lDisc = lGross > 0 ? Math.min(lGross, d * q) : 0;
+                        const lDisc = (lGross > 0 && d > 0) ? Math.min(lGross, d * q) : 0;
                         const lTaxable = lGross > 0 ? Math.max(0, lGross - lDisc) : 0;
                         const lTax = (item.taxable && lGross > 0) ? lTaxable * (+item.taxRate || 0) / 100 : 0;
                         const lTot = lGross < 0 ? lGross : (lTaxable + lTax);
@@ -2551,9 +2571,14 @@ export default function InvoiceFormPage() {
                                         type="number"
                                         step="0.01"
                                         min="0"
-                                        placeholder="0.00"
-                                        value={modalItem.discount || ''}
-                                        onChange={(e) => updateModalItem('discount', e.target.value)}
+                                        disabled={+modalItem.unitPrice < 0}
+                                        placeholder={+modalItem.unitPrice < 0 ? 'N/A' : '0.00'}
+                                        value={+modalItem.unitPrice < 0 ? '' : (modalItem.discount || '')}
+                                        onChange={(e) => {
+                                            if (+modalItem.unitPrice < 0) return;
+                                            const val = e.target.value;
+                                            updateModalItem('discount', val === '' ? '' : Math.max(0, +val || 0));
+                                        }}
                                         onFocus={(e) => e.target.select()}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' || e.key === 'ArrowDown') {
@@ -2570,8 +2595,17 @@ export default function InvoiceFormPage() {
                                                 focusAndSelect(unitPriceInputRef.current);
                                             }
                                         }}
-                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-mono font-semibold text-rose-600 dark:text-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 transition-colors"
+                                        className={`w-full h-10 px-3 border rounded-lg text-sm bg-white dark:bg-slate-900 font-mono font-semibold transition-colors ${
+                                            +modalItem.unitPrice < 0
+                                                ? 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 border-gray-200 dark:border-slate-700 cursor-not-allowed'
+                                                : 'border-gray-300 dark:border-slate-700 text-rose-600 dark:text-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400'
+                                        }`}
                                     />
+                                    {+modalItem.unitPrice < 0 && (
+                                        <div className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                                            No discount on deduction items
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

@@ -2,7 +2,7 @@ import React, { forwardRef, useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '../../store/authStore';
 import { useSettings } from '../../features/settings/useSettings';
-import { printElementAsPDF } from '../../utils/dataExport';
+import { exportElementToPDF, printElementAsPDF } from '../../utils/dataExport';
 
 export const DOCUMENT_FONT_FAMILY = "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif";
 
@@ -75,7 +75,7 @@ const convertNumberToWords = (amount) => {
     return words + ' Only';
 };
 
-const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar = false, hideLetterheadHeader = false, onPrint }, ref) => {
+const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar = false, hideLetterheadHeader = false, onPrint, onDownload }, ref) => {
     if (!payment) return null;
 
     const { user: currentUser } = useAuthStore();
@@ -84,6 +84,10 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
     useEffect(() => {
         setShowLH(!hideLetterheadHeader);
     }, [hideLetterheadHeader]);
+
+    const isVoucher = payment.direction === 'paid' || !!payment.voucherType;
+    const docTitle = isVoucher ? 'PAYMENT VOUCHER' : 'PAYMENT RECEIPT';
+    const docCode = payment.paymentNumber || (isVoucher ? 'VOU-001' : 'REC-001');
 
     const handlePrintClick = () => {
         if (onPrint) {
@@ -95,9 +99,15 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
         }
     };
 
-    const isVoucher = payment.direction === 'paid' || !!payment.voucherType;
-    const docTitle = isVoucher ? 'PAYMENT VOUCHER' : 'PAYMENT RECEIPT';
-    const docCode = payment.paymentNumber || (isVoucher ? 'VOU-001' : 'REC-001');
+    const handleDownloadClick = async () => {
+        if (onDownload) {
+            onDownload();
+        } else if (ref && ref.current) {
+            const prefix = isVoucher ? 'Voucher' : 'Receipt';
+            const filename = `${prefix}_${String(docCode).replace(/[\\/:*?"<>|]/g, '_')}${!showLetterheadHeader ? '_no_header' : ''}.pdf`;
+            await exportElementToPDF(ref.current, filename);
+        }
+    };
 
     const partyName = payment.partyName || 
         payment.customerId?.displayName || payment.customerId?.companyName || 
@@ -314,6 +324,20 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                         >
                             <span>🖨️</span>
                             <span>Print Receipt</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={handleDownloadClick}
+                            style={{
+                                padding: '5px 14px', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', border: 'none',
+                                background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6,
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                            }}
+                            title="Download official PDF receipt"
+                        >
+                            <span>📥</span>
+                            <span>Download PDF</span>
                         </button>
                     </div>
                 </div>

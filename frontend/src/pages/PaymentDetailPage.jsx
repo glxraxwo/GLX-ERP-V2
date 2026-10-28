@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { paymentsApi } from '../features/payments/paymentsApi';
 import { useSettings } from '../features/settings/useSettings';
 import PaymentReceiptPrintView from '../components/print/PaymentReceiptPrintView';
-import { printElementAsPDF } from '../utils/dataExport';
+import { exportElementToPDF, printElementAsPDF } from '../utils/dataExport';
 
 export default function PaymentDetailPage() {
     const { id } = useParams();
@@ -40,14 +40,26 @@ export default function PaymentDetailPage() {
         }
     };
 
-    const handleDownloadReceipt = () => {
+    const handleDownloadReceipt = async () => {
         if (!p) return;
-        const token = localStorage.getItem('token');
         const isVoucher = p.direction === 'paid' || !!p.voucherType;
         const prefix = isVoucher ? 'Voucher' : 'Receipt';
         const docNum = p.paymentNumber || p._id;
+        const filename = `${prefix}_${String(docNum).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
 
         toast.loading('Generating PDF...', { id: 'pdetail-receipt' });
+        try {
+            if (printRef.current) {
+                await exportElementToPDF(printRef.current, filename);
+                toast.success('Downloaded successfully', { id: 'pdetail-receipt' });
+                return;
+            }
+        } catch (err) {
+            console.warn('In-browser PDF export failed, fallback to server:', err);
+        }
+
+        // Fallback to server download
+        const token = localStorage.getItem('token');
         axios.get(`${getApiUrl()}/payments/${p._id}/receipt`, {
             responseType: 'blob',
             headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -55,7 +67,7 @@ export default function PaymentDetailPage() {
             const blob = new Blob([res.data], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = window.URL.createObjectURL(blob);
-            link.download = `${prefix}_${docNum}.pdf`;
+            link.download = filename;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

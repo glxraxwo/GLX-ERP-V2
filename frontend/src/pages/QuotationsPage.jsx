@@ -380,10 +380,10 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         const itemDiscounts = items.reduce((acc, item) => {
             const p = Number(item.unitPrice || 0);
             if (p < 0) return acc;
-            return acc + (Number(item.discount || 0) * Number(item.quantity || 1));
+            return acc + (Math.max(0, Number(item.discount || 0)) * Math.max(0, Number(item.quantity || 1)));
         }, 0);
-        const totalDiscount = itemDiscounts + Number(extraDiscount || 0);
-        const grandTotal = subtotal + Number(laborCost || 0) + Number(tax || 0) - Number(totalDiscount || 0);
+        const totalDiscount = itemDiscounts + Math.max(0, Number(extraDiscount || 0));
+        const grandTotal = Math.max(0, subtotal + Number(laborCost || 0) + Number(tax || 0) - Number(totalDiscount || 0));
         const balanceAmount = Math.max(0, grandTotal - Number(advanceAmount || 0));
         return { subtotal, totalDiscount, grandTotal, balanceAmount };
     };
@@ -391,11 +391,24 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     const handleItemChange = (index, field, value) => {
         const newItems = [...formData.items];
         newItems[index][field] = value;
+        const currentPrice = Number(newItems[index].unitPrice || 0);
+        if (field === 'unitPrice') {
+            if (Number(value || 0) < 0) {
+                newItems[index].discount = 0;
+            }
+        }
+        if (field === 'discount') {
+            if (currentPrice < 0 || Number(value || 0) < 0) {
+                newItems[index].discount = 0;
+            } else {
+                newItems[index].discount = Math.max(0, Number(value || 0));
+            }
+        }
         if (field === 'quantity' || field === 'unitPrice' || field === 'discount') {
             const qty = Number(newItems[index].quantity || 0);
             const price = Number(newItems[index].unitPrice || 0);
-            const disc = price < 0 ? 0 : Number(newItems[index].discount || 0);
-            newItems[index].subtotal = (qty * price) - (qty * disc);
+            const disc = price < 0 ? 0 : Math.max(0, Number(newItems[index].discount || 0));
+            newItems[index].subtotal = price < 0 ? (qty * price) : (qty * price) - (qty * disc);
         }
         const { subtotal, totalDiscount, grandTotal, balanceAmount } = calculateTotals(newItems, formData.extraDiscount || 0, formData.tax, formData.laborCost, formData.advanceAmount);
         setFormData({ ...formData, items: newItems, totalAmount: subtotal, discount: totalDiscount, grandTotal, balanceAmount });
@@ -647,6 +660,15 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     const cleaned = { ...item };
                     if (!cleaned.product || cleaned.product === '') {
                         delete cleaned.product;
+                    }
+                    const p = Number(cleaned.unitPrice || 0);
+                    const q = Number(cleaned.quantity || 1);
+                    if (p < 0) {
+                        cleaned.discount = 0;
+                        cleaned.subtotal = +(q * p).toFixed(2);
+                    } else {
+                        cleaned.discount = Math.max(0, Number(cleaned.discount || 0));
+                        cleaned.subtotal = +(q * p - q * cleaned.discount).toFixed(2);
                     }
                     return cleaned;
                 })

@@ -466,7 +466,8 @@ export default function InvoiceDetailPage() {
                             </thead>
                             <tbody className="divide-y">
                                 {inv.items.map((item) => {
-                                    const disc = Number(item.lineDiscount || item.discountAmount || (item.discount ? item.discount * item.quantity : 0));
+                                    const isTradeIn = Number(item.unitPrice || 0) < 0;
+                                    const disc = isTradeIn ? 0 : Number(item.lineDiscount || item.discountAmount || (item.discount ? item.discount * item.quantity : 0));
                                     return (
                                         <tr key={item._id || item.lineNumber}>
                                             <td className="px-4 py-3">

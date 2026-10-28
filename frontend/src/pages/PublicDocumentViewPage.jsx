@@ -61,22 +61,13 @@ export default function PublicDocumentViewPage() {
 
     const handleDownloadPDF = async () => {
         setDownloading(true);
-        if (docType === 'payment_receipt') {
-            const directUrl = `${getApiUrl()}/public/documents/${token}/download`;
-            const link = document.createElement('a');
-            link.href = directUrl;
-            link.download = `receipt_${String(doc.paymentNumber || 'REC').replace(/[\/\\:]/g, '_')}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setDownloading(false);
-            return;
-        }
 
         try {
             if (printRef.current) {
-                const docNum = doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'document';
-                const fileName = `${docType}_${String(docNum).replace(/[\/\\:]/g, '_')}.pdf`;
+                const isVoucher = docType === 'payment_receipt' && (doc.direction === 'paid' || !!doc.voucherType);
+                const prefix = docType === 'payment_receipt' ? (isVoucher ? 'voucher' : 'receipt') : docType;
+                const docNum = doc.paymentNumber || doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'document';
+                const fileName = `${prefix}_${String(docNum).replace(/[\/\\:]/g, '_')}.pdf`;
                 await exportElementToPDF(printRef.current, fileName);
                 setDownloading(false);
                 return;
@@ -91,7 +82,9 @@ export default function PublicDocumentViewPage() {
         const directUrl = `${getApiUrl()}/public/documents/${token}/download`;
         const link = document.createElement('a');
         link.href = directUrl;
-        link.download = `${docType}_${String(doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || 'document').replace(/[\/\\:]/g, '_')}.pdf`;
+        const prefix = docType === 'payment_receipt' ? ((doc.direction === 'paid' || !!doc.voucherType) ? 'voucher' : 'receipt') : docType;
+        const docNum = doc.paymentNumber || doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || 'document';
+        link.download = `${prefix}_${String(docNum).replace(/[\/\\:]/g, '_')}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -158,8 +151,9 @@ export default function PublicDocumentViewPage() {
         const qty = Number(item.quantity) || 1;
         const rate = Number(item.unitPrice || item.rate || 0);
         const gross = qty * rate;
-        const discRate = Number(item.discount || 0);
-        const discAmt = discRate > 0 ? discRate * qty : Number(item.discountAmount || (item.discountPercent ? gross * item.discountPercent / 100 : 0));
+        const isTradeIn = rate < 0;
+        const discRate = isTradeIn ? 0 : Number(item.discount || 0);
+        const discAmt = isTradeIn ? 0 : (discRate > 0 ? discRate * qty : Number(item.discountAmount || (item.discountPercent ? gross * item.discountPercent / 100 : 0)));
         subtotal += gross;
         totalDiscount += discAmt;
     });
@@ -491,8 +485,9 @@ export default function PublicDocumentViewPage() {
                                     const qty = Number(item.quantity) || 1;
                                     const rate = Number(item.unitPrice || item.rate || 0);
                                     const gross = qty * rate;
-                                    const discRate = Number(item.discount || 0);
-                                    const discAmt = discRate > 0 ? discRate * qty : Number(item.discountAmount || (item.discountPercent ? gross * item.discountPercent / 100 : 0));
+                                    const isTradeIn = rate < 0;
+                                    const discRate = isTradeIn ? 0 : Number(item.discount || 0);
+                                    const discAmt = isTradeIn ? 0 : (discRate > 0 ? discRate * qty : Number(item.discountAmount || (item.discountPercent ? gross * item.discountPercent / 100 : 0)));
                                     const name = item.productName || item.product?.name || item.description || `Item #${idx + 1}`;
 
                                     return (

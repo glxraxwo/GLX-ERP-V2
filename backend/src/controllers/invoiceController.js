@@ -595,9 +595,9 @@ export const updateInvoice = asyncHandler(async (req, res) => {
             quantity: Number(item.quantity) || 1,
             unitOfMeasure: item.unitOfMeasure || 'pcs',
             unitPrice: Number(item.unitPrice) || 0,
-            discount: Number(item.discount) || 0,
-            taxRate: Number(item.taxRate) || 0,
-            taxable: item.taxable !== false,
+            discount: Number(item.unitPrice) < 0 ? 0 : Math.max(0, Number(item.discount) || 0),
+            taxRate: Number(item.unitPrice) < 0 ? 0 : (Number(item.taxRate) || 0),
+            taxable: Number(item.unitPrice) < 0 ? false : (item.taxable !== false),
         }));
     }
 

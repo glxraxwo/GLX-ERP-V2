@@ -124,15 +124,29 @@ quotationSchema.pre('validate', async function () {
         this.quoteNumber = this.quotationCode;
     }
     // Auto-calculate grand total & balance
+    if (Array.isArray(this.items)) {
+        this.items.forEach(i => {
+            const p = Number(i.unitPrice || 0);
+            const q = Number(i.quantity || 1);
+            if (p < 0) {
+                i.discount = 0;
+                i.subtotal = +(q * p).toFixed(2);
+            } else {
+                i.discount = Math.max(0, Number(i.discount || 0));
+                i.subtotal = +(q * p - q * i.discount).toFixed(2);
+            }
+        });
+    }
+
     this.totalAmount = (this.items || []).reduce((sum, i) => sum + (Number(i.quantity || 0) * Number(i.unitPrice || 0)), 0);
     const itemDiscounts = (this.items || []).reduce((sum, i) => {
         const p = Number(i.unitPrice || 0);
         if (p < 0) return sum;
-        return sum + (Number(i.discount || 0) * Number(i.quantity || 1));
+        return sum + (Math.max(0, Number(i.discount || 0)) * Math.max(0, Number(i.quantity || 1)));
     }, 0);
-    const totalDiscount = Math.max(Number(this.discount || 0), itemDiscounts);
+    const totalDiscount = Math.max(0, Math.max(Number(this.discount || 0), itemDiscounts));
     this.discount = totalDiscount;
-    this.grandTotal = (this.totalAmount || 0) + (this.laborCost || 0) + (this.tax || 0) - (this.discount || 0);
+    this.grandTotal = Math.max(0, (this.totalAmount || 0) + (this.laborCost || 0) + (this.tax || 0) - (this.discount || 0));
 
     // Compute advance amount from advancePercentage if specified
     if (this.advancePercentage > 0) {
