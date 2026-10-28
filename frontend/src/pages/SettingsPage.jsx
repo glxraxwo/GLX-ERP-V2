@@ -5,10 +5,13 @@ import { z } from 'zod';
 import {
     Building2, DollarSign, Package, Save, Globe,
     Phone, Mail, MapPin, Hash, BadgeCheck, AlertTriangle,
-    ChevronRight, CheckCircle2, Calendar
+    ChevronRight, CheckCircle2, Calendar, User
 } from 'lucide-react';
 
 import { useSettings, useUpdateSettings } from '../features/settings/useSettings';
+import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
+import api from '../api/axios';
 
 const settingsSchema = z.object({
     companyName: z.string().min(1, 'Company name required'),
@@ -36,6 +39,7 @@ const settingsSchema = z.object({
 });
 
 const TABS = [
+    { id: 'profile',   label: 'My User Profile',    icon: User,       color: 'text-sky-500' },
     { id: 'company',   label: 'Company Profile',    icon: Building2,  color: 'text-blue-500' },
     { id: 'finance',   label: 'Financial Defaults', icon: DollarSign, color: 'text-emerald-500' },
     { id: 'inventory', label: 'Inventory Settings', icon: Package,    color: 'text-amber-500' },
@@ -50,6 +54,7 @@ function SectionBadge({ icon: Icon, label, accent = 'blue' }) {
         amber:    'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800/60 text-amber-600 dark:text-amber-300',
         purple:   'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800/60 text-purple-600 dark:text-purple-300',
         indigo:   'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-300',
+        sky:      'bg-sky-50 dark:bg-sky-950/60 border-sky-200 dark:border-sky-800/60 text-sky-600 dark:text-sky-300',
     };
     return (
         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border mb-5 ${map[accent]}`}>
@@ -95,7 +100,52 @@ function StyledInput({ label, icon: Icon, error, type = 'text', step, placeholde
 export default function SettingsPage() {
     const { data, isLoading } = useSettings();
     const updateMutation = useUpdateSettings();
-    const [activeTab, setActiveTab] = useState('company');
+    const [activeTab, setActiveTab] = useState('profile');
+    const { user: currentUser, updateUser } = useAuthStore();
+    const [profileFirstName, setProfileFirstName] = useState(currentUser?.firstName || '');
+    const [profileLastName, setProfileLastName] = useState(currentUser?.lastName || '');
+    const [profilePhone, setProfilePhone] = useState(currentUser?.phone || '');
+    const [profileJobTitle, setProfileJobTitle] = useState(currentUser?.jobTitle || '');
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [profileSaved, setProfileSaved] = useState(false);
+
+    useEffect(() => {
+        if (currentUser) {
+            setProfileFirstName(currentUser.firstName || '');
+            setProfileLastName(currentUser.lastName || '');
+            setProfilePhone(currentUser.phone || '');
+            setProfileJobTitle(currentUser.jobTitle || '');
+        }
+    }, [currentUser]);
+
+    const handleUpdateProfile = async (e) => {
+        e?.preventDefault();
+        if (!profileFirstName.trim()) {
+            toast.error('First Name is required');
+            return;
+        }
+        setProfileSaving(true);
+        try {
+            const { data: res } = await api.put('/auth/profile', {
+                firstName: profileFirstName.trim(),
+                lastName: profileLastName.trim(),
+                phone: profilePhone.trim(),
+                jobTitle: profileJobTitle.trim(),
+            });
+            if (res.data) {
+                updateUser(res.data);
+            }
+            setProfileSaved(true);
+            setTimeout(() => setProfileSaved(false), 3000);
+            toast.success('User profile updated! Your name will now automatically appear as the Sales Person on Quotations, Invoices and Estimates.');
+        } catch (err) {
+            console.error('Update profile error:', err);
+            toast.error(err.response?.data?.message || 'Failed to update profile');
+        } finally {
+            setProfileSaving(false);
+        }
+    };
+
     const [saved, setSaved] = useState(false);
 
     const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
@@ -277,6 +327,152 @@ export default function SettingsPage() {
                 <div className="flex-1">
                     <form onSubmit={handleSubmit(onSubmit)}>
                         <div className="bg-white dark:bg-[#111F33] rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-4 sm:p-7">
+
+                            
+                            {/* ── USER PROFILE ─────────────────────────── */}
+                            {activeTab === 'profile' && (
+                                <div>
+                                    <SectionBadge icon={User} label="Your User Profile & Sales Person Identity" accent="sky" />
+                                    <p className="text-xs text-gray-500 dark:text-slate-400 mb-5">
+                                        Update your name and profile details below. This profile name automatically appears as the <strong>Sales Person</strong> across all Quotations, Invoices, and Estimates you create.
+                                    </p>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wide">
+                                                First Name <span className="text-rose-500 ml-1">*</span>
+                                            </label>
+                                            <div className="relative group">
+                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 group-focus-within:text-sky-500 transition-colors pointer-events-none">
+                                                    <User size={15} />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={profileFirstName}
+                                                    onChange={(e) => setProfileFirstName(e.target.value)}
+                                                    placeholder="e.g. Asanka"
+                                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-sm text-gray-800 dark:text-white outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-medium"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wide">
+                                                Last Name
+                                            </label>
+                                            <div className="relative group">
+                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 group-focus-within:text-sky-500 transition-colors pointer-events-none">
+                                                    <User size={15} />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={profileLastName}
+                                                    onChange={(e) => setProfileLastName(e.target.value)}
+                                                    placeholder="e.g. Silva"
+                                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-sm text-gray-800 dark:text-white outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-medium"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Live Preview Banner */}
+                                    <div className="mb-6 p-4 rounded-xl bg-sky-50/80 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 flex items-center justify-between flex-wrap gap-3">
+                                        <div>
+                                            <span className="text-xs font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wide block">
+                                                Auto Sales Person on Documents:
+                                            </span>
+                                            <span className="text-base font-extrabold text-sky-950 dark:text-white">
+                                                {`${profileFirstName} ${profileLastName}`.trim() || 'Not Specified'}
+                                            </span>
+                                        </div>
+                                        <span className="text-xs text-sky-700 dark:text-sky-400 font-semibold bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-sky-200 dark:border-sky-800 shadow-2xs">
+                                            ✓ Auto-inserted in Quotations, Invoices & Estimates
+                                        </span>
+                                    </div>
+
+                                    <SectionBadge icon={Phone} label="Contact & Role Details" accent="sky" />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wide">
+                                                Email Address (Account ID)
+                                            </label>
+                                            <div className="relative">
+                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none">
+                                                    <Mail size={15} />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={currentUser?.email || ''}
+                                                    disabled
+                                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-sm text-gray-500 dark:text-slate-400 cursor-not-allowed font-medium"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wide">
+                                                Contact Phone
+                                            </label>
+                                            <div className="relative group">
+                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 group-focus-within:text-sky-500 transition-colors pointer-events-none">
+                                                    <Phone size={15} />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={profilePhone}
+                                                    onChange={(e) => setProfilePhone(e.target.value)}
+                                                    placeholder="07X XXXXXXX"
+                                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-sm text-gray-800 dark:text-white outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-medium"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wide">
+                                                Job Title / Designation
+                                            </label>
+                                            <div className="relative group">
+                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 group-focus-within:text-sky-500 transition-colors pointer-events-none">
+                                                    <BadgeCheck size={15} />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={profileJobTitle}
+                                                    onChange={(e) => setProfileJobTitle(e.target.value)}
+                                                    placeholder="e.g. Sales Executive / Manager"
+                                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-sm text-gray-800 dark:text-white outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all font-medium"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <label className="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wide">
+                                                System Role
+                                            </label>
+                                            <div className="py-2.5 px-3 rounded-xl bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-sm font-bold text-gray-700 dark:text-slate-300 capitalize">
+                                                {currentUser?.role || 'Staff'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-end pt-4 border-t border-gray-100 dark:border-slate-800">
+                                        <button
+                                            type="button"
+                                            onClick={handleUpdateProfile}
+                                            disabled={profileSaving}
+                                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm bg-sky-600 hover:bg-sky-700 text-white shadow-md transition-all cursor-pointer"
+                                        >
+                                            {profileSaved ? (
+                                                <><CheckCircle2 size={16} /> Profile Saved!</>
+                                            ) : profileSaving ? (
+                                                <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving...</>
+                                            ) : (
+                                                <><Save size={16} /> Save Profile Name</>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* ── COMPANY PROFILE ───────────────────────── */}
                             {activeTab === 'company' && (

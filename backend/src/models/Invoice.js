@@ -253,25 +253,33 @@ invoiceSchema.pre('save', async function () {
     this.items.forEach((item, idx) => {
         item.lineNumber = idx + 1;
         item.lineSubtotal = +(item.quantity * item.unitPrice).toFixed(2);
-        if (!item.discountAmount && item.discount) {
-            item.discountAmount = +(item.discount * item.quantity).toFixed(2);
+        if (item.lineSubtotal < 0) {
+            // Trade-in / Exchange deduction line
+            item.lineDiscount = 0;
+            item.lineTax = 0;
+            item.taxAmount = 0;
+            item.lineTotal = item.lineSubtotal;
+        } else {
+            if (!item.discountAmount && item.discount) {
+                item.discountAmount = +(item.discount * item.quantity).toFixed(2);
+            }
+            const discFromPct = item.lineSubtotal * (item.discountPercent || 0) / 100;
+            item.lineDiscount = +(discFromPct + (item.discountAmount || 0)).toFixed(2);
+            const taxable = Math.max(0, item.lineSubtotal - item.lineDiscount);
+            item.lineTax = item.taxable ? +(taxable * (item.taxRate || 0) / 100).toFixed(2) : 0;
+            item.taxAmount = item.lineTax;
+            item.lineTotal = +(taxable + item.lineTax).toFixed(2);
         }
-        const discFromPct = item.lineSubtotal * (item.discountPercent || 0) / 100;
-        item.lineDiscount = +(discFromPct + (item.discountAmount || 0)).toFixed(2);
-        const taxable = Math.max(0, item.lineSubtotal - item.lineDiscount);
-        item.lineTax = item.taxable ? +(taxable * (item.taxRate || 0) / 100).toFixed(2) : 0;
-        item.taxAmount = item.lineTax;
-        item.lineTotal = +(taxable + item.lineTax).toFixed(2);
     });
 
     this.subtotal = +this.items.reduce((s, i) => s + i.lineSubtotal, 0).toFixed(2);
     this.totalDiscount = +this.items.reduce((s, i) => s + i.lineDiscount, 0).toFixed(2);
     this.totalTax = +this.items.reduce((s, i) => s + i.lineTax, 0).toFixed(2);
 
-    this.grandTotal = +(
+    this.grandTotal = Math.max(0, +(
         this.subtotal - this.totalDiscount + this.totalTax
         + (this.shippingCost || 0) + (this.otherCharges || 0)
-    ).toFixed(2);
+    ).toFixed(2));
 
     this.balanceDue = +(this.grandTotal - (this.amountPaid || 0)).toFixed(2);
 

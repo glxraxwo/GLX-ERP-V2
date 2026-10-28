@@ -26,6 +26,7 @@ import { translateText, detectLanguage } from '../utils/translationService';
 import { usePermission } from '../hooks/usePermission';
 import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
 import DocumentEditLogModal from '../components/common/DocumentEditLogModal';
+import { useAuthStore } from '../store/authStore';
 
 const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
 
@@ -44,6 +45,8 @@ const formatDate = (dateStr) => {
 
 const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     const navigate = useNavigate();
+    const { user: currentUser } = useAuthStore();
+    const currentSalesPerson = (currentUser?.fullName || `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()) || 'Asanka';
     const { hasPermission, isAdmin } = usePermission();
     const canCreate = isAdmin || hasPermission('sales.create');
     const canEdit = isAdmin || hasPermission('sales.edit');
@@ -145,7 +148,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         vehicleNo: '',
         vehicleModel: '',
         jobCaption: '',
-        salesRep: 'Asanka',
+        salesRep: currentSalesPerson,
         branch: 'JA-ELA',
         numberPlateImage: '',
         lorryBodyImage: '',
@@ -374,7 +377,11 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
     const calculateTotals = (items, extraDiscount = 0, tax = 0, laborCost = 0, advanceAmount = 0) => {
         const subtotal = items.reduce((acc, item) => acc + (Number(item.quantity || 0) * Number(item.unitPrice || 0)), 0);
-        const itemDiscounts = items.reduce((acc, item) => acc + (Number(item.discount || 0) * Number(item.quantity || 1)), 0);
+        const itemDiscounts = items.reduce((acc, item) => {
+            const p = Number(item.unitPrice || 0);
+            if (p < 0) return acc;
+            return acc + (Number(item.discount || 0) * Number(item.quantity || 1));
+        }, 0);
         const totalDiscount = itemDiscounts + Number(extraDiscount || 0);
         const grandTotal = subtotal + Number(laborCost || 0) + Number(tax || 0) - Number(totalDiscount || 0);
         const balanceAmount = Math.max(0, grandTotal - Number(advanceAmount || 0));
@@ -387,7 +394,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         if (field === 'quantity' || field === 'unitPrice' || field === 'discount') {
             const qty = Number(newItems[index].quantity || 0);
             const price = Number(newItems[index].unitPrice || 0);
-            const disc = Number(newItems[index].discount || 0);
+            const disc = price < 0 ? 0 : Number(newItems[index].discount || 0);
             newItems[index].subtotal = (qty * price) - (qty * disc);
         }
         const { subtotal, totalDiscount, grandTotal, balanceAmount } = calculateTotals(newItems, formData.extraDiscount || 0, formData.tax, formData.laborCost, formData.advanceAmount);
@@ -482,7 +489,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 vehicleNo: quote.vehicleNo || '',
                 vehicleModel: quote.vehicleModel || '',
                 jobCaption: quote.jobCaption || '',
-                salesRep: quote.salesRep || 'Asanka',
+                salesRep: quote.salesRep || currentSalesPerson,
                 introducer: quote.introducer?._id || quote.introducer || '',
                 introducerName: quote.introducerName || '',
                 biller: quote.biller?._id || quote.biller || '',
@@ -538,7 +545,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 vehicleNo: '',
                 vehicleModel: '',
                 jobCaption: defaultType === 'estimate' ? 'Accident Repair' : 'Truck Body Manufacture',
-                salesRep: 'Asanka',
+                salesRep: currentSalesPerson,
                 introducer: '',
                 introducerName: '',
                 biller: '',
@@ -1835,10 +1842,12 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                                         .filter(p => {
                                                             const search = (item.productName || '').toLowerCase().trim();
                                                             if (!search) return true;
+                                                            const tokens = search.split(/\s+/).filter(Boolean);
                                                             const name = (p.name || p.productName || p.title || '').toLowerCase();
                                                             const sName = (p.sinhalaName || '').toLowerCase();
                                                             const code = (p.productCode || p.code || p.sku || '').toLowerCase();
-                                                            return name.includes(search) || sName.includes(search) || code.includes(search);
+                                                            const desc = (p.description || '').toLowerCase();
+                                                            return tokens.every(t => name.includes(t) || sName.includes(t) || code.includes(t) || desc.includes(t));
                                                         })
                                                         .slice(0, 10)
                                                         .map(p => {
@@ -1855,7 +1864,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                                                     onMouseDown={() => {
                                                                         const newItems = [...formData.items];
                                                                         const qty = Number(newItems[index].quantity || 1);
-                                                                        const disc = Number(newItems[index].discount || 0);
+                                                                        const disc = pPrice < 0 ? 0 : Number(newItems[index].discount || 0);
                                                                         newItems[index].product = p._id;
                                                                         newItems[index].productName = pName;
                                                                         if (pSinhalaName) {
@@ -1868,8 +1877,8 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                                                         newItems[index].quantity = qty;
                                                                         newItems[index].subtotal = (qty * pPrice) - (qty * disc);
                                                                         
-                                                                        const { subtotal, totalDiscount, grandTotal } = calculateTotals(newItems, formData.extraDiscount, formData.tax);
-                                                                        setFormData({ ...formData, items: newItems, totalAmount: subtotal, discount: totalDiscount, grandTotal });
+                                                                        const { subtotal, totalDiscount, grandTotal, balanceAmount } = calculateTotals(newItems, formData.extraDiscount, formData.tax, formData.laborCost, formData.advanceAmount);
+                                                                        setFormData({ ...formData, items: newItems, totalAmount: subtotal, discount: totalDiscount, grandTotal, balanceAmount });
                                                                         setShowProductSuggestions(null);
                                                                         setHoveredProductSuggestion(null);
                                                                     }}
@@ -1939,11 +1948,32 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 </div>
 
                                 <div className="col-span-4 sm:col-span-2 md:col-span-2 space-y-1">
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase">Rate (LKR)</label>
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase">Rate (LKR)</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const current = Number(item.unitPrice || 0);
+                                                handleItemChange(index, 'unitPrice', current === 0 ? -1 : -Math.abs(current));
+                                            }}
+                                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition ${
+                                                Number(item.unitPrice || 0) < 0
+                                                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-rose-50 hover:text-rose-600 dark:bg-slate-800 dark:text-slate-400'
+                                            }`}
+                                            title="Make this a trade-in / exchange item with negative price"
+                                        >
+                                            ± Trade-in (-)
+                                        </button>
+                                    </div>
                                     <input 
                                         type="number" 
                                         step="any" 
-                                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white font-mono" 
+                                        className={`w-full px-2 py-1.5 border rounded-lg text-sm bg-white dark:bg-[#132238] font-mono ${
+                                            Number(item.unitPrice || 0) < 0
+                                                ? 'border-rose-300 text-rose-600 font-bold dark:border-rose-900/60 dark:text-rose-400'
+                                                : 'border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white'
+                                        }`}
                                         value={item.unitPrice} 
                                         onChange={e => handleItemChange(index, 'unitPrice', e.target.value)} 
                                     />
@@ -1955,8 +1985,13 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         type="number" 
                                         step="any" 
                                         placeholder="0.00" 
-                                        className="w-full px-2 py-1.5 border border-red-200 rounded-lg text-sm bg-white font-mono text-red-600 placeholder-red-300" 
-                                        value={item.discount || ''} 
+                                        disabled={Number(item.unitPrice || 0) < 0}
+                                        className={`w-full px-2 py-1.5 border rounded-lg text-sm font-mono ${
+                                            Number(item.unitPrice || 0) < 0
+                                                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                                : 'border-red-200 bg-white text-red-600 placeholder-red-300'
+                                        }`}
+                                        value={Number(item.unitPrice || 0) < 0 ? '' : (item.discount || '')} 
                                         onChange={e => handleItemChange(index, 'discount', e.target.value)} 
                                     />
                                 </div>
@@ -1964,14 +1999,20 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <div className="col-span-8 sm:col-span-4 md:col-span-2 space-y-1">
                                     <label className="text-[10px] font-bold text-gray-700 uppercase">Net Subtotal</label>
                                     <div className="w-full px-2.5 py-1.5 bg-white dark:bg-[#132238] border border-gray-200 dark:border-slate-700 rounded-lg">
-                                        <div className="text-xs font-mono font-bold text-gray-900 truncate">
+                                        <div className={`text-xs font-mono font-bold truncate ${
+                                            Number(item.subtotal || 0) < 0 ? 'text-rose-600' : 'text-gray-900'
+                                        }`}>
                                             LKR {Number(item.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </div>
-                                        {Number(item.discount || 0) > 0 && (
+                                        {Number(item.unitPrice || 0) < 0 ? (
+                                            <div className="text-[9px] text-rose-600 font-semibold truncate">
+                                                Exchange / Trade-in (-)
+                                            </div>
+                                        ) : Number(item.discount || 0) > 0 ? (
                                             <div className="text-[9px] text-red-500 font-mono truncate">
                                                 -Disc: LKR {(Number(item.discount || 0) * Number(item.quantity || 1)).toLocaleString()}
                                             </div>
-                                        )}
+                                        ) : null}
                                     </div>
                                 </div>
 

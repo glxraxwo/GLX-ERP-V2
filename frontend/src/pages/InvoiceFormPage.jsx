@@ -161,7 +161,18 @@ export default function InvoiceFormPage() {
     const [customerVatNumber, setCustomerVatNumber] = useState('');
     const [customerBrNumber, setCustomerBrNumber] = useState('');
     const [customerIdNumber, setCustomerIdNumber] = useState('');
-    const [customerSalesRep, setCustomerSalesRep] = useState('');
+    const currentUserName = (user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim()) || '';
+    const [customerSalesRep, setCustomerSalesRep] = useState(currentUserName);
+    useEffect(() => {
+        if (user && !existingInvoice) {
+            const uName = (user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim()) || '';
+            if (uName && !customerSalesRep) {
+                setCustomerSalesRep(uName);
+                setTempCustSalesRep(uName);
+            }
+        }
+    }, [user, existingInvoice, customerSalesRep]);
+
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
 
@@ -258,20 +269,15 @@ export default function InvoiceFormPage() {
         return () => window.removeEventListener('keydown', handleGlobalKeyDown);
     }, [isAddItemModalOpen, isAddCustomerModalOpen, isVehicleModalOpen]);
 
-    // Auto-focus first input when Add Item modal opens
+    // Focus catalog search when Add Item modal opens - do not auto-jump into Item Name / Title
     useEffect(() => {
         if (isAddItemModalOpen) {
             const timer = setTimeout(() => {
-                if (editingIndex !== null) {
-                    productNameInputRef.current?.focus();
-                    productNameInputRef.current?.select();
-                } else {
-                    catalogSelectTriggerRef.current?.focus();
-                }
+                catalogSelectTriggerRef.current?.focus();
             }, 80);
             return () => clearTimeout(timer);
         }
-    }, [isAddItemModalOpen, editingIndex]);
+    }, [isAddItemModalOpen]);
 
     // Helper to safely focus and select input element
     const focusAndSelect = (element) => {
@@ -316,7 +322,7 @@ export default function InvoiceFormPage() {
     });
     const { data: productsData } = useQuery({
         queryKey: ['products', 'active'],
-        queryFn: () => productsApi.list({ status: 'active', limit: 500 }),
+        queryFn: () => productsApi.list({ status: 'active', limit: 2000 }),
     });
     const { data: employeesData } = useQuery({
         queryKey: ['employees', 'active'],
@@ -437,7 +443,7 @@ export default function InvoiceFormPage() {
         setCustomerVatNumber(cust.taxRegistrationNumber || '');
         setCustomerBrNumber(cust.businessRegistrationNumber || '');
         setCustomerIdNumber(cust.idNumber || '');
-        setCustomerSalesRep(cust.assignedSalesRep?._id || cust.assignedSalesRep || '');
+        setCustomerSalesRep(cust.assignedSalesRep?._id || cust.assignedSalesRep || currentUserName);
         if (cust.introducer) {
             setIntroducer(cust.introducer);
             setIntroducerName(cust.introducerName || '');
@@ -1029,10 +1035,10 @@ export default function InvoiceFormPage() {
                         const p = +item.unitPrice || 0;
                         const d = +item.discount || 0;
                         const lGross = q * p;
-                        const lDisc = Math.min(lGross, d * q);
-                        const lTaxable = Math.max(0, lGross - lDisc);
-                        const lTax = item.taxable ? lTaxable * (+item.taxRate || 0) / 100 : 0;
-                        const lTot = lTaxable + lTax;
+                        const lDisc = lGross > 0 ? Math.min(lGross, d * q) : 0;
+                        const lTaxable = lGross > 0 ? Math.max(0, lGross - lDisc) : 0;
+                        const lTax = (item.taxable && lGross > 0) ? lTaxable * (+item.taxRate || 0) / 100 : 0;
+                        const lTot = lGross < 0 ? lGross : (lTaxable + lTax);
                         const isBeingEdited = editingIndex === idx;
 
                         return (
@@ -1108,8 +1114,8 @@ export default function InvoiceFormPage() {
                                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                                         <div className="text-right">
                                             <span className="text-xs text-gray-400 dark:text-slate-500 block">Total</span>
-                                            <span className="text-base font-bold text-gray-900 dark:text-white font-mono">
-                                                {fmt(lTot)}
+                                            <span className={`text-base font-bold font-mono ${lTot < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-900 dark:text-white'}`}>
+                                                {lTot < 0 ? `-LKR ${Math.abs(lTot).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : fmt(lTot)}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-1">
@@ -2327,7 +2333,7 @@ export default function InvoiceFormPage() {
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                     e.preventDefault();
-                                    focusAndSelect(productNameInputRef.current);
+                                    focusAndSelect(quantityInputRef.current);
                                 }
                             }}
                         />
@@ -2366,7 +2372,6 @@ export default function InvoiceFormPage() {
                                 placeholder="e.g. Repair Works / Lorry Door Reconstruction"
                                 value={modalItem.productName}
                                 onChange={(e) => updateModalItem('productName', e.target.value)}
-                                onFocus={(e) => e.target.select()}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' || e.key === 'ArrowDown') {
                                         e.preventDefault();
@@ -2478,14 +2483,27 @@ export default function InvoiceFormPage() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">
-                                        Unit Price (LKR) <span className="text-red-500">*</span>
-                                    </label>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-xs font-bold text-gray-700 dark:text-slate-300">
+                                            Unit Price (LKR) <span className="text-red-500">*</span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const cur = +modalItem.unitPrice || 0;
+                                                updateModalItem('unitPrice', cur !== 0 ? -cur : '-');
+                                            }}
+                                            className="text-[10px] font-bold text-rose-600 hover:text-rose-700 underline cursor-pointer"
+                                            title="Toggle negative price for exchange / trade-in deduction"
+                                        >
+                                            {+modalItem.unitPrice < 0 ? '✓ Trade-in (-)' : '± Make Trade-in (-)'}
+                                        </button>
+                                    </div>
                                     <input
                                         ref={unitPriceInputRef}
                                         type="number"
-                                        step="0.01"
-                                        min="0"
+                                        step="any"
+                                        placeholder="0.00 or -50000"
                                         value={modalItem.unitPrice}
                                         onChange={(e) => updateModalItem('unitPrice', e.target.value)}
                                         onFocus={(e) => e.target.select()}
@@ -2498,8 +2516,17 @@ export default function InvoiceFormPage() {
                                                 focusAndSelect(quantityInputRef.current);
                                             }
                                         }}
-                                        className="w-full h-10 px-3 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 font-mono font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className={`w-full h-10 px-3 border rounded-lg text-sm bg-white dark:bg-slate-900 font-mono font-bold transition-colors ${
+                                            +modalItem.unitPrice < 0 
+                                                ? 'border-rose-400 text-rose-600 dark:text-rose-400 focus:ring-rose-500/20 focus:border-rose-500'
+                                                : 'border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white focus:ring-blue-500/20 focus:border-blue-500'
+                                        }`}
                                     />
+                                    {+modalItem.unitPrice < 0 && (
+                                        <div className="text-[10.5px] font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1">
+                                            <span>▼ Trade-in / Exchange deduction (reduces invoice total)</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="sm:col-span-2">
@@ -2612,17 +2639,23 @@ export default function InvoiceFormPage() {
                                     <div className="text-[10px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider">Line Total</div>
                                     <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">Calculated amount</div>
                                 </div>
-                                <div className="text-lg font-extrabold font-mono text-emerald-700 dark:text-emerald-400">
-                                    {fmt(
-                                        Math.max(
-                                            0,
-                                            (+modalItem.quantity || 0) * (+modalItem.unitPrice || 0) -
-                                                Math.min(
-                                                    (+modalItem.quantity || 0) * (+modalItem.unitPrice || 0),
-                                                    (+modalItem.discount || 0) * (+modalItem.quantity || 0)
-                                                )
-                                        ) * (1 + (modalItem.taxable ? (+modalItem.taxRate || 0) / 100 : 0))
-                                    )}
+                                <div className={`text-lg font-extrabold font-mono ${
+                                    (+modalItem.quantity || 0) * (+modalItem.unitPrice || 0) < 0
+                                        ? 'text-rose-600 dark:text-rose-400'
+                                        : 'text-emerald-700 dark:text-emerald-400'
+                                }`}>
+                                    {(() => {
+                                        const q = +modalItem.quantity || 0;
+                                        const p = +modalItem.unitPrice || 0;
+                                        const gross = q * p;
+                                        if (gross < 0) {
+                                            return `-LKR ${Math.abs(gross).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+                                        }
+                                        const disc = Math.min(gross, (+modalItem.discount || 0) * q);
+                                        const taxable = Math.max(0, gross - disc);
+                                        const tax = modalItem.taxable ? taxable * (+modalItem.taxRate || 0) / 100 : 0;
+                                        return fmt(taxable + tax);
+                                    })()}
                                 </div>
                             </div>
 

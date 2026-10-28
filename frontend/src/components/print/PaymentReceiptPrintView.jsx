@@ -120,13 +120,13 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
     const totalAllocated = allocations.reduce((s, a) => s + (Number(a.amount) || 0), 0);
     const unallocated = Number(payment.unallocatedAmount !== undefined ? payment.unallocatedAmount : Math.max(0, totalAmount - totalAllocated));
 
-    // Calculate invoice total & remaining balance left to be paid
-    let totalDocAmount = Number(payment.totalDocAmount || 0);
-    let totalBalanceDue = payment.totalBalanceDue !== undefined 
+    // Calculate Full Total, Paid Amount & remaining Balance Due
+    let fullTotal = Number(payment.totalDocAmount || 0);
+    let balanceDue = payment.totalBalanceDue !== undefined 
         ? Number(payment.totalBalanceDue) 
         : (allocations.length > 0 && allocations[0].balanceDue !== undefined ? Number(allocations[0].balanceDue) : -1);
 
-    if (totalBalanceDue < 0 && allocations.length > 0) {
+    if (allocations.length > 0) {
         let sumDoc = 0;
         let sumBal = 0;
         let hasBal = false;
@@ -137,8 +137,20 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                 hasBal = true;
             }
         });
-        if (sumDoc > 0) totalDocAmount = sumDoc;
-        if (hasBal) totalBalanceDue = sumBal;
+        if (sumDoc > 0 && fullTotal <= 0) fullTotal = sumDoc;
+        if (hasBal && balanceDue < 0) balanceDue = sumBal;
+    }
+
+    if (fullTotal <= 0) {
+        if (balanceDue >= 0) {
+            fullTotal = totalAmount + balanceDue;
+        } else {
+            fullTotal = totalAmount;
+        }
+    }
+
+    if (balanceDue < 0) {
+        balanceDue = Math.max(0, fullTotal - totalAmount);
     }
 
     let methodLabel = (payment.method || 'cash').toUpperCase().replace('_', ' ');
@@ -308,7 +320,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
             )}
 
             {/* ── Printable Page Root (Compact Single Page Layout) ── */}
-            <div ref={ref} className="receipt-print-wrapper" style={{ width: '100%', maxWidth: '200mm', margin: '0 auto' }}>
+            <div ref={ref} className="receipt-print-wrapper" style={{ width: '100%', maxWidth: '200mm', margin: '0 auto', fontFamily: DOCUMENT_FONT_FAMILY }}>
                 <div 
                     className="receipt-print-page print-container single-page-doc" 
                     style={{ 
@@ -317,6 +329,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                         width: '100%',
                         boxSizing: 'border-box',
                         margin: '0 auto',
+                        fontFamily: DOCUMENT_FONT_FAMILY
                     }}
                 >
                     {/* ── 1. COMPANY HEADER ── */}
@@ -363,46 +376,70 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                         </div>
                     )}
 
+                    {/* ── DOCUMENT TITLE HEADER ── */}
+                    <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        margin: '6px 0 12px 0', 
+                        padding: '6px 0', 
+                        background: '#f8fafc', 
+                        borderTop: '1px solid #e2e8f0', 
+                        borderBottom: '2px solid #0f172a',
+                        borderRadius: 4
+                    }}>
+                        <span style={{ 
+                            fontSize: 14, 
+                            fontWeight: 800, 
+                            letterSpacing: '2px', 
+                            color: '#0f172a', 
+                            textTransform: 'uppercase',
+                            fontFamily: DOCUMENT_FONT_FAMILY
+                        }}>
+                            {docTitle}
+                        </span>
+                    </div>
+
                     {/* ── 2. CUSTOMER + DOCUMENT META ── */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10, fontSize: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, fontSize: 12.5 }}>
                         {/* Left: Customer / Party Block */}
-                        <div style={{ maxWidth: '54%', lineHeight: 1.45 }}>
-                            <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 2, color: '#0f172a' }}>
+                        <div style={{ maxWidth: '54%', lineHeight: 1.55 }}>
+                            <div style={{ fontWeight: 600, fontSize: 12.5, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4, color: '#334155' }}>
                                 {isVoucher ? 'PAID TO / BENEFICIARY' : 'BILL TO / CUSTOMER'}
                             </div>
-                            <div style={{ fontWeight: 600, fontSize: 12.5, color: '#0f172a' }}>{partyName}</div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{partyName}</div>
                             {partyAddress && partyAddress !== '—' && (
-                                <div style={{ fontSize: 11.5, color: '#334155' }}>{partyAddress}</div>
+                                <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{partyAddress}</div>
                             )}
                             {partyPhone && partyPhone !== '—' && (
-                                <div style={{ fontSize: 11.5, color: '#334155' }}>{partyPhone}</div>
+                                <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{partyPhone}</div>
                             )}
                             {vehicleNo && (
-                                <div style={{ fontWeight: 600, fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 12.5, marginTop: 4, color: '#0f172a', letterSpacing: 0.3 }}>
+                                <div style={{ fontWeight: 600, fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 12.5, marginTop: 4, color: '#0f172a', letterSpacing: 0.4 }}>
                                     Vehicle No: {vehicleNo}
                                 </div>
                             )}
                         </div>
 
                         {/* Right: Meta Details (Invoice/Receipt No, Sales, Branch, Date) */}
-                        <div style={{ textAlign: 'left', minWidth: 220 }}>
+                        <div style={{ textAlign: 'left', minWidth: 230 }}>
                             {[
                                 [isVoucher ? 'Voucher No.' : 'Receipt No.', docCode],
                                 ['Sales', handledBy],
                                 ['Branch', branchVal],
                                 ['Date', <>
                                     <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmtDate(paymentDate)}</span>
-                                    {fmtTime(paymentDate) && <><br/><span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{fmtTime(paymentDate)}</span></>}
+                                    {fmtTime(paymentDate) && <><br/><span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5 }}>{fmtTime(paymentDate)}</span></>}
                                 </>],
                             ].map(([label, value]) => (
-                                <div key={label} style={{ display: 'grid', gridTemplateColumns: '100px 1fr', columnGap: 4, lineHeight: 1.5, fontSize: 11.5 }}>
-                                    <span style={{ fontWeight: 600, color: '#475569' }}>{label}</span>
+                                <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 12.5 }}>
+                                    <span style={{ fontWeight: 600, color: '#334155' }}>{label}</span>
                                     <span style={{ color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>&nbsp;&nbsp;{value}</span>
                                 </div>
                             ))}
 
                             <div style={{ marginTop: 4, paddingTop: 3, borderTop: '1px dashed #cbd5e1' }}>
-                                <div style={{ color: '#059669', fontWeight: 600, fontSize: 10.5, fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>
+                                <div style={{ color: '#059669', fontWeight: 600, fontSize: 11, fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>
                                     • Method: {methodLabel} (CONFIRMED)
                                 </div>
                             </div>
@@ -410,25 +447,25 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                     </div>
 
                     {/* ── 3. ITEMS TABLE ── */}
-                    <table className="no-zebra print-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 12, marginBottom: 4, background: 'transparent' }}>
+                    <table className="no-zebra print-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 12.5, marginBottom: 4, background: 'transparent' }}>
                         <colgroup>
                             <col style={{ width: 'auto' }} />
                             <col style={{ width: 95 }} />
-                            <col style={{ width: 50 }} />
+                            <col style={{ width: 55 }} />
                             <col style={{ width: 105 }} />
                         </colgroup>
                         <thead>
                             <tr style={{ background: 'transparent', borderBottom: '1.5px solid #cbd5e1' }}>
-                                <th style={{ padding: '5px 4px 5px 0', textAlign: 'left', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, color: '#0f172a', background: 'transparent' }}>
+                                <th style={{ padding: '6px 4px 6px 0', textAlign: 'left', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, color: '#334155', background: 'transparent' }}>
                                     DESCRIPTION
                                 </th>
-                                <th style={{ padding: '5px 6px', textAlign: 'right', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, width: 95, color: '#0f172a', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 95, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
                                     RATE
                                 </th>
-                                <th style={{ padding: '5px 6px', textAlign: 'center', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, width: 50, color: '#0f172a', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 55, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
                                     QTY
                                 </th>
-                                <th style={{ padding: '5px 0 5px 6px', textAlign: 'right', fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4, width: 105, color: '#0f172a', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                <th style={{ padding: '6px 0 6px 8px', textAlign: 'right', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 105, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
                                     AMOUNT
                                 </th>
                             </tr>
@@ -442,21 +479,21 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
 
                                     return (
                                         <tr key={idx} style={{ verticalAlign: 'top', background: 'transparent' }}>
-                                            <td style={{ padding: '5px 4px 2px 0', lineHeight: 1.4, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                                                <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                                            <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                                <div style={{ fontWeight: 500, color: '#0f172a' }}>
                                                     Payment Received — Settlement for {docTypeStr} {docNum}
                                                 </div>
-                                                <div style={{ fontSize: 11, color: '#475569', marginTop: 1 }}>
+                                                <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
                                                     Payment Method: {methodLabel}{methodDetails ? ` (${methodDetails})` : ''}
                                                 </div>
                                             </td>
-                                            <td style={{ padding: '5px 6px 2px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>
+                                            <td style={{ padding: '6px 8px 2px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>
                                                 {fmt(amt)}
                                             </td>
-                                            <td style={{ padding: '5px 6px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 50, whiteSpace: 'nowrap' }}>
+                                            <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>
                                                 1
                                             </td>
-                                            <td style={{ padding: '5px 0 2px 6px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>
+                                            <td style={{ padding: '6px 0 2px 8px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>
                                                 {fmt(amt)}
                                             </td>
                                         </tr>
@@ -464,21 +501,21 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                 })
                             ) : (
                                 <tr style={{ verticalAlign: 'top', background: 'transparent' }}>
-                                    <td style={{ padding: '5px 4px 2px 0', lineHeight: 1.4, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                                        <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                                    <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                        <div style={{ fontWeight: 500, color: '#0f172a' }}>
                                             {isVoucher ? 'Expense / Voucher Payment' : 'Customer Advance Payment Deposit / Credit on Account'}
                                         </div>
-                                        <div style={{ fontSize: 11, color: '#475569', marginTop: 1 }}>
+                                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
                                             Payment Method: {methodLabel}{methodDetails ? ` (${methodDetails})` : ''}{payment.notes ? ` · ${payment.notes}` : ''}
                                         </div>
                                     </td>
-                                    <td style={{ padding: '5px 6px 2px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>
+                                    <td style={{ padding: '6px 8px 2px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>
                                         {fmt(totalAmount)}
                                     </td>
-                                    <td style={{ padding: '5px 6px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 50, whiteSpace: 'nowrap' }}>
+                                    <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>
                                         1
                                     </td>
-                                    <td style={{ padding: '5px 0 2px 6px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5, color: '#0f172a', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>
+                                    <td style={{ padding: '6px 0 2px 8px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>
                                         {fmt(totalAmount)}
                                     </td>
                                 </tr>
@@ -487,77 +524,63 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                     </table>
 
                     {/* ── 4. SUBTOTALS + REMARKS + BALANCE DUE ── */}
-                    <div style={{ marginTop: 8, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, fontSize: 12 }}>
+                    <div style={{ marginTop: 10, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, fontSize: 12.5 }}>
                         {/* Left: Remarks & Words */}
-                        <div style={{ maxWidth: '48%', lineHeight: 1.5 }}>
-                            <div style={{ marginBottom: 3 }}>
-                                <span style={{ fontWeight: 600, color: '#0f172a' }}>Remarks &nbsp;&nbsp;&nbsp;&nbsp;:</span>
-                                <span style={{ marginLeft: 6, color: '#334155' }}>
+                        <div style={{ maxWidth: '48%', lineHeight: 1.6 }}>
+                            <div style={{ marginBottom: 4 }}>
+                                <span style={{ fontWeight: 600, color: '#334155' }}>Remarks &nbsp;&nbsp;&nbsp;&nbsp;:</span>
+                                <span style={{ marginLeft: 6, color: '#1e293b' }}>
                                     {payment.notes || (allocations.length > 0 ? `Settlement for ${allocations.map(a => a.documentNumber).filter(Boolean).join(', ')}` : 'Payment received with thanks')}
                                 </span>
                             </div>
 
-                            <div style={{ marginTop: 3 }}>
-                                <span style={{ fontWeight: 600, color: '#0f172a' }}>Amount in Words:</span>
-                                <div style={{ fontStyle: 'italic', color: '#334155', marginTop: 1, fontSize: 11.5 }}>
+                            <div style={{ marginTop: 4 }}>
+                                <span style={{ fontWeight: 600, color: '#334155' }}>Amount in Words:</span>
+                                <div style={{ fontStyle: 'italic', color: '#1e293b', marginTop: 1, fontSize: 11.5 }}>
                                     {convertNumberToWords(totalAmount)}
                                 </div>
                             </div>
 
                             {payment.bankAccountId && (
-                                <div style={{ marginTop: 3, color: '#475569', fontSize: 11 }}>
+                                <div style={{ marginTop: 4, color: '#475569', fontSize: 11 }}>
                                     <span style={{ fontWeight: 600 }}>Deposited To:</span> {payment.bankAccountId.bankName || 'GLX Account'} ({payment.bankAccountId.accountNumber || ''})
                                 </div>
                             )}
                         </div>
 
-                        {/* Right: Totals block with Invoice Total & Balance Due */}
+                        {/* Right: Totals block matching Quotation / Invoice template */}
                         <div style={{ minWidth: 260 }}>
-                            {totalDocAmount > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569', fontSize: 11.5, marginBottom: 3 }}>
-                                    <span>INVOICE TOTAL (මුළු එකතුව)</span>
-                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(totalDocAmount)}</span>
-                                </div>
-                            )}
-
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: 3, color: '#0f172a', fontSize: 12 }}>
-                                <span>SUB TOTAL</span>
-                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalAmount)}</span>
+                            {/* FULL TOTAL */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: 4, color: '#475569', fontSize: 12 }}>
+                                <span>FULL TOTAL</span>
+                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', color: '#1e293b', fontWeight: 600 }}>{fmt(fullTotal)}</span>
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 12.5, color: '#0f172a', marginTop: 3, borderTop: '1px solid #0f172a', paddingTop: 3 }}>
-                                <span>{isVoucher ? 'TOTAL PAID' : 'AMOUNT RECEIVED (ගෙවූ මුදල)'}</span>
-                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalAmount)}</span>
+                            {/* PAID AMOUNT */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: 12.5, color: '#166534', marginTop: 4, borderTop: '1px solid #cbd5e1', paddingTop: 4 }}>
+                                <span>{isVoucher ? 'TOTAL PAID' : 'PAID AMOUNT'}</span>
+                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{fmt(totalAmount)}</span>
                             </div>
 
-                            {/* Remaining Balance Due on the invoice */}
-                            {totalBalanceDue >= 0 ? (
-                                <div style={{ 
-                                    display: 'flex', 
-                                    justifyContent: 'space-between', 
-                                    fontWeight: 700, 
-                                    marginTop: 4, 
-                                    paddingTop: 3, 
-                                    borderTop: '1px dashed #cbd5e1', 
-                                    color: totalBalanceDue > 0 ? '#b91c1c' : '#15803d', 
-                                    fontSize: 12 
-                                }}>
-                                    <span>{totalBalanceDue > 0 ? 'BALANCE DUE (තව ගෙවීමට ඇති ශේෂය)' : 'BALANCE DUE (සම්පූර්ණයි)'}</span>
-                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalBalanceDue)}</span>
-                                </div>
-                            ) : (
-                                allocations.length > 0 && totalAllocated > 0 && (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 3, color: '#166534', fontSize: 11.5 }}>
-                                        <span>ADVANCE APPLIED</span>
-                                        <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>-{fmt(totalAllocated)}</span>
-                                    </div>
-                                )
-                            )}
+                            {/* BALANCE DUE */}
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                fontWeight: 700, 
+                                fontSize: 13, 
+                                color: balanceDue > 0 ? '#b91c1c' : '#166534', 
+                                marginTop: 4, 
+                                borderTop: '1.5px solid #0f172a', 
+                                paddingTop: 4 
+                            }}>
+                                <span>BALANCE DUE</span>
+                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 13.5 }}>{fmt(balanceDue)}</span>
+                            </div>
 
                             {unallocated > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 3, color: '#92400e', fontSize: 11.5 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 4, color: '#92400e', fontSize: 11.5 }}>
                                     <span>UNALLOCATED CREDIT</span>
-                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>{fmt(unallocated)}</span>
+                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(unallocated)}</span>
                                 </div>
                             )}
                         </div>

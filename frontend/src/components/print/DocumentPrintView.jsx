@@ -168,10 +168,10 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
         const qty      = Number(item.quantity) || 1;
         const rate     = Number(item.unitPrice || item.rate || 0);
         const discRate = Number(item.discount  || 0);
-        const discAmt  = discRate > 0
+        const discAmt  = rate < 0 ? 0 : (discRate > 0
             ? discRate * qty
             : Number(item.discountAmount || item.lineDiscount ||
-                (item.discountPercent ? (qty * rate * item.discountPercent / 100) : 0));
+                (item.discountPercent ? (qty * rate * item.discountPercent / 100) : 0)));
         subtotal           += qty * rate;
         totalLineDiscount  += discAmt;
     });
@@ -596,7 +596,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                                 <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Mobile</span> : 071 6666 888</div>
                                                 <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Tel</span> : 011 740 4446</div>
                                                 <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Email</span> : glx.engi@gmail.com</div>
-                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Web</span> : www.glx.lk</div>
+                                                <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Web</span> : {companyInfo?.companyWebsite || 'www.glxgroup.lk'}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -735,11 +735,12 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                     const qty        = Number(item.quantity) || 1;
                                     const rate       = Number(item.unitPrice || item.rate || 0);
                                     const grossAmt   = qty * rate;
-                                    const discRate   = Number(item.discount  || 0);
-                                    const discAmt    = discRate > 0
+                                    const isTradeIn  = rate < 0 || grossAmt < 0;
+                                    const discRate   = isTradeIn ? 0 : Number(item.discount  || 0);
+                                    const discAmt    = isTradeIn ? 0 : (discRate > 0
                                         ? discRate * qty
                                         : Number(item.discountAmount || item.lineDiscount ||
-                                            (item.discountPercent ? (grossAmt * item.discountPercent / 100) : 0));
+                                            (item.discountPercent ? (grossAmt * item.discountPercent / 100) : 0)));
                                     const effDiscRate = discRate > 0 ? discRate : (qty > 0 ? +(discAmt / qty).toFixed(2) : 0);
 
                                     const mainName = item.productName || item.description || 'Line Item';
@@ -758,6 +759,19 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                                 <td style={{ padding: '6px 4px 2px 0', lineHeight: 1.45, background: 'transparent', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                                     <div style={{ fontWeight: 500, color: '#0f172a', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                                         <span>{title}</span>
+                                                        {isTradeIn && (
+                                                            <span style={{ 
+                                                                color: '#dc2626', 
+                                                                fontWeight: 600, 
+                                                                fontSize: 10.5,
+                                                                marginLeft: 6,
+                                                                background: '#fee2e2',
+                                                                padding: '1px 5px',
+                                                                borderRadius: 3
+                                                            }}>
+                                                                Trade-in (-)
+                                                            </span>
+                                                        )}
                                                         {subtitle && (
                                                             <span style={{ 
                                                                 color: lang === 'si' ? '#475569' : '#047857', 
@@ -776,9 +790,9 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>{fmt(rate)}</td>
+                                                <td style={{ padding: '6px 8px 2px', textAlign: 'right',  fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: isTradeIn ? '#dc2626' : '#1e293b', fontWeight: isTradeIn ? 600 : 400, background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>{fmt(rate)}</td>
                                                 <td style={{ padding: '6px 8px 2px', textAlign: 'center', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 55, whiteSpace: 'nowrap' }}>{qty}</td>
-                                                <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>{fmt(grossAmt)}</td>
+                                                <td style={{ padding: '6px 0   2px 8px', textAlign: 'right',  fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: isTradeIn ? '#dc2626' : '#1e293b', fontWeight: isTradeIn ? 600 : 400, background: 'transparent', width: 105, whiteSpace: 'nowrap' }}>{fmt(grossAmt)}</td>
                                             </tr>
                                             {(discAmt > 0 || effDiscRate > 0) && (
                                                 <tr style={{ color: '#dc2626', background: 'transparent' }}>

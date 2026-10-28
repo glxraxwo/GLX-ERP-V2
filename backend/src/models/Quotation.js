@@ -125,7 +125,11 @@ quotationSchema.pre('validate', async function () {
     }
     // Auto-calculate grand total & balance
     this.totalAmount = (this.items || []).reduce((sum, i) => sum + (Number(i.quantity || 0) * Number(i.unitPrice || 0)), 0);
-    const itemDiscounts = (this.items || []).reduce((sum, i) => sum + (Number(i.discount || 0) * Number(i.quantity || 1)), 0);
+    const itemDiscounts = (this.items || []).reduce((sum, i) => {
+        const p = Number(i.unitPrice || 0);
+        if (p < 0) return sum;
+        return sum + (Number(i.discount || 0) * Number(i.quantity || 1));
+    }, 0);
     const totalDiscount = Math.max(Number(this.discount || 0), itemDiscounts);
     this.discount = totalDiscount;
     this.grandTotal = (this.totalAmount || 0) + (this.laborCost || 0) + (this.tax || 0) - (this.discount || 0);

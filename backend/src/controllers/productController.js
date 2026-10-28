@@ -82,15 +82,37 @@ export const getProducts = asyncHandler(async (req, res) => {
 
     const filter = {};
 
-    if (search) {
-        filter.$or = [
-            { name: { $regex: search, $options: 'i' } },
-            { sinhalaName: { $regex: search, $options: 'i' } },
-            { shortName: { $regex: search, $options: 'i' } },
-            { productCode: { $regex: search, $options: 'i' } },
-            { sku: { $regex: search, $options: 'i' } },
-            { barcode: { $regex: search, $options: 'i' } },
-        ];
+    if (search && String(search).trim()) {
+        const cleanSearch = String(search).trim();
+        const tokens = cleanSearch.split(/\s+/).filter(Boolean);
+
+        if (tokens.length > 1) {
+            filter.$and = tokens.map((token) => {
+                const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                return {
+                    $or: [
+                        { name: { $regex: escaped, $options: 'i' } },
+                        { sinhalaName: { $regex: escaped, $options: 'i' } },
+                        { shortName: { $regex: escaped, $options: 'i' } },
+                        { productCode: { $regex: escaped, $options: 'i' } },
+                        { sku: { $regex: escaped, $options: 'i' } },
+                        { barcode: { $regex: escaped, $options: 'i' } },
+                        { description: { $regex: escaped, $options: 'i' } },
+                    ],
+                };
+            });
+        } else {
+            const escaped = cleanSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            filter.$or = [
+                { name: { $regex: escaped, $options: 'i' } },
+                { sinhalaName: { $regex: escaped, $options: 'i' } },
+                { shortName: { $regex: escaped, $options: 'i' } },
+                { productCode: { $regex: escaped, $options: 'i' } },
+                { sku: { $regex: escaped, $options: 'i' } },
+                { barcode: { $regex: escaped, $options: 'i' } },
+                { description: { $regex: escaped, $options: 'i' } },
+            ];
+        }
     }
 
     if (categoryId) filter.categoryId = categoryId;

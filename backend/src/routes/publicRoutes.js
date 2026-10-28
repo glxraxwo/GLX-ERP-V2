@@ -54,8 +54,8 @@ router.get('/documents/:token', asyncHandler(async (req, res) => {
         .populate('supplierId', 'displayName companyName primaryContact address')
         .populate('employeeId', 'firstName lastName callingName')
         .populate('bankAccountId', 'bankName accountNumber accountName branch')
-        .populate('receivedBy', 'name email')
-        .populate('createdBy', 'name email')
+        .populate('receivedBy', 'firstName lastName signature jobTitle')
+        .populate('createdBy', 'firstName lastName signature jobTitle')
         .lean();
 
     if (doc) {
@@ -101,8 +101,8 @@ router.get('/documents/:token/download', asyncHandler(async (req, res) => {
             .populate('supplierId', 'displayName companyName primaryContact address')
             .populate('employeeId', 'firstName lastName callingName')
             .populate('bankAccountId', 'bankName accountNumber accountName branch')
-            .populate('receivedBy', 'name email')
-            .populate('createdBy', 'name email')
+            .populate('receivedBy', 'firstName lastName signature jobTitle')
+            .populate('createdBy', 'firstName lastName signature jobTitle')
             .lean();
         if (doc) docType = 'payment_receipt';
     }

@@ -50,7 +50,7 @@ export const createProductSchema = z.object({
     tags: z.array(z.string()).optional(),
     type: z.enum(['manufactured', 'trading', 'service', 'bundle']).optional(),
     unitOfMeasure: z.string().optional(),
-    basePrice: z.number().min(0),
+    basePrice: z.number(),
     mrp: z.number().min(0).optional(),
     tierPricing: z.array(z.object({
         tierName: z.string(),

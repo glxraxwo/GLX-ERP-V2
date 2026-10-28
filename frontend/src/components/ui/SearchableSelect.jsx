@@ -58,10 +58,12 @@ const SearchableSelect = forwardRef(({
         setSearchTerm('');
     }, [value]);
 
-    // Filter options based on search query (searches label, sinhala name, code, sku, subtext, value)
+    // Filter options based on multi-word search query (searches label, sinhala name, code, sku, subtext, description, value anywhere in name)
     const filteredOptions = useMemo(() => {
         if (!searchTerm.trim()) return options;
         const q = searchTerm.toLowerCase().trim();
+        const tokens = q.split(/\s+/).filter(Boolean);
+
         return options.filter((opt) => {
             const labelStr = String(opt.label || '').toLowerCase();
             const valueStr = String(opt.value || '').toLowerCase();
@@ -69,15 +71,15 @@ const SearchableSelect = forwardRef(({
             const skuStr = String(opt.sku || '').toLowerCase();
             const sinhalaStr = String(opt.sinhalaName || '').toLowerCase();
             const subtextStr = String(opt.subtext || '').toLowerCase();
+            const descStr = String(opt.description || '').toLowerCase();
 
-            return (
-                labelStr.includes(q) ||
-                codeStr.includes(q) ||
-                skuStr.includes(q) ||
-                sinhalaStr.includes(q) ||
-                subtextStr.includes(q) ||
-                valueStr.includes(q)
-            );
+            const combined = `${labelStr} ${codeStr} ${skuStr} ${sinhalaStr} ${subtextStr} ${descStr} ${valueStr}`;
+
+            // If user types exact phrase, check that first
+            if (combined.includes(q)) return true;
+
+            // Otherwise, all separate tokens must be present anywhere in the item details
+            return tokens.every((token) => combined.includes(token));
         });
     }, [options, searchTerm]);
 

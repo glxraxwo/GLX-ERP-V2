@@ -219,3 +219,59 @@ export const changePassword = asyncHandler(async (req, res) => {
 
     res.json({ success: true, message: 'Password changed successfully' });
 });
+
+
+/**
+ * @desc    Update profile details for current logged-in user
+ * @route   PUT /api/auth/profile
+ * @access  Private
+ */
+export const updateProfile = asyncHandler(async (req, res) => {
+    const { firstName, lastName, phone, jobTitle, signature } = req.body;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    if (firstName !== undefined) user.firstName = String(firstName).trim();
+    if (lastName !== undefined) user.lastName = String(lastName).trim();
+    if (phone !== undefined) user.phone = String(phone).trim();
+    if (jobTitle !== undefined) user.jobTitle = String(jobTitle).trim();
+    if (signature !== undefined) user.signature = signature;
+
+    await user.save();
+
+    // Also sync linked Employee record if it exists
+    try {
+        const Employee = (await import('../models/Employee.js')).default;
+        await Employee.findOneAndUpdate(
+            { userId: user._id },
+            {
+                ...(firstName !== undefined && { firstName: user.firstName }),
+                ...(lastName !== undefined && { lastName: user.lastName }),
+                ...(phone !== undefined && { phone: user.phone }),
+            }
+        );
+    } catch (err) {
+        console.error('Failed to sync employee record:', err.message);
+    }
+
+    res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: {
+            _id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            fullName: user.fullName,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            jobTitle: user.jobTitle || '',
+            signature: user.signature || '',
+            lastLogin: user.lastLogin,
+        },
+    });
+});

@@ -85,16 +85,16 @@ const productSchema = new mongoose.Schema(
         basePrice: {
             type: Number,
             required: false,
-            min: 0,
+            min: -999999999,
         },
         minPrice: {
             type: Number,
-            min: 0,
+            min: -999999999,
             default: 0,
         },
         mrp: {
             type: Number,
-            min: 0,
+            min: -999999999,
         },
         currency: {
             type: String,

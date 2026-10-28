@@ -9,7 +9,7 @@ const invoiceLineSchema = z.object({
     description: z.string().optional(),
     quantity: z.coerce.number().min(0.01),
     unitOfMeasure: z.string().optional(),
-    unitPrice: z.coerce.number().min(0),
+    unitPrice: z.coerce.number(), // allows negative unit prices for trade-in / exchange items
     discountPercent: z.coerce.number().min(0).max(100).optional(),
     discountAmount: z.coerce.number().min(0).optional(),
     taxRate: z.coerce.number().min(0).optional(),

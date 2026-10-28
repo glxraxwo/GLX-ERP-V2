@@ -143,6 +143,7 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
             const isProforma = docType === 'proforma' || doc.invoiceType === 'proforma' || (doc.invoiceNumber && doc.invoiceNumber.startsWith('PI'));
             const isEstimate = !isProforma && (docType === 'estimate' || (doc.quoteNumber && doc.quoteNumber.startsWith('EST')));
             const isInvoice = !isProforma && !isEstimate && (docType === 'invoice' || !!doc.invoiceNumber);
+            const docTitle = isInvoice ? 'INVOICE' : (isProforma ? 'PROFORMA INVOICE' : (isEstimate ? 'ESTIMATE' : 'QUOTATION'));
 
             const docNumberLabel = isInvoice ? 'Invoice No.' : (isEstimate ? 'Estimate No.' : (isProforma ? 'Proforma No.' : 'Quotation No.'));
             const docCode = doc.quotationCode || doc.quoteNumber || doc.invoiceNumber || doc.proformaNumber || 'DOC-001';
@@ -163,8 +164,12 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
             // ── 1. Official Header ───────────────────────────────────────────
             drawOfficialHeader(pdfDoc, settings);
 
+            // Document Title Banner matching quotation/invoice style
+            pdfDoc.font('Helvetica-Bold').fontSize(11).fillColor('#0f172a')
+                .text(docTitle, 36, 93, { align: 'center', characterSpacing: 1.5 });
+
             // ── 2. Meta Info (Customer Left vs Document Details Right) ────────
-            const metaY = 112;
+            const metaY = 114;
 
             // Left Column: Customer details
             pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#000000').text('BILL TO / CUSTOMER', 36, metaY);
@@ -219,12 +224,16 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
                 const qty = Number(item.quantity || item.qty || 1);
                 const rate = Number(item.unitPrice || item.rate || 0);
                 const gross = qty * rate;
-                const disc = Number(item.discount || item.discountAmount || 0);
+                const isTradeIn = rate < 0 || gross < 0;
+                const disc = isTradeIn ? 0 : Number(item.discount || item.discountAmount || 0);
                 const lineTotal = item.subtotal !== undefined ? Number(item.subtotal) : (gross - disc);
                 calcSubtotal += gross;
                 calcTotalDisc += disc;
 
-                const name = item.productName || item.product?.name || item.productId?.name || item.description || `Item #${idx + 1}`;
+                let name = item.productName || item.product?.name || item.productId?.name || item.description || `Item #${idx + 1}`;
+                if (isTradeIn && !name.toLowerCase().includes('trade-in') && !name.toLowerCase().includes('exchange')) {
+                    name += ' (Trade-in / Exchange)';
+                }
                 const desc = item.description && item.description !== name ? `\n${item.description}` : '';
 
                 return {
@@ -343,8 +352,8 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
 
             try {
                 const tableResult = pdfDoc.table(table, {
-                    prepareHeader: () => pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000'),
-                    prepareRow: () => pdfDoc.font('Helvetica').fontSize(8).fillColor('#111111')
+                    prepareHeader: () => pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155'),
+                    prepareRow: () => pdfDoc.font('Helvetica').fontSize(8).fillColor('#1E293B')
                 });
 
                 if (tableResult instanceof Promise) {
@@ -367,6 +376,56 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
  * 100% Matches GLX Physical Print Letterhead.
  */
 export const generatePaymentReceiptPDF = async ({ payment, settings = null }) => {
+    // Enrich allocations with linked invoice/quotation totals & remaining balance due if missing
+    if (Array.isArray(payment?.allocations) && payment.allocations.length > 0) {
+        try {
+            const Invoice = (await import('../models/Invoice.js')).default;
+            const Quotation = (await import('../models/Quotation.js')).default;
+            let totalDocAmount = 0;
+            let totalBalanceDue = 0;
+            let hasDocBalance = false;
+
+            for (const alloc of payment.allocations) {
+                if (!alloc.docTotal && alloc.documentId) {
+                    if (alloc.documentType === 'invoice') {
+                        const inv = await Invoice.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount amountPaid invoiceNumber vehicleNo customerName').lean();
+                        if (inv) {
+                            alloc.docTotal = Number(inv.grandTotal !== undefined ? inv.grandTotal : (inv.totalAmount || 0));
+                            alloc.balanceDue = Number(inv.balanceAmount !== undefined ? inv.balanceAmount : Math.max(0, alloc.docTotal - (inv.amountPaid || 0)));
+                            alloc.vehicleNo = inv.vehicleNo || '';
+                            if (!payment.vehicleNo && inv.vehicleNo) payment.vehicleNo = inv.vehicleNo;
+                            totalDocAmount += alloc.docTotal;
+                            totalBalanceDue += alloc.balanceDue;
+                            hasDocBalance = true;
+                        }
+                    } else if (alloc.documentType === 'quotation' || alloc.documentType === 'estimate') {
+                        const quote = await Quotation.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount advanceAmount quoteNumber vehicleNo customerName').lean();
+                        if (quote) {
+                            alloc.docTotal = Number(quote.grandTotal !== undefined ? quote.grandTotal : (quote.totalAmount || 0));
+                            alloc.balanceDue = Number(quote.balanceAmount !== undefined ? quote.balanceAmount : Math.max(0, alloc.docTotal - (quote.advanceAmount || 0)));
+                            alloc.vehicleNo = quote.vehicleNo || '';
+                            if (!payment.vehicleNo && quote.vehicleNo) payment.vehicleNo = quote.vehicleNo;
+                            totalDocAmount += alloc.docTotal;
+                            totalBalanceDue += alloc.balanceDue;
+                            hasDocBalance = true;
+                        }
+                    }
+                } else if (alloc.docTotal) {
+                    totalDocAmount += Number(alloc.docTotal || 0);
+                    totalBalanceDue += Number(alloc.balanceDue || 0);
+                    hasDocBalance = true;
+                }
+            }
+
+            if (hasDocBalance && (!payment.totalDocAmount || payment.totalDocAmount <= 0)) {
+                payment.totalDocAmount = totalDocAmount;
+                payment.totalBalanceDue = totalBalanceDue;
+            }
+        } catch (e) {
+            // continue if enrichment fails
+        }
+    }
+
     return new Promise((resolve, reject) => {
         try {
             const pdfDoc = new PdfPrinter({
@@ -413,6 +472,39 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
             const totalAlloc = allocations.reduce((s, a) => s + (Number(a.amount) || 0), 0);
             const unalloc = Number(payment.unallocatedAmount !== undefined ? payment.unallocatedAmount : Math.max(0, totalPaid - totalAlloc));
 
+            // Compute Full Total, Paid Amount, and Balance Due
+            let fullTotal = Number(payment.totalDocAmount || 0);
+            let balanceDue = payment.totalBalanceDue !== undefined 
+                ? Number(payment.totalBalanceDue) 
+                : (allocations.length > 0 && allocations[0].balanceDue !== undefined ? Number(allocations[0].balanceDue) : -1);
+
+            if (allocations.length > 0) {
+                let sumDoc = 0;
+                let sumBal = 0;
+                let hasBal = false;
+                allocations.forEach(a => {
+                    if (a.docTotal !== undefined) sumDoc += Number(a.docTotal || 0);
+                    if (a.balanceDue !== undefined) {
+                        sumBal += Number(a.balanceDue || 0);
+                        hasBal = true;
+                    }
+                });
+                if (sumDoc > 0 && fullTotal <= 0) fullTotal = sumDoc;
+                if (hasBal && balanceDue < 0) balanceDue = sumBal;
+            }
+
+            if (fullTotal <= 0) {
+                if (balanceDue >= 0) {
+                    fullTotal = totalPaid + balanceDue;
+                } else {
+                    fullTotal = totalPaid;
+                }
+            }
+
+            if (balanceDue < 0) {
+                balanceDue = Math.max(0, fullTotal - totalPaid);
+            }
+
             let methodLabel = (payment.method || 'cash').toUpperCase().replace('_', ' ');
             let methodDetails = '';
             if (payment.method === 'cheque') {
@@ -433,26 +525,33 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
             // ── 1. Official Header ───────────────────────────────────────────
             drawOfficialHeader(pdfDoc, settings);
 
+            // Document Title Header Banner matching quotation/invoice template
+            const titleY = 106;
+            pdfDoc.rect(36, titleY, pdfDoc.page.width - 72, 19).fillAndStroke('#F8FAFC', '#CBD5E1');
+            pdfDoc.font('Helvetica-Bold').fontSize(11).fillColor('#0F172A')
+                .text(docTitle, 36, titleY + 4.5, { align: 'center', width: pdfDoc.page.width - 72, characterSpacing: 2 });
+            pdfDoc.moveTo(36, titleY + 19).lineTo(pdfDoc.page.width - 36, titleY + 19).lineWidth(1.5).strokeColor('#0F172A').stroke();
+
             // ── 2. Meta Info (Customer Left vs Document Details Right) ────────
-            const metaY = 112;
+            const metaY = 133;
 
             // Left Column: Customer / Beneficiary
-            pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#000000')
+            pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155')
                 .text(isVoucher ? 'PAID TO / BENEFICIARY' : 'BILL TO / CUSTOMER', 36, metaY);
-            pdfDoc.font('Helvetica-Bold').fontSize(10).fillColor('#000000')
-                .text(partyName, 36, metaY + 14, { width: 280 });
+            pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor('#0F172A')
+                .text(partyName, 36, metaY + 13, { width: 280 });
 
             let curY = pdfDoc.y + 2;
             if (partyAddress && partyAddress !== '—') {
-                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#222222').text(partyAddress, 36, curY, { width: 280 });
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#334155').text(partyAddress, 36, curY, { width: 280 });
                 curY = pdfDoc.y + 2;
             }
             if (partyPhone && partyPhone !== '—') {
-                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#222222').text(partyPhone, 36, curY);
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#334155').text(partyPhone, 36, curY);
                 curY = pdfDoc.y + 2;
             }
             if (vehicleNo) {
-                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000').text(vehicleNo, 36, curY);
+                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#0F172A').text(`Vehicle No: ${vehicleNo}`, 36, curY);
                 curY = pdfDoc.y + 2;
             }
 
@@ -462,11 +561,11 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
             let metaRightY = metaY;
 
             const renderMetaRow = (label, val, subVal = '') => {
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(label, rightX, metaRightY, { width: 85 });
-                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#000000').text(val, rightX + 85, metaRightY, { width: rightWidth - 85 });
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155').text(label, rightX, metaRightY, { width: 85 });
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#0F172A').text(val, rightX + 85, metaRightY, { width: rightWidth - 85 });
                 metaRightY += 14;
                 if (subVal) {
-                    pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#333333').text(subVal, rightX + 85, metaRightY - 1, { width: rightWidth - 85 });
+                    pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#475569').text(subVal, rightX + 85, metaRightY - 1, { width: rightWidth - 85 });
                     metaRightY += 12;
                 }
             };
@@ -481,7 +580,7 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 .text(`• Method: ${methodLabel} (CONFIRMED)`, rightX, metaRightY + 2);
             metaRightY += 14;
 
-            pdfDoc.y = Math.max(curY + 10, metaRightY + 8, 195);
+            pdfDoc.y = Math.max(curY + 10, metaRightY + 8, 205);
 
             // ── 3. Table of Allocations (Exact Columns: DESCRIPTION, RATE, QTY, AMOUNT) ──
             const tableRows = [];
@@ -542,53 +641,47 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
 
                 // Left: Remarks & Amount in Words
                 const leftWidth = summaryX - 36 - 20;
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text('Remarks        :', 36, summaryY);
-                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#111111').text(
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155').text('Remarks        :', 36, summaryY);
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#1E293B').text(
                     payment.notes || (allocations.length > 0 ? `Settlement for ${allocations.map(a => a.documentNumber).filter(Boolean).join(', ')}` : 'Payment received with thanks'),
                     105, summaryY, { width: leftWidth - 70 }
                 );
 
                 const wordsY = pdfDoc.y + 8;
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text('Amount in Words:', 36, wordsY);
-                pdfDoc.font('Helvetica-Oblique').fontSize(8).fillColor('#222222').text(convertNumberToWords(totalPaid), 36, wordsY + 12, { width: leftWidth });
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155').text('Amount in Words:', 36, wordsY);
+                pdfDoc.font('Helvetica-Oblique').fontSize(8).fillColor('#1E293B').text(convertNumberToWords(totalPaid), 36, wordsY + 12, { width: leftWidth });
 
                 if (payment.bankAccountId) {
                     const bName = payment.bankAccountId.bankName || 'GLX Account';
                     const bAcc = payment.bankAccountId.accountNumber || '';
-                    pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#444444').text(`Deposited To: ${bName} (${bAcc})`, 36, pdfDoc.y + 6, { width: leftWidth });
+                    pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#475569').text(`Deposited To: ${bName} (${bAcc})`, 36, pdfDoc.y + 6, { width: leftWidth });
                 }
 
-                // Right: Totals
+                // Right: Totals (Full Total, Paid Amount, Balance Due) matching Quotation / Invoice template
                 let rY = summaryY;
 
-                if (payment.totalDocAmount > 0) {
-                    pdfDoc.font('Helvetica').fontSize(8).fillColor('#475569').text('INVOICE TOTAL', summaryX, rY);
-                    pdfDoc.text(fmtNum(payment.totalDocAmount), summaryX, rY, { width: summaryWidth, align: 'right' });
-                    rY += 14;
-                }
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#475569').text('FULL TOTAL', summaryX, rY);
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#1E293B').text(fmtNum(fullTotal), summaryX, rY, { width: summaryWidth, align: 'right' });
+                rY += 14;
 
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text('SUB TOTAL', summaryX, rY);
-                pdfDoc.text(fmtNum(totalPaid), summaryX, rY, { width: summaryWidth, align: 'right' });
-
-                rY += 15;
-                pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(0.8).strokeColor('#000000').stroke();
+                pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(0.5).strokeColor('#CBD5E1').stroke();
                 rY += 5;
 
-                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000').text(isVoucher ? 'TOTAL PAID' : 'AMOUNT RECEIVED', summaryX, rY);
-                pdfDoc.text(fmtNum(totalPaid), summaryX, rY, { width: summaryWidth, align: 'right' });
+                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#166534').text(isVoucher ? 'TOTAL PAID' : 'PAID AMOUNT', summaryX, rY);
+                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#166534').text(fmtNum(totalPaid), summaryX, rY, { width: summaryWidth, align: 'right' });
+                rY += 15;
 
-                if (payment.totalBalanceDue !== undefined && payment.totalBalanceDue >= 0) {
-                    rY += 16;
-                    pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor(payment.totalBalanceDue > 0 ? '#B91C1C' : '#059669')
-                        .text('BALANCE DUE', summaryX, rY);
-                    pdfDoc.text(fmtNum(payment.totalBalanceDue), summaryX, rY, { width: summaryWidth, align: 'right' });
-                } else if (allocations.length > 0 && totalAlloc > 0) {
-                    rY += 16;
-                    pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#166534').text('ADVANCE APPLIED', summaryX, rY);
-                    pdfDoc.text(`-${fmtNum(totalAlloc)}`, summaryX, rY, { width: summaryWidth, align: 'right' });
+                pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(1.2).strokeColor('#0F172A').stroke();
+                rY += 5;
 
-                    rY += 15;
-                    pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#92400E').text('BALANCE CREDIT', summaryX, rY);
+                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor(balanceDue > 0 ? '#B91C1C' : '#166534')
+                    .text('BALANCE DUE', summaryX, rY);
+                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor(balanceDue > 0 ? '#B91C1C' : '#166534')
+                    .text(fmtNum(balanceDue), summaryX, rY, { width: summaryWidth, align: 'right' });
+
+                if (unalloc > 0) {
+                    rY += 14;
+                    pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#92400E').text('UNALLOCATED CREDIT', summaryX, rY);
                     pdfDoc.text(fmtNum(unalloc), summaryX, rY, { width: summaryWidth, align: 'right' });
                 }
 
@@ -640,8 +733,8 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
 
             try {
                 const tableResult = pdfDoc.table(table, {
-                    prepareHeader: () => pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000'),
-                    prepareRow: () => pdfDoc.font('Helvetica').fontSize(8).fillColor('#111111')
+                    prepareHeader: () => pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155'),
+                    prepareRow: () => pdfDoc.font('Helvetica').fontSize(8).fillColor('#1E293B')
                 });
 
                 if (tableResult instanceof Promise) {

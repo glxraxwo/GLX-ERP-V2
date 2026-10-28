@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
 
-export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+export default function Modal({ isOpen, onClose, title, children, size = 'md', closeOnBackdrop = false }) {
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -15,13 +15,13 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
 
     useEffect(() => {
         const handleEsc = (e) => {
-            if (e.key === 'Escape') onClose();
+            if (e.key === 'Escape' && closeOnBackdrop) onClose();
         };
         if (isOpen) {
             window.addEventListener('keydown', handleEsc);
             return () => window.removeEventListener('keydown', handleEsc);
         }
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, closeOnBackdrop]);
 
     if (!isOpen) return null;
 
@@ -34,7 +34,10 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-xs" onClick={onClose}>
+        <div 
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-xs select-none sm:select-auto"
+            onClick={closeOnBackdrop ? onClose : undefined}
+        >
             <div
                 role="dialog"
                 aria-modal="true"
@@ -46,9 +49,11 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
                 <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-gray-200 dark:border-slate-700/80 flex-shrink-0 bg-gray-50/50 dark:bg-[#0E1A2B]">
                     <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate pr-2">{title}</h2>
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="min-w-[36px] min-h-[36px] flex items-center justify-center text-gray-400 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 transition rounded-lg hover:bg-gray-200/60 dark:hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none"
+                        className="min-w-[36px] min-h-[36px] flex items-center justify-center text-gray-400 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 transition rounded-lg hover:bg-gray-200/60 dark:hover:bg-slate-800 focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none cursor-pointer"
                         aria-label="Close modal"
+                        title="Close"
                     >
                         <X size={20} />
                     </button>
@@ -59,4 +64,4 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
             </div>
         </div>
     );
-}
+}
