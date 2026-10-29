@@ -1,15 +1,20 @@
-export default function Button({
-    children,
-    type = 'button',
-    variant = 'primary',
-    size = 'md',
-    loading = false,
-    disabled = false,
-    fullWidth = false,
-    onClick,
-    className = '',
-    ...props
-}) {
+import React, { forwardRef } from 'react';
+
+const Button = forwardRef(function Button(
+    {
+        children,
+        type = 'button',
+        variant = 'primary',
+        size = 'md',
+        loading = false,
+        disabled = false,
+        fullWidth = false,
+        onClick,
+        className = '',
+        ...props
+    },
+    ref
+) {
     const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed select-none min-h-[40px] sm:min-h-[44px]';
 
     const variants = {
@@ -28,6 +33,7 @@ export default function Button({
 
     return (
         <button
+            ref={ref}
             type={type}
             onClick={onClick}
             disabled={disabled || loading}
@@ -43,4 +49,6 @@ export default function Button({
             {children}
         </button>
     );
-}
+});
+
+export default Button;

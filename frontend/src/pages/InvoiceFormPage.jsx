@@ -275,13 +275,13 @@ export default function InvoiceFormPage() {
         return () => window.removeEventListener('keydown', handleGlobalKeyDown);
     }, [isAddItemModalOpen, isAddCustomerModalOpen, isVehicleModalOpen]);
 
-    // When Add Item modal opens, auto-focus immediately so user can type the item directly
+    // When Add Item modal opens, focus catalog search for new item or quantity for edit (skip Item Name / Title)
     useEffect(() => {
         if (isAddItemModalOpen) {
             const timer = setTimeout(() => {
                 if (editingIndex !== null) {
-                    productNameInputRef.current?.focus();
-                    productNameInputRef.current?.select();
+                    quantityInputRef.current?.focus();
+                    quantityInputRef.current?.select();
                 } else {
                     catalogSelectTriggerRef.current?.focus();
                 }
@@ -2447,11 +2447,7 @@ export default function InvoiceFormPage() {
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                     e.preventDefault();
-                                    if (modalItem.productId) {
-                                        focusAndSelect(quantityInputRef.current);
-                                    } else {
-                                        focusAndSelect(productNameInputRef.current);
-                                    }
+                                    focusAndSelect(quantityInputRef.current);
                                 }
                             }}
                         />
@@ -2491,6 +2487,7 @@ export default function InvoiceFormPage() {
                                 <input
                                     ref={productNameInputRef}
                                     type="text"
+                                    tabIndex={-1}
                                     required
                                     placeholder="e.g. Repair Works / Lorry Door Reconstruction"
                                     value={modalItem.productName}
@@ -2515,6 +2512,7 @@ export default function InvoiceFormPage() {
                                     </label>
                                     <button
                                         type="button"
+                                        tabIndex={-1}
                                         onClick={handleTranslateModalItem}
                                         className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-bold bg-blue-100/70 dark:bg-blue-900/60 hover:bg-blue-200/70 dark:hover:bg-blue-800/60 px-2 py-0.5 rounded transition cursor-pointer"
                                     >
@@ -2525,6 +2523,7 @@ export default function InvoiceFormPage() {
                                 <input
                                     ref={productTranslationInputRef}
                                     type="text"
+                                    tabIndex={-1}
                                     placeholder="සිංහල / தமிழ் නම"
                                     value={modalItem.productTranslation || ''}
                                     onChange={(e) => updateModalItem('productTranslation', e.target.value)}
@@ -2535,7 +2534,7 @@ export default function InvoiceFormPage() {
                                             focusAndSelect(quantityInputRef.current);
                                         } else if (e.key === 'ArrowUp') {
                                             e.preventDefault();
-                                            focusAndSelect(productNameInputRef.current);
+                                            catalogSelectTriggerRef.current?.focus();
                                         }
                                     }}
                                     className="w-full h-10 px-3 border-2 border-blue-300/90 dark:border-blue-700 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all placeholder:text-blue-900/40 dark:placeholder:text-blue-300/40 font-sans shadow-2xs"
@@ -2559,6 +2558,7 @@ export default function InvoiceFormPage() {
                             </div>
                             <textarea
                                 ref={descriptionInputRef}
+                                tabIndex={-1}
                                 rows={15}
                                 className="w-full p-3.5 border-2 border-blue-300 dark:border-blue-700 rounded-xl text-xs leading-relaxed bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-sans placeholder:text-blue-900/40 dark:placeholder:text-blue-300/40 min-h-[280px] resize-y shadow-2xs"
                                 placeholder="Specifications or repair scope (e.g.&#10;01. Side shutter replacement&#10;02. Waterproof rubber bead fitting&#10;03. Aluminium corrugated sheet fitting&#10;04. Subframe reinforcement...)"
@@ -2600,7 +2600,7 @@ export default function InvoiceFormPage() {
                                                 focusAndSelect(unitPriceInputRef.current);
                                             } else if (e.key === 'ArrowUp') {
                                                 e.preventDefault();
-                                                focusAndSelect(productNameInputRef.current);
+                                                catalogSelectTriggerRef.current?.focus();
                                             }
                                         }}
                                         className="w-full h-10 px-3 border-2 border-blue-300/90 dark:border-blue-700 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 font-mono font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all shadow-2xs"
@@ -2673,7 +2673,14 @@ export default function InvoiceFormPage() {
                                         }}
                                         onFocus={(e) => e.target.select()}
                                         onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                if (modalItem.taxable && taxRateInputRef.current) {
+                                                    focusAndSelect(taxRateInputRef.current);
+                                                } else {
+                                                    handleAddItemFromModal(editingIndex === null);
+                                                }
+                                            } else if (e.key === 'ArrowDown') {
                                                 e.preventDefault();
                                                 if (modalItem.taxable && taxRateInputRef.current) {
                                                     focusAndSelect(taxRateInputRef.current);
@@ -2716,7 +2723,14 @@ export default function InvoiceFormPage() {
                                         checked={modalItem.taxable}
                                         onChange={(e) => updateModalItem('taxable', e.target.checked)}
                                         onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                if (modalItem.taxable && taxRateInputRef.current) {
+                                                    focusAndSelect(taxRateInputRef.current);
+                                                } else {
+                                                    handleAddItemFromModal(editingIndex === null);
+                                                }
+                                            } else if (e.key === 'ArrowDown') {
                                                 e.preventDefault();
                                                 if (modalItem.taxable && taxRateInputRef.current) {
                                                     focusAndSelect(taxRateInputRef.current);
@@ -2753,7 +2767,10 @@ export default function InvoiceFormPage() {
                                             onChange={(e) => updateModalItem('taxRate', e.target.value)}
                                             onFocus={(e) => e.target.select()}
                                             onKeyDown={(e) => {
-                                                if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleAddItemFromModal(editingIndex === null);
+                                                } else if (e.key === 'ArrowDown') {
                                                     e.preventDefault();
                                                     if (editingIndex === null && addAnotherBtnRef.current) {
                                                         addAnotherBtnRef.current.focus();
@@ -2821,13 +2838,15 @@ export default function InvoiceFormPage() {
                                                 variant="outline"
                                                 onClick={() => handleAddItemFromModal(true)}
                                                 onKeyDown={(e) => {
-                                                    if (e.key === 'ArrowRight' && addItemBtnRef.current) {
+                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                        e.preventDefault();
+                                                        handleAddItemFromModal(true);
+                                                    } else if (e.key === 'ArrowRight' && addItemBtnRef.current) {
                                                         e.preventDefault();
                                                         addItemBtnRef.current.focus();
                                                     } else if (e.key === 'ArrowUp') {
                                                         e.preventDefault();
-                                                        discountInputRef.current?.focus();
-                                                        discountInputRef.current?.select();
+                                                        focusAndSelect(modalItem.taxable ? taxRateInputRef.current : discountInputRef.current);
                                                     }
                                                 }}
                                                 className="flex-1 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 font-semibold text-xs whitespace-nowrap px-2.5 py-2 focus:ring-2 focus:ring-emerald-400"
@@ -2844,13 +2863,15 @@ export default function InvoiceFormPage() {
                                                 variant="primary"
                                                 onClick={() => handleAddItemFromModal(false)}
                                                 onKeyDown={(e) => {
-                                                    if (e.key === 'ArrowLeft' && addAnotherBtnRef.current) {
+                                                    if (e.key === 'Enter' || e.key === ' ') {
+                                                        e.preventDefault();
+                                                        handleAddItemFromModal(false);
+                                                    } else if (e.key === 'ArrowLeft' && addAnotherBtnRef.current) {
                                                         e.preventDefault();
                                                         addAnotherBtnRef.current.focus();
                                                     } else if (e.key === 'ArrowUp') {
                                                         e.preventDefault();
-                                                        discountInputRef.current?.focus();
-                                                        discountInputRef.current?.select();
+                                                        focusAndSelect(modalItem.taxable ? taxRateInputRef.current : discountInputRef.current);
                                                     }
                                                 }}
                                                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs px-3 py-2 whitespace-nowrap focus:ring-2 focus:ring-emerald-400"
@@ -2865,6 +2886,15 @@ export default function InvoiceFormPage() {
                                             type="button"
                                             variant="primary"
                                             onClick={() => handleAddItemFromModal(false)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    handleAddItemFromModal(false);
+                                                } else if (e.key === 'ArrowUp') {
+                                                    e.preventDefault();
+                                                    focusAndSelect(modalItem.taxable ? taxRateInputRef.current : discountInputRef.current);
+                                                }
+                                            }}
                                             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs py-2 focus:ring-2 focus:ring-emerald-400"
                                         >
                                             <CheckCircle2 size={14} className="mr-1.5" />
