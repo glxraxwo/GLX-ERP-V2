@@ -373,7 +373,7 @@ export default function InvoiceFormPage({ defaultDocType }) {
     const [photos, setPhotos] = useState([]);
 
     // Terms & Conditions (for Quotation & Estimate)
-    const initialSavedTerms = getSavedTerms(initialDocType);
+    const initialSavedTerms = getSavedTerms(routeCategory || docType || 'invoice');
     const [remarks, setRemarks] = useState(initialSavedTerms.remarks);
     const [conditionOfPayments, setConditionOfPayments] = useState(initialSavedTerms.conditionOfPayments);
     const [completionOfWork, setCompletionOfWork] = useState(initialSavedTerms.completionOfWork);

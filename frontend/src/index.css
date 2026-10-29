@@ -60,6 +60,115 @@ select:focus-visible {
   outline-offset: 1px !important;
 }
 
+/* ========================================================
+   Global Search Bar Styling - Light Blue Shade Background
+   Applies an executive light blue background shade to all
+   search bars across lists, tables, sidebars, modals and hubs.
+   ======================================================== */
+input[type="search"],
+input[placeholder*="Search" i]:not(.bg-transparent),
+input[placeholder*="search" i]:not(.bg-transparent),
+input[placeholder*="සොයන්න" i]:not(.bg-transparent),
+input[data-shortcut="search"],
+.search-input {
+  background-color: #f0f7ff !important;
+  border-color: #bfdbfe !important;
+  color: #0f172a !important;
+  transition: all 0.15s ease-in-out;
+}
+
+input[type="search"]::placeholder,
+input[placeholder*="Search" i]:not(.bg-transparent)::placeholder,
+input[placeholder*="search" i]:not(.bg-transparent)::placeholder,
+input[placeholder*="සොයන්න" i]:not(.bg-transparent)::placeholder,
+input[data-shortcut="search"]::placeholder,
+.search-input::placeholder {
+  color: #64748b !important;
+}
+
+input[type="search"]:hover,
+input[placeholder*="Search" i]:not(.bg-transparent):hover,
+input[placeholder*="search" i]:not(.bg-transparent):hover,
+input[placeholder*="සොයන්න" i]:not(.bg-transparent):hover,
+input[data-shortcut="search"]:hover,
+.search-input:hover {
+  background-color: #e0f2fe !important;
+  border-color: #93c5fd !important;
+}
+
+input[type="search"]:focus,
+input[placeholder*="Search" i]:not(.bg-transparent):focus,
+input[placeholder*="search" i]:not(.bg-transparent):focus,
+input[placeholder*="සොයන්න" i]:not(.bg-transparent):focus,
+input[data-shortcut="search"]:focus,
+.search-input:focus {
+  background-color: #ffffff !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18) !important;
+  outline: none !important;
+}
+
+/* Light Mode: Make Search icons in search bars stand out in clean blue */
+.relative:has(> input[type="search"]) > svg,
+.relative:has(> input[placeholder*="Search" i]) > svg,
+.relative:has(> input[placeholder*="search" i]) > svg,
+.relative:has(> input[data-shortcut="search"]) > svg {
+  color: #2563eb !important;
+}
+
+/* ========================================================
+   Dark Mode Search Bar Styling
+   Refined dark-blue tint in dark mode
+   ======================================================== */
+.dark input[type="search"],
+.dark input[placeholder*="Search" i]:not(.bg-transparent),
+.dark input[placeholder*="search" i]:not(.bg-transparent),
+.dark input[placeholder*="සොයන්න" i]:not(.bg-transparent),
+.dark input[data-shortcut="search"],
+.dark .search-input {
+  background-color: #0c1e38 !important;
+  border-color: #1e3a5f !important;
+  color: #f8fafc !important;
+}
+
+.dark input[type="search"]::placeholder,
+.dark input[placeholder*="Search" i]:not(.bg-transparent)::placeholder,
+.dark input[placeholder*="search" i]:not(.bg-transparent)::placeholder,
+.dark input[placeholder*="සොයන්න" i]:not(.bg-transparent)::placeholder,
+.dark input[data-shortcut="search"]::placeholder,
+.dark .search-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.dark input[type="search"]:hover,
+.dark input[placeholder*="Search" i]:not(.bg-transparent):hover,
+.dark input[placeholder*="search" i]:not(.bg-transparent):hover,
+.dark input[placeholder*="සොයන්න" i]:not(.bg-transparent):hover,
+.dark input[data-shortcut="search"]:hover,
+.dark .search-input:hover {
+  background-color: #102646 !important;
+  border-color: #2563eb !important;
+}
+
+.dark input[type="search"]:focus,
+.dark input[placeholder*="Search" i]:not(.bg-transparent):focus,
+.dark input[placeholder*="search" i]:not(.bg-transparent):focus,
+.dark input[placeholder*="සොයන්න" i]:not(.bg-transparent):focus,
+.dark input[data-shortcut="search"]:focus,
+.dark .search-input:focus {
+  background-color: #132a4e !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25) !important;
+  outline: none !important;
+}
+
+.dark .relative:has(> input[type="search"]) > svg,
+.dark .relative:has(> input[placeholder*="Search" i]) > svg,
+.dark .relative:has(> input[placeholder*="search" i]) > svg,
+.dark .relative:has(> input[data-shortcut="search"]) > svg {
+  color: #60a5fa !important;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;

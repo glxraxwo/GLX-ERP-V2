@@ -269,8 +269,8 @@ const SearchableSelect = forwardRef(({
             {/* Combobox Input Trigger */}
             <div
                 className={`w-full border rounded-lg flex items-center text-sm transition-all min-h-[40px]
-                    ${triggerClassName ? triggerClassName : 'bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-700'}
-                    ${disabled ? 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-not-allowed border-gray-200 dark:border-slate-700' : 'hover:border-gray-400 dark:hover:border-slate-600 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/30'}
+                    ${triggerClassName ? triggerClassName : 'bg-blue-50/60 dark:bg-[#0c1e38] border-blue-200 dark:border-blue-900/60'}
+                    ${disabled ? 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-not-allowed border-gray-200 dark:border-slate-700' : 'hover:border-blue-300 dark:hover:border-blue-700 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/30'}
                     ${error
                         ? 'border-red-400 focus-within:ring-2 focus-within:ring-red-200 focus-within:border-red-500 bg-red-50/20 dark:bg-red-950/20'
                         : isOpen
@@ -278,7 +278,7 @@ const SearchableSelect = forwardRef(({
                             : ''
                     }`}
             >
-                <div className="pl-3 pr-1 text-gray-400 dark:text-slate-500 pointer-events-none shrink-0">
+                <div className="pl-3 pr-1 text-blue-500 dark:text-blue-400 pointer-events-none shrink-0">
                     <Search size={15} />
                 </div>
 
