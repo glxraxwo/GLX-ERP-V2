@@ -127,7 +127,9 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     const isInvoice   = !isProforma && !isEstimate && (!!doc.invoiceNumber || doc.documentType === 'invoice');
     const isQuotation = !isProforma && !isEstimate && !isInvoice;
 
-    const docNumberLabel = (isInvoice || isProforma)
+    const docNumberLabel = isProforma
+        ? (lang === 'si' ? 'ප්‍රොෆෝමා ඉන්වොයිස් අංකය' : lang === 'ta' ? 'புரோபார்மா விலைப்பட்டியல் எண்' : 'Proforma Invoice No.')
+        : isInvoice
         ? (lang === 'si' ? 'ඉන්වොයිස් අංකය' : lang === 'ta' ? 'விலைப்பட்டியல் எண்' : 'Invoice No.')
         : isEstimate
         ? (lang === 'si' ? 'ඇස්තමේන්තු අංකය' : lang === 'ta' ? 'மதிப்பீடு எண்' : 'Estimate No.')
@@ -136,7 +138,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     let docLabel = t.quotation || 'Quotation';
     if (isEstimate)  docLabel = t.estimate || 'Estimate';
     if (isInvoice)   docLabel = t.invoice || 'Invoice';
-    if (isProforma)  docLabel = t.proforma || 'Proforma';
+    if (isProforma)  docLabel = t.proforma || 'Proforma Invoice';
 
     /* ── meta ── */
     const docNumber       = doc.proformaNumber || doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'N/A';

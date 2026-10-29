@@ -425,6 +425,13 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
         vehicleModel: quotation.vehicleModel || '',
         jobCaption: quotation.jobCaption || '',
         salesRep: quotation.salesRep || '',
+        vatNumber: quotation.vatNumber || quotation.customerVatNumber || '',
+        brNumber: quotation.brNumber || quotation.customerBrNumber || '',
+        idNumber: quotation.idNumber || quotation.customerIdNumber || '',
+        whatsappNum: quotation.whatsappNum || '',
+        customerPhone: quotation.customerPhone || '',
+        customerEmail: quotation.customerEmail || '',
+        customerAddress: quotation.customerAddress || '',
         introducer: quotation.introducer || undefined,
         introducerName: quotation.introducerName || '',
         biller: quotation.biller || undefined,
@@ -433,23 +440,29 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
 
         numberPlateImage: quotation.numberPlateImage || '',
         lorryBodyImage: quotation.lorryBodyImage || '',
+        photos: Array.isArray(quotation.photos) ? quotation.photos : [],
 
         bodyDimensions: quotation.bodyDimensions || { length: '', width: '', height: '' },
         specifications: quotation.specifications || [],
-        warrantyInfo: quotation.warrantyInfo || '',
+        warrantyInfo: quotation.warrantyInfo || quotation.warrantyCondition || '',
         paymentConditions: quotation.paymentConditions || [],
 
         conditionOfPayments: quotation.conditionOfPayments || '',
         completionOfWork: quotation.completionOfWork || '',
         validityQuotation: quotation.validityQuotation || '',
-        warrantyCondition: quotation.warrantyCondition || '',
+        warrantyCondition: quotation.warrantyCondition || quotation.warrantyInfo || '',
         remarks: quotation.remarks || quotation.notes || '',
 
         customerId: quotation.customerId || undefined,
         customerSnapshot: {
             name: quotation.customerName || 'Walk-in Customer',
             code: quotation.customerEmail || '',
-            contactName: quotation.customerPhone || ''
+            contactName: quotation.customerPhone || '',
+            vatNumber: quotation.vatNumber || quotation.customerVatNumber || '',
+            brNumber: quotation.brNumber || quotation.customerBrNumber || '',
+            idNumber: quotation.idNumber || quotation.customerIdNumber || '',
+            whatsappNum: quotation.whatsappNum || '',
+            salesRep: quotation.salesRep || '',
         },
         billingAddress: {
             line1: quotation.customerAddress || ''
@@ -463,7 +476,8 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
         totalDiscount: quotation.discount || 0,
         totalTax: quotation.tax || 0,
         grandTotal: grandTotal,
-        amountPaid: advancePaid,
+        advancePercentage: quotation.advancePercentage || 0,
+        advanceAmount: advancePaid,
         balanceDue: Math.max(0, grandTotal - advancePaid),
         paymentStatus: initialPaymentStatus,
         notes: quotation.notes || `Converted from ${quotation.documentType || 'quotation'} ${quotation.quoteNumber}`,

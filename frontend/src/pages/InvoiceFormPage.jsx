@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -45,39 +45,119 @@ const defaultItemState = {
     unitOfMeasure: 'pcs',
 };
 
-export default function InvoiceFormPage() {
+export default function InvoiceFormPage({ defaultDocType }) {
     const navigate = useNavigate();
+    const location = useLocation();
+    const { id: routeId } = useParams();
     const queryClient = useQueryClient();
     const createMutation = useCreateInvoice();
     const [searchParams, setSearchParams] = useSearchParams();
     const { user } = useAuthStore();
-    const editInvoiceId = searchParams.get('edit');
+    const editDocId = searchParams.get('edit') || routeId;
     const [existingInvoice, setExistingInvoice] = useState(null);
 
-    // Document Type: 'invoice' | 'quotation' | 'estimate'
-    const initialDocType = searchParams.get('type') || 'invoice';
-    const [docType, setDocType] = useState(initialDocType);
+    // Initial document category from prop, route, or query param
+    const routeCategory = defaultDocType || (
+        location.pathname.includes('/estimates') ? 'estimate' :
+        location.pathname.includes('/quotations') ? 'quotation' :
+        searchParams.get('type') || 'invoice'
+    );
+    const [docType, setDocType] = useState(routeCategory);
 
     useEffect(() => {
-        const t = searchParams.get('type');
-        if (t && ['invoice', 'quotation', 'estimate'].includes(t)) {
-            setDocType(t);
-        }
-    }, [searchParams]);
-
-    useEffect(() => {
-        if (editInvoiceId) {
-            if (user && user.role !== 'admin') {
-                toast.error('Only administrators are authorized to edit invoices');
-                navigate('/invoices');
-                return;
+        if (!editDocId) {
+            const t = searchParams.get('type') || defaultDocType;
+            if (t && ['invoice', 'quotation', 'estimate'].includes(t)) {
+                setDocType(t);
             }
-            api.get(`/invoices/${editInvoiceId}?_t=${Date.now()}`)
-                .then(res => {
-                    const inv = res.data?.data;
-                    if (!inv) return;
-                    setExistingInvoice(inv);
-                    setDocType('invoice');
+        }
+    }, [searchParams, defaultDocType, editDocId]);
+
+    useEffect(() => {
+        if (editDocId) {
+            const isQuotationOrEstimate = routeCategory === 'quotation' || routeCategory === 'estimate' || searchParams.get('type') === 'quotation' || searchParams.get('type') === 'estimate';
+
+            const populateQuotation = (quote) => {
+                setExistingInvoice(quote);
+                const loadedType = quote.documentType || routeCategory || 'quotation';
+                setDocType(loadedType);
+                if (quote.quoteNumber) setQuoteNumber(quote.quoteNumber);
+                if (quote.date || quote.createdAt) setInvoiceDate(new Date(quote.date || quote.createdAt).toISOString().split('T')[0]);
+                if (quote.expiryDate) setDueDate(new Date(quote.expiryDate).toISOString().split('T')[0]);
+
+                if (quote.customerId) {
+                    setCustomerId(quote.customerId?._id || quote.customerId);
+                    setSelectedCustomer(quote.customerId);
+                }
+                const cName = quote.customerName || quote.vehicleOwner || quote.customerId?.companyName || '';
+                if (cName) setCustomerSearch(cName);
+                if (quote.customerPhone || quote.customerId?.primaryContact?.phone) {
+                    setCustomerPhone(quote.customerPhone || quote.customerId?.primaryContact?.phone);
+                }
+                if (quote.customerEmail || quote.customerId?.primaryContact?.email) {
+                    setCustomerEmail(quote.customerEmail || quote.customerId?.primaryContact?.email);
+                }
+                if (quote.customerAddress || quote.customerId?.billingAddress?.line1) {
+                    setCustomerAddress(quote.customerAddress || quote.customerId?.billingAddress?.line1);
+                }
+                if (quote.whatsappNum || quote.customerId?.primaryContact?.whatsappNum) {
+                    setCustomerWhatsapp(quote.whatsappNum || quote.customerId?.primaryContact?.whatsappNum);
+                }
+                if (quote.vatNumber || quote.customerVatNumber) setCustomerVatNumber(quote.vatNumber || quote.customerVatNumber);
+                if (quote.brNumber || quote.customerBrNumber) setCustomerBrNumber(quote.brNumber || quote.customerBrNumber);
+                if (quote.idNumber || quote.customerIdNumber) setCustomerIdNumber(quote.idNumber || quote.customerIdNumber);
+                if (quote.salesRep) setCustomerSalesRep(quote.salesRep);
+
+                if (quote.vehicleNo || quote.vehicleModel || quote.insuranceCompany || quote.jobCaption || quote.numberPlateImage || quote.lorryBodyImage || (quote.photos && quote.photos.length > 0)) {
+                    setIncludeVehicleDetails(true);
+                }
+                if (quote.vehicleNo) setVehicleNo(quote.vehicleNo);
+                if (quote.vehicleModel) setVehicleModel(quote.vehicleModel);
+                if (quote.insuranceCompany) setInsuranceCompany(quote.insuranceCompany);
+                if (quote.jobCaption) setJobCaption(quote.jobCaption);
+                if (quote.numberPlateImage) setNumberPlateImage(quote.numberPlateImage);
+                if (quote.lorryBodyImage) setLorryBodyImage(quote.lorryBodyImage);
+                if (Array.isArray(quote.photos)) setPhotos(quote.photos);
+
+                if (quote.introducer) setIntroducer(quote.introducer?._id || quote.introducer);
+                if (quote.introducerName) setIntroducerName(quote.introducerName);
+                if (quote.biller) setBiller(quote.biller?._id || quote.biller);
+                if (quote.billerName) setBillerName(quote.billerName);
+
+                if (quote.remarks || quote.notes) setRemarks(quote.remarks || quote.notes);
+                if (quote.conditionOfPayments) setConditionOfPayments(quote.conditionOfPayments);
+                if (quote.completionOfWork) setCompletionOfWork(quote.completionOfWork);
+                if (quote.validityQuotation) setValidityQuotation(quote.validityQuotation);
+                if (quote.warrantyCondition || quote.warrantyInfo) setWarrantyCondition(quote.warrantyCondition || quote.warrantyInfo);
+                if (quote.laborCost) setLaborCost(quote.laborCost);
+
+                if (quote.advanceAmount > 0 || quote.advancePercentage > 0) {
+                    setShowAdvance(true);
+                    setAdvancePercentage(quote.advancePercentage || 0);
+                    setAdvanceAmount(quote.advanceAmount || 0);
+                }
+                if (quote.notes) setNotes(quote.notes);
+
+                if (Array.isArray(quote.items) && quote.items.length > 0) {
+                    setItems(quote.items.map(it => ({
+                        productId: it.product?._id || it.product || it.productId?._id || it.productId || '',
+                        productCode: it.productCode || it.product?.productCode || '',
+                        productName: it.productName || it.product?.name || '',
+                        productTranslation: it.productTranslation || it.product?.sinhalaName || '',
+                        description: it.description || it.product?.description || '',
+                        quantity: it.quantity || 1,
+                        unitPrice: it.unitPrice || 0,
+                        discount: it.discount || 0,
+                        taxable: false,
+                        taxRate: 18,
+                        unitOfMeasure: it.unitOfMeasure || it.product?.uom || 'pcs',
+                    })));
+                }
+            };
+
+            const populateInvoice = (inv) => {
+                setExistingInvoice(inv);
+                setDocType('invoice');
                     if (inv.invoiceType) setInvoiceType(inv.invoiceType);
                     if (inv.invoiceDate) setInvoiceDate(new Date(inv.invoiceDate).toISOString().split('T')[0]);
                     if (inv.dueDate) setDueDate(new Date(inv.dueDate).toISOString().split('T')[0]);
@@ -138,12 +218,64 @@ export default function InvoiceFormPage() {
                             taxable: it.taxable !== false,
                         })));
                     }
-                })
-                .catch(() => {
-                    toast.error('Failed to load invoice for editing');
-                });
-        }
-    }, [editInvoiceId, user, navigate]);
+                };
+
+                if (isQuotationOrEstimate) {
+                    api.get(`/crm/quotations/${editDocId}?_t=${Date.now()}`)
+                        .then(res => {
+                            const quote = res.data?.data;
+                            if (!quote) return;
+                            populateQuotation(quote);
+                        })
+                        .catch(err => {
+                            console.error('Failed to load quotation/estimate for edit:', err);
+                            toast.error(err.response?.data?.message || 'Failed to load quotation/estimate for editing');
+                            navigate('/invoices?tab=quotations');
+                        });
+                } else {
+                    if (user && user.role !== 'admin') {
+                        // Check if it might be a quotation before restricting
+                        api.get(`/crm/quotations/${editDocId}?_t=${Date.now()}`)
+                            .then(res => {
+                                if (res.data?.data) {
+                                    populateQuotation(res.data.data);
+                                } else {
+                                    toast.error('Only administrators are authorized to edit invoices');
+                                    navigate('/invoices');
+                                }
+                            })
+                            .catch(() => {
+                                toast.error('Only administrators are authorized to edit invoices');
+                                navigate('/invoices');
+                            });
+                        return;
+                    }
+                    api.get(`/invoices/${editDocId}?_t=${Date.now()}`)
+                        .then(res => {
+                            const inv = res.data?.data;
+                            if (!inv) return;
+                            populateInvoice(inv);
+                        })
+                        .catch(() => {
+                            // Fallback check in quotations in case type wasn't in URL
+                            api.get(`/crm/quotations/${editDocId}?_t=${Date.now()}`)
+                                .then(res => {
+                                    const quote = res.data?.data;
+                                    if (quote) {
+                                        populateQuotation(quote);
+                                    } else {
+                                        toast.error('Failed to load document for editing');
+                                        navigate('/invoices');
+                                    }
+                                })
+                                .catch(() => {
+                                    toast.error('Failed to load document for editing');
+                                    navigate('/invoices');
+                                });
+                        });
+                }
+            }
+        }, [editDocId, routeCategory, user, navigate]);
 
     const docTypeLabel = docType === 'estimate' ? 'Estimate' : docType === 'quotation' ? 'Quotation' : 'Invoice';
     const docTypeLower = docTypeLabel.toLowerCase();
@@ -884,7 +1016,18 @@ export default function InvoiceFormPage() {
 
         setIsSubmittingDoc(true);
         try {
-            if (docType === 'invoice') {
+            // Strict Separation:
+            // When editing an existing document, enforce the exact document category of the document being edited
+            const isEditingQuotation = Boolean(editDocId && existingInvoice && (
+                existingInvoice.documentType === 'quotation' ||
+                existingInvoice.documentType === 'estimate' ||
+                existingInvoice.quoteNumber ||
+                existingInvoice.quotationCode
+            ));
+
+            const isInvoiceDoc = !isEditingQuotation && (editDocId || docType === 'invoice');
+
+            if (isInvoiceDoc) {
                 const invoicePayload = {
                     customerId: customerId || undefined,
                     customerName: finalCustomerName,
@@ -951,39 +1094,40 @@ export default function InvoiceFormPage() {
                     photos: includeVehicleDetails ? photos : [],
                 };
 
-                if (editInvoiceId) {
+                if (editDocId) {
                     if (user?.role !== 'admin') {
                         toast.error('Only administrators are authorized to edit invoices');
                         return;
                     }
-                    const { data: res } = await api.put(`/invoices/${editInvoiceId}`, invoicePayload);
+                    const { data: res } = await api.put(`/invoices/${editDocId}`, invoicePayload);
                     if (res?.data) {
-                        queryClient.setQueryData(['invoice', editInvoiceId], res);
+                        queryClient.setQueryData(['invoice', editDocId], res);
                     }
                     await queryClient.invalidateQueries({ queryKey: ['invoice'] });
                     await queryClient.invalidateQueries({ queryKey: ['invoices'] });
                     await queryClient.invalidateQueries({ queryKey: ['invoicesAging'] });
                     toast.success(`Invoice ${existingInvoice?.invoiceNumber || ''} updated successfully!`);
-                    navigate(`/invoices/${editInvoiceId}`);
+                    navigate(`/invoices/${editDocId}`);
                 } else {
                     const result = await createMutation.mutateAsync(invoicePayload);
                     toast.success('Invoice created successfully!');
                     navigate(`/invoices/${result.data._id}`);
                 }
             } else {
-                // docType === 'quotation' || docType === 'estimate'
+                // Quotation or Estimate document
+                const effectiveDocType = isEditingQuotation ? (existingInvoice.documentType || 'quotation') : (docType === 'estimate' ? 'estimate' : 'quotation');
                 saveDefaultTerms({
                     remarks,
                     conditionOfPayments,
                     completionOfWork,
                     validityQuotation,
                     warrantyCondition,
-                }, docType);
+                }, effectiveDocType);
 
-                const rawQuoteNumber = quoteNumber.trim();
+                const rawQuoteNumber = quoteNumber.trim() || existingInvoice?.quoteNumber || '';
                 const paddedQuoteNumber = rawQuoteNumber ? rawQuoteNumber.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m) : undefined;
                 const quotePayload = {
-                    documentType: docType,
+                    documentType: effectiveDocType,
                     quoteNumber: paddedQuoteNumber,
                     customerId: customerId || undefined,
                     customerName: finalCustomerName,
@@ -1008,14 +1152,15 @@ export default function InvoiceFormPage() {
                     introducerName: introducerName || undefined,
                     biller: biller || undefined,
                     billerName: billerName || undefined,
-                    numberPlateImage: numberPlateImage || undefined,
-                    lorryBodyImage: lorryBodyImage || undefined,
-                    photos: photos.length > 0 ? photos : undefined,
+                    numberPlateImage: includeVehicleDetails ? (numberPlateImage || null) : null,
+                    lorryBodyImage: includeVehicleDetails ? (lorryBodyImage || null) : null,
+                    photos: includeVehicleDetails ? photos : [],
                     remarks: remarks || undefined,
                     conditionOfPayments: conditionOfPayments || undefined,
                     completionOfWork: completionOfWork || undefined,
                     validityQuotation: validityQuotation || undefined,
                     warrantyCondition: warrantyCondition || undefined,
+                    laborCost: +laborCost || 0,
                     items: items.map((i) => {
                         const q = +i.quantity || 1;
                         const p = +i.unitPrice || 0;
@@ -1033,7 +1178,6 @@ export default function InvoiceFormPage() {
                         };
                     }),
                     totalAmount: totals.sub,
-                    laborCost: +laborCost || 0,
                     discount: totals.discount,
                     tax: totals.tax,
                     grandTotal: totals.grand,
@@ -1041,12 +1185,21 @@ export default function InvoiceFormPage() {
                     advanceAmount: showAdvance ? (+advanceAmount || 0) : 0,
                     balanceAmount: showAdvance ? Math.max(0, totals.grand - (+advanceAmount || 0)) : totals.grand,
                     notes: notes || undefined,
-                    status: 'draft',
+                    status: existingInvoice?.status || 'draft',
                 };
-                await api.post('/crm/quotations', quotePayload);
-                const docLabel = docType === 'estimate' ? 'Estimate' : 'Quotation';
-                toast.success(`${docLabel} created successfully!`);
-                navigate(`/invoices?tab=${docType === 'estimate' ? 'estimates' : 'quotations'}`);
+
+                const docLabel = effectiveDocType === 'estimate' ? 'Estimate' : 'Quotation';
+                if (editDocId) {
+                    await api.put(`/crm/quotations/${editDocId}`, quotePayload);
+                    await queryClient.invalidateQueries({ queryKey: ['quotations'] });
+                    await queryClient.invalidateQueries({ queryKey: ['quotation', editDocId] });
+                    toast.success(`${docLabel} ${paddedQuoteNumber || existingInvoice?.quoteNumber || ''} updated successfully!`);
+                    navigate(`/invoices?tab=${effectiveDocType === 'estimate' ? 'estimates' : 'quotations'}`);
+                } else {
+                    await api.post('/crm/quotations', quotePayload);
+                    toast.success(`${docLabel} created successfully!`);
+                    navigate(`/invoices?tab=${effectiveDocType === 'estimate' ? 'estimates' : 'quotations'}`);
+                }
             }
         } catch (err) {
             toast.error(err.response?.data?.message || err.message || 'Failed to create document');
@@ -1224,13 +1377,31 @@ export default function InvoiceFormPage() {
     return (
         <div>
             <PageHeader
-                title={docType === 'estimate' ? 'Add Estimate' : docType === 'quotation' ? 'Add Quotation' : 'Add Invoice'}
+                title={
+                    existingInvoice
+                        ? (docType === 'estimate'
+                            ? `Edit Estimate #${(existingInvoice.quoteNumber || '').replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m)}`
+                            : docType === 'quotation'
+                            ? `Edit Quotation #${(existingInvoice.quoteNumber || '').replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m)}`
+                            : existingInvoice.invoiceType === 'proforma'
+                            ? `Edit Proforma Invoice #${(existingInvoice.invoiceNumber || '').replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m)}`
+                            : `Edit Invoice #${(existingInvoice.invoiceNumber || '').replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m)}`)
+                        : (docType === 'estimate' ? 'Add Estimate' : docType === 'quotation' ? 'Add Quotation' : 'Add Invoice')
+                }
                 description={
-                    docType === 'estimate'
-                        ? 'Create a detailed repair/production cost estimate for vehicle body works'
-                        : docType === 'quotation'
-                        ? 'Create an official price quotation for client approval'
-                        : 'Create an invoice directly (services, custom sales, or walk-in customers)'
+                    existingInvoice
+                        ? (docType === 'estimate'
+                            ? 'Update vehicle repair cost estimate details'
+                            : docType === 'quotation'
+                            ? 'Update quotation details and pricing'
+                            : existingInvoice.invoiceType === 'proforma'
+                            ? 'Update proforma invoice details'
+                            : 'Update existing commercial invoice details')
+                        : (docType === 'estimate'
+                            ? 'Create a detailed repair/production cost estimate for vehicle body works'
+                            : docType === 'quotation'
+                            ? 'Create an official price quotation for client approval'
+                            : 'Create an invoice directly (services, custom sales, or walk-in customers)')
                 }
                 actions={
                     <Button
@@ -1245,91 +1416,128 @@ export default function InvoiceFormPage() {
             {/* Document Type Switcher Banner & Inline Date/Type Controls */}
             <div className="bg-white dark:bg-[#111F33] p-3.5 sm:p-4 rounded-2xl border border-gray-200/90 dark:border-slate-700/80 shadow-xs mb-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
                 <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider hidden sm:inline">Type:</span>
-                    <div className="inline-flex p-1 bg-gray-100 dark:bg-slate-800/80 rounded-xl border border-gray-200/80 dark:border-slate-700 w-full sm:w-auto">
-                        <button
-                            type="button"
-                            onClick={() => { setDocType('invoice'); setSearchParams({ type: 'invoice' }); }}
-                            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                                docType === 'invoice'
-                                    ? 'bg-blue-600 text-white shadow-sm dark:bg-blue-600 dark:text-white'
-                                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50'
-                            }`}
-                        >
-                            <Receipt size={14} />
-                            Invoice
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setDocType('quotation');
-                                setSearchParams({ type: 'quotation' });
-                                if (!isTermsModified) {
-                                    const t = getSavedTerms('quotation');
-                                    setRemarks(t.remarks);
-                                    setConditionOfPayments(t.conditionOfPayments);
-                                    setCompletionOfWork(t.completionOfWork);
-                                    setValidityQuotation(t.validityQuotation);
-                                    setWarrantyCondition(t.warrantyCondition);
-                                    setInitialTerms(t);
-                                }
-                            }}
-                            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                                docType === 'quotation'
-                                    ? 'bg-blue-600 text-white shadow-sm dark:bg-blue-600 dark:text-white'
-                                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50'
-                            }`}
-                        >
-                            <FileText size={14} />
-                            Quotation
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setDocType('estimate');
-                                setSearchParams({ type: 'estimate' });
-                                if (!isTermsModified) {
-                                    const t = getSavedTerms('estimate');
-                                    setRemarks(t.remarks);
-                                    setConditionOfPayments(t.conditionOfPayments);
-                                    setCompletionOfWork(t.completionOfWork);
-                                    setValidityQuotation(t.validityQuotation);
-                                    setWarrantyCondition(t.warrantyCondition);
-                                    setInitialTerms(t);
-                                }
-                            }}
-                            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                    {editDocId ? (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Document:</span>
+                            <div className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 border shadow-2xs ${
                                 docType === 'estimate'
-                                    ? 'bg-amber-600 text-white shadow-sm dark:bg-amber-600 dark:text-white'
-                                    : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50'
-                            }`}
-                        >
-                            <ClipboardList size={14} />
-                            Estimate
-                        </button>
-                    </div>
-
-                    {/* Auto-Generated or Existing Document ID Display */}
-                    <div className="flex flex-wrap items-center gap-2 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/90 dark:border-blue-800/60 px-3.5 py-1.5 rounded-xl shadow-2xs">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider leading-none">
-                                {existingInvoice ? (existingInvoice.invoiceType === 'proforma' ? 'Editing Proforma' : 'Editing Invoice') : docType === 'invoice' ? (invoiceType === 'proforma' ? 'Proforma ID' : 'Invoice ID') : docType === 'estimate' ? 'Estimate ID' : 'Quotation ID'}
-                            </span>
-                            <span className="font-mono font-bold text-xs text-blue-950 dark:text-blue-100 mt-0.5">
-                                {existingInvoice ? (existingInvoice.invoiceNumber ? existingInvoice.invoiceNumber.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m) : '') : (docType !== 'invoice' && quoteNumber.trim() ? quoteNumber.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m) : (autoGeneratedDocId ? autoGeneratedDocId.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m) : 'Generating...'))}
-                            </span>
+                                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                                    : docType === 'quotation'
+                                    ? 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30'
+                                    : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                            }`}>
+                                {docType === 'estimate' ? <ClipboardList size={15} /> : docType === 'quotation' ? <FileText size={15} /> : <Receipt size={15} />}
+                                <span>{docType === 'estimate' ? 'Estimate' : docType === 'quotation' ? 'Quotation' : (existingInvoice?.invoiceType === 'proforma' ? 'Proforma Invoice' : 'Commercial Invoice')}</span>
+                            </div>
                         </div>
-                        {existingInvoice && (() => {
-                            const h = getDocumentEditHistory(existingInvoice);
-                            return h.length > 0 ? (
-                                <div className="flex flex-wrap items-center gap-1 border-l border-blue-200 dark:border-blue-800 pl-2">
-                                    <span className="text-[10px] font-black text-red-600 dark:text-red-400 bg-red-100/90 dark:bg-red-950/60 border border-red-300 dark:border-red-800 px-1.5 py-0.5 rounded font-mono">
-                                        {formatEditItem(h[h.length - 1], h.length)}
-                                    </span>
-                                </div>
-                            ) : null;
-                        })()}
+                    ) : (
+                        <>
+                            <span className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider hidden sm:inline">Type:</span>
+                            <div className="inline-flex p-1 bg-gray-100 dark:bg-slate-800/80 rounded-xl border border-gray-200/80 dark:border-slate-700 w-full sm:w-auto">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setDocType('invoice');
+                                        setSearchParams(prev => { const n = new URLSearchParams(prev); n.set('type', 'invoice'); return n; });
+                                    }}
+                                    className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                                        docType === 'invoice'
+                                            ? 'bg-blue-600 text-white shadow-sm dark:bg-blue-600 dark:text-white'
+                                            : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50'
+                                    }`}
+                                >
+                                    <Receipt size={14} />
+                                    Invoice
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setDocType('quotation');
+                                        setSearchParams(prev => { const n = new URLSearchParams(prev); n.set('type', 'quotation'); return n; });
+                                        if (!isTermsModified) {
+                                            const t = getSavedTerms('quotation');
+                                            setRemarks(t.remarks);
+                                            setConditionOfPayments(t.conditionOfPayments);
+                                            setCompletionOfWork(t.completionOfWork);
+                                            setValidityQuotation(t.validityQuotation);
+                                            setWarrantyCondition(t.warrantyCondition);
+                                            setInitialTerms(t);
+                                        }
+                                    }}
+                                    className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                                        docType === 'quotation'
+                                            ? 'bg-blue-600 text-white shadow-sm dark:bg-blue-600 dark:text-white'
+                                            : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50'
+                                    }`}
+                                >
+                                    <FileText size={14} />
+                                    Quotation
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setDocType('estimate');
+                                        setSearchParams(prev => { const n = new URLSearchParams(prev); n.set('type', 'estimate'); return n; });
+                                        if (!isTermsModified) {
+                                            const t = getSavedTerms('estimate');
+                                            setRemarks(t.remarks);
+                                            setConditionOfPayments(t.conditionOfPayments);
+                                            setCompletionOfWork(t.completionOfWork);
+                                            setValidityQuotation(t.validityQuotation);
+                                            setWarrantyCondition(t.warrantyCondition);
+                                            setInitialTerms(t);
+                                        }
+                                    }}
+                                    className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                                        docType === 'estimate'
+                                            ? 'bg-amber-600 text-white shadow-sm dark:bg-amber-600 dark:text-white'
+                                            : 'text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200/50 dark:hover:bg-slate-700/50'
+                                    }`}
+                                >
+                                    <ClipboardList size={14} />
+                                    Estimate
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                {/* Auto-Generated or Existing Document ID Display */}
+                <div className="flex flex-wrap items-center gap-2 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/90 dark:border-blue-800/60 px-3.5 py-1.5 rounded-xl shadow-2xs">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider leading-none">
+                            {existingInvoice
+                                ? (docType === 'estimate'
+                                    ? 'Editing Estimate'
+                                    : docType === 'quotation'
+                                    ? 'Editing Quotation'
+                                    : existingInvoice.invoiceType === 'proforma'
+                                    ? 'Editing Proforma Invoice'
+                                    : 'Editing Invoice')
+                                : docType === 'invoice'
+                                ? (invoiceType === 'proforma' ? 'Proforma ID' : 'Invoice ID')
+                                : docType === 'estimate'
+                                ? 'Estimate ID'
+                                : 'Quotation ID'}
+                        </span>
+                        <span className="font-mono font-bold text-xs text-blue-950 dark:text-blue-100 mt-0.5">
+                            {existingInvoice
+                                ? ((existingInvoice.quoteNumber || existingInvoice.invoiceNumber || '').replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m))
+                                : (docType !== 'invoice' && quoteNumber.trim()
+                                    ? quoteNumber.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m)
+                                    : (autoGeneratedDocId ? autoGeneratedDocId.replace(/(\d+)$/, (m) => m.length < 5 ? m.padStart(5, '0') : m) : 'Generating...'))}
+                        </span>
                     </div>
+                    {existingInvoice && (() => {
+                        const h = getDocumentEditHistory(existingInvoice);
+                        return h.length > 0 ? (
+                            <div className="flex flex-wrap items-center gap-1 border-l border-blue-200 dark:border-blue-800 pl-2">
+                                <span className="text-[10px] font-black text-red-600 dark:text-red-400 bg-red-100/90 dark:bg-red-950/60 border border-red-300 dark:border-red-800 px-1.5 py-0.5 rounded font-mono">
+                                    {formatEditItem(h[h.length - 1], h.length)}
+                                </span>
+                            </div>
+                        ) : null;
+                    })()}
                 </div>
 
                 {/* Inline Invoice / Quote Date & Expiry / Type Controls */}
@@ -1969,7 +2177,7 @@ export default function InvoiceFormPage() {
                                 disabled={(!customerId && !customerSearch.trim()) || items.length === 0}
                             >
                                 <Save size={14} className="mr-1.5" />
-                                Create Invoice
+                                {existingInvoice ? 'Update Invoice' : 'Create Invoice'}
                             </Button>
                         </Card>
                     ) : (
@@ -2093,7 +2301,9 @@ export default function InvoiceFormPage() {
                                 disabled={(!customerId && !customerSearch.trim()) || items.length === 0}
                             >
                                 <Save size={14} className="mr-1.5" />
-                                {docType === 'estimate' ? 'Create Estimate' : 'Create Quotation'}
+                                {existingInvoice
+                                    ? (docType === 'estimate' ? 'Update Estimate' : 'Update Quotation')
+                                    : (docType === 'estimate' ? 'Create Estimate' : 'Create Quotation')}
                             </Button>
                         </Card>
                     )}

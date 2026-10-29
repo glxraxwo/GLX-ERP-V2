@@ -683,7 +683,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
             if (editIdFromUrl) {
                 const target = quotations.find(q => q._id === editIdFromUrl || q.quotationCode === editIdFromUrl || q.quoteNumber === editIdFromUrl);
                 if (target) {
-                    openForm(target);
+                    navigate(`/invoices/new?type=${target.documentType === 'estimate' ? 'estimate' : 'quotation'}&edit=${target._id}`, { replace: true });
                 }
             } else if (previewIdFromUrl) {
                 const target = quotations.find(q => q._id === previewIdFromUrl || q.quotationCode === previewIdFromUrl || q.quoteNumber === previewIdFromUrl);
@@ -1081,7 +1081,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     </button>
                     {canEdit && (
                         <button
-                            onClick={() => openForm(r)}
+                            onClick={() => navigate(`/invoices/new?type=${r.documentType === 'estimate' ? 'estimate' : 'quotation'}&edit=${r._id}`)}
                             className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded transition"
                             title="Edit"
                         >
@@ -1504,7 +1504,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                             <Eye size={14} className="mr-1" /> View
                                         </Button>
                                         {canEdit && (
-                                            <Button variant="outline" size="sm" className="flex-1" onClick={() => openForm(quote)}>
+                                            <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/invoices/new?type=${quote.documentType === 'estimate' ? 'estimate' : 'quotation'}&edit=${quote._id}`)}>
                                                 <Edit size={14} className="mr-1" /> Edit
                                             </Button>
                                         )}
@@ -2465,6 +2465,22 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         <Download size={14} />
                                         Download PDF {!previewIncludeHeader && <span className="text-[10px] text-amber-600 font-bold">(No Header)</span>}
                                     </button>
+                                    {canEdit && previewQuote.status !== 'cancelled' && (
+                                        <>
+                                            <div className="w-px h-5 bg-gray-200" />
+                                            <button
+                                                onClick={() => {
+                                                    setIsPreviewOpen(false);
+                                                    navigate(`/invoices/new?type=${previewQuote.documentType === 'estimate' ? 'estimate' : 'quotation'}&edit=${previewQuote._id}`);
+                                                }}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-all duration-150"
+                                                title="Edit Document"
+                                            >
+                                                <Edit size={14} />
+                                                Edit
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Conversion / Cancellation Actions Group */}

@@ -178,7 +178,8 @@ function App() {
         <Route path="/inventory/raw-materials" element={<ProtectedRoute requiredPermission="inventory.view"><RawMaterialsPage /></ProtectedRoute>} />
         <Route path="/inventory/converter" element={<ProtectedRoute requiredPermission="inventory.adjust"><InventoryConverterPage /></ProtectedRoute>} />
         <Route path="/invoices" element={<ProtectedRoute requiredPermission="invoices.view"><InvoicesPage /></ProtectedRoute>} />
-        <Route path="/invoices/new" element={<ProtectedRoute requiredPermission="invoices.create"><InvoiceFormPage /></ProtectedRoute>} />
+        <Route path="/invoices/new" element={<ProtectedRoute requiredAnyPermission={['invoices.create', 'sales.create', 'sales.edit', 'sales.view']}><InvoiceFormPage /></ProtectedRoute>} />
+        <Route path="/invoices/:id/edit" element={<ProtectedRoute requiredPermission="invoices.create"><InvoiceFormPage /></ProtectedRoute>} />
         <Route path="/invoices/from-sales-order" element={<ProtectedRoute requiredPermission="invoices.create"><InvoiceFromSalesOrderPage /></ProtectedRoute>} />
         <Route path="/invoices/:id" element={<ProtectedRoute requiredPermission="invoices.view"><InvoiceDetailPage /></ProtectedRoute>} />
         <Route path="/bills" element={<ProtectedRoute requiredPermission="bills.view"><BillsPage /></ProtectedRoute>} />
@@ -205,6 +206,12 @@ function App() {
         <Route path="/manufacturing/machines" element={<ProtectedRoute requiredPermission="production.view"><MachinesPage /></ProtectedRoute>} />
 
         <Route path="/crm/quotations" element={<ProtectedRoute requiredPermission="sales.view"><QuotationsPage /></ProtectedRoute>} />
+        <Route path="/crm/quotations/new" element={<ProtectedRoute requiredAnyPermission={['sales.create', 'sales.manage']}><InvoiceFormPage defaultDocType="quotation" /></ProtectedRoute>} />
+        <Route path="/crm/quotations/:id/edit" element={<ProtectedRoute requiredAnyPermission={['sales.edit', 'sales.manage']}><InvoiceFormPage defaultDocType="quotation" /></ProtectedRoute>} />
+        <Route path="/quotations/new" element={<Navigate to="/invoices/new?type=quotation" replace />} />
+        <Route path="/quotations/:id/edit" element={<ProtectedRoute requiredAnyPermission={['sales.edit', 'sales.manage']}><InvoiceFormPage defaultDocType="quotation" /></ProtectedRoute>} />
+        <Route path="/estimates/new" element={<Navigate to="/invoices/new?type=estimate" replace />} />
+        <Route path="/estimates/:id/edit" element={<ProtectedRoute requiredAnyPermission={['sales.edit', 'sales.manage']}><InvoiceFormPage defaultDocType="estimate" /></ProtectedRoute>} />
         <Route path="/crm/projects" element={<ProtectedRoute requiredPermission="sales.view"><ProjectsPage /></ProtectedRoute>} />
         <Route path="/crm/projects/:id" element={<ProtectedRoute requiredPermission="sales.view"><ProjectDetailPage /></ProtectedRoute>} />
         <Route path="/projects" element={<ProtectedRoute requiredPermission="sales.view"><ProjectsPage /></ProtectedRoute>} />

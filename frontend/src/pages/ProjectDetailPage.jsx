@@ -403,7 +403,7 @@ export default function ProjectDetailPage() {
                         <Button
                             variant="primary"
                             size="sm"
-                            onClick={() => navigate(`/crm/quotations?edit=${project.quotation._id || project.quotation}`)}
+                            onClick={() => navigate(`/invoices/new?type=${project.quotation?.documentType === 'estimate' ? 'estimate' : 'quotation'}&edit=${project.quotation._id || project.quotation}`)}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-bold flex-1 sm:flex-none justify-center shadow-xs"
                         >
                             <Edit size={14} className="mr-1.5" /> Edit / Revise Quotation

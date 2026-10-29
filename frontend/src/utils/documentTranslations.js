@@ -72,7 +72,7 @@ export const docTranslations = {
         quotation: "මිල ගණන් කැඳවීම (QUOTATION)",
         estimate: "ඇස්තමේන්තුව (ESTIMATE)",
         invoice: "වාණිජ ඉන්වොයිසිය (INVOICE)",
-        proforma: "පෙර ඉන්වොයිසිය (PROFORMA)",
+        proforma: "ප්‍රොෆෝමා ඉන්වොයිසිය (PROFORMA INVOICE)",
         date: "දිනය",
         validUntil: "වලංගු කාලය",
         quoteNo: "මිල ගණන් අංකය",

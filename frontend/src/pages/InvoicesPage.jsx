@@ -222,12 +222,20 @@ export default function InvoicesPage() {
 
     const columns = [
         {
-            key: 'invoiceNumber', label: 'Invoice #', width: '130px',
+            key: 'invoiceNumber', label: 'Invoice #', width: '200px',
             render: (r) => {
                 const history = getDocumentEditHistory(r);
                 return (
                     <div>
-                        <span className="font-mono text-xs font-bold text-gray-900">{r.invoiceNumber}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            {(r.invoiceType === 'proforma' || (r.invoiceNumber && (r.invoiceNumber.startsWith('PI') || r.invoiceNumber.includes('/PI/')))) && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700 tracking-wide uppercase font-sans">
+                                    <FileText size={10} className="shrink-0" />
+                                    Proforma Invoice
+                                </span>
+                            )}
+                            <span className="font-mono text-xs font-bold text-gray-900 dark:text-white">{r.invoiceNumber}</span>
+                        </div>
                         {history.length > 0 && (
                             <div className="flex flex-col gap-0.5 mt-0.5">
                                 <button

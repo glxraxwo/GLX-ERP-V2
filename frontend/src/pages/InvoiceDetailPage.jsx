@@ -607,7 +607,7 @@ export default function InvoiceDetailPage() {
             </div>
 
             {/* Interactive A4 Print & Quick-Edit Preview Modal */}
-            <Modal isOpen={isPreviewModalOpen} onClose={() => setIsPreviewModalOpen(false)} title={`Invoice ${inv.invoiceNumber} — Interactive A4 Preview & Edit`} size="xl">
+            <Modal isOpen={isPreviewModalOpen} onClose={() => setIsPreviewModalOpen(false)} title={`${isProforma ? 'Proforma Invoice' : 'Invoice'} ${inv.invoiceNumber} — Interactive A4 Preview & Edit`} size="xl">
                 <div className="p-3 sm:p-6 space-y-4">
                     <div className="max-h-[75vh] overflow-y-auto p-2 bg-gray-100 rounded-xl">
                         <PrintableInvoice

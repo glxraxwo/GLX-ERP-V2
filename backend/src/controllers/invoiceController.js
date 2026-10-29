@@ -381,6 +381,9 @@ export const getInvoices = asyncHandler(async (req, res) => {
     if (customerId) filter.customerId = customerId;
     if (invoiceType) {
         if (invoiceType === 'commercial') {
+            // Include commercial, standard, and proforma invoices so nothing is hidden in the main view
+            filter.invoiceType = { $in: ['commercial', 'standard', 'proforma'] };
+        } else if (invoiceType === 'commercial_only') {
             filter.invoiceType = { $in: ['commercial', 'standard'] };
         } else {
             filter.invoiceType = invoiceType;
