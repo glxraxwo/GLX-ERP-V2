@@ -380,11 +380,15 @@ export const getInvoices = asyncHandler(async (req, res) => {
     }
     if (customerId) filter.customerId = customerId;
     if (invoiceType) {
-        if (invoiceType === 'commercial') {
-            // Include commercial, standard, and proforma invoices so nothing is hidden in the main view
-            filter.invoiceType = { $in: ['commercial', 'standard', 'proforma'] };
-        } else if (invoiceType === 'commercial_only') {
+        if (invoiceType === 'commercial' || invoiceType === 'commercial_only') {
+            // Strictly Commercial & Standard invoices only! NEVER include proforma in standard commercial view!
             filter.invoiceType = { $in: ['commercial', 'standard'] };
+            filter.invoiceNumber = { $regex: /^(JA\/INV|INV)/i };
+        } else if (invoiceType === 'proforma') {
+            filter.$or = [
+                { invoiceType: 'proforma' },
+                { invoiceNumber: { $regex: /^(JA\/PI|PI-|JA\/QT|JA\/EST)/i } }
+            ];
         } else {
             filter.invoiceType = invoiceType;
         }
@@ -751,20 +755,14 @@ export const convertProformaToCommercial = asyncHandler(async (req, res) => {
         }
     }
 
-    // Generate official commercial invoice number (JA/INV/CUST/xxxxx)
-    const rawCust = invoice.customerSnapshot?.name || invoice.customerName || invoice.vehicleOwner || '';
-    const cleanCust = String(rawCust).trim().replace(/^(?:mr\.?|mrs\.?|ms\.?|dr\.?|m\/s\.?)\s+/i, '');
-    const firstWord = cleanCust.split(/[\s,._\-\/]+/)[0] || '';
-    const custSnippet = firstWord.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
-    const prefix = custSnippet ? `JA/INV/${custSnippet}` : 'JA/INV';
-
+    // Generate official standard commercial invoice number (JA/INV/xxxxx)
     let seq = await getNextSequence('invoice');
     let seqFormatted = String(seq).padStart(5, '0');
-    let candidate = `${prefix}/${seqFormatted}`;
+    let candidate = `JA/INV/${seqFormatted}`;
     while (await Invoice.findOne({ invoiceNumber: candidate })) {
         seq = await getNextSequence('invoice');
         seqFormatted = String(seq).padStart(5, '0');
-        candidate = `${prefix}/${seqFormatted}`;
+        candidate = `JA/INV/${seqFormatted}`;
     }
 
     // Create a new separate Commercial Invoice document preserving all details
@@ -923,18 +921,12 @@ export const convertInvoiceToProforma = asyncHandler(async (req, res) => {
         }
     }
 
-    // Generate unique Proforma number (JA/PI/CUST/xxxxx)
-    const rawCust = invoice.customerSnapshot?.name || invoice.customerName || invoice.vehicleOwner || '';
-    const cleanCust = String(rawCust).trim().replace(/^(?:mr\.?|mrs\.?|ms\.?|dr\.?|m\/s\.?)\s+/i, '');
-    const firstWord = cleanCust.split(/[\s,._\-\/]+/)[0] || '';
-    const custSnippet = firstWord.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
-    const prefix = custSnippet ? `JA/PI/${custSnippet}` : 'JA/PI';
-
+    // Generate unique standard Proforma number (JA/PI/xxxxx)
     let seq = await getNextSequence('proforma_invoice');
-    let piNumber = `${prefix}/${String(seq).padStart(5, '0')}`;
+    let piNumber = `JA/PI/${String(seq).padStart(5, '0')}`;
     while (await Invoice.findOne({ invoiceNumber: piNumber })) {
         seq = await getNextSequence('proforma_invoice');
-        piNumber = `${prefix}/${String(seq).padStart(5, '0')}`;
+        piNumber = `JA/PI/${String(seq).padStart(5, '0')}`;
     }
 
     // Create a new separate Proforma Invoice document preserving all details

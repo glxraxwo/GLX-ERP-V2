@@ -345,12 +345,18 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
         throw new Error('Document not found');
     }
 
+    const requestedType = req.body.invoiceType || 'commercial';
+    const isRequestingProforma = requestedType === 'proforma';
+
     if (quotation.status === 'converted' && quotation.convertedInvoiceId) {
-        // Return existing invoice
+        // Return existing invoice only if it matches requested document type
         const { default: Invoice } = await import('../models/Invoice.js');
         const existingInvoice = await Invoice.findById(quotation.convertedInvoiceId);
         if (existingInvoice) {
-            return res.json({ success: true, message: 'Already converted', data: existingInvoice });
+            const isExistingProforma = existingInvoice.invoiceType === 'proforma' || existingInvoice.invoiceNumber?.startsWith('PI') || existingInvoice.invoiceNumber?.includes('/PI/');
+            if (isExistingProforma === isRequestingProforma) {
+                return res.json({ success: true, message: 'Already converted', data: existingInvoice });
+            }
         }
     }
 
@@ -414,7 +420,7 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
     }
 
     const invoice = new Invoice({
-        invoiceType: req.body.invoiceType || 'commercial',
+        invoiceType: isRequestingProforma ? 'proforma' : 'standard',
         sourceDocumentType: quotation.documentType || 'quotation',
         sourceDocumentId: quotation._id,
         sourceDocumentCode: quotation.quoteNumber || quotation.quotationCode,

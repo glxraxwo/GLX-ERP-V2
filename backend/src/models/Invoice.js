@@ -234,14 +234,7 @@ invoiceSchema.index({ vehicleNo: 1 });
 invoiceSchema.pre('save', async function () {
     if (this.isNew && !this.invoiceNumber) {
         const isProforma = this.invoiceType === 'proforma';
-        const basePrefix = isProforma ? 'JA/PI' : 'JA/INV';
-
-        // Extract a clean uppercase customer snippet (e.g. SAFE, DILUM, GLX)
-        const rawCust = this.customerSnapshot?.name || this.customerName || this.vehicleOwner || '';
-        const cleanCust = String(rawCust).trim().replace(/^(?:mr\.?|mrs\.?|ms\.?|dr\.?|m\/s\.?)\s+/i, '');
-        const firstWord = cleanCust.split(/[\s,._\-\/]+/)[0] || '';
-        const custSnippet = firstWord.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
-        const prefix = custSnippet ? `${basePrefix}/${custSnippet}` : basePrefix;
+        const prefix = isProforma ? 'JA/PI' : 'JA/INV';
 
         const seqKey = isProforma ? 'proforma_invoice' : 'invoice';
         let seq = await getNextSequence(seqKey);
