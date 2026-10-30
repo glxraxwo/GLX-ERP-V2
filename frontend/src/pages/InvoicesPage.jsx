@@ -168,10 +168,13 @@ export default function InvoicesPage() {
         if (!selectedConvertInvoice) return;
         setIsSubmittingConvert(true);
         try {
-            await api.post(`/invoices/${selectedConvertInvoice._id}/convert-to-proforma`);
+            const { data: res } = await api.post(`/invoices/${selectedConvertInvoice._id}/convert-to-proforma`);
             toast.success(`Invoice ${selectedConvertInvoice.invoiceNumber} converted to Proforma Invoice!`);
             setSelectedConvertInvoice(null);
             queryClient.invalidateQueries({ queryKey: ['invoices'] });
+            if (res.data?._id) {
+                navigate(`/invoices/${res.data._id}`);
+            }
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to convert invoice');
         } finally {
@@ -183,10 +186,13 @@ export default function InvoicesPage() {
         if (!selectedConvertInvoice) return;
         setIsSubmittingConvert(true);
         try {
-            await api.post(`/invoices/${selectedConvertInvoice._id}/convert-to-commercial`);
+            const { data: res } = await api.post(`/invoices/${selectedConvertInvoice._id}/convert-to-commercial`);
             toast.success(`Invoice ${selectedConvertInvoice.invoiceNumber} converted to Commercial Invoice!`);
             setSelectedConvertInvoice(null);
             queryClient.invalidateQueries({ queryKey: ['invoices'] });
+            if (res.data?._id) {
+                navigate(`/invoices/${res.data._id}`);
+            }
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to convert invoice');
         } finally {
@@ -236,6 +242,13 @@ export default function InvoicesPage() {
                             )}
                             <span className="font-mono text-xs font-bold text-gray-900 dark:text-white">{r.invoiceNumber}</span>
                         </div>
+                        {r.convertedFromInvoiceNumber && (
+                            <div className="mt-0.5">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                                    From: <strong className="font-mono text-slate-700 dark:text-slate-200">{r.convertedFromInvoiceNumber}</strong>
+                                </span>
+                            </div>
+                        )}
                         {history.length > 0 && (
                             <div className="flex flex-col gap-0.5 mt-0.5">
                                 <button
@@ -289,7 +302,45 @@ export default function InvoicesPage() {
         },
         {
             key: 'paymentStatus', label: 'Status',
-            render: (r) => <Badge variant={paymentStatusVariant[r.paymentStatus]}>{r.paymentStatus.replace('_', ' ')}</Badge>,
+            render: (r) => {
+                const isConverted = r.status === 'converted' || r.convertedAs || r.convertedToCommercial || r.convertedToProforma;
+                if (isConverted) {
+                    const isPI = r.convertedAs === 'proforma' || r.convertedToProforma;
+                    const isComm = r.convertedAs === 'commercial' || r.convertedToCommercial;
+                    const label = isPI 
+                        ? 'Converted as Proforma' 
+                        : (isComm ? 'Converted as Commercial' : 'Converted as Project');
+                    const targetDocNumber = r.convertedToDocNumber || 
+                        r.convertedToCommercial?.invoiceNumber || 
+                        r.convertedToProforma?.invoiceNumber;
+                    const targetId = r.convertedToCommercial?._id || r.convertedToCommercial || 
+                        r.convertedToProforma?._id || r.convertedToProforma;
+
+                    return (
+                        <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-300 dark:border-purple-800 tracking-wide uppercase font-sans whitespace-nowrap">
+                                <RotateCcw size={10} className="shrink-0" />
+                                {label}
+                            </span>
+                            {targetDocNumber && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (targetId) navigate(`/invoices/${targetId}`);
+                                        else if (r.convertedProjectId) navigate(`/crm/projects/${r.convertedProjectId}`);
+                                    }}
+                                    className="text-[10px] font-mono font-bold text-purple-700 dark:text-purple-300 hover:underline text-left"
+                                    title="View converted document"
+                                >
+                                    → {targetDocNumber}
+                                </button>
+                            )}
+                        </div>
+                    );
+                }
+                return <Badge variant={paymentStatusVariant[r.paymentStatus]}>{r.paymentStatus ? r.paymentStatus.replace('_', ' ') : 'approved'}</Badge>;
+            },
         },
         {
             key: 'actions', label: 'Actions', width: '180px',
@@ -450,9 +501,9 @@ export default function InvoicesPage() {
                         {/* Invoice Type & Status Filter Pills */}
                         <div className="flex overflow-x-auto flex-nowrap border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-[#111F33] rounded-t-xl">
                             <button
-                                onClick={() => setFilters((f) => ({ ...f, invoiceType: 'commercial', paymentStatus: '', page: 1 }))}
+                                onClick={() => setFilters((f) => ({ ...f, invoiceType: 'commercial', paymentStatus: '', status: '', page: 1 }))}
                                 className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
-                                    filters.invoiceType === 'commercial' && !filters.paymentStatus
+                                    filters.invoiceType === 'commercial' && !filters.paymentStatus && !filters.status
                                         ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-slate-50 dark:bg-slate-800/60'
                                         : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                                 }`}
@@ -460,9 +511,9 @@ export default function InvoicesPage() {
                                 Standard / Commercial
                             </button>
                             <button
-                                onClick={() => setFilters((f) => ({ ...f, invoiceType: 'commercial', paymentStatus: 'paid', page: 1 }))}
+                                onClick={() => setFilters((f) => ({ ...f, invoiceType: 'commercial', paymentStatus: 'paid', status: '', page: 1 }))}
                                 className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
-                                    filters.invoiceType === 'commercial' && filters.paymentStatus === 'paid'
+                                    filters.invoiceType === 'commercial' && filters.paymentStatus === 'paid' && !filters.status
                                         ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-slate-50 dark:bg-slate-800/60'
                                         : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                                 }`}
@@ -470,14 +521,24 @@ export default function InvoicesPage() {
                                 Fully Paid Invoices
                             </button>
                             <button
-                                onClick={() => setFilters((f) => ({ ...f, invoiceType: 'proforma', paymentStatus: '', page: 1 }))}
+                                onClick={() => setFilters((f) => ({ ...f, invoiceType: 'proforma', paymentStatus: '', status: '', page: 1 }))}
                                 className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
-                                    filters.invoiceType === 'proforma'
+                                    filters.invoiceType === 'proforma' && !filters.status
                                         ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-slate-50 dark:bg-slate-800/60'
                                         : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                                 }`}
                             >
                                 Proforma Invoices
+                            </button>
+                            <button
+                                onClick={() => setFilters((f) => ({ ...f, invoiceType: '', paymentStatus: '', status: 'converted', page: 1 }))}
+                                className={`flex-1 py-3 px-4 text-xs md:text-sm font-semibold border-b-2 text-center transition-all ${
+                                    filters.status === 'converted'
+                                        ? 'border-purple-600 text-purple-600 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-950/40 font-bold'
+                                        : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                                }`}
+                            >
+                                Converted Invoices
                             </button>
                         </div>
 
@@ -597,7 +658,38 @@ export default function InvoicesPage() {
                             <button onClick={() => setSelectedConvertInvoice(null)} className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-lg">✕</button>
                         </div>
 
-                        {convertStep === 'choose' ? (
+                        {selectedConvertInvoice.status === 'converted' || selectedConvertInvoice.convertedAs ? (
+                            <div className="p-4 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/70 dark:bg-purple-950/40 space-y-3">
+                                <div className="flex items-center gap-2 text-purple-800 dark:text-purple-300">
+                                    <RotateCcw size={18} />
+                                    <p className="text-xs font-bold uppercase">Already Converted Document</p>
+                                </div>
+                                <p className="text-xs text-purple-700 dark:text-purple-300">
+                                    This document has already been converted as{' '}
+                                    <strong>{selectedConvertInvoice.convertedAs === 'proforma' ? 'Proforma Invoice' : 'Commercial Invoice'}</strong>
+                                    {selectedConvertInvoice.convertedToDocNumber && (
+                                        <> ({selectedConvertInvoice.convertedToDocNumber})</>
+                                    )}.
+                                </p>
+                                <div className="flex items-center gap-2 pt-2">
+                                    {(selectedConvertInvoice.convertedToCommercial || selectedConvertInvoice.convertedToProforma) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const targetId = selectedConvertInvoice.convertedToCommercial?._id || selectedConvertInvoice.convertedToCommercial ||
+                                                    selectedConvertInvoice.convertedToProforma?._id || selectedConvertInvoice.convertedToProforma;
+                                                setSelectedConvertInvoice(null);
+                                                if (targetId) navigate(`/invoices/${targetId}`);
+                                            }}
+                                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition shadow-xs"
+                                        >
+                                            Open Converted Document →
+                                        </button>
+                                    )}
+                                    <Button variant="outline" size="sm" onClick={() => setSelectedConvertInvoice(null)}>Close</Button>
+                                </div>
+                            </div>
+                        ) : convertStep === 'choose' ? (
                             <div className="space-y-3 pt-2">
                                 <p className="text-xs text-gray-600 dark:text-slate-300 font-medium">Select target conversion format:</p>
 

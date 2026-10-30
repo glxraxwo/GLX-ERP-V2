@@ -85,10 +85,14 @@ export default function InvoiceDetailPage() {
     const handleConvertToProforma = async () => {
         setIsSubmittingConvert(true);
         try {
-            await api.post(`/invoices/${inv._id}/convert-to-proforma`);
+            const { data: res } = await api.post(`/invoices/${inv._id}/convert-to-proforma`);
             toast.success(`Invoice ${inv.invoiceNumber} converted to Proforma Invoice!`);
             setIsConvertOpen(false);
-            window.location.reload();
+            if (res.data?._id) {
+                navigate(`/invoices/${res.data._id}`);
+            } else {
+                window.location.reload();
+            }
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to convert invoice');
         } finally {
@@ -99,10 +103,14 @@ export default function InvoiceDetailPage() {
     const handleConvertToCommercial = async () => {
         setIsSubmittingConvert(true);
         try {
-            await api.post(`/invoices/${inv._id}/convert-to-commercial`);
+            const { data: res } = await api.post(`/invoices/${inv._id}/convert-to-commercial`);
             toast.success(`Invoice ${inv.invoiceNumber} converted to Commercial Invoice!`);
             setIsConvertOpen(false);
-            window.location.reload();
+            if (res.data?._id) {
+                navigate(`/invoices/${res.data._id}`);
+            } else {
+                window.location.reload();
+            }
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to convert invoice');
         } finally {
@@ -391,6 +399,69 @@ export default function InvoiceDetailPage() {
                     </div>
                 }
             />
+
+            {/* Conversion Traceability Banners */}
+            {(inv.status === 'converted' || inv.convertedAs || inv.convertedToDocNumber) && (
+                <div className="mb-6 p-4 rounded-xl border border-purple-300 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200 flex items-center justify-between gap-4 flex-wrap shadow-xs">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-purple-600 text-white rounded-xl shadow-xs">
+                            <RotateCcw size={20} />
+                        </div>
+                        <div>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-200 text-purple-900 dark:bg-purple-900 dark:text-purple-200 uppercase tracking-wide">
+                                Converted Document
+                            </span>
+                            <h4 className="font-bold text-sm mt-0.5">
+                                {inv.convertedAs === 'proforma'
+                                    ? 'This Invoice was converted as a Proforma Invoice'
+                                    : (inv.convertedAs === 'commercial' 
+                                        ? 'This Proforma Invoice was converted as a Commercial Invoice' 
+                                        : 'This Invoice was converted into a Yard Project')}
+                            </h4>
+                            <p className="text-xs text-purple-700 dark:text-purple-300 mt-0.5">
+                                Converted Target Document: <strong className="font-mono">{inv.convertedToDocNumber || inv.convertedToCommercial?.invoiceNumber || inv.convertedToProforma?.invoiceNumber || 'Linked Document'}</strong>
+                            </p>
+                        </div>
+                    </div>
+                    {(inv.convertedToCommercial?._id || inv.convertedToCommercial || inv.convertedToProforma?._id || inv.convertedToProforma || inv.convertedProjectId) && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const targetId = inv.convertedToCommercial?._id || inv.convertedToCommercial || inv.convertedToProforma?._id || inv.convertedToProforma;
+                                if (targetId) navigate(`/invoices/${targetId}`);
+                                else if (inv.convertedProjectId) navigate(`/crm/projects/${inv.convertedProjectId}`);
+                            }}
+                            className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                        >
+                            Open Converted Document →
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {inv.convertedFromInvoiceNumber && (
+                <div className="mb-6 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200 flex items-center justify-between gap-4 flex-wrap shadow-xs">
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 bg-blue-600 text-white rounded-lg">
+                            <FileText size={16} />
+                        </div>
+                        <div>
+                            <span className="text-xs font-medium">
+                                Created by conversion from: <strong className="font-mono text-sm">{inv.convertedFromInvoiceNumber}</strong>
+                            </span>
+                        </div>
+                    </div>
+                    {(inv.convertedFromInvoice?._id || inv.convertedFromInvoice) && (
+                        <button
+                            type="button"
+                            onClick={() => navigate(`/invoices/${inv.convertedFromInvoice?._id || inv.convertedFromInvoice}`)}
+                            className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                        >
+                            View Original Document →
+                        </button>
+                    )}
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
@@ -791,7 +862,37 @@ export default function InvoiceDetailPage() {
                             <button onClick={() => setIsConvertOpen(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
                         </div>
 
-                        {convertStep === 'choose' ? (
+                        {inv.status === 'converted' || inv.convertedAs ? (
+                            <div className="p-4 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/70 dark:bg-purple-950/40 space-y-3">
+                                <div className="flex items-center gap-2 text-purple-800 dark:text-purple-300">
+                                    <RotateCcw size={18} />
+                                    <p className="text-xs font-bold uppercase">Already Converted Document</p>
+                                </div>
+                                <p className="text-xs text-purple-700 dark:text-purple-300">
+                                    This document has already been converted as{' '}
+                                    <strong>{inv.convertedAs === 'proforma' ? 'Proforma Invoice' : 'Commercial Invoice'}</strong>
+                                    {inv.convertedToDocNumber && (
+                                        <> ({inv.convertedToDocNumber})</>
+                                    )}.
+                                </p>
+                                <div className="flex items-center gap-2 pt-2">
+                                    {(inv.convertedToCommercial?._id || inv.convertedToCommercial || inv.convertedToProforma?._id || inv.convertedToProforma) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const targetId = inv.convertedToCommercial?._id || inv.convertedToCommercial || inv.convertedToProforma?._id || inv.convertedToProforma;
+                                                setIsConvertOpen(false);
+                                                if (targetId) navigate(`/invoices/${targetId}`);
+                                            }}
+                                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition shadow-xs"
+                                        >
+                                            Open Converted Document →
+                                        </button>
+                                    )}
+                                    <Button variant="outline" size="sm" onClick={() => setIsConvertOpen(false)}>Close</Button>
+                                </div>
+                            </div>
+                        ) : convertStep === 'choose' ? (
                             <div className="space-y-3 pt-2">
                                 <p className="text-xs text-gray-600 font-medium">Select target conversion format:</p>
 

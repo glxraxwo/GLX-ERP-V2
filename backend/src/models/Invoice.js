@@ -53,11 +53,18 @@ const invoiceSchema = new mongoose.Schema({
     proformaNumber:         { type: String, trim: true, uppercase: true },
     proformaExpiryDate:     { type: Date },
     convertedToCommercial:  { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
+    convertedToProforma:    { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
+    convertedToDocNumber:   { type: String, trim: true },
+    convertedFromInvoice:   { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
+    convertedFromInvoiceNumber: { type: String, trim: true },
+    convertedAs:            { type: String, enum: ['proforma', 'commercial', 'project', null], default: null },
+    convertedAt:            { type: Date },
+    convertedBy:            { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     convertedProjectId:     { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
     paymentReceivedDate:    { type: Date }, // Date TT/LC confirmed
 
-    // Source Document reference (if converted from quotation or estimate)
-    sourceDocumentType: { type: String, enum: ['quotation', 'estimate', 'sales_order', 'direct'] },
+    // Source Document reference (if converted from quotation, estimate, invoice, or proforma)
+    sourceDocumentType: { type: String, enum: ['quotation', 'estimate', 'sales_order', 'direct', 'invoice', 'proforma'] },
     sourceDocumentId: { type: mongoose.Schema.Types.ObjectId },
     sourceDocumentCode: { type: String },
     editCount: { type: Number, default: 0 },

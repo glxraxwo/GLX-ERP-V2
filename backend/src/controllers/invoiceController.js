@@ -394,7 +394,13 @@ export const getInvoices = asyncHandler(async (req, res) => {
         const statuses = paymentStatus.split(',').map((s) => s.trim()).filter(Boolean);
         filter.paymentStatus = statuses.length > 1 ? { $in: statuses } : statuses[0];
     }
-    if (status) filter.status = status;
+    if (status) {
+        if (status === 'converted') {
+            filter.$or = [{ status: 'converted' }, { convertedAs: { $ne: null } }];
+        } else {
+            filter.status = status;
+        }
+    }
     if (agingBucket) filter.agingBucket = agingBucket;
     if (startDate || endDate) {
         const dateFilter = {};
@@ -425,6 +431,9 @@ export const getInvoices = asyncHandler(async (req, res) => {
             .populate('introducer', 'firstName lastName callingName employeeCode')
             .populate('biller', 'firstName lastName')
             .populate('salesOrderIds', 'orderNumber')
+            .populate('convertedToCommercial', 'invoiceNumber invoiceType grandTotal status')
+            .populate('convertedToProforma', 'invoiceNumber invoiceType grandTotal status')
+            .populate('convertedFromInvoice', 'invoiceNumber invoiceType grandTotal status')
             .sort(sortObj).skip(skip).limit(Number(limit))
             .lean(),
         Invoice.countDocuments(filter),
@@ -448,6 +457,9 @@ export const getInvoiceById = asyncHandler(async (req, res) => {
         .populate('biller', 'firstName lastName')
         .populate('salesOrderIds', 'orderNumber orderDate')
         .populate('salesRepId', 'firstName lastName')
+        .populate('convertedToCommercial', 'invoiceNumber invoiceType grandTotal status')
+        .populate('convertedToProforma', 'invoiceNumber invoiceType grandTotal status')
+        .populate('convertedFromInvoice', 'invoiceNumber invoiceType grandTotal status')
         .populate('createdBy', 'firstName lastName signature jobTitle')
         .populate('updatedBy', 'firstName lastName username role email')
         .populate('editHistory.editedBy', 'firstName lastName username role email')
@@ -711,7 +723,9 @@ export const deleteInvoice = asyncHandler(async (req, res) => {
 // Exported for use by payments module
 /**
  * POST /api/invoices/:id/convert-proforma
- * Convert a Proforma invoice into a Commercial invoice and deduct stock
+ * POST /api/invoices/:id/convert-to-commercial
+ * Convert a Proforma invoice into a separate Commercial invoice and deduct stock.
+ * The original Proforma is kept in the system with its original number and marked as converted.
  */
 export const convertProformaToCommercial = asyncHandler(async (req, res) => {
     const invoice = await Invoice.findById(req.params.id);
@@ -720,44 +734,175 @@ export const convertProformaToCommercial = asyncHandler(async (req, res) => {
         throw new Error('Invoice not found');
     }
 
-    if (invoice.invoiceType !== 'proforma') {
+    if (invoice.invoiceType !== 'proforma' && !invoice.invoiceNumber?.startsWith('PI')) {
         res.status(400);
         throw new Error('Only Proforma Invoices can be converted to Commercial Invoices');
     }
 
-    invoice.invoiceType = 'standard';
-    // If it was a PI- number, generate an official commercial invoice number
-    if (invoice.invoiceNumber && (invoice.invoiceNumber.startsWith('PI-') || invoice.invoiceNumber.includes('PI/'))) {
-        const rawCust = invoice.customerSnapshot?.name || invoice.customerName || invoice.vehicleOwner || '';
-        const cleanCust = String(rawCust).trim().replace(/^(?:mr\.?|mrs\.?|ms\.?|dr\.?|m\/s\.?)\s+/i, '');
-        const firstWord = cleanCust.split(/[\s,._\-\/]+/)[0] || '';
-        const custSnippet = firstWord.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
-        const prefix = custSnippet ? `JA/INV/${custSnippet}` : 'JA/INV';
-
-        let seq = await getNextSequence('invoice');
-        let seqFormatted = String(seq).padStart(5, '0');
-        let candidate = `${prefix}/${seqFormatted}`;
-        while (await Invoice.findOne({ invoiceNumber: candidate, _id: { $ne: invoice._id } })) {
-            seq = await getNextSequence('invoice');
-            seqFormatted = String(seq).padStart(5, '0');
-            candidate = `${prefix}/${seqFormatted}`;
+    // Idempotency check: if already converted and linked commercial invoice exists
+    if (invoice.status === 'converted' && invoice.convertedToCommercial) {
+        const existingCommercial = await Invoice.findById(invoice.convertedToCommercial);
+        if (existingCommercial) {
+            return res.json({
+                success: true,
+                message: `Proforma Invoice already converted to Commercial Invoice (${existingCommercial.invoiceNumber}).`,
+                data: existingCommercial
+            });
         }
-        invoice.invoiceNumber = candidate;
     }
+
+    // Generate official commercial invoice number (JA/INV/CUST/xxxxx)
+    const rawCust = invoice.customerSnapshot?.name || invoice.customerName || invoice.vehicleOwner || '';
+    const cleanCust = String(rawCust).trim().replace(/^(?:mr\.?|mrs\.?|ms\.?|dr\.?|m\/s\.?)\s+/i, '');
+    const firstWord = cleanCust.split(/[\s,._\-\/]+/)[0] || '';
+    const custSnippet = firstWord.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
+    const prefix = custSnippet ? `JA/INV/${custSnippet}` : 'JA/INV';
+
+    let seq = await getNextSequence('invoice');
+    let seqFormatted = String(seq).padStart(5, '0');
+    let candidate = `${prefix}/${seqFormatted}`;
+    while (await Invoice.findOne({ invoiceNumber: candidate })) {
+        seq = await getNextSequence('invoice');
+        seqFormatted = String(seq).padStart(5, '0');
+        candidate = `${prefix}/${seqFormatted}`;
+    }
+
+    // Create a new separate Commercial Invoice document preserving all details
+    const commercialInvoice = new Invoice({
+        invoiceNumber: candidate,
+        invoiceType: 'standard',
+        customerId: invoice.customerId,
+        customerSnapshot: invoice.customerSnapshot,
+        billingAddress: invoice.billingAddress,
+        shippingAddress: invoice.shippingAddress,
+        currency: invoice.currency || 'LKR',
+        salesRepId: invoice.salesRepId,
+        salesRep: invoice.salesRep,
+
+        insuranceCompany: invoice.insuranceCompany || '',
+        vehicleOwner: invoice.vehicleOwner || '',
+        vehicleNo: invoice.vehicleNo || '',
+        vehicleModel: invoice.vehicleModel || '',
+        jobCaption: invoice.jobCaption || '',
+        vatNumber: invoice.vatNumber || '',
+        brNumber: invoice.brNumber || '',
+        idNumber: invoice.idNumber || '',
+        whatsappNum: invoice.whatsappNum || '',
+        customerPhone: invoice.customerPhone || '',
+        customerEmail: invoice.customerEmail || '',
+        customerAddress: invoice.customerAddress || '',
+        introducer: invoice.introducer,
+        introducerName: invoice.introducerName || '',
+        biller: invoice.biller || req.user._id,
+        billerName: invoice.billerName || req.user?.firstName || '',
+        branch: invoice.branch || 'JA-ELA',
+
+        numberPlateImage: invoice.numberPlateImage || '',
+        lorryBodyImage: invoice.lorryBodyImage || '',
+        photos: Array.isArray(invoice.photos) ? invoice.photos : [],
+
+        bodyDimensions: invoice.bodyDimensions,
+        specifications: invoice.specifications,
+        warrantyInfo: invoice.warrantyInfo,
+        paymentConditions: invoice.paymentConditions,
+        conditionOfPayments: invoice.conditionOfPayments,
+        completionOfWork: invoice.completionOfWork,
+        validityQuotation: invoice.validityQuotation,
+        warrantyCondition: invoice.warrantyCondition,
+        remarks: invoice.remarks,
+        notes: invoice.notes ? `${invoice.notes}\nConverted from Proforma ${invoice.invoiceNumber}` : `Converted from Proforma ${invoice.invoiceNumber}`,
+
+        invoiceDate: new Date(),
+        dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        items: (invoice.items || []).map(item => ({
+            lineNumber: item.lineNumber,
+            productId: item.productId,
+            productName: item.productName,
+            productTranslation: item.productTranslation,
+            description: item.description,
+            quantity: item.quantity,
+            unitOfMeasure: item.unitOfMeasure,
+            unitPrice: item.unitPrice,
+            discount: item.discount,
+            discountPercent: item.discountPercent,
+            discountAmount: item.discountAmount,
+            taxRate: item.taxRate,
+            taxAmount: item.taxAmount,
+            taxable: item.taxable,
+            lineSubtotal: item.lineSubtotal,
+            lineTotal: item.lineTotal,
+            notes: item.notes
+        })),
+        subtotal: invoice.subtotal,
+        totalDiscount: invoice.totalDiscount,
+        totalTax: invoice.totalTax,
+        shippingCost: invoice.shippingCost,
+        otherCharges: invoice.otherCharges,
+        grandTotal: invoice.grandTotal,
+        paymentTerms: invoice.paymentTerms,
+
+        advancePercentage: invoice.advancePercentage || 0,
+        advanceAmount: invoice.advanceAmount || 0,
+        showAdvanceOnInvoice: invoice.showAdvanceOnInvoice || false,
+        amountPaid: invoice.amountPaid || 0,
+        balanceDue: invoice.balanceDue !== undefined ? invoice.balanceDue : invoice.grandTotal,
+        paymentStatus: invoice.paymentStatus || 'unpaid',
+
+        status: 'approved',
+        sourceDocumentType: 'proforma',
+        sourceDocumentId: invoice._id,
+        sourceDocumentCode: invoice.invoiceNumber,
+
+        convertedFromInvoice: invoice._id,
+        convertedFromInvoiceNumber: invoice.invoiceNumber,
+        convertedAs: 'commercial',
+        convertedAt: new Date(),
+        convertedBy: req.user._id,
+        createdBy: req.user._id
+    });
+
+    await commercialInvoice.save();
+    await deductStockForInvoice(commercialInvoice, req.user._id);
+
+    // Keep original proforma intact, mark status as converted with reference to the new invoice
+    invoice.status = 'converted';
+    invoice.convertedToCommercial = commercialInvoice._id;
+    invoice.convertedToDocNumber = commercialInvoice.invoiceNumber;
+    invoice.convertedAs = 'commercial';
+    invoice.convertedAt = new Date();
+    invoice.convertedBy = req.user._id;
     await invoice.save();
 
-    await deductStockForInvoice(invoice, req.user._id);
+    createAuditLog({
+        action: 'convert',
+        module: 'invoices',
+        targetId: invoice._id,
+        targetModel: 'Invoice',
+        userId: req.user._id,
+        notes: `Converted Proforma Invoice ${invoice.invoiceNumber} to Commercial Invoice ${commercialInvoice.invoiceNumber}`,
+    });
+
+    createAuditLog({
+        action: 'create',
+        module: 'invoices',
+        targetId: commercialInvoice._id,
+        targetModel: 'Invoice',
+        userId: req.user._id,
+        notes: `Created Commercial Invoice ${commercialInvoice.invoiceNumber} from Proforma Invoice ${invoice.invoiceNumber}`,
+    });
 
     res.json({
         success: true,
-        data: invoice,
-        message: `Successfully converted Proforma Invoice to Commercial Invoice (${invoice.invoiceNumber}) and deducted inventory.`
+        data: commercialInvoice,
+        proforma: invoice,
+        message: `Successfully converted Proforma Invoice (${invoice.invoiceNumber}) to Commercial Invoice (${commercialInvoice.invoiceNumber}) and deducted inventory.`
     });
 });
 
 /**
  * POST /api/invoices/:id/convert-to-proforma
- * Convert Commercial / Standard invoice into Proforma invoice
+ * Convert Commercial / Standard invoice into a separate Proforma invoice.
+ * The original Commercial invoice is kept in the system with its original number and marked as converted.
  */
 export const convertInvoiceToProforma = asyncHandler(async (req, res) => {
     const invoice = await Invoice.findById(req.params.id);
@@ -766,26 +911,161 @@ export const convertInvoiceToProforma = asyncHandler(async (req, res) => {
         throw new Error('Invoice not found');
     }
 
-    invoice.invoiceType = 'proforma';
-    // Generate a unique Proforma Invoice ID (JA/PI/xxxx) if not already assigned
-    if (!invoice.proformaNumber || (!invoice.invoiceNumber.startsWith('PI-') && !invoice.invoiceNumber.includes('PI/'))) {
-        const rawCust = invoice.customerSnapshot?.name || invoice.customerName || invoice.vehicleOwner || '';
-        const cleanCust = String(rawCust).trim().replace(/^(?:mr\.?|mrs\.?|ms\.?|dr\.?|m\/s\.?)\s+/i, '');
-        const firstWord = cleanCust.split(/[\s,._\-\/]+/)[0] || '';
-        const custSnippet = firstWord.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
-        const prefix = custSnippet ? `JA/PI/${custSnippet}` : 'JA/PI';
-
-        const seq = await getNextSequence('proforma_invoice');
-        const piNumber = `${prefix}/${String(seq).padStart(5, '0')}`;
-        invoice.proformaNumber = piNumber;
-        invoice.invoiceNumber = piNumber;
+    // Idempotency check: if already converted and linked proforma exists
+    if (invoice.status === 'converted' && invoice.convertedToProforma) {
+        const existingPI = await Invoice.findById(invoice.convertedToProforma);
+        if (existingPI) {
+            return res.json({
+                success: true,
+                message: `Invoice already converted to Proforma Invoice (${existingPI.invoiceNumber}).`,
+                data: existingPI
+            });
+        }
     }
+
+    // Generate unique Proforma number (JA/PI/CUST/xxxxx)
+    const rawCust = invoice.customerSnapshot?.name || invoice.customerName || invoice.vehicleOwner || '';
+    const cleanCust = String(rawCust).trim().replace(/^(?:mr\.?|mrs\.?|ms\.?|dr\.?|m\/s\.?)\s+/i, '');
+    const firstWord = cleanCust.split(/[\s,._\-\/]+/)[0] || '';
+    const custSnippet = firstWord.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
+    const prefix = custSnippet ? `JA/PI/${custSnippet}` : 'JA/PI';
+
+    let seq = await getNextSequence('proforma_invoice');
+    let piNumber = `${prefix}/${String(seq).padStart(5, '0')}`;
+    while (await Invoice.findOne({ invoiceNumber: piNumber })) {
+        seq = await getNextSequence('proforma_invoice');
+        piNumber = `${prefix}/${String(seq).padStart(5, '0')}`;
+    }
+
+    // Create a new separate Proforma Invoice document preserving all details
+    const proformaInvoice = new Invoice({
+        invoiceNumber: piNumber,
+        proformaNumber: piNumber,
+        invoiceType: 'proforma',
+        customerId: invoice.customerId,
+        customerSnapshot: invoice.customerSnapshot,
+        billingAddress: invoice.billingAddress,
+        shippingAddress: invoice.shippingAddress,
+        currency: invoice.currency || 'LKR',
+        salesRepId: invoice.salesRepId,
+        salesRep: invoice.salesRep,
+
+        insuranceCompany: invoice.insuranceCompany || '',
+        vehicleOwner: invoice.vehicleOwner || '',
+        vehicleNo: invoice.vehicleNo || '',
+        vehicleModel: invoice.vehicleModel || '',
+        jobCaption: invoice.jobCaption || '',
+        vatNumber: invoice.vatNumber || '',
+        brNumber: invoice.brNumber || '',
+        idNumber: invoice.idNumber || '',
+        whatsappNum: invoice.whatsappNum || '',
+        customerPhone: invoice.customerPhone || '',
+        customerEmail: invoice.customerEmail || '',
+        customerAddress: invoice.customerAddress || '',
+        introducer: invoice.introducer,
+        introducerName: invoice.introducerName || '',
+        biller: invoice.biller || req.user._id,
+        billerName: invoice.billerName || req.user?.firstName || '',
+        branch: invoice.branch || 'JA-ELA',
+
+        numberPlateImage: invoice.numberPlateImage || '',
+        lorryBodyImage: invoice.lorryBodyImage || '',
+        photos: Array.isArray(invoice.photos) ? invoice.photos : [],
+
+        bodyDimensions: invoice.bodyDimensions,
+        specifications: invoice.specifications,
+        warrantyInfo: invoice.warrantyInfo,
+        paymentConditions: invoice.paymentConditions,
+        conditionOfPayments: invoice.conditionOfPayments,
+        completionOfWork: invoice.completionOfWork,
+        validityQuotation: invoice.validityQuotation,
+        warrantyCondition: invoice.warrantyCondition,
+        remarks: invoice.remarks,
+        notes: invoice.notes ? `${invoice.notes}\nConverted from Invoice ${invoice.invoiceNumber}` : `Converted from Invoice ${invoice.invoiceNumber}`,
+
+        invoiceDate: new Date(),
+        dueDate: invoice.dueDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        items: (invoice.items || []).map(item => ({
+            lineNumber: item.lineNumber,
+            productId: item.productId,
+            productName: item.productName,
+            productTranslation: item.productTranslation,
+            description: item.description,
+            quantity: item.quantity,
+            unitOfMeasure: item.unitOfMeasure,
+            unitPrice: item.unitPrice,
+            discount: item.discount,
+            discountPercent: item.discountPercent,
+            discountAmount: item.discountAmount,
+            taxRate: item.taxRate,
+            taxAmount: item.taxAmount,
+            taxable: item.taxable,
+            lineSubtotal: item.lineSubtotal,
+            lineTotal: item.lineTotal,
+            notes: item.notes
+        })),
+        subtotal: invoice.subtotal,
+        totalDiscount: invoice.totalDiscount,
+        totalTax: invoice.totalTax,
+        shippingCost: invoice.shippingCost,
+        otherCharges: invoice.otherCharges,
+        grandTotal: invoice.grandTotal,
+        paymentTerms: invoice.paymentTerms,
+
+        advancePercentage: invoice.advancePercentage || 0,
+        advanceAmount: invoice.advanceAmount || 0,
+        showAdvanceOnInvoice: invoice.showAdvanceOnInvoice || false,
+        amountPaid: invoice.amountPaid || 0,
+        balanceDue: invoice.balanceDue !== undefined ? invoice.balanceDue : invoice.grandTotal,
+        paymentStatus: invoice.paymentStatus || 'unpaid',
+
+        status: 'approved',
+        sourceDocumentType: 'invoice',
+        sourceDocumentId: invoice._id,
+        sourceDocumentCode: invoice.invoiceNumber,
+
+        convertedFromInvoice: invoice._id,
+        convertedFromInvoiceNumber: invoice.invoiceNumber,
+        convertedAs: 'proforma',
+        convertedAt: new Date(),
+        convertedBy: req.user._id,
+        createdBy: req.user._id
+    });
+
+    await proformaInvoice.save();
+
+    // Keep original normal invoice intact, mark status as converted with reference to the new Proforma invoice
+    invoice.status = 'converted';
+    invoice.convertedToProforma = proformaInvoice._id;
+    invoice.convertedToDocNumber = proformaInvoice.invoiceNumber;
+    invoice.convertedAs = 'proforma';
+    invoice.convertedAt = new Date();
+    invoice.convertedBy = req.user._id;
     await invoice.save();
+
+    createAuditLog({
+        action: 'convert',
+        module: 'invoices',
+        targetId: invoice._id,
+        targetModel: 'Invoice',
+        userId: req.user._id,
+        notes: `Converted Invoice ${invoice.invoiceNumber} to Proforma Invoice ${proformaInvoice.invoiceNumber}`,
+    });
+
+    createAuditLog({
+        action: 'create',
+        module: 'invoices',
+        targetId: proformaInvoice._id,
+        targetModel: 'Invoice',
+        userId: req.user._id,
+        notes: `Created Proforma Invoice ${proformaInvoice.invoiceNumber} from Invoice ${invoice.invoiceNumber}`,
+    });
 
     res.json({
         success: true,
-        data: invoice,
-        message: `Successfully converted Invoice to Proforma Invoice (${invoice.invoiceNumber}).`
+        data: proformaInvoice,
+        originalInvoice: invoice,
+        message: `Successfully converted Invoice (${invoice.invoiceNumber}) to Proforma Invoice (${proformaInvoice.invoiceNumber}).`
     });
 });
 
@@ -886,7 +1166,7 @@ export const convertInvoiceToProject = asyncHandler(async (req, res) => {
 
     await Invoice.updateOne(
         { _id: invoice._id },
-        { $set: { convertedProjectId: project._id } }
+        { $set: { convertedProjectId: project._id, convertedAs: 'project', convertedToDocNumber: project.projectNumber } }
     );
 
     res.status(201).json({ success: true, message: 'Converted Invoice to Project successfully', data: project });
