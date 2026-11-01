@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Printer, Download, MessageSquare, RefreshCw, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -18,6 +18,17 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
         enabled: Boolean(isOpen && employeeId),
     });
 
+    useEffect(() => {
+        if (isOpen) {
+            document.body.classList.add('payslip-modal-open');
+        } else {
+            document.body.classList.remove('payslip-modal-open');
+        }
+        return () => {
+            document.body.classList.remove('payslip-modal-open');
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const payslip = payslipData || {};
@@ -31,6 +42,15 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
     // Use admin uploaded signature from backend company object or client systemSettings
     const bossSignatureUrl = comp.bossSignature || systemSettings.bossSignature || '';
     const bossTitle = comp.bossTitle || systemSettings.bossTitle || 'MANAGING DIRECTOR';
+
+    // Handle Direct Print for Salary Slip Only
+    const handlePrint = () => {
+        document.body.classList.add('payslip-modal-open');
+        toast.dismiss();
+        setTimeout(() => {
+            window.print();
+        }, 80);
+    };
 
     // Handle Modern Executive PDF Export matching the User's Template
     const handleDownloadPdf = () => {
@@ -272,11 +292,68 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden border border-gray-300 my-6">
+        <div className="payslip-modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
+            {/* PRISTINE SALARY SLIP PRINT CSS */}
+            <style>{`
+                @media print {
+                    body.payslip-modal-open {
+                        background: #ffffff !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    body.payslip-modal-open .sheet-print-container,
+                    body.payslip-modal-open .print\\:hidden,
+                    body.payslip-modal-open header,
+                    body.payslip-modal-open nav,
+                    body.payslip-modal-open aside,
+                    body.payslip-modal-open .keyboard-shortcuts-bar {
+                        display: none !important;
+                    }
+                    body.payslip-modal-open .payslip-modal-backdrop {
+                        position: static !important;
+                        background: transparent !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        overflow: visible !important;
+                        display: block !important;
+                        width: 100% !important;
+                    }
+                    body.payslip-modal-open .payslip-modal-wrapper {
+                        position: static !important;
+                        background: transparent !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        max-width: 100% !important;
+                        width: 100% !important;
+                        overflow: visible !important;
+                        border-radius: 0 !important;
+                    }
+                    body.payslip-modal-open .payslip-modal-top-bar {
+                        display: none !important;
+                    }
+                    body.payslip-modal-open .salary-slip-printable-canvas {
+                        display: block !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: #ffffff !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    body.payslip-modal-open .salary-slip-printable-canvas * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                }
+            `}</style>
+
+            <div className="payslip-modal-wrapper bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden border border-gray-300 my-6">
                 
                 {/* Modal Top Control Bar */}
-                <div className="bg-gray-900 px-5 py-3 border-b border-gray-800 flex items-center justify-between text-white">
+                <div className="payslip-modal-top-bar bg-gray-900 px-5 py-3 border-b border-gray-800 flex items-center justify-between text-white">
                     <div className="flex items-center gap-2">
                         <Sparkles size={16} className="text-emerald-400" />
                         <h3 className="font-bold text-sm tracking-wide">Modern Salary Slip (Executive Template)</h3>
@@ -291,7 +368,7 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
                             Download PDF
                         </button>
                         <button
-                            onClick={() => window.print()}
+                            onClick={handlePrint}
                             className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded flex items-center gap-1.5 transition cursor-pointer"
                         >
                             <Printer size={14} />
@@ -321,7 +398,7 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
                     </div>
                 ) : (
                     /* VISUAL SALARY SLIP CANVAS (Matches User's Screenshot Exactly) */
-                    <div className="p-0 bg-white" ref={printRef}>
+                    <div className="salary-slip-printable-canvas p-0 bg-white" ref={printRef}>
                         
                         {/* 1. Deep Midnight Navy Header */}
                         <div className="bg-[#131943] text-white px-8 pt-8 pb-5 relative">

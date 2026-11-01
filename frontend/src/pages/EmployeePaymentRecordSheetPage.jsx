@@ -950,6 +950,9 @@ export default function EmployeePaymentRecordSheetPage() {
                         margin: 0 !important;
                         box-shadow: none !important;
                     }
+                    body.payslip-modal-open .sheet-print-container {
+                        display: none !important;
+                    }
                     .print-hide-input {
                         display: none !important;
                     }
