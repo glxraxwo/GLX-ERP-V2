@@ -100,7 +100,7 @@ const employeeSchema = new mongoose.Schema({
         type: Number,
         default: 3, // employer contribution %
     },
-    hourlyRate: { type: Number, default: 260 },
+    hourlyRate: { type: Number, default: 0 },
     isSalesStaff: { type: Boolean, default: false },
     basicWageRate: {
         type: Number,
@@ -205,6 +205,11 @@ employeeSchema.pre('save', async function () {
     }
     this.fullName = `${this.firstName || ''} ${this.lastName || ''}`.trim();
     if (!this.displayName) this.displayName = this.fullName;
+    if (this.labourRate && Number(this.labourRate) > 0 && (!this.hourlyRate || this.hourlyRate === 0 || this.hourlyRate === 260)) {
+        this.hourlyRate = Number(this.labourRate);
+    } else if (this.hourlyRate && Number(this.hourlyRate) > 0 && (!this.labourRate || this.labourRate === 0)) {
+        this.labourRate = Number(this.hourlyRate);
+    }
 });
 
 employeeSchema.pre(/^find/, function (next) {

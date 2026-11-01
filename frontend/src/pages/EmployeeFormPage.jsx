@@ -54,6 +54,7 @@ export default function EmployeeFormPage() {
         workLocation: '', workShift: '',
         paymentType: 'monthly',
         labourRate: 0,
+        hourlyRate: 0,
         epfNumber: '', etfNumber: '', taxRegistrationNumber: '',
         bankDetails: { bankName: '', branchName: '', accountNumber: '', accountName: '' },
         salaryStructureId: '', leaveStructureId: '', basicSalary: 0,
@@ -95,6 +96,7 @@ export default function EmployeeFormPage() {
                 workLocation: e.workLocation || '', workShift: e.workShift?._id || '',
                 paymentType: e.paymentType || 'monthly',
                 labourRate: e.labourRate || 0,
+                hourlyRate: e.hourlyRate || e.labourRate || 0,
                 epfNumber: e.epfNumber || '', etfNumber: e.etfNumber || '',
                 taxRegistrationNumber: e.taxRegistrationNumber || '',
                 bankDetails: e.bankDetails || { bankName: '', branchName: '', accountNumber: '', accountName: '' },
@@ -182,6 +184,7 @@ export default function EmployeeFormPage() {
                 ...form,
                 basicSalary: +form.basicSalary || 0,
                 labourRate: +form.labourRate || 0,
+                hourlyRate: +(form.hourlyRate || form.labourRate || 0),
                 departmentId: form.departmentId || undefined,
                 designationId: form.designationId || undefined,
                 reportsToId: form.reportsToId || undefined,
@@ -720,9 +723,20 @@ export default function EmployeeFormPage() {
                                     ]}
                                     value={form.paymentType} onChange={(e) => update('paymentType', e.target.value)} />
                                 <Input label="Labour Rate Amount (LKR per hour/day)" type="number" step="0.01" min="0"
-                                    value={form.labourRate} onChange={(e) => update('labourRate', Number(e.target.value))} />
+                                    value={form.labourRate} onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        update('labourRate', val);
+                                        if (!form.hourlyRate || form.paymentType === 'per_hour') {
+                                            update('hourlyRate', val);
+                                        }
+                                    }} />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                <Input label="Hourly Rate (LKR/hour) - Manual Paysheet Rate" type="number" step="0.01" min="0"
+                                    value={form.hourlyRate || ''} 
+                                    onChange={(e) => update('hourlyRate', Number(e.target.value))} 
+                                    helperText="Used automatically in Manual Payment Record Sheet"
+                                />
                                 <Select label="Employee Category" required
                                     options={[
                                         { value: 'Permanent', label: 'Permanent' },

@@ -350,6 +350,12 @@ export default function EmployeePaymentRecordSheetPage() {
         }
     }, [selectedEmployeeId, employees]);
 
+    // Reset custom rates and advances when employee changes so their own rate is loaded
+    useEffect(() => {
+        setCustomHourlyRate(null);
+        setCustomTotalAdvance(null);
+    }, [selectedEmployeeId]);
+
     // Fetch Policies from Backend
     const { data: policiesData } = useQuery({
         queryKey: ['manual-attendance-policies'],
@@ -384,7 +390,7 @@ export default function EmployeePaymentRecordSheetPage() {
             setRows(sheetData.rows);
             if (sheetData.defaultOnTime) setOnTime(sheetData.defaultOnTime);
             if (sheetData.defaultOffTime) setOffTime(sheetData.defaultOffTime);
-            if (sheetData.employee?.hourlyRate && customHourlyRate === null) {
+            if (sheetData.employee?.hourlyRate !== undefined && customHourlyRate === null) {
                 setCustomHourlyRate(sheetData.employee.hourlyRate);
             }
             if (sheetData.salaryPolicies && sheetData.salaryPolicies.length > 0) {
@@ -406,12 +412,19 @@ export default function EmployeePaymentRecordSheetPage() {
         return currentEmployee.name || currentEmployee.fullName || `${currentEmployee.firstName || ''} ${currentEmployee.lastName || ''}`.trim() || currentEmployee.displayName || 'Employee';
     }, [currentEmployee]);
 
-    // Effective hourly rate
+    // Effective hourly rate (uses employee profile rate by default)
     const effectiveHourlyRate = useMemo(() => {
-        if (customHourlyRate !== null && !isNaN(customHourlyRate)) {
+        if (customHourlyRate !== null && !isNaN(customHourlyRate) && Number(customHourlyRate) > 0) {
             return Number(customHourlyRate);
         }
-        return Number(currentEmployee.hourlyRate || currentEmployee.labourRate || 260);
+        const regRate = currentEmployee.labourRate || currentEmployee.hourlyRate || currentEmployee.basicWageRate;
+        if (regRate && Number(regRate) > 0) {
+            return Number(regRate);
+        }
+        if (currentEmployee.basicSalary && Number(currentEmployee.basicSalary) > 0) {
+            return Number((Number(currentEmployee.basicSalary) / 200).toFixed(2));
+        }
+        return 260;
     }, [customHourlyRate, currentEmployee]);
 
     // Save Sheet Mutation
@@ -849,7 +862,19 @@ export default function EmployeePaymentRecordSheetPage() {
                     9: { halign: 'left', cellWidth: 34, fillColor: [226, 239, 218] } // Reason
                 },
                 head: [['TICK', 'DATE', 'DAY', 'IN', 'OUT', 'HOURS', 'DAY SALARY', 'ADVANCE', 'DEDUCTION', 'Reason']],
-                body: tableRows
+                body: tableRows,
+                didParseCell: (data) => {
+                    if (data.section === 'body') {
+                        const r = rows[data.row.index];
+                        if (r && r.day === 'SUNDAY') {
+                            if (data.column.index === 1 || data.column.index === 2) {
+                                data.cell.styles.fillColor = [252, 232, 230];
+                                data.cell.styles.textColor = [192, 0, 0];
+                                data.cell.styles.fontStyle = 'bold';
+                            }
+                        }
+                    }
+                }
             });
 
             const finalY = doc.lastAutoTable.finalY + 3;
@@ -1431,13 +1456,17 @@ export default function EmployeePaymentRecordSheetPage() {
                                             </span>
                                         </td>
 
-                                        {/* 2. DATE (Light Green) */}
-                                        <td className="border-r border-black bg-[#E2EFDA] px-1 py-0.5 text-center font-medium text-black">
+                                        {/* 2. DATE (Light Green, or Red for Sunday) */}
+                                        <td className={`border-r border-black px-1 py-0.5 text-center font-bold ${
+                                            row.day === 'SUNDAY' ? 'bg-[#FCE8E6] text-[#C00000]' : 'bg-[#E2EFDA] text-black font-medium'
+                                        }`}>
                                             {row.date ? row.date.substring(5) : ''}
                                         </td>
 
-                                        {/* 3. DAY (Light Green) */}
-                                        <td className="border-r border-black bg-[#E2EFDA] px-2 py-0.5 font-bold text-black uppercase">
+                                        {/* 3. DAY (Light Green, or Red for Sunday) */}
+                                        <td className={`border-r border-black px-2 py-0.5 font-bold uppercase ${
+                                            row.day === 'SUNDAY' ? 'bg-[#FCE8E6] text-[#C00000]' : 'bg-[#E2EFDA] text-black'
+                                        }`}>
                                             {row.day}
                                         </td>
 

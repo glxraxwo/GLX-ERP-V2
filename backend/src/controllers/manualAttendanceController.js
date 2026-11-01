@@ -39,6 +39,27 @@ const getDayName = (dateStr) => {
     return days[d.getDay()] || '';
 };
 
+// Helper: Get employee's registered payment rate from employee profile
+export const getEmployeeRegisteredRate = (employee, fallback = 260) => {
+    if (!employee) return fallback;
+    if (employee.labourRate && Number(employee.labourRate) > 0) {
+        return Number(employee.labourRate);
+    }
+    if (employee.hourlyRate && Number(employee.hourlyRate) > 0 && Number(employee.hourlyRate) !== 260) {
+        return Number(employee.hourlyRate);
+    }
+    if (employee.basicWageRate && Number(employee.basicWageRate) > 0) {
+        return Number(employee.basicWageRate);
+    }
+    if (employee.hourlyRate && Number(employee.hourlyRate) > 0) {
+        return Number(employee.hourlyRate);
+    }
+    if (employee.basicSalary && Number(employee.basicSalary) > 0) {
+        return Number((Number(employee.basicSalary) / 200).toFixed(2));
+    }
+    return fallback;
+};
+
 /**
  * @desc    Get Daily Manual Attendance for all active employees for a selected date
  * @route   GET /api/hr/manual-attendance/daily
@@ -99,7 +120,7 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
     const rows = employees.map(emp => {
         const empIdStr = emp._id.toString();
         const existing = attendanceMap.get(empIdStr);
-        const hourlyRate = emp.hourlyRate || emp.labourRate || 260;
+        const hourlyRate = getEmployeeRegisteredRate(emp);
         const recordedAdvance = advanceMap.get(empIdStr) || 0;
 
         if (existing) {
@@ -383,7 +404,7 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
         attendanceMap.set(key, att);
     });
 
-    const hourlyRate = employee.hourlyRate || employee.labourRate || settings?.defaultHourlyRate || 260;
+    const hourlyRate = getEmployeeRegisteredRate(employee, settings?.defaultHourlyRate || 260);
 
     // Generate date sequence
     const rows = [];
@@ -534,9 +555,15 @@ export const saveDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, r
         await settings.save();
     }
 
+    if (inputRate !== undefined && !isNaN(inputRate) && Number(inputRate) > 0) {
+        employee.hourlyRate = Number(inputRate);
+        employee.labourRate = Number(inputRate);
+        await employee.save();
+    }
+
     const hourlyRate = (inputRate !== undefined && !isNaN(inputRate) && Number(inputRate) > 0)
         ? Number(inputRate)
-        : (employee.hourlyRate || employee.labourRate || settings?.defaultHourlyRate || 260);
+        : getEmployeeRegisteredRate(employee, settings?.defaultHourlyRate || 260);
     const bulkOperations = [];
 
     for (const row of rows) {
@@ -653,7 +680,7 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
         isTicked: true
     });
 
-    const hourlyRate = employee.hourlyRate || employee.labourRate || 260;
+    const hourlyRate = getEmployeeRegisteredRate(employee, 260);
     let totalHours = 0;
     let basicSalary = 0;
     let totalAdvance = 0;
