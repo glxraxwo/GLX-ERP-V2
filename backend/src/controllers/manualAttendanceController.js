@@ -69,11 +69,15 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
     const { date } = req.query;
     const selectedDateStr = date || formatDateStr(new Date());
 
-    // 1. Fetch active employees
-    const employees = await Employee.find({
-        status: 'active',
-        deletedAt: null
-    }).sort({ fullName: 1, firstName: 1 });
+    // 1. Fetch active employees and settings
+    const [employees, settings] = await Promise.all([
+        Employee.find({
+            status: 'active',
+            deletedAt: null
+        }).sort({ fullName: 1, firstName: 1 }),
+        Settings.findOne()
+    ]);
+    const activePolicies = (settings?.salaryPolicies && settings.salaryPolicies.length > 0) ? settings.salaryPolicies : defaultSalaryPolicies;
 
     // 2. Query existing attendance records for this dateString
     const existingAttendance = await Attendance.find({
@@ -346,7 +350,10 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
         throw new Error('Employee ID is required');
     }
 
-    const employee = await Employee.findById(employeeId);
+    const [employee, settings] = await Promise.all([
+        Employee.findById(employeeId),
+        Settings.findOne()
+    ]);
     if (!employee) {
         res.status(404);
         throw new Error('Employee not found');
@@ -481,7 +488,6 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
     }
 
     const netSalary = Math.max(0, totalSalary - totalAdvance + totalDeduction);
-    const settings = await Settings.findOne();
     const activePolicies = (settings?.salaryPolicies && settings.salaryPolicies.length > 0) ? settings.salaryPolicies : defaultSalaryPolicies;
 
     res.json({
