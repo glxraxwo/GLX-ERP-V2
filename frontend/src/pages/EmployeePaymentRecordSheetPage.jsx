@@ -761,6 +761,12 @@ export default function EmployeePaymentRecordSheetPage() {
         });
     };
 
+    // Print Sheet Action
+    const handlePrint = () => {
+        toast.dismiss();
+        window.print();
+    };
+
     // Executive PDF Download Function
     const handleDownloadOfficialPdf = () => {
         try {
@@ -802,7 +808,7 @@ export default function EmployeePaymentRecordSheetPage() {
                 ['ON TIME', `: ${onTime}`, 'OFF TIME', `: ${offTime}`],
                 ['DATE FROM', `: ${startDate}`, 'DATE TO', `: ${endDate}`],
                 ['TOTAL LEAVE', `: ${dynamicTotals.totalLeave}`, 'TOTAL SALARY', `: Rs. ${dynamicTotals.totalSalary.toLocaleString()}`],
-                ['TOTAL DAYS', `: ${dynamicTotals.totalDays}`, 'TOTAL ADVENCE', `: Rs. ${dynamicTotals.totalAdvance.toLocaleString()}`],
+                ['TOTAL DAYS', `: ${dynamicTotals.totalDays}`, 'TOTAL ADVANCE', `: Rs. ${dynamicTotals.totalAdvance.toLocaleString()}`],
             ];
 
             if (includeEpfEtf) {
@@ -921,7 +927,7 @@ export default function EmployeePaymentRecordSheetPage() {
                 @media print {
                     @page {
                         size: A4 portrait;
-                        margin: 6mm 8mm 6mm 8mm;
+                        margin: 6mm 7mm 6mm 7mm;
                     }
                     html, body {
                         background: #ffffff !important;
@@ -944,12 +950,6 @@ export default function EmployeePaymentRecordSheetPage() {
                         margin: 0 !important;
                         box-shadow: none !important;
                     }
-                    .header-two-columns {
-                        display: grid !important;
-                        grid-template-columns: 1fr 1fr !important;
-                        column-gap: 20px !important;
-                        row-gap: 2px !important;
-                    }
                     .print-hide-input {
                         display: none !important;
                     }
@@ -971,18 +971,32 @@ export default function EmployeePaymentRecordSheetPage() {
                     .bg-\\[\\#E2EFDA\\] {
                         background-color: #E2EFDA !important;
                     }
+                    .bg-\\[\\#FCE8E6\\] {
+                        background-color: #FCE8E6 !important;
+                    }
+                    .text-\\[\\#C00000\\] {
+                        color: #C00000 !important;
+                    }
                     table {
                         border-collapse: collapse !important;
                         width: 100% !important;
                     }
+                    thead {
+                        display: table-header-group !important;
+                    }
                     th, td {
                         border: 1px solid #000000 !important;
-                        padding: 1.5px 3px !important;
-                        font-size: 9.5px !important;
+                        padding: 1.5px 2.5px !important;
+                        font-size: 8.5px !important;
                         line-height: 1.15 !important;
                     }
                     tr {
                         page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                    }
+                    .signature-section {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
                     }
                     .overflow-x-auto {
                         overflow: visible !important;
@@ -1120,10 +1134,7 @@ export default function EmployeePaymentRecordSheetPage() {
                         </button>
 
                         <button
-                            onClick={() => {
-                                toast.dismiss();
-                                window.print();
-                            }}
+                            onClick={handlePrint}
                             className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 text-slate-800 rounded-lg shadow-xs hover:bg-slate-50 flex items-center gap-1.5 transition"
                         >
                             <Printer size={14} className="text-slate-600" />
@@ -1147,27 +1158,102 @@ export default function EmployeePaymentRecordSheetPage() {
                 
                 {/* Optional Company Letterhead Banner (Print Only) */}
                 {!hideHeaderForLetterhead && (
-                    <div className="hidden print:block text-center mb-2 pb-1 border-b border-gray-400">
-                        <h1 className="text-base font-bold tracking-wider uppercase text-black">
-                            {systemSettings.companyName || 'GLX INDUSTRIES'}
-                        </h1>
-                        <p className="text-[9px] text-gray-700">
-                            {systemSettings.companyAddress || 'High-Quality Manufacturing & Vehicle Body Engineering'}
-                        </p>
-                        <p className="text-[8px] text-gray-600">
-                            Tel: {systemSettings.companyPhone || '+94 11 234 5678'} | Email: {systemSettings.companyEmail || 'info@glx.lk'}
-                        </p>
+                    <div className="hidden print:block mb-2 pb-2 border-b-2 border-black">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h1 className="text-lg font-black tracking-wider uppercase text-black font-sans leading-tight">
+                                    {systemSettings.companyName || 'GLX INDUSTRIES'}
+                                </h1>
+                                <p className="text-[9px] font-semibold text-gray-700 tracking-wide uppercase mt-0.5">
+                                    {systemSettings.companyAddress || 'High-Quality Manufacturing & Vehicle Body Engineering'}
+                                </p>
+                            </div>
+                            <div className="text-right text-[8.5px] font-mono text-gray-800 space-y-0.5">
+                                <p>Tel: {systemSettings.companyPhone || '+94 11 234 5678'}</p>
+                                <p>Email: {systemSettings.companyEmail || 'info@glx.lk'}</p>
+                            </div>
+                        </div>
                     </div>
                 )}
 
-                {/* 1. Header Box */}
-                <div className="border border-black py-1 px-4 text-center font-bold text-gray-950 tracking-wider text-sm uppercase bg-white mb-3">
+                {/* DEDICATED EXECUTIVE PRINT SUMMARY BLOCK (Print Only) */}
+                <div className="hidden print:block mb-2.5">
+                    {/* Title & Payroll No Header */}
+                    <div className="flex justify-between items-center bg-gray-100 border border-black px-2.5 py-1 mb-2">
+                        <span className="text-[11.5px] font-black uppercase tracking-widest text-black">
+                            EMPLOYEE PAYMENT RECORD SHEET
+                        </span>
+                        <div className="text-[10px] font-mono font-bold text-black flex items-center gap-1.5">
+                            <span className="uppercase text-gray-700">Payroll No:</span>
+                            <span className="font-extrabold text-[11px] bg-white px-2 py-0.5 border border-black">
+                                {currentEmployee.payrollNumber || 'EMP-13'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Structured 2-Column Summary Cards with Clean Corporate Borders */}
+                    <div className="grid grid-cols-2 gap-2 text-[9.5px]">
+                        {/* Left Column: Employee & Shift Parameters */}
+                        <table className="w-full border border-black border-collapse text-[9px]">
+                            <tbody>
+                                <tr className="border-b border-black">
+                                    <td className="bg-[#BAC8E8]/40 font-bold px-2 py-1 w-32 border-r border-black uppercase text-gray-800">Employee Name</td>
+                                    <td className="px-2 py-1 font-bold text-black text-[10px]">{employeeFullName}</td>
+                                </tr>
+                                <tr className="border-b border-black">
+                                    <td className="bg-[#BAC8E8]/40 font-bold px-2 py-1 border-r border-black uppercase text-gray-800">Hourly Wage Rate</td>
+                                    <td className="px-2 py-1 font-mono font-bold text-black">Rs. {Number(effectiveHourlyRate).toFixed(2)} / Hr</td>
+                                </tr>
+                                <tr className="border-b border-black">
+                                    <td className="bg-[#BAC8E8]/40 font-bold px-2 py-1 border-r border-black uppercase text-gray-800">Pay Period</td>
+                                    <td className="px-2 py-1 font-mono font-semibold">{startDate} &nbsp;to&nbsp; {endDate}</td>
+                                </tr>
+                                <tr>
+                                    <td className="bg-[#BAC8E8]/40 font-bold px-2 py-1 border-r border-black uppercase text-gray-800">Standard Shift</td>
+                                    <td className="px-2 py-1 font-mono">{onTime} - {offTime}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        {/* Right Column: Attendance & Compensation Totals */}
+                        <table className="w-full border border-black border-collapse text-[9px]">
+                            <tbody>
+                                <tr className="border-b border-black">
+                                    <td className="bg-[#BAC8E8]/40 font-bold px-2 py-1 w-36 border-r border-black uppercase text-gray-800">Days / Hours Worked</td>
+                                    <td className="px-2 py-1 font-mono font-bold text-black">
+                                        {dynamicTotals.totalDays} Days &nbsp;|&nbsp; {dynamicTotals.totalHours} Hrs
+                                        <span className="text-[8px] font-normal text-gray-600 ml-1">({dynamicTotals.totalLeave} Off)</span>
+                                    </td>
+                                </tr>
+                                <tr className="border-b border-black">
+                                    <td className="bg-[#BAC8E8]/40 font-bold px-2 py-1 border-r border-black uppercase text-gray-800">Gross Earnings</td>
+                                    <td className="px-2 py-1 font-mono font-bold text-right text-black">Rs. {Number(dynamicTotals.totalSalary).toLocaleString()}</td>
+                                </tr>
+                                <tr className="border-b border-black">
+                                    <td className="bg-[#BAC8E8]/40 font-bold px-2 py-1 border-r border-black uppercase text-gray-800">Advance & Deductions</td>
+                                    <td className="px-2 py-1 font-mono text-right font-bold text-black">
+                                        - Rs. {(Number(dynamicTotals.totalAdvance) + Math.abs(Number(dynamicTotals.totalDeduction) < 0 ? Number(dynamicTotals.totalDeduction) : 0)).toLocaleString()}
+                                    </td>
+                                </tr>
+                                <tr className="bg-[#BAC8E8] font-bold">
+                                    <td className="font-extrabold px-2 py-1 border-r border-black uppercase text-black text-[10px]">NET SALARY PAYABLE</td>
+                                    <td className="px-2 py-1 font-mono font-black text-right text-black text-[11.5px]">
+                                        Rs. {Number(dynamicTotals.netSalary).toLocaleString()}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* 1. Header Box (Screen Only) */}
+                <div className="border border-black py-1 px-4 text-center font-bold text-gray-950 tracking-wider text-sm uppercase bg-white mb-3 print:hidden">
                     EMPLOYEE PAYMENT RECORD SHEET
                 </div>
 
-                {/* 2. Top Header Metadata Grid — STRICT 2-COLUMN PARALLEL GRID */}
+                {/* 2. Top Header Metadata Grid — STRICT 2-COLUMN PARALLEL GRID (Screen Only) */}
                 <div 
-                    className="header-two-columns mb-3 text-[12px] print:text-[10px]"
+                    className="header-two-columns mb-3 text-[12px] print:hidden"
                     style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '24px', rowGap: '4px' }}
                 >
                     {/* Left Column */}
@@ -1349,7 +1435,7 @@ export default function EmployeePaymentRecordSheetPage() {
                                 </div>
                             </div>
 
-                            {/* TOTAL ADVENCE */}
+                            {/* TOTAL ADVANCE */}
                             <div className="flex items-center">
                                 <div className="w-28 flex items-center justify-end gap-1 pr-2">
                                     <button
@@ -1360,7 +1446,7 @@ export default function EmployeePaymentRecordSheetPage() {
                                     >
                                         <Plus size={11} />
                                     </button>
-                                    <span className="font-bold text-black uppercase">TOTAL ADVENCE</span>
+                                    <span className="font-bold text-black uppercase">TOTAL ADVANCE</span>
                                 </div>
                                 <div className="w-44 bg-[#BAC8E8] border border-black px-1 py-0.5 min-h-[24px] flex items-center justify-end">
                                     <input
@@ -1584,7 +1670,7 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 className={`w-full bg-transparent text-right focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none p-0 text-[11px] print-hide-input ${row.deduction < 0 ? 'text-rose-700 font-bold' : ''}`}
                                             />
                                             <span className={`hidden print:inline font-mono font-bold ${row.deduction < 0 ? 'text-black' : 'text-black'}`}>
-                                                {row.deduction !== 0 ? row.deduction : '0'}
+                                                {row.deduction !== 0 ? row.deduction : ''}
                                             </span>
                                         </td>
 
@@ -1612,30 +1698,30 @@ export default function EmployeePaymentRecordSheetPage() {
                     </div>
                 )}
 
-                {/* Executive Official Signatures Section (Always Fits Cleanly on 1 A4 Page) */}
-                <div className="pt-2 pb-1 grid grid-cols-4 gap-4 text-[10px] font-bold text-black border-t border-black">
+                {/* Executive Official Signatures Section */}
+                <div className="signature-section pt-3 pb-2 grid grid-cols-4 gap-4 text-[9.5px] font-bold text-black border-t-2 border-black mt-2">
                     <div>
-                        <p className="text-gray-700 mb-5">Prepared By:</p>
+                        <p className="text-gray-800 mb-6 font-semibold uppercase text-[9px]">Prepared By:</p>
                         <div className="border-b border-black w-full pb-1"></div>
-                        <p className="text-[9px] text-gray-500 mt-1">HR / Accounts Officer</p>
+                        <p className="text-[8.5px] text-gray-600 mt-1 uppercase font-semibold">HR / Accounts Officer</p>
                     </div>
 
                     <div>
-                        <p className="text-gray-700 mb-5">Checked By:</p>
+                        <p className="text-gray-800 mb-6 font-semibold uppercase text-[9px]">Checked By:</p>
                         <div className="border-b border-black w-full pb-1"></div>
-                        <p className="text-[9px] text-gray-500 mt-1">Operations Manager</p>
+                        <p className="text-[8.5px] text-gray-600 mt-1 uppercase font-semibold">Operations Manager</p>
                     </div>
 
                     <div>
-                        <p className="text-gray-700 mb-5">Employee Signature:</p>
+                        <p className="text-gray-800 mb-6 font-semibold uppercase text-[9px]">Employee Signature:</p>
                         <div className="border-b border-black w-full pb-1"></div>
-                        <p className="text-[9px] text-gray-900 mt-1 truncate">{employeeFullName}</p>
+                        <p className="text-[8.5px] text-gray-900 mt-1 truncate font-bold">{employeeFullName}</p>
                     </div>
 
                     <div>
-                        <p className="text-gray-700 mb-5">Authorized Signature:</p>
+                        <p className="text-gray-800 mb-6 font-semibold uppercase text-[9px]">Authorized Signature:</p>
                         <div className="border-b border-black w-full pb-1"></div>
-                        <p className="text-[9px] text-gray-500 mt-1">Managing Director / Seal</p>
+                        <p className="text-[8.5px] text-gray-600 mt-1 uppercase font-semibold">Managing Director / Seal</p>
                     </div>
                 </div>
             </div>
