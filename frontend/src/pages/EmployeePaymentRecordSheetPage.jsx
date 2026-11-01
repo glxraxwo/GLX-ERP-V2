@@ -327,6 +327,7 @@ export default function EmployeePaymentRecordSheetPage() {
     const [isPoliciesModalOpen, setIsPoliciesModalOpen] = useState(false);
     const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
     const [hideHeaderForLetterhead, setHideHeaderForLetterhead] = useState(false);
+    const sheetPrintRef = useRef(null);
 
     // EPF / ETF Toggle & Rates (Global for all employees)
     const [includeEpfEtf, setIncludeEpfEtf] = useState(false);
@@ -761,10 +762,196 @@ export default function EmployeePaymentRecordSheetPage() {
         });
     };
 
-    // Print Sheet Action
+    // Dedicated Corporate Print Handler - Prints Full Record Sheet & Signatures with Zero Scrollbars
     const handlePrint = () => {
         toast.dismiss();
-        window.print();
+        const sheetElement = sheetPrintRef.current;
+        if (!sheetElement) {
+            window.print();
+            return;
+        }
+
+        // Clean up any existing print iframe
+        const existingFrame = document.getElementById('employee-sheet-print-iframe');
+        if (existingFrame) existingFrame.remove();
+
+        const iframe = document.createElement('iframe');
+        iframe.id = 'employee-sheet-print-iframe';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.style.visibility = 'hidden';
+        document.body.appendChild(iframe);
+
+        // Collect all style tags and stylesheets from the main document
+        const styleTags = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+            .map(el => el.outerHTML)
+            .join('\n');
+
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8" />
+                <title>Employee Payment Record Sheet - ${employeeFullName}</title>
+                ${styleTags}
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 5mm 6mm 5mm 6mm;
+                    }
+                    html, body {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: #ffffff !important;
+                        color: #000000 !important;
+                        font-family: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                        width: 100% !important;
+                        height: auto !important;
+                        min-height: auto !important;
+                        overflow: visible !important;
+                        overflow-y: visible !important;
+                        overflow-x: visible !important;
+                    }
+                    * {
+                        box-sizing: border-box;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                        scrollbar-width: none !important;
+                        -ms-overflow-style: none !important;
+                    }
+                    ::-webkit-scrollbar {
+                        display: none !important;
+                        width: 0 !important;
+                        height: 0 !important;
+                    }
+                    .sheet-print-container {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                        overflow: visible !important;
+                        display: block !important;
+                    }
+                    .no-sticky-height,
+                    .employee-payment-sheet-print,
+                    div:has(> table),
+                    div.overflow-x-auto,
+                    div.overflow-auto {
+                        height: auto !important;
+                        max-height: none !important;
+                        min-height: auto !important;
+                        overflow: visible !important;
+                        overflow-x: visible !important;
+                        overflow-y: visible !important;
+                        display: block !important;
+                        border: none !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    table {
+                        width: 100% !important;
+                        border-collapse: collapse !important;
+                        page-break-inside: auto;
+                        margin-bottom: 2mm !important;
+                    }
+                    thead {
+                        display: table-header-group !important;
+                    }
+                    tbody {
+                        display: table-row-group !important;
+                    }
+                    tr {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                    }
+                    th, td {
+                        border: 1px solid #000000 !important;
+                        padding: 1.5px 2.5px !important;
+                        font-size: 8px !important;
+                        line-height: 1.15 !important;
+                    }
+                    .signature-section {
+                        display: block !important;
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        margin-top: 3mm !important;
+                        padding-top: 2mm !important;
+                        border-top: 2px solid #000000 !important;
+                    }
+                    .print-hide-input {
+                        display: none !important;
+                    }
+                    .print\\:hidden {
+                        display: none !important;
+                    }
+                    .hidden.print\\:block {
+                        display: block !important;
+                    }
+                    .hidden.print\\:inline {
+                        display: inline !important;
+                    }
+                    .print\\:p-0 {
+                        padding: 0 !important;
+                    }
+                    .print\\:m-0 {
+                        margin: 0 !important;
+                    }
+                    .print\\:border-none {
+                        border: none !important;
+                    }
+                    .bg-\\[\\#BAC8E8\\] {
+                        background-color: #BAC8E8 !important;
+                    }
+                    .bg-\\[\\#D9D9D9\\] {
+                        background-color: #D9D9D9 !important;
+                    }
+                    .bg-\\[\\#FFF2CC\\] {
+                        background-color: #FFF2CC !important;
+                    }
+                    .bg-\\[\\#E2EFDA\\] {
+                        background-color: #E2EFDA !important;
+                    }
+                    .bg-\\[\\#FCE8E6\\] {
+                        background-color: #FCE8E6 !important;
+                    }
+                    .text-\\[\\#C00000\\] {
+                        color: #C00000 !important;
+                    }
+                </style>
+            </head>
+            <body class="bg-white">
+                <div class="sheet-print-container">
+                    ${sheetElement.innerHTML}
+                </div>
+            </body>
+            </html>
+        `);
+        doc.close();
+
+        setTimeout(() => {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch (err) {
+                console.error('Print iframe error:', err);
+                window.print();
+            }
+            setTimeout(() => {
+                if (document.body.contains(iframe)) {
+                    iframe.remove();
+                }
+            }, 3000);
+        }, 300);
     };
 
     // Executive PDF Download Function
@@ -1196,7 +1383,7 @@ export default function EmployeePaymentRecordSheetPage() {
             </div>
 
             {/* SPREADSHEET PAGE CANVAS (Matches Reference Design on Paper & Pure White in Print) */}
-            <div className="sheet-print-container max-w-[960px] mx-auto bg-white border border-slate-300 rounded-xl p-4 sm:p-8 shadow-xl print:shadow-none print:border-0 print:p-0 print:rounded-none">
+            <div ref={sheetPrintRef} className="sheet-print-container max-w-[960px] mx-auto bg-white border border-slate-300 rounded-xl p-4 sm:p-8 shadow-xl print:shadow-none print:border-0 print:p-0 print:rounded-none">
                 
                 {/* Optional Company Letterhead Banner (Print Only) */}
                 {!hideHeaderForLetterhead && (

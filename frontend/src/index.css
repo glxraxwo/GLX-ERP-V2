@@ -231,8 +231,10 @@ textarea {
     margin: 0 !important;
     padding: 0 !important;
     height: auto !important;
+    min-height: auto !important;
     overflow: visible !important;
-    overflow-x: hidden !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
   }
 
   /* Hide navigation, sidebar, headers, buttons, toast notifications, popups and app shell non-printable elements */
@@ -789,13 +791,15 @@ textarea {
 
 /* Global Print Mode Neutralization — Prevents scrollbars & height clipping in printouts */
 @media print {
-  html, body, #root, #main-content, main, [class*="h-screen"], [class*="overflow-"] {
+  html, body, #root, #root > div, #main-content, main, [class*="h-screen"], [class*="h-["], [class*="overflow-"], .app-layout {
     height: auto !important;
     min-height: auto !important;
     max-height: none !important;
     overflow: visible !important;
     overflow-y: visible !important;
     overflow-x: visible !important;
+    display: block !important;
+    position: static !important;
   }
   ::-webkit-scrollbar {
     display: none !important;
