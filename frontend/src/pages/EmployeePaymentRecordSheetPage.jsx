@@ -501,16 +501,26 @@ export default function EmployeePaymentRecordSheetPage() {
 
         if (target) {
             target.focus();
-            if (typeof target.select === 'function' && target.type !== 'checkbox') {
-                target.select();
+            if (typeof target.select === 'function' && target.type !== 'checkbox' && target.type !== 'time') {
+                try { target.select(); } catch {}
             }
         }
     };
 
     const handleCellKeyDown = (e, rowIndex, colIndex) => {
-        const isText = e.target.type === 'text' || e.target.type === 'number';
-        const cursorAtStart = isText && e.target.selectionStart === 0 && e.target.selectionEnd === 0;
-        const cursorAtEnd = isText && e.target.selectionStart === e.target.value.length && e.target.selectionEnd === e.target.value.length;
+        const isTime = e.target.type === 'time';
+        const isText = e.target.type === 'text';
+        let cursorAtStart = true;
+        let cursorAtEnd = true;
+        if (isText) {
+            try {
+                cursorAtStart = e.target.selectionStart === 0 && e.target.selectionEnd === 0;
+                cursorAtEnd = e.target.selectionStart === e.target.value?.length && e.target.selectionEnd === e.target.value?.length;
+            } catch {
+                cursorAtStart = true;
+                cursorAtEnd = true;
+            }
+        }
 
         // Enter -> Next row, same column (Excel style)
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -524,17 +534,18 @@ export default function EmployeePaymentRecordSheetPage() {
             focusGridCell(rowIndex - 1, colIndex, 'up');
             return;
         }
-        // ArrowDown -> Next row, same col
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            focusGridCell(rowIndex + 1, colIndex, 'down');
-            return;
-        }
-        // ArrowUp -> Prev row, same col
-        if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            focusGridCell(rowIndex - 1, colIndex, 'up');
-            return;
+        // ArrowDown / ArrowUp: If inside time input, let native browser adjust hours/minutes; otherwise navigate rows
+        if (!isTime) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                focusGridCell(rowIndex + 1, colIndex, 'down');
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                focusGridCell(rowIndex - 1, colIndex, 'up');
+                return;
+            }
         }
         // Tab -> Next cell in row or wrap to next row
         if (e.key === 'Tab' && !e.shiftKey) {
@@ -1200,11 +1211,10 @@ export default function EmployeePaymentRecordSheetPage() {
                             <span className="w-36 font-bold text-black uppercase text-right pr-2">ON TIME</span>
                             <div className="w-44 bg-[#D9D9D9] border border-black px-2 py-0.5 font-bold text-black text-center min-h-[24px] flex items-center justify-center">
                                 <input
-                                    type="text"
+                                    type="time"
                                     value={onTime}
                                     onChange={(e) => setOnTime(e.target.value)}
-                                    placeholder="08:00"
-                                    className="bg-transparent w-full text-center focus:bg-white focus:outline-none print-hide-input"
+                                    className="bg-transparent w-full text-center font-bold focus:bg-white focus:outline-none print-hide-input text-xs cursor-pointer"
                                 />
                                 <span className="hidden print:block font-bold text-black font-mono">
                                     {onTime}
@@ -1289,11 +1299,10 @@ export default function EmployeePaymentRecordSheetPage() {
                                 <span className="w-28 font-bold text-black uppercase text-right pr-2">OFF TIME</span>
                                 <div className="w-44 bg-[#D9D9D9] border border-black px-2 py-0.5 font-bold text-black text-center min-h-[24px] flex items-center justify-center">
                                     <input
-                                        type="text"
+                                        type="time"
                                         value={offTime}
                                         onChange={(e) => setOffTime(e.target.value)}
-                                        placeholder="17:00"
-                                        className="bg-transparent w-full text-center focus:bg-white focus:outline-none print-hide-input"
+                                        className="bg-transparent w-full text-center font-bold focus:bg-white focus:outline-none print-hide-input text-xs cursor-pointer"
                                     />
                                     <span className="hidden print:block font-bold text-black font-mono">
                                         {offTime}
@@ -1422,8 +1431,8 @@ export default function EmployeePaymentRecordSheetPage() {
                                     </th>
                                     <th className="border-r border-black py-1 px-2 w-16">DATE</th>
                                     <th className="border-r border-black py-1 px-2 w-28">DAY</th>
-                                    <th className="border-r border-black py-1 px-2 w-20">IN</th>
-                                    <th className="border-r border-black py-1 px-2 w-20">OUT</th>
+                                    <th className="border-r border-black py-1 px-1 w-24">IN</th>
+                                    <th className="border-r border-black py-1 px-1 w-24">OUT</th>
                                     <th className="border-r border-black py-1 px-2 w-16">HOURS</th>
                                     <th className="border-r border-black py-1 px-2 w-24">DAY SALARY</th>
                                     <th className="border-r border-black py-1 px-2 w-20">ADVANCE</th>
@@ -1470,36 +1479,36 @@ export default function EmployeePaymentRecordSheetPage() {
                                             {row.day}
                                         </td>
 
-                                        {/* 4. IN TIME (Light Yellow) — BLANK IF UNTICKED */}
+                                        {/* 4. IN TIME (Light Yellow) — STRICT TIME ONLY */}
                                         <td className="border-r border-black bg-[#FFF2CC] p-0.5 text-center font-mono">
                                             <input
-                                                type="text"
+                                                type="time"
                                                 value={row.isTicked ? (row.inTime || onTime) : ''}
-                                                placeholder=""
+                                                disabled={!row.isTicked}
                                                 onChange={(e) => handleRowChange(idx, 'inTime', e.target.value)}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={1}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 1)}
-                                                className="w-full bg-transparent text-center focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none p-0 text-[11px] font-semibold text-black print-hide-input"
+                                                className="w-full bg-transparent text-center focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none p-0 text-[11px] font-semibold text-black print-hide-input cursor-pointer disabled:cursor-not-allowed"
                                             />
                                             <span className="hidden print:inline font-mono font-semibold text-black">
                                                 {row.isTicked ? (row.inTime || onTime) : ''}
                                             </span>
                                         </td>
 
-                                        {/* 5. OUT TIME (Light Yellow) — BLANK IF UNTICKED */}
+                                        {/* 5. OUT TIME (Light Yellow) — STRICT TIME ONLY */}
                                         <td className="border-r border-black bg-[#FFF2CC] p-0.5 text-center font-mono">
                                             <input
-                                                type="text"
+                                                type="time"
                                                 value={row.isTicked ? (row.outTime || offTime) : ''}
-                                                placeholder=""
+                                                disabled={!row.isTicked}
                                                 onChange={(e) => handleRowChange(idx, 'outTime', e.target.value)}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={2}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 2)}
-                                                className="w-full bg-transparent text-center focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none p-0 text-[11px] font-semibold text-black print-hide-input"
+                                                className="w-full bg-transparent text-center focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none p-0 text-[11px] font-semibold text-black print-hide-input cursor-pointer disabled:cursor-not-allowed"
                                             />
                                             <span className="hidden print:inline font-mono font-semibold text-black">
                                                 {row.isTicked ? (row.outTime || offTime) : ''}
