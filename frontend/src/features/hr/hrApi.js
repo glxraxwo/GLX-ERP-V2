@@ -91,4 +91,14 @@ export const advancesApi = {
     approve: async (id, data = {}) => (await api.patch(`/hr/advances/${id}/approve`, data)).data,
     decline: async (id, data = {}) => (await api.patch(`/hr/advances/${id}/decline`, data)).data,
     pay: async (id, data = {}) => (await api.post(`/hr/advances/${id}/pay`, data)).data,
+    delete: async (id) => (await api.delete(`/hr/advances/${id}`)).data,
+};
+export const manualAttendanceApi = {
+    getDaily: async (date) => (await api.get('/hr/manual-attendance/daily', { params: { date } })).data,
+    saveDaily: async (data) => (await api.post('/hr/manual-attendance/daily', data)).data,
+    getEmployeeSheet: async (params) => (await api.get('/hr/manual-attendance/employee-sheet', { params })).data,
+    saveEmployeeSheet: async (data) => (await api.post('/hr/manual-attendance/employee-sheet', data)).data,
+    getNormalPayslip: async (params) => (await api.get('/hr/manual-attendance/normal-payslip', { params })).data,
+    getPolicies: async () => (await api.get('/hr/manual-attendance/policies')).data,
+    savePolicies: async (data) => (await api.post('/hr/manual-attendance/policies', data)).data,
 };

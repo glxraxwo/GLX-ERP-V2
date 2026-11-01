@@ -82,18 +82,6 @@ const menuGroups = [
         icon: UsersIcon,
         items: [
             { label: 'Employees Master', icon: UsersIcon, path: '/employees', permission: 'hr.employees.view' },
-            { label: 'Attendance', icon: CalendarIcon, path: '/attendance', permission: 'hr.attendance.view' },
-            { label: 'Leave Management', icon: Plane, path: '/leaves', permission: 'hr.leaves.view' },
-            { label: 'Policy Management', icon: Clock, path: '/attendance-policies', permission: 'hr.attendance.view' },
-            { label: 'Payroll', icon: DollarSign, path: '/payroll', permission: 'hr.payroll.view' },
-            { label: 'Daily Wages (දිනපතා පඩි)', icon: CalendarIcon, path: '/hr/daily-payroll', permission: 'hr.payroll.view' },
-            { label: 'EPF / ETF', icon: Calculator, path: '/hr/epf-etf', permission: 'hr.payroll.view' },
-            { label: 'Salary Advance Approvals', icon: BadgeCheck, path: '/admin/advance-approvals', permission: 'hr.employees.manage', excludeRoles: ['employee'] },
-            { label: 'Departments', icon: Building2, path: '/departments', permission: 'hr.employees.view' },
-            { label: 'Designations', icon: Award, path: '/designations', permission: 'hr.employees.view' },
-            { label: 'Shifts', icon: Clock, path: '/shifts', permission: 'hr.employees.view' },
-            { label: 'Leave Structures', icon: CalendarIcon, path: '/leave-structures', permission: 'hr.leaves.view' },
-            { label: 'Salary Structures', icon: Calculator, path: '/salary-structures', permission: 'hr.salary.view' },
         ],
     },
     {

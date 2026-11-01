@@ -96,6 +96,7 @@ import EmployeeDetailPage from './pages/EmployeeDetailPage';
 import EmployeeAdvanceRequestPage from './pages/EmployeeAdvanceRequestPage';
 import MyAdvancesPage from './pages/MyAdvancesPage';
 import AdminAdvanceApprovalsPage from './pages/AdminAdvanceApprovalsPage';
+import SalaryAdvancesPage from './pages/SalaryAdvancesPage';
 import DepartmentsPage from './pages/DepartmentsPage';
 import DesignationsPage from './pages/DesignationsPage';
 import ShiftsPage from './pages/ShiftsPage';
@@ -107,6 +108,8 @@ import LeaveStructuresPage from './pages/LeaveStructuresPage';
 import PayrollsPage from './pages/PayrollsPage';
 import PayrollDetailPage from './pages/PayrollDetailPage';
 import PayslipDetailPage from './pages/PayslipDetailPage';
+import ActiveEmployeeDayInOutPage from './pages/ActiveEmployeeDayInOutPage';
+import EmployeePaymentRecordSheetPage from './pages/EmployeePaymentRecordSheetPage';
 import EmployeePaymentSheetPage from './pages/EmployeePaymentSheetPage';
 import PublicDocumentViewPage from './pages/PublicDocumentViewPage';
 import PublicPayslipPage from './pages/PublicPayslipPage';
@@ -263,7 +266,11 @@ function App() {
         <Route path="/my-advances" element={<ProtectedRoute><MyAdvancesPage /></ProtectedRoute>} />
         
         {/* Admin - Advance Approvals */}
-        <Route path="/admin/advance-approvals" element={<ProtectedRoute requiredPermission="hr.employees.manage" excludeRoles={['employee']}><AdminAdvanceApprovalsPage /></ProtectedRoute>} />
+        <Route path="/admin/advance-approvals" element={<ProtectedRoute requiredPermission="hr.employees.manage" excludeRoles={['employee']}><SalaryAdvancesPage /></ProtectedRoute>} />
+        <Route path="/hr/salary-advances" element={<ProtectedRoute requiredPermission="hr.employees.manage" excludeRoles={['employee']}><SalaryAdvancesPage /></ProtectedRoute>} />
+        <Route path="/manual-paysheet" element={<ProtectedRoute requiredPermission="hr.employees.view" excludeRoles={['employee']}><EmployeePaymentRecordSheetPage /></ProtectedRoute>} />
+        <Route path="/hr/daily-manual-attendance" element={<ProtectedRoute requiredPermission="hr.attendance.view" excludeRoles={['employee']}><ActiveEmployeeDayInOutPage /></ProtectedRoute>} />
+        <Route path="/hr/manual-payment-sheet" element={<ProtectedRoute requiredPermission="hr.employees.view" excludeRoles={['employee']}><EmployeePaymentRecordSheetPage /></ProtectedRoute>} />
         <Route path="/hr/daily-payroll" element={<ProtectedRoute requiredPermission="hr.payroll.view" excludeRoles={['employee']}><DailyPayrollPage /></ProtectedRoute>} />
         <Route path="/payroll/:id" element={<ProtectedRoute requiredPermission="hr.payroll.view" excludeRoles={['employee']}><PayrollDetailPage /></ProtectedRoute>} />
         <Route path="/payroll/:payrollId/payslip/:employeeId" element={<ProtectedRoute requiredPermission="hr.payroll.view"><PayslipDetailPage /></ProtectedRoute>} />

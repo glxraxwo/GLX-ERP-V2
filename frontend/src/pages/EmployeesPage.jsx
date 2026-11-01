@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Eye, Users, Mail, Phone, Receipt, Edit, Trash2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import {
+    Plus, Search, Eye, Users, Mail, Phone, Receipt, Edit, Trash2,
+    Calendar, DollarSign, Clock, ShieldAlert, Award, Building2,
+    Calculator, Plane, BadgeCheck, FileSpreadsheet, ChevronRight, Sliders, LayoutGrid
+} from 'lucide-react';
 
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -18,10 +22,171 @@ const statusVariant = {
     suspended: 'danger', terminated: 'default', resigned: 'default', retired: 'default',
 };
 
+// All HR Modules with compact layout & distinct Rainbow background gradients
+const hrHubModules = [
+    {
+        title: 'Manual Paysheet',
+        path: '/manual-paysheet',
+        icon: FileSpreadsheet,
+        badge: 'Excel Sheet',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-blue-50/90 to-indigo-100/70 border-blue-200/90 hover:border-blue-400 hover:from-blue-100/90 hover:to-indigo-200/70 shadow-xs shadow-blue-500/5',
+            iconBox: 'bg-white text-blue-600 border-blue-200 shadow-2xs group-hover:bg-blue-600 group-hover:text-white',
+            badge: 'bg-blue-600/10 text-blue-800 border border-blue-300/70 font-bold',
+            title: 'text-blue-950 group-hover:text-blue-700',
+            arrow: 'text-blue-400 group-hover:text-blue-700'
+        }
+    },
+    {
+        title: 'Active Day In/Out',
+        path: '/hr/daily-manual-attendance',
+        icon: Calendar,
+        badge: 'Daily Roster',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-emerald-50/90 to-teal-100/70 border-emerald-200/90 hover:border-emerald-400 hover:from-emerald-100/90 hover:to-teal-200/70 shadow-xs shadow-emerald-500/5',
+            iconBox: 'bg-white text-emerald-600 border-emerald-200 shadow-2xs group-hover:bg-emerald-600 group-hover:text-white',
+            badge: 'bg-emerald-600/10 text-emerald-800 border border-emerald-300/70 font-bold',
+            title: 'text-emerald-950 group-hover:text-emerald-700',
+            arrow: 'text-emerald-400 group-hover:text-emerald-700'
+        }
+    },
+    {
+        title: 'Attendance Logs',
+        path: '/attendance',
+        icon: Clock,
+        badge: 'Time Logs',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-purple-50/90 to-violet-100/70 border-purple-200/90 hover:border-purple-400 hover:from-purple-100/90 hover:to-violet-200/70 shadow-xs shadow-purple-500/5',
+            iconBox: 'bg-white text-purple-600 border-purple-200 shadow-2xs group-hover:bg-purple-600 group-hover:text-white',
+            badge: 'bg-purple-600/10 text-purple-800 border border-purple-300/70 font-bold',
+            title: 'text-purple-950 group-hover:text-purple-700',
+            arrow: 'text-purple-400 group-hover:text-purple-700'
+        }
+    },
+    {
+        title: 'Leave Management',
+        path: '/leaves',
+        icon: Plane,
+        badge: 'Leaves',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-amber-50/90 to-yellow-100/70 border-amber-200/90 hover:border-amber-400 hover:from-amber-100/90 hover:to-yellow-200/70 shadow-xs shadow-amber-500/5',
+            iconBox: 'bg-white text-amber-600 border-amber-200 shadow-2xs group-hover:bg-amber-600 group-hover:text-white',
+            badge: 'bg-amber-600/10 text-amber-900 border border-amber-300/70 font-bold',
+            title: 'text-amber-950 group-hover:text-amber-800',
+            arrow: 'text-amber-400 group-hover:text-amber-800'
+        }
+    },
+    {
+        title: 'Payroll Processing',
+        path: '/payroll',
+        icon: DollarSign,
+        badge: 'Payroll',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-green-50/90 to-emerald-100/70 border-green-200/90 hover:border-green-400 hover:from-green-100/90 hover:to-emerald-200/70 shadow-xs shadow-green-500/5',
+            iconBox: 'bg-white text-green-700 border-green-200 shadow-2xs group-hover:bg-green-600 group-hover:text-white',
+            badge: 'bg-green-600/10 text-green-800 border border-green-300/70 font-bold',
+            title: 'text-green-950 group-hover:text-green-700',
+            arrow: 'text-green-400 group-hover:text-green-700'
+        }
+    },
+    {
+        title: 'Salary Advances',
+        path: '/hr/salary-advances',
+        icon: BadgeCheck,
+        badge: 'Advances',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-rose-50/90 to-pink-100/70 border-rose-200/90 hover:border-rose-400 hover:from-rose-100/90 hover:to-pink-200/70 shadow-xs shadow-rose-500/5',
+            iconBox: 'bg-white text-rose-600 border-rose-200 shadow-2xs group-hover:bg-rose-600 group-hover:text-white',
+            badge: 'bg-rose-600/10 text-rose-800 border border-rose-300/70 font-bold',
+            title: 'text-rose-950 group-hover:text-rose-700',
+            arrow: 'text-rose-400 group-hover:text-rose-700'
+        }
+    },
+    {
+        title: 'Attendance Policies',
+        path: '/attendance-policies',
+        icon: ShieldAlert,
+        badge: 'Rules',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-indigo-50/90 to-blue-100/70 border-indigo-200/90 hover:border-indigo-400 hover:from-indigo-100/90 hover:to-blue-200/70 shadow-xs shadow-indigo-500/5',
+            iconBox: 'bg-white text-indigo-600 border-indigo-200 shadow-2xs group-hover:bg-indigo-600 group-hover:text-white',
+            badge: 'bg-indigo-600/10 text-indigo-800 border border-indigo-300/70 font-bold',
+            title: 'text-indigo-950 group-hover:text-indigo-700',
+            arrow: 'text-indigo-400 group-hover:text-indigo-700'
+        }
+    },
+    {
+        title: 'EPF / ETF Statutory',
+        path: '/hr/epf-etf',
+        icon: Calculator,
+        badge: 'Statutory',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-cyan-50/90 to-sky-100/70 border-cyan-200/90 hover:border-cyan-400 hover:from-cyan-100/90 hover:to-sky-200/70 shadow-xs shadow-cyan-500/5',
+            iconBox: 'bg-white text-cyan-700 border-cyan-200 shadow-2xs group-hover:bg-cyan-600 group-hover:text-white',
+            badge: 'bg-cyan-600/10 text-cyan-800 border border-cyan-300/70 font-bold',
+            title: 'text-cyan-950 group-hover:text-cyan-800',
+            arrow: 'text-cyan-400 group-hover:text-cyan-800'
+        }
+    },
+    {
+        title: 'Departments & Roles',
+        path: '/departments',
+        icon: Building2,
+        badge: 'Organization',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-fuchsia-50/90 to-pink-100/70 border-fuchsia-200/90 hover:border-fuchsia-400 hover:from-fuchsia-100/90 hover:to-pink-200/70 shadow-xs shadow-fuchsia-500/5',
+            iconBox: 'bg-white text-fuchsia-600 border-fuchsia-200 shadow-2xs group-hover:bg-fuchsia-600 group-hover:text-white',
+            badge: 'bg-fuchsia-600/10 text-fuchsia-800 border border-fuchsia-300/70 font-bold',
+            title: 'text-fuchsia-950 group-hover:text-fuchsia-700',
+            arrow: 'text-fuchsia-400 group-hover:text-fuchsia-700'
+        }
+    },
+    {
+        title: 'Working Shifts',
+        path: '/shifts',
+        icon: Clock,
+        badge: 'Shifts',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-orange-50/90 to-amber-100/70 border-orange-200/90 hover:border-orange-400 hover:from-orange-100/90 hover:to-amber-200/70 shadow-xs shadow-orange-500/5',
+            iconBox: 'bg-white text-orange-600 border-orange-200 shadow-2xs group-hover:bg-orange-600 group-hover:text-white',
+            badge: 'bg-orange-600/10 text-orange-800 border border-orange-300/70 font-bold',
+            title: 'text-orange-950 group-hover:text-orange-700',
+            arrow: 'text-orange-400 group-hover:text-orange-700'
+        }
+    },
+    {
+        title: 'Salary Structures',
+        path: '/salary-structures',
+        icon: Calculator,
+        badge: 'Salary',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-teal-50/90 to-cyan-100/70 border-teal-200/90 hover:border-teal-400 hover:from-teal-100/90 hover:to-cyan-200/70 shadow-xs shadow-teal-500/5',
+            iconBox: 'bg-white text-teal-700 border-teal-200 shadow-2xs group-hover:bg-teal-600 group-hover:text-white',
+            badge: 'bg-teal-600/10 text-teal-800 border border-teal-300/70 font-bold',
+            title: 'text-teal-950 group-hover:text-teal-700',
+            arrow: 'text-teal-400 group-hover:text-teal-700'
+        }
+    },
+    {
+        title: 'Leave Structures',
+        path: '/leave-structures',
+        icon: Calendar,
+        badge: 'Entitlements',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-lime-50/90 to-emerald-100/70 border-lime-200/90 hover:border-lime-400 hover:from-lime-100/90 hover:to-emerald-200/70 shadow-xs shadow-lime-500/5',
+            iconBox: 'bg-white text-lime-700 border-lime-200 shadow-2xs group-hover:bg-lime-600 group-hover:text-white',
+            badge: 'bg-lime-600/10 text-lime-800 border border-lime-300/70 font-bold',
+            title: 'text-lime-950 group-hover:text-lime-800',
+            arrow: 'text-lime-400 group-hover:text-lime-800'
+        }
+    }
+];
+
 export default function EmployeesPage() {
     const navigate = useNavigate();
     const [filters, setFilters] = useState({ search: '', departmentId: '', status: 'active', page: 1, limit: 20 });
     const [deletingEmp, setDeletingEmp] = useState(null);
+    const [isHubExpanded, setIsHubExpanded] = useState(true);
 
     const { data, isLoading } = useEmployees(filters);
     const { data: deptsData } = useDepartments();
@@ -38,34 +203,44 @@ export default function EmployeesPage() {
     };
 
     const columns = [
-        { key: 'employeeCode', label: 'ID', width: '100px', render: (r) => <span className="font-mono text-xs">{r.employeeCode}</span> },
+        { key: 'employeeCode', label: 'ID', width: '100px', render: (r) => <span className="font-mono text-xs font-bold text-slate-800">{r.employeeCode}</span> },
         {
             key: 'name', label: 'Name',
             render: (r) => (
                 <div>
-                    <p className="font-medium">{r.firstName} {r.lastName}</p>
-                    <p className="text-xs text-gray-500">
-                        {r.email && <span className="inline-flex items-center gap-1 mr-2"><Mail size={10} />{r.email}</span>}
-                        {r.phone && <span className="inline-flex items-center gap-1"><Phone size={10} />{r.phone}</span>}
+                    <p className="font-semibold text-slate-900">{r.firstName} {r.lastName}</p>
+                    <p className="text-xs text-gray-500 flex items-center gap-3 mt-0.5">
+                        {r.email && <span className="inline-flex items-center gap-1"><Mail size={11} className="text-gray-400" />{r.email}</span>}
+                        {r.phone && <span className="inline-flex items-center gap-1"><Phone size={11} className="text-gray-400" />{r.phone}</span>}
                     </p>
                 </div>
             ),
         },
-        { key: 'department', label: 'Department', render: (r) => r.departmentId?.name || '—' },
-        { key: 'designation', label: 'Designation', render: (r) => r.designationId?.name || '—' },
+        { key: 'department', label: 'Department', render: (r) => <span className="text-xs text-slate-700 font-medium">{r.departmentId?.name || '—'}</span> },
+        { key: 'designation', label: 'Designation', render: (r) => <span className="text-xs text-slate-700 font-medium">{r.designationId?.name || '—'}</span> },
+        { key: 'hourlyRate', label: 'Hourly Rate', render: (r) => <span className="font-mono text-xs font-bold text-slate-800">Rs. {Number(r.hourlyRate || r.labourRate || 260).toFixed(0)}</span> },
         { key: 'employmentType', label: 'Type', render: (r) => <Badge>{r.employmentType?.replace(/_/g, ' ')}</Badge> },
-        { key: 'dateOfJoining', label: 'Joined', render: (r) => r.dateOfJoining ? new Date(r.dateOfJoining).toLocaleDateString('en-LK') : '—' },
         { key: 'status', label: 'Status', render: (r) => <Badge variant={statusVariant[r.status]}>{r.status?.replace(/_/g, ' ')}</Badge> },
         {
-            key: 'actions', label: 'Actions', width: '200px', render: (r) => (
+            key: 'actions', label: 'Actions', width: '250px', render: (r) => (
                 <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    {/* Direct link to Manual Payment Record Sheet */}
+                    <button
+                        onClick={() => navigate(`/manual-paysheet?employeeId=${r._id}`)}
+                        className="px-2 py-1 text-xs font-bold bg-[#BAC8E8]/40 text-[#131943] hover:bg-[#BAC8E8] rounded-md transition flex items-center gap-1 border border-[#BAC8E8]"
+                        title="Open 31-Day Manual Payment Record Sheet for this employee"
+                    >
+                        <FileSpreadsheet size={13} className="text-indigo-900" /> Manual Sheet
+                    </button>
+
                     <button
                         onClick={() => navigate(`/employees/${r._id}/payment-sheet`)}
-                        className="px-2 py-1 text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg transition flex items-center gap-1 border border-emerald-200"
-                        title="View Payment Sheet & Salary History"
+                        className="px-2 py-1 text-xs font-bold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 rounded-md transition flex items-center gap-1 border border-emerald-200"
+                        title="View Payment History & Payslips"
                     >
-                        <Receipt size={12} /> Pay Sheet
+                        <Receipt size={12} className="text-emerald-700" /> History
                     </button>
+                    
                     <button
                         onClick={() => navigate(`/employees/${r._id}/edit`)}
                         className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded"
@@ -76,16 +251,16 @@ export default function EmployeesPage() {
                     <button
                         onClick={() => navigate(`/employees/${r._id}`)}
                         className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded"
-                        title="View Employee Profile"
+                        title="View Profile"
                     >
-                        <Eye size={16} />
+                        <Eye size={15} />
                     </button>
                     <button
                         onClick={() => setDeletingEmp(r)}
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition"
                         title="Delete Employee"
                     >
-                        <Trash2 size={15} />
+                        <Trash2 size={14} />
                     </button>
                 </div>
             )
@@ -93,28 +268,100 @@ export default function EmployeesPage() {
     ];
 
     return (
-        <div>
-            <PageHeader title="Employees" description="All team members and their employment details"
-                actions={<Button variant="primary" onClick={() => navigate('/employees/new')}>
-                    <Plus size={16} className="mr-1.5" /> Add Employee
-                </Button>} />
+        <div className="space-y-4">
+            
+            {/* Top Page Header */}
+            <PageHeader 
+                title="Employee Master & HR Operations Hub" 
+                description="Comprehensive directory and centralized command center for all employee operations, paysheets, and attendance."
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Button 
+                            variant="secondary" 
+                            onClick={() => setIsHubExpanded(!isHubExpanded)}
+                            className="text-xs font-semibold"
+                        >
+                            <LayoutGrid size={14} className="mr-1.5" />
+                            {isHubExpanded ? 'Hide HR Hub' : 'Show HR Hub'}
+                        </Button>
+                        <Button variant="primary" onClick={() => navigate('/employees/new')}>
+                            <Plus size={16} className="mr-1.5" /> Add Employee
+                        </Button>
+                    </div>
+                } 
+            />
 
+            {/* Centralized HR Operations Hub Cards (Navigates to all employee modules) */}
+            {isHubExpanded && (
+                <div className="bg-slate-50/70 border border-slate-200/90 rounded-xl p-3 shadow-2xs mb-3">
+                    <div className="flex items-center justify-between mb-2.5 pb-1.5 border-b border-slate-200/80">
+                        <div className="flex items-center gap-1.5">
+                            <Sliders size={14} className="text-slate-600" />
+                            <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                                HR Operations Hub
+                            </h2>
+                        </div>
+                        <span className="text-[10.5px] font-medium text-slate-400">
+                            12 Direct Modules
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                        {hrHubModules.map((mod) => {
+                            const IconComponent = mod.icon;
+                            return (
+                                <Link
+                                    key={mod.title}
+                                    to={mod.path}
+                                    className={`p-2 border rounded-xl transition-all group flex flex-col justify-between min-h-[64px] ${mod.theme.cardBg}`}
+                                >
+                                    <div className="flex items-center justify-between gap-1">
+                                        <div className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-colors ${mod.theme.iconBox}`}>
+                                            <IconComponent size={12} />
+                                        </div>
+                                        <span className={`text-[8.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${mod.theme.badge}`}>
+                                            {mod.badge}
+                                        </span>
+                                    </div>
+                                    <div className="mt-1.5 flex items-center justify-between">
+                                        <h3 className={`text-[11px] font-bold ${mod.theme.title} transition truncate`}>
+                                            {mod.title}
+                                        </h3>
+                                        <ChevronRight size={11} className={`transition shrink-0 ml-1 ${mod.theme.arrow}`} />
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+
+
+            {/* Main Employee Table Card */}
             <Card>
                 <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex flex-wrap gap-2 sm:gap-3">
                     <div className="relative flex-1">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-                        <input type="text" placeholder="Search by name, code, email..."
+                        <input 
+                            type="text" 
+                            placeholder="Search by name, employee code, email, phone..."
                             className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                             value={filters.search}
-                            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))} />
+                            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))} 
+                        />
                     </div>
                     <div className="w-full sm:w-48">
-                        <Select placeholder="All Departments" options={deptOptions}
+                        <Select 
+                            placeholder="All Departments" 
+                            options={deptOptions}
                             value={filters.departmentId}
-                            onChange={(e) => setFilters((f) => ({ ...f, departmentId: e.target.value, page: 1 }))} />
+                            onChange={(e) => setFilters((f) => ({ ...f, departmentId: e.target.value, page: 1 }))} 
+                        />
                     </div>
                     <div className="w-full sm:w-40">
-                        <Select placeholder="All Statuses"
+                        <Select 
+                            placeholder="All Statuses"
                             options={[
                                 { value: 'active', label: 'Active' },
                                 { value: 'on_leave', label: 'On Leave' },
@@ -124,22 +371,35 @@ export default function EmployeesPage() {
                                 { value: 'resigned', label: 'Resigned' },
                             ]}
                             value={filters.status}
-                            onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value, page: 1 }))} />
+                            onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value, page: 1 }))} 
+                        />
                     </div>
                 </div>
 
-                {isLoading ? <div className="py-16 text-center text-gray-500">Loading...</div>
-                    : employees.length === 0 ? <EmptyState icon={Users} title="No employees" description="Add your first employee"
-                        action={<Button variant="primary" onClick={() => navigate('/employees/new')}>Add Employee</Button>} />
-                        : <>
-                            <Table columns={columns} data={employees} onRowClick={(r) => navigate(`/employees/${r._id}`)} />
-                            <Pagination page={filters.page} totalPages={data.totalPages} total={data.total}
-                                onPageChange={(p) => setFilters((f) => ({ ...f, page: p }))} />
-                        </>}
+                {isLoading ? (
+                    <div className="py-16 text-center text-gray-500 font-semibold text-xs">Loading employee directory...</div>
+                ) : employees.length === 0 ? (
+                    <EmptyState 
+                        icon={Users} 
+                        title="No employees found" 
+                        description="Add your first employee to get started"
+                        action={<Button variant="primary" onClick={() => navigate('/employees/new')}>Add Employee</Button>} 
+                    />
+                ) : (
+                    <>
+                        <Table columns={columns} data={employees} onRowClick={(r) => navigate(`/employees/${r._id}`)} />
+                        <Pagination 
+                            page={filters.page} 
+                            totalPages={data?.totalPages || 1} 
+                            total={data?.total || employees.length}
+                            onPageChange={(p) => setFilters((f) => ({ ...f, page: p }))} 
+                        />
+                    </>
+                )}
             </Card>
 
             <ConfirmDialog
-                isOpen={!!deletingEmp}
+                isOpen={Boolean(deletingEmp)}
                 onClose={() => setDeletingEmp(null)}
                 onConfirm={handleDelete}
                 title="Delete Employee"

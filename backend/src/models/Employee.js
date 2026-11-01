@@ -121,6 +121,14 @@ const employeeSchema = new mongoose.Schema({
     workShift: { type: mongoose.Schema.Types.ObjectId, ref: 'Shift' },
 
     // Statutory (Sri Lanka specific)
+    payrollNumber: { type: String, default: '' },
+    epfApplicable: { type: Boolean, default: true },
+    etfApplicable: { type: Boolean, default: true },
+    otEligible: { type: Boolean, default: true },
+    commissionEligible: { type: Boolean, default: false },
+    standardDailyHours: { type: Number, default: 9 },
+    defaultOnTime: { type: String, default: '08:00' },
+    defaultOffTime: { type: String, default: '17:00' },
     epfNumber: String, // Employee's EPF number
     etfNumber: String,
     taxRegistrationNumber: String, // TIN

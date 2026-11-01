@@ -10,9 +10,18 @@ import {
     createSalaryStructure, getSalaryStructures, updateSalaryStructure, deleteSalaryStructure,
     createLeaveStructure, getLeaveStructures, updateLeaveStructure, deleteLeaveStructure, getMyEmployeeProfile,
     createAttendancePolicy, getAttendancePolicies, updateAttendancePolicy, deleteAttendancePolicy, importFingerprintAttendance,
-    getEmployeePaymentSheet, sendPaymentSheetLinkSms, createSalaryAdvance, getSalaryAdvances, getEmployeeAdvanceSummary, approveSalaryAdvance, declineSalaryAdvance, paySalaryAdvance, recordAdvanceRepayment, getMyAdvanceLedger, getOngoingSalaryPeriodInfo,
+    getEmployeePaymentSheet, sendPaymentSheetLinkSms, createSalaryAdvance, getSalaryAdvances, getEmployeeAdvanceSummary, approveSalaryAdvance, declineSalaryAdvance, paySalaryAdvance, recordAdvanceRepayment, getMyAdvanceLedger, getOngoingSalaryPeriodInfo, deleteSalaryAdvance,
     uploadEmployeeDocument, getEmployeeDocuments, deleteEmployeeDocument, getPublicPayslip,
 } from '../controllers/hrController.js';
+import {
+    getDailyManualAttendance,
+    saveDailyManualAttendance,
+    getDetailedEmployeePaymentRecordSheet,
+    saveDetailedEmployeePaymentRecordSheet,
+    getNormalEmployeePayslip,
+    getManualAttendancePolicies,
+    saveManualAttendancePolicies
+} from '../controllers/manualAttendanceController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission } from '../middleware/permissionMiddleware.js';
 import { uploadEmployeeDocument as uploadDoc } from '../middleware/uploadMiddleware.js';
@@ -209,6 +218,7 @@ router.patch('/advances/:id/approve', requirePermission('hr.employees.manage'), 
 router.patch('/advances/:id/decline', requirePermission('hr.employees.manage'), declineSalaryAdvance);
 router.post('/advances/:id/pay', requirePermission('hr.employees.manage'), paySalaryAdvance);
 router.post('/advances/:id/repay', requirePermission('hr.employees.manage'), recordAdvanceRepayment);
+router.delete('/advances/:id', requirePermission('hr.employees.manage'), deleteSalaryAdvance);
 
 router.route('/employees/:id/payment-sheet')
     .get(requirePermission('hr.employees.view'), getEmployeePaymentSheet);
@@ -225,5 +235,20 @@ router.get('/employees/:id/advance-summary', requirePermission('hr.employees.vie
 router.post('/employees/:id/documents', protect, requirePermission('hr.employees.manage'), uploadDoc, uploadEmployeeDocument);
 router.get('/employees/:id/documents', protect, requirePermission('hr.employees.view'), getEmployeeDocuments);
 router.delete('/employees/:id/documents', protect, requirePermission('hr.employees.manage'), deleteEmployeeDocument);
+
+// ── Manual Attendance & Spreadsheet Paysheets ───────────────────────────────────
+router.route('/manual-attendance/daily')
+    .get(requirePermission('hr.attendance.view'), getDailyManualAttendance)
+    .post(requirePermission('hr.attendance.manage'), saveDailyManualAttendance);
+
+router.route('/manual-attendance/employee-sheet')
+    .get(requirePermission('hr.employees.view'), getDetailedEmployeePaymentRecordSheet)
+    .post(requirePermission('hr.attendance.manage'), saveDetailedEmployeePaymentRecordSheet);
+
+router.get('/manual-attendance/normal-payslip', requirePermission('hr.employees.view'), getNormalEmployeePayslip);
+
+router.route('/manual-attendance/policies')
+    .get(requirePermission('hr.employees.view'), getManualAttendancePolicies)
+    .post(requirePermission('hr.attendance.manage'), saveManualAttendancePolicies);
 
 export default router;

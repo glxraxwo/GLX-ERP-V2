@@ -60,6 +60,19 @@ const settingsSchema = new mongoose.Schema({
         enum: ['default', 'custom'],
         default: 'default'
     },
+    // Default Shift Times & Rate for Manual Attendance
+    defaultOnTime: {
+        type: String,
+        default: '08:00'
+    },
+    defaultOffTime: {
+        type: String,
+        default: '17:00'
+    },
+    defaultHourlyRate: {
+        type: Number,
+        default: 260
+    },
     // Salary Payment Configuration
     salaryPaymentDay: {
         type: Number,

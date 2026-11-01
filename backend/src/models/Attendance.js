@@ -46,6 +46,22 @@ const attendanceSchema = new mongoose.Schema({
 
     notes: String,
 
+    // ── Spreadsheet / Manual Entry Specific Fields ─────────────────────────
+    isTicked: { type: Boolean, default: true },
+    dateString: { type: String, index: true }, // Format: YYYY-MM-DD
+    manualInTime: { type: String, default: '08:00' },
+    manualOutTime: { type: String, default: '17:00' },
+    unpaidBreakMinutes: { type: Number, default: 0 },
+    payableHours: { type: Number, default: 0 },
+    hourlyRateApplied: { type: Number, default: 0 },
+    daySalary: { type: Number, default: 0 },
+    dailyAdvance: { type: Number, default: 0 },
+    dailyDeduction: { type: Number, default: 0 },
+    deductionReason: { type: String, default: 'FILL' },
+    defaultOnTime: { type: String, default: '08:00' },
+    defaultOffTime: { type: String, default: '17:00' },
+    isOvernight: { type: Boolean, default: false },
+
     markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
@@ -65,6 +81,7 @@ attendanceSchema.pre('save', function() {
 // Unique: one attendance record per employee per date
 attendanceSchema.index({ employeeId: 1, date: 1 }, { unique: true });
 attendanceSchema.index({ date: 1, status: 1 });
+attendanceSchema.index({ dateString: 1 });
 
 const Attendance = mongoose.model('Attendance', attendanceSchema);
 export default Attendance;

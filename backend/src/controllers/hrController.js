@@ -1262,12 +1262,24 @@ export const createSalaryAdvance = asyncHandler(async (req, res) => {
         amountPaid: 0,
         remainingBalance: finalAmount,
         reason: reason || '',
-        status: isDirectAdmin ? 'approved' : 'pending',
+        status: req.body.status || (isDirectAdmin ? 'approved' : 'pending'),
         approvedBy: isDirectAdmin ? req.user._id : undefined,
         approvedAt: isDirectAdmin ? new Date() : undefined,
+        paidAt: req.body.isPaid ? new Date() : (isDirectAdmin ? new Date() : undefined),
         createdBy: req.user._id,
     });
     res.status(201).json({ success: true, data: advance });
+});
+
+export const deleteSalaryAdvance = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const advance = await SalaryAdvance.findById(id);
+    if (!advance) {
+        res.status(404);
+        throw new Error('Salary advance not found');
+    }
+    await advance.deleteOne();
+    res.json({ success: true, message: 'Salary advance deleted successfully' });
 });
 
 export const approveSalaryAdvance = asyncHandler(async (req, res) => {
