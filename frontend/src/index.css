@@ -782,3 +782,24 @@ textarea {
     margin: 0; 
   }
 }
+
+/* Global Print Mode Neutralization — Prevents scrollbars & height clipping in printouts */
+@media print {
+  html, body, #root, #main-content, main, [class*="h-screen"], [class*="overflow-"] {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+    overflow-x: visible !important;
+  }
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+}

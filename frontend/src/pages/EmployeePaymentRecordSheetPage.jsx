@@ -927,7 +927,7 @@ export default function EmployeePaymentRecordSheetPage() {
                 @media print {
                     @page {
                         size: A4 portrait;
-                        margin: 6mm 7mm 6mm 7mm;
+                        margin: 5mm 6mm 5mm 6mm;
                     }
                     html, body {
                         background: #ffffff !important;
@@ -936,11 +936,39 @@ export default function EmployeePaymentRecordSheetPage() {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                         width: 100% !important;
+                        height: auto !important;
+                        min-height: auto !important;
+                        overflow: visible !important;
+                        overflow-y: visible !important;
                         margin: 0 !important;
                         padding: 0 !important;
                     }
-                    .print\\:hidden, header, nav, .keyboard-shortcuts-bar, aside {
+                    /* Hide App Navigation, Top Bars, Shortcuts */
+                    .print\\:hidden, header, nav, .keyboard-shortcuts-bar, aside, #main-header, #tabs-bar {
                         display: none !important;
+                    }
+                    /* Neutralize App Layout fixed-height scrolling containers */
+                    main, #main-content, div.h-screen, div.overflow-hidden, div[class*="overflow-y-auto"], div[class*="overflow-x-auto"] {
+                        height: auto !important;
+                        min-height: auto !important;
+                        max-height: none !important;
+                        overflow: visible !important;
+                        overflow-y: visible !important;
+                        overflow-x: visible !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                    }
+                    /* ELIMINATE ALL SCROLLBARS FROM PRINT OUT */
+                    ::-webkit-scrollbar {
+                        display: none !important;
+                        width: 0 !important;
+                        height: 0 !important;
+                    }
+                    * {
+                        scrollbar-width: none !important;
+                        -ms-overflow-style: none !important;
                     }
                     .sheet-print-container {
                         max-width: 100% !important;
@@ -949,6 +977,7 @@ export default function EmployeePaymentRecordSheetPage() {
                         padding: 0 !important;
                         margin: 0 !important;
                         box-shadow: none !important;
+                        overflow: visible !important;
                     }
                     body.payslip-modal-open .sheet-print-container {
                         display: none !important;
@@ -980,17 +1009,27 @@ export default function EmployeePaymentRecordSheetPage() {
                     .text-\\[\\#C00000\\] {
                         color: #C00000 !important;
                     }
+                    .overflow-x-auto, div:has(> table) {
+                        overflow: visible !important;
+                        overflow-y: visible !important;
+                        max-height: none !important;
+                        border: none !important;
+                    }
                     table {
                         border-collapse: collapse !important;
                         width: 100% !important;
+                        margin-bottom: 1.5mm !important;
                     }
                     thead {
                         display: table-header-group !important;
                     }
+                    tbody {
+                        display: table-row-group !important;
+                    }
                     th, td {
                         border: 1px solid #000000 !important;
-                        padding: 1.5px 2.5px !important;
-                        font-size: 8.5px !important;
+                        padding: 1px 2px !important;
+                        font-size: 8px !important;
                         line-height: 1.15 !important;
                     }
                     tr {
@@ -998,11 +1037,11 @@ export default function EmployeePaymentRecordSheetPage() {
                         break-inside: avoid !important;
                     }
                     .signature-section {
+                        display: block !important;
                         page-break-inside: avoid !important;
                         break-inside: avoid !important;
-                    }
-                    .overflow-x-auto {
-                        overflow: visible !important;
+                        margin-top: 2.5mm !important;
+                        padding-top: 2mm !important;
                     }
                 }
             `}</style>
@@ -1503,8 +1542,8 @@ export default function EmployeePaymentRecordSheetPage() {
                         <p className="font-semibold text-xs">Loading sheet rows...</p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto border border-black mb-3">
-                        <table className="w-full border-collapse text-[11px] font-sans">
+                    <div className="no-sticky-height employee-payment-sheet-print print-container overflow-x-auto border border-black mb-3 print:overflow-visible print:border-none print:m-0 print:p-0">
+                        <table className="no-sticky-height employee-payment-sheet-print w-full border-collapse text-[11px] font-sans">
                             <thead>
                                 <tr className="bg-white border-b border-black font-bold text-black text-center">
                                     <th className="border-r border-black py-1 px-1 w-10">
@@ -1702,29 +1741,43 @@ export default function EmployeePaymentRecordSheetPage() {
                 )}
 
                 {/* Executive Official Signatures Section */}
-                <div className="signature-section pt-3 pb-2 grid grid-cols-4 gap-4 text-[9.5px] font-bold text-black border-t-2 border-black mt-2">
-                    <div>
-                        <p className="text-gray-800 mb-6 font-semibold uppercase text-[9px]">Prepared By:</p>
-                        <div className="border-b border-black w-full pb-1"></div>
-                        <p className="text-[8.5px] text-gray-600 mt-1 uppercase font-semibold">HR / Accounts Officer</p>
-                    </div>
+                <div className="signature-section pt-3 pb-1 border-t-2 border-black mt-2">
+                    <div className="grid grid-cols-4 gap-4 text-[9px] font-bold text-black">
+                        <div className="flex flex-col justify-between h-16">
+                            <p className="text-gray-900 uppercase font-bold text-[8.5px]">Prepared By:</p>
+                            <div>
+                                <div className="border-b border-black w-full mb-0.5"></div>
+                                <p className="text-[8px] text-gray-700 uppercase font-semibold">HR / Accounts Officer</p>
+                                <p className="text-[7.5px] text-gray-500 font-mono">Date: ___ / ___ / 2026</p>
+                            </div>
+                        </div>
 
-                    <div>
-                        <p className="text-gray-800 mb-6 font-semibold uppercase text-[9px]">Checked By:</p>
-                        <div className="border-b border-black w-full pb-1"></div>
-                        <p className="text-[8.5px] text-gray-600 mt-1 uppercase font-semibold">Operations Manager</p>
-                    </div>
+                        <div className="flex flex-col justify-between h-16">
+                            <p className="text-gray-900 uppercase font-bold text-[8.5px]">Checked By:</p>
+                            <div>
+                                <div className="border-b border-black w-full mb-0.5"></div>
+                                <p className="text-[8px] text-gray-700 uppercase font-semibold">Operations Manager</p>
+                                <p className="text-[7.5px] text-gray-500 font-mono">Date: ___ / ___ / 2026</p>
+                            </div>
+                        </div>
 
-                    <div>
-                        <p className="text-gray-800 mb-6 font-semibold uppercase text-[9px]">Employee Signature:</p>
-                        <div className="border-b border-black w-full pb-1"></div>
-                        <p className="text-[8.5px] text-gray-900 mt-1 truncate font-bold">{employeeFullName}</p>
-                    </div>
+                        <div className="flex flex-col justify-between h-16">
+                            <p className="text-gray-900 uppercase font-bold text-[8.5px]">Employee Signature:</p>
+                            <div>
+                                <div className="border-b border-black w-full mb-0.5"></div>
+                                <p className="text-[8px] text-gray-900 truncate font-bold">{employeeFullName}</p>
+                                <p className="text-[7.5px] text-gray-500 font-mono">Date: ___ / ___ / 2026</p>
+                            </div>
+                        </div>
 
-                    <div>
-                        <p className="text-gray-800 mb-6 font-semibold uppercase text-[9px]">Authorized Signature:</p>
-                        <div className="border-b border-black w-full pb-1"></div>
-                        <p className="text-[8.5px] text-gray-600 mt-1 uppercase font-semibold">Managing Director / Seal</p>
+                        <div className="flex flex-col justify-between h-16">
+                            <p className="text-gray-900 uppercase font-bold text-[8.5px]">Authorized Signature & Seal:</p>
+                            <div>
+                                <div className="border-b border-black w-full mb-0.5"></div>
+                                <p className="text-[8px] text-gray-700 uppercase font-semibold">Managing Director / Partner</p>
+                                <p className="text-[7.5px] text-gray-500 font-mono">Date: ___ / ___ / 2026</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
