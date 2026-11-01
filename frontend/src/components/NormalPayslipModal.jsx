@@ -43,307 +43,276 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
     const bossSignatureUrl = comp.bossSignature || systemSettings.bossSignature || '';
     const bossTitle = comp.bossTitle || systemSettings.bossTitle || 'MANAGING DIRECTOR';
 
-    // Handle Direct Print for Salary Slip Only via isolated print iframe
-    const handlePrint = () => {
-        const printContent = printRef.current;
-        if (!printContent) return;
+    // Build the Exact Pixel-Perfect Modern Salary Slip jsPDF Document
+    const buildSalarySlipPdfDoc = () => {
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
 
-        // Clean up any existing print iframe
-        const existingFrame = document.getElementById('payslip-print-iframe');
-        if (existingFrame) existingFrame.remove();
+        // 1. Top Midnight Navy Header Banner
+        doc.setFillColor(19, 25, 67); // Deep Navy #131943
+        doc.rect(0, 0, 210, 50, 'F');
 
-        const iframe = document.createElement('iframe');
-        iframe.id = 'payslip-print-iframe';
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        iframe.style.visibility = 'hidden';
-        document.body.appendChild(iframe);
+        // "Salary Slip." Title in White Bold
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(36);
+        doc.text('Salary Slip.', 20, 34);
 
-        // Collect all style tags and stylesheets from the main document
-        const styleTags = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-            .map(el => el.outerHTML)
-            .join('\n');
+        // Company Name Subtitle in Top Banner
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(200, 210, 240);
+        doc.text(comp.name || systemSettings.companyName || 'GLX INDUSTRIES (PVT) LTD', 20, 42);
 
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        // 2. Emerald Green Horizontal Accent Strip (Left half)
+        doc.setFillColor(26, 107, 61); // Emerald Green #1A6B3D
+        doc.rect(0, 50, 105, 5, 'F');
 
-        doc.open();
-        doc.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8" />
-                <title>Salary Slip - ${(emp.name || 'Employee')}</title>
-                ${styleTags}
-                <style>
-                    @page {
-                        size: A4 portrait;
-                        margin: 8mm 12mm 8mm 12mm;
-                    }
-                    html, body {
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        background: #ffffff !important;
-                        color: #000000 !important;
-                        font-family: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
-                    * {
-                        box-sizing: border-box;
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
-                    .salary-slip-printable-canvas {
-                        display: block !important;
-                        visibility: visible !important;
-                        opacity: 1 !important;
-                        width: 100% !important;
-                        max-width: 820px !important;
-                        margin: 0 auto !important;
-                        background: #ffffff !important;
-                        border: 1px solid #e5e7eb !important;
-                    }
-                </style>
-            </head>
-            <body class="bg-white">
-                <div class="salary-slip-printable-canvas">
-                    ${printContent.innerHTML}
-                </div>
-            </body>
-            </html>
-        `);
-        doc.close();
+        // 3. Employee & Period Metadata Grid (White Area)
+        let metaY = 68;
+        doc.setFontSize(9.5);
+        doc.setTextColor(20, 20, 20);
 
-        // Allow styling and signatures to finish mounting before opening print dialog
-        setTimeout(() => {
-            try {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-            } catch (err) {
-                console.error('Print iframe error:', err);
-                window.print();
-            }
-            setTimeout(() => {
-                if (document.body.contains(iframe)) {
-                    iframe.remove();
+        // Left Column
+        doc.setFont('helvetica', 'bold');
+        doc.text('Employee Name:', 20, metaY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(emp.name || 'Employee', 55, metaY);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Employee ID:', 20, metaY + 6);
+        doc.setFont('helvetica', 'normal');
+        doc.text(emp.payrollNumber || 'EMP-001', 55, metaY + 6);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Department:', 20, metaY + 12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(emp.department || emp.designation || 'Manufacturing & Operations', 55, metaY + 12);
+
+        // Right Column
+        doc.setFont('helvetica', 'bold');
+        doc.text('Pay Period:', 115, metaY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${startDate} – ${endDate}`, 145, metaY);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Payment Date:', 115, metaY + 6);
+        doc.setFont('helvetica', 'normal');
+        doc.text(endDate, 145, metaY + 6);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Employment Status:', 115, metaY + 12);
+        doc.setFont('helvetica', 'normal');
+        doc.text(emp.designation ? `${emp.designation} (Active)` : 'Full-Time Staff', 152, metaY + 12);
+
+        // 4. Breakdown Table with Deep Navy Header
+        const tableY = metaY + 22;
+
+        const tableBody = [
+            [
+                'Basic / Day Salary',
+                `${earn.totalHours || 0} Hours`,
+                `Rs. ${Number(emp.hourlyRate || 0).toFixed(0)}`,
+                `Rs. ${Number(earn.basicSalary || 0).toLocaleString()}`
+            ]
+        ];
+
+        if (earn.overtimePayment > 0) {
+            tableBody.push(['Overtime Pay', 'Approved OT', 'Hourly', `Rs. ${Number(earn.overtimePayment).toLocaleString()}`]);
+        }
+        if (earn.commission > 0) {
+            tableBody.push(['Commission / Incentives', '1 Job', 'Fixed', `Rs. ${Number(earn.commission).toLocaleString()}`]);
+        }
+        if (earn.otherAllowances > 0) {
+            tableBody.push(['Allowances', 'Monthly', 'Fixed', `Rs. ${Number(earn.otherAllowances).toLocaleString()}`]);
+        }
+
+        // Gross Pay Row
+        tableBody.push(['Gross Pay', '', '', `Rs. ${Number(earn.grossEarnings || 0).toLocaleString()}`]);
+
+        autoTable(doc, {
+            startY: tableY,
+            margin: { left: 20, right: 20 },
+            theme: 'plain',
+            styles: {
+                fontSize: 9,
+                cellPadding: 3.5,
+                textColor: [30, 30, 30]
+            },
+            headStyles: {
+                fillColor: [19, 25, 67], // Deep Navy
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 9.5
+            },
+            columnStyles: {
+                0: { cellWidth: 70 },
+                1: { cellWidth: 35, halign: 'center' },
+                2: { cellWidth: 35, halign: 'center' },
+                3: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
+            },
+            head: [['Description', 'Qty', 'Rate', 'Amount']],
+            body: tableBody,
+            didParseCell: function (data) {
+                if (data.row.index === tableBody.length - 1) {
+                    data.cell.styles.fontStyle = 'bold';
+                    data.cell.styles.textColor = [19, 25, 67];
                 }
-            }, 3000);
-        }, 300);
+            }
+        });
+
+        const finalTableY = doc.lastAutoTable.finalY + 8;
+
+        // Horizontal Line under table
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.line(20, finalTableY, 190, finalTableY);
+
+        // 5. Bottom Section: Left (Thank you + Uploaded Signature) & Right (Deductions + Net Pay)
+        const bottomY = finalTableY + 8;
+
+        // Left Side: "Thank you for your hard work!"
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(20, 20, 20);
+        doc.text('Thank you for', 20, bottomY);
+        doc.text('your hard work!', 20, bottomY + 6);
+
+        // Uploaded Admin Signature Image / Script
+        const sigImgEl = document.querySelector('img[alt="Authorized Signature"]');
+        if (sigImgEl && sigImgEl.complete && sigImgEl.naturalWidth > 0) {
+            try {
+                doc.addImage(sigImgEl, 'PNG', 20, bottomY + 10, 48, 16, undefined, 'FAST');
+            } catch (imgErr) {
+                console.warn('Could not render signature element in PDF:', imgErr);
+            }
+        } else if (bossSignatureUrl && bossSignatureUrl.startsWith('data:image')) {
+            try {
+                const format = (bossSignatureUrl.includes('image/jpeg') || bossSignatureUrl.includes('image/jpg')) ? 'JPEG' : 'PNG';
+                doc.addImage(bossSignatureUrl, format, 20, bottomY + 10, 48, 16, undefined, 'FAST');
+            } catch (imgErr) {
+                console.warn('Could not render signature in PDF:', imgErr);
+            }
+        } else if (bossSignatureUrl && !bossSignatureUrl.startsWith('data:image')) {
+            doc.setFont('times', 'italic');
+            doc.setFontSize(18);
+            doc.setTextColor(40, 40, 80);
+            doc.text(bossSignatureUrl, 25, bottomY + 24);
+        }
+
+        // Signature Line
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.4);
+        doc.line(20, bottomY + 29, 75, bottomY + 29);
+
+        // Boss Title (e.g. MANAGING DIRECTOR)
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(20, 20, 20);
+        doc.text(bossTitle.toUpperCase(), 20, bottomY + 34);
+
+        // Right Side: Deductions Breakdown (EPF only if includeEpfEtf is true!)
+        let rightY = bottomY + 1;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(60, 60, 60);
+
+        if (includeEpfEtf && ded.epfEmployee > 0) {
+            doc.text('EPF (8%)', 125, rightY);
+            doc.text(`-Rs. ${Number(ded.epfEmployee).toLocaleString()}`, 190, rightY, { align: 'right' });
+            rightY += 5.5;
+        }
+
+        if (ded.advances > 0) {
+            doc.text('Salary Advance', 125, rightY);
+            doc.text(`-Rs. ${Number(ded.advances).toLocaleString()}`, 190, rightY, { align: 'right' });
+            rightY += 5.5;
+        }
+
+        if (ded.otherDeductions > 0) {
+            doc.text('Other Deductions / Cuts', 125, rightY);
+            doc.text(`-Rs. ${Number(ded.otherDeductions).toLocaleString()}`, 190, rightY, { align: 'right' });
+            rightY += 5.5;
+        }
+
+        // Divider Line above Net Pay
+        doc.setDrawColor(180, 180, 180);
+        doc.line(125, rightY + 1, 190, rightY + 1);
+        rightY += 7;
+
+        // NET PAY (Large Bold)
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(19, 25, 67);
+        doc.text('Net Pay', 125, rightY);
+        doc.text(`Rs. ${Number(net).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 190, rightY, { align: 'right' });
+
+        // 6. Bottom Right Decorative Geometric Accent (Mirror of top header)
+        doc.setFillColor(26, 107, 61); // Emerald Green Strip
+        doc.rect(95, 273, 115, 4, 'F');
+
+        doc.setFillColor(19, 25, 67); // Deep Navy Block
+        doc.rect(95, 277, 115, 20, 'F');
+
+        return doc;
+    };
+
+    // Handle Direct Print for Salary Slip — PRINTS THE EXACT SAME GENERATED PDF DOCUMENT
+    const handlePrint = () => {
+        try {
+            const doc = buildSalarySlipPdfDoc();
+            doc.autoPrint();
+            const blobUrl = doc.output('bloburl');
+
+            // 1. Try to open via hidden iframe for instant seamless print dialog
+            const iframe = document.createElement('iframe');
+            iframe.id = 'salary-slip-pdf-print-frame';
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '100vw';
+            iframe.style.height = '100vh';
+            iframe.style.zIndex = '99999';
+            iframe.style.opacity = '0.01';
+            iframe.style.pointerEvents = 'none';
+            iframe.src = blobUrl;
+            document.body.appendChild(iframe);
+
+            let triggered = false;
+            iframe.onload = () => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                    triggered = true;
+                } catch (e) {
+                    window.open(blobUrl, '_blank');
+                    triggered = true;
+                }
+            };
+
+            // In Chrome, if iframe.onload doesn't fire for PDF plugin within 500ms, open in tab
+            setTimeout(() => {
+                if (!triggered) {
+                    window.open(blobUrl, '_blank');
+                }
+                setTimeout(() => {
+                    if (document.body.contains(iframe)) {
+                        iframe.remove();
+                    }
+                }, 5000);
+            }, 600);
+        } catch (err) {
+            toast.error('Failed to print salary slip: ' + err.message);
+        }
     };
 
     // Handle Modern Executive PDF Export matching the User's Template
     const handleDownloadPdf = () => {
         try {
-            const doc = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm',
-                format: 'a4'
-            });
-
-            // 1. Top Midnight Navy Header Banner
-            doc.setFillColor(19, 25, 67); // Deep Navy #131943
-            doc.rect(0, 0, 210, 50, 'F');
-
-            // "Salary Slip." Title in White Bold
-            doc.setTextColor(255, 255, 255);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(36);
-            doc.text('Salary Slip.', 20, 34);
-
-            // Company Name Subtitle in Top Banner
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(200, 210, 240);
-            doc.text(comp.name || systemSettings.companyName || 'GLX INDUSTRIES (PVT) LTD', 20, 42);
-
-            // 2. Emerald Green Horizontal Accent Strip (Left half)
-            doc.setFillColor(26, 107, 61); // Emerald Green #1A6B3D
-            doc.rect(0, 50, 105, 5, 'F');
-
-            // 3. Employee & Period Metadata Grid (White Area)
-            let metaY = 68;
-            doc.setFontSize(9.5);
-            doc.setTextColor(20, 20, 20);
-
-            // Left Column
-            doc.setFont('helvetica', 'bold');
-            doc.text('Employee Name:', 20, metaY);
-            doc.setFont('helvetica', 'normal');
-            doc.text(emp.name || 'Employee', 55, metaY);
-
-            doc.setFont('helvetica', 'bold');
-            doc.text('Employee ID:', 20, metaY + 6);
-            doc.setFont('helvetica', 'normal');
-            doc.text(emp.payrollNumber || 'EMP-001', 55, metaY + 6);
-
-            doc.setFont('helvetica', 'bold');
-            doc.text('Department:', 20, metaY + 12);
-            doc.setFont('helvetica', 'normal');
-            doc.text(emp.department || emp.designation || 'Manufacturing & Operations', 55, metaY + 12);
-
-            // Right Column
-            doc.setFont('helvetica', 'bold');
-            doc.text('Pay Period:', 115, metaY);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`${startDate} – ${endDate}`, 145, metaY);
-
-            doc.setFont('helvetica', 'bold');
-            doc.text('Payment Date:', 115, metaY + 6);
-            doc.setFont('helvetica', 'normal');
-            doc.text(endDate, 145, metaY + 6);
-
-            doc.setFont('helvetica', 'bold');
-            doc.text('Employment Status:', 115, metaY + 12);
-            doc.setFont('helvetica', 'normal');
-            doc.text(emp.designation ? `${emp.designation} (Active)` : 'Full-Time Staff', 152, metaY + 12);
-
-            // 4. Breakdown Table with Deep Navy Header
-            const tableY = metaY + 22;
-
-            const tableBody = [
-                [
-                    'Basic / Day Salary',
-                    `${earn.totalHours || 0} Hours`,
-                    `Rs. ${Number(emp.hourlyRate || 0).toFixed(0)}`,
-                    `Rs. ${Number(earn.basicSalary || 0).toLocaleString()}`
-                ]
-            ];
-
-            if (earn.overtimePayment > 0) {
-                tableBody.push(['Overtime Pay', 'Approved OT', 'Hourly', `Rs. ${Number(earn.overtimePayment).toLocaleString()}`]);
-            }
-            if (earn.commission > 0) {
-                tableBody.push(['Commission / Incentives', '1 Job', 'Fixed', `Rs. ${Number(earn.commission).toLocaleString()}`]);
-            }
-            if (earn.otherAllowances > 0) {
-                tableBody.push(['Allowances', 'Monthly', 'Fixed', `Rs. ${Number(earn.otherAllowances).toLocaleString()}`]);
-            }
-
-            // Gross Pay Row
-            tableBody.push(['Gross Pay', '', '', `Rs. ${Number(earn.grossEarnings || 0).toLocaleString()}`]);
-
-            autoTable(doc, {
-                startY: tableY,
-                margin: { left: 20, right: 20 },
-                theme: 'plain',
-                styles: {
-                    fontSize: 9,
-                    cellPadding: 3.5,
-                    textColor: [30, 30, 30]
-                },
-                headStyles: {
-                    fillColor: [19, 25, 67], // Deep Navy
-                    textColor: [255, 255, 255],
-                    fontStyle: 'bold',
-                    fontSize: 9.5
-                },
-                columnStyles: {
-                    0: { cellWidth: 70 },
-                    1: { cellWidth: 35, halign: 'center' },
-                    2: { cellWidth: 35, halign: 'center' },
-                    3: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
-                },
-                head: [['Description', 'Qty', 'Rate', 'Amount']],
-                body: tableBody,
-                didParseCell: function (data) {
-                    if (data.row.index === tableBody.length - 1) {
-                        data.cell.styles.fontStyle = 'bold';
-                        data.cell.styles.textColor = [19, 25, 67];
-                    }
-                }
-            });
-
-            const finalTableY = doc.lastAutoTable.finalY + 8;
-
-            // Horizontal Line under table
-            doc.setDrawColor(200, 200, 200);
-            doc.setLineWidth(0.3);
-            doc.line(20, finalTableY, 190, finalTableY);
-
-            // 5. Bottom Section: Left (Thank you + Uploaded Signature) & Right (Deductions + Net Pay)
-            const bottomY = finalTableY + 8;
-
-            // Left Side: "Thank you for your hard work!"
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
-            doc.setTextColor(20, 20, 20);
-            doc.text('Thank you for', 20, bottomY);
-            doc.text('your hard work!', 20, bottomY + 6);
-
-            // Uploaded Admin Signature Image / Script
-            if (bossSignatureUrl && bossSignatureUrl.startsWith('data:image')) {
-                try {
-                    const format = (bossSignatureUrl.includes('image/jpeg') || bossSignatureUrl.includes('image/jpg')) ? 'JPEG' : 'PNG';
-                    doc.addImage(bossSignatureUrl, format, 20, bottomY + 12, 45, 15, undefined, 'FAST');
-                } catch (imgErr) {
-                    console.warn('Could not render signature in PDF:', imgErr);
-                }
-            } else if (bossSignatureUrl && !bossSignatureUrl.startsWith('data:image')) {
-                doc.setFont('times', 'italic');
-                doc.setFontSize(18);
-                doc.setTextColor(40, 40, 80);
-                doc.text(bossSignatureUrl, 25, bottomY + 24);
-            }
-
-            // Signature Line
-            doc.setDrawColor(0, 0, 0);
-            doc.setLineWidth(0.4);
-            doc.line(20, bottomY + 29, 75, bottomY + 29);
-
-            // Boss Title (e.g. MANAGING DIRECTOR)
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9);
-            doc.setTextColor(20, 20, 20);
-            doc.text(bossTitle.toUpperCase(), 20, bottomY + 34);
-
-            // Right Side: Deductions Breakdown (EPF only if includeEpfEtf is true!)
-            let rightY = bottomY + 1;
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(60, 60, 60);
-
-            if (includeEpfEtf && ded.epfEmployee > 0) {
-                doc.text('EPF (8%)', 125, rightY);
-                doc.text(`-Rs. ${Number(ded.epfEmployee).toLocaleString()}`, 190, rightY, { align: 'right' });
-                rightY += 5.5;
-            }
-
-            if (ded.advances > 0) {
-                doc.text('Salary Advance', 125, rightY);
-                doc.text(`-Rs. ${Number(ded.advances).toLocaleString()}`, 190, rightY, { align: 'right' });
-                rightY += 5.5;
-            }
-
-            if (ded.otherDeductions > 0) {
-                doc.text('Other Deductions / Cuts', 125, rightY);
-                doc.text(`-Rs. ${Number(ded.otherDeductions).toLocaleString()}`, 190, rightY, { align: 'right' });
-                rightY += 5.5;
-            }
-
-            // Divider Line above Net Pay
-            doc.setDrawColor(180, 180, 180);
-            doc.line(125, rightY + 1, 190, rightY + 1);
-            rightY += 7;
-
-            // NET PAY (Large Bold)
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(13);
-            doc.setTextColor(19, 25, 67);
-            doc.text('Net Pay', 125, rightY);
-            doc.text(`Rs. ${Number(net).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 190, rightY, { align: 'right' });
-
-            // 6. Bottom Right Decorative Geometric Accent (Mirror of top header)
-            doc.setFillColor(26, 107, 61); // Emerald Green Strip
-            doc.rect(95, 273, 115, 4, 'F');
-
-            doc.setFillColor(19, 25, 67); // Deep Navy Block
-            doc.rect(95, 277, 115, 20, 'F');
-
-            // Save PDF
+            const doc = buildSalarySlipPdfDoc();
             doc.save(`Salary_Slip_${(emp.name || 'Employee').replace(/\s+/g, '_')}_${startDate}.pdf`);
             toast.success('Official Salary Slip downloaded successfully!');
         } catch (err) {
@@ -589,7 +558,8 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
                                             <img
                                                 src={bossSignatureUrl}
                                                 alt="Authorized Signature"
-                                                className="h-14 max-w-[200px] object-contain mb-1"
+                                                style={{ maxHeight: '56px', maxWidth: '180px', objectFit: 'contain' }}
+                                                className="h-14 max-w-[180px] object-contain mb-1"
                                             />
                                         ) : (
                                             <div className="font-serif italic text-2xl text-indigo-950 tracking-wider mb-1">
