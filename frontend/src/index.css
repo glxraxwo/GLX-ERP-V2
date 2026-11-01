@@ -244,9 +244,9 @@ textarea {
   .sidebar-container,
   .app-sidebar,
   .app-header,
-  button,
-  .modal-backdrop,
-  .fixed.inset-0.z-50,
+  button:not(.allow-print),
+  .modal-backdrop:not(.payslip-modal-backdrop),
+  .fixed.inset-0.z-50:not(.payslip-modal-backdrop):not(:has(.salary-slip-printable-canvas)),
   .fixed.inset-0.z-40,
   .fixed.inset-0.z-30,
   .backdrop-blur-xl,
@@ -312,7 +312,11 @@ textarea {
   .document-print-view,
   .document-print-view *,
   #printable-voucher-slip,
-  #printable-voucher-slip * {
+  #printable-voucher-slip *,
+  .salary-slip-printable-canvas,
+  .salary-slip-printable-canvas *,
+  .payslip-modal-wrapper,
+  .payslip-modal-wrapper * {
     filter: none !important;
     -webkit-filter: none !important;
     backdrop-filter: none !important;

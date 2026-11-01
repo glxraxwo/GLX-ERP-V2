@@ -43,13 +43,96 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
     const bossSignatureUrl = comp.bossSignature || systemSettings.bossSignature || '';
     const bossTitle = comp.bossTitle || systemSettings.bossTitle || 'MANAGING DIRECTOR';
 
-    // Handle Direct Print for Salary Slip Only
+    // Handle Direct Print for Salary Slip Only via isolated print iframe
     const handlePrint = () => {
-        document.body.classList.add('payslip-modal-open');
-        toast.dismiss();
+        const printContent = printRef.current;
+        if (!printContent) return;
+
+        // Clean up any existing print iframe
+        const existingFrame = document.getElementById('payslip-print-iframe');
+        if (existingFrame) existingFrame.remove();
+
+        const iframe = document.createElement('iframe');
+        iframe.id = 'payslip-print-iframe';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.style.visibility = 'hidden';
+        document.body.appendChild(iframe);
+
+        // Collect all style tags and stylesheets from the main document
+        const styleTags = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+            .map(el => el.outerHTML)
+            .join('\n');
+
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+
+        doc.open();
+        doc.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8" />
+                <title>Salary Slip - ${(emp.name || 'Employee')}</title>
+                ${styleTags}
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 8mm 12mm 8mm 12mm;
+                    }
+                    html, body {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: #ffffff !important;
+                        color: #000000 !important;
+                        font-family: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    * {
+                        box-sizing: border-box;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    .salary-slip-printable-canvas {
+                        display: block !important;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        width: 100% !important;
+                        max-width: 820px !important;
+                        margin: 0 auto !important;
+                        background: #ffffff !important;
+                        border: 1px solid #e5e7eb !important;
+                    }
+                </style>
+            </head>
+            <body class="bg-white">
+                <div class="salary-slip-printable-canvas">
+                    ${printContent.innerHTML}
+                </div>
+            </body>
+            </html>
+        `);
+        doc.close();
+
+        // Allow styling and signatures to finish mounting before opening print dialog
         setTimeout(() => {
-            window.print();
-        }, 80);
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch (err) {
+                console.error('Print iframe error:', err);
+                window.print();
+            }
+            setTimeout(() => {
+                if (document.body.contains(iframe)) {
+                    iframe.remove();
+                }
+            }, 3000);
+        }, 300);
     };
 
     // Handle Modern Executive PDF Export matching the User's Template
