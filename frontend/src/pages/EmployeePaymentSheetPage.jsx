@@ -195,7 +195,7 @@ export default function EmployeePaymentSheetPage() {
             });
 
             const empName = data.employee?.name || employee?.firstName || 'Employee';
-            let currentY = 12;
+            let currentY = 10;
 
             if (!hideHeaderAndSignature) {
                 try {
@@ -214,9 +214,9 @@ export default function EmployeePaymentSheetPage() {
                     const dataUrl = canvas.toDataURL('image/png');
                     // Centered GLX Monochrome Logo (210mm A4 width -> (210 - 22) / 2 = 94mm)
                     doc.addImage(dataUrl, 'PNG', 94, currentY, 22, 21.7);
-                    currentY += 23.5;
+                    currentY += 21.7 + 6.5; // Clear separation so text never collides with logo
                 } catch (e) {
-                    // Ignore logo error
+                    currentY += 10;
                 }
 
                 doc.setFont('helvetica', 'bold');
@@ -500,10 +500,10 @@ export default function EmployeePaymentSheetPage() {
                         {/* Brand Header */}
                         {!hideHeaderAndSignature ? (
                             <div className="text-center mb-3">
-                                <div className="flex justify-center mb-1">
+                                <div className="flex justify-center mb-2">
                                     <img src="/logo-mono-white.png" alt="GLX Logo" className="h-12 w-auto object-contain mx-auto" />
                                 </div>
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-black mt-1">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-black mt-1.5">
                                     {t.paySheetTitle || 'EMPLOYEE PAYMENT SHEET'}
                                 </h2>
                                 <div className="border-b border-black w-full mt-2.5 mb-3"></div>

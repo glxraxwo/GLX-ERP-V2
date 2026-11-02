@@ -1072,7 +1072,7 @@ export default function EmployeePaymentRecordSheetPage() {
                         height: 48px !important;
                         max-height: 48px !important;
                         width: auto !important;
-                        margin: 0 auto 4px auto !important;
+                        margin: 0 auto 6px auto !important;
                         display: block !important;
                         object-fit: contain !important;
                     }
@@ -1081,7 +1081,7 @@ export default function EmployeePaymentRecordSheetPage() {
                         font-weight: 700 !important;
                         letter-spacing: 0.5px !important;
                         text-transform: uppercase !important;
-                        margin: 4px 0 6px 0 !important;
+                        margin: 6px 0 6px 0 !important;
                     }
                     .divider-line {
                         border: none !important;
@@ -1268,13 +1268,15 @@ export default function EmployeePaymentRecordSheetPage() {
             const empName = employeeFullName || 'Employee';
             const logoData = await getLogoDataUrl();
 
-            let currentY = 12;
+            let currentY = 10;
 
             if (!hideHeaderForLetterhead) {
                 if (logoData) {
                     // Centered GLX Monochrome Logo (210mm A4 width -> (210 - 22) / 2 = 94mm)
                     doc.addImage(logoData, 'PNG', 94, currentY, 22, 21.7);
-                    currentY += 23.5;
+                    currentY += 21.7 + 6.5; // Clear separation so text never collides with logo
+                } else {
+                    currentY += 10;
                 }
 
                 doc.setFont('helvetica', 'bold');
@@ -2340,14 +2342,14 @@ export default function EmployeePaymentRecordSheetPage() {
                 {/* Centered Brand Header */}
                 {!hideHeaderForLetterhead ? (
                     <div className="text-center mb-3">
-                        <div className="flex justify-center mb-1">
+                        <div className="flex justify-center mb-2">
                             <img
                                 src="/logo-mono-white.png"
                                 alt="GLX Logo"
                                 className="h-12 w-auto object-contain mx-auto"
                             />
                         </div>
-                        <h2 className="text-xs font-bold uppercase tracking-wider text-black mt-1">
+                        <h2 className="text-xs font-bold uppercase tracking-wider text-black mt-1.5">
                             EMPLOYEE PAYMENT SHEET
                         </h2>
                         <div className="border-b border-black w-full mt-2.5 mb-3"></div>
@@ -2491,14 +2493,14 @@ export default function EmployeePaymentRecordSheetPage() {
                                 {/* Centered Brand Header */}
                                 {!hideHeaderForLetterhead ? (
                                     <div className="text-center mb-3">
-                                        <div className="flex justify-center mb-1">
+                                        <div className="flex justify-center mb-2">
                                             <img
                                                 src="/logo-mono-white.png"
                                                 alt="GLX Logo"
                                                 className="h-12 w-auto object-contain mx-auto"
                                             />
                                         </div>
-                                        <h2 className="text-xs font-bold uppercase tracking-wider text-black mt-1">
+                                        <h2 className="text-xs font-bold uppercase tracking-wider text-black mt-1.5">
                                             EMPLOYEE PAYMENT SHEET
                                         </h2>
                                         <div className="border-b border-black w-full mt-2.5 mb-3"></div>
