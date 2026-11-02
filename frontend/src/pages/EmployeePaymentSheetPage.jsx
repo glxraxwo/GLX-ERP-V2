@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Printer, RefreshCw, Upload, CheckSquare, Square, FileSignature, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Printer, RefreshCw, Upload, CheckSquare, Square, FileSignature, MessageSquare, Download } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { useSettings, useUpdateSettings } from '../features/settings/useSettings';
@@ -10,6 +12,68 @@ import ProtectedView from '../components/security/ProtectedView';
 import SendPaymentSheetSmsModal from '../components/SendPaymentSheetSmsModal';
 import { useEmployee } from '../features/hr/useHr';
 import { getDocTranslation } from '../utils/documentTranslations';
+
+// Helper: Format Date to M/D/YYYY matching physical payment sheet (e.g. 8/8/2026)
+const formatPrintDate = (val) => {
+    if (!val) return '';
+    if (typeof val === 'string' && val.includes('-')) {
+        const parts = val.split('-');
+        if (parts.length === 3) {
+            const y = parts[0];
+            const m = parseInt(parts[1], 10);
+            const d = parseInt(parts[2], 10);
+            if (!isNaN(m) && !isNaN(d)) {
+                return `${m}/${d}/${y}`;
+            }
+        }
+    }
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+};
+
+// Helper: Format Time to HH:mm:00 (e.g. 08:40:00)
+const formatPrintTime = (val) => {
+    if (!val) return '00:00:00';
+    const s = String(val).trim();
+    if (!s) return '00:00:00';
+    const parts = s.split(':');
+    const h = (parts[0] || '0').padStart(2, '0');
+    const m = (parts[1] || '0').padStart(2, '0');
+    const sec = parts[2] ? parts[2].padStart(2, '0') : '00';
+    return `${h}:${m}:${sec}`;
+};
+
+// Helper: Format duration between IN and OUT as HH:mm:00 (e.g. 09:20:00)
+const formatPrintDuration = (row) => {
+    if (!row) return '00:00:00';
+    const inT = row.inTime || row.in;
+    const outT = row.outTime || row.out;
+    if (inT && outT) {
+        const parseMinutes = (t) => {
+            const parts = String(t).trim().split(':');
+            const h = parseInt(parts[0], 10);
+            const m = parseInt(parts[1] || '0', 10);
+            return isNaN(h) ? null : h * 60 + (isNaN(m) ? 0 : m);
+        };
+        const inMin = parseMinutes(inT);
+        let outMin = parseMinutes(outT);
+        if (inMin !== null && outMin !== null) {
+            let diff = outMin - inMin;
+            if (diff < 0) diff += 24 * 60;
+            const h = Math.floor(diff / 60);
+            const m = diff % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+        }
+    }
+    if (row.hours && !isNaN(row.hours) && Number(row.hours) > 0) {
+        const totalMins = Math.round(Number(row.hours) * 60);
+        const h = Math.floor(totalMins / 60);
+        const m = totalMins % 60;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+    }
+    return '00:00:00';
+};
 
 export default function EmployeePaymentSheetPage() {
     const { id } = useParams();
@@ -120,6 +184,173 @@ export default function EmployeePaymentSheetPage() {
         }).format(amount || 0);
     };
 
+    const handleDownloadOfficialPdf = async () => {
+        if (!data) return;
+        try {
+            toast.loading('Generating official PDF...', { id: 'pdf-toast' });
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const empName = data.employee?.name || employee?.firstName || 'Employee';
+            let currentY = 12;
+
+            if (!hideHeaderAndSignature) {
+                try {
+                    const img = new Image();
+                    img.crossOrigin = 'Anonymous';
+                    await new Promise((res) => {
+                        img.onload = res;
+                        img.onerror = res;
+                        img.src = '/logo-mono-white.png';
+                    });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth || img.width;
+                    canvas.height = img.naturalHeight || img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const dataUrl = canvas.toDataURL('image/png');
+                    // Centered GLX Monochrome Logo (210mm A4 width -> (210 - 22) / 2 = 94mm)
+                    doc.addImage(dataUrl, 'PNG', 94, currentY, 22, 21.7);
+                    currentY += 23.5;
+                } catch (e) {
+                    // Ignore logo error
+                }
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.text(t.paySheetTitle || 'EMPLOYEE PAYMENT SHEET', 105, currentY, { align: 'center' });
+                currentY += 3.5;
+
+                doc.setDrawColor(0, 0, 0);
+                doc.setLineWidth(0.25);
+                doc.line(15, currentY, 195, currentY);
+                currentY += 5.5;
+            } else {
+                currentY += 25;
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.text(t.paySheetTitle || 'EMPLOYEE PAYMENT SHEET', 105, currentY, { align: 'center' });
+                currentY += 3.5;
+                doc.setDrawColor(0, 0, 0);
+                doc.setLineWidth(0.25);
+                doc.line(15, currentY, 195, currentY);
+                currentY += 5.5;
+            }
+
+            // Header Metadata Rows
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.text(t.employeeName || 'Name', 15, currentY);
+            doc.text(':', 48, currentY);
+            doc.text(empName, 52, currentY);
+            currentY += 5;
+
+            doc.setFont('helvetica', 'bold');
+            doc.text(t.hourlyRate || 'Salary Per Hour', 15, currentY);
+            doc.text(':', 48, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatCurrency(data.employee?.hourlyRate), 52, currentY);
+            currentY += 5;
+
+            doc.setFont('helvetica', 'bold');
+            doc.text(t.dateFrom || 'Date From', 15, currentY);
+            doc.text(':', 48, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatPrintDate(data.startDate), 52, currentY);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text(t.dateTo || 'Date To', 105, currentY);
+            doc.text(':', 125, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatPrintDate(data.endDate), 129, currentY);
+            currentY += 5.5;
+
+            const printableRows = (data.rows || []).filter(r => Number(r.hours) > 0 || Number(r.advance) > 0 || Number(r.daySalary) > 0);
+            const tableBody = (printableRows.length > 0 ? printableRows : data.rows || []).map(r => [
+                formatPrintDate(r.date),
+                formatPrintTime(r.inTime),
+                formatPrintTime(r.outTime),
+                formatPrintDuration(r),
+                formatCurrency(r.daySalary),
+                formatCurrency(r.advance)
+            ]);
+
+            autoTable(doc, {
+                startY: currentY,
+                margin: { left: 15, right: 15 },
+                theme: 'plain',
+                head: [[t.colDate || 'Date', t.colIn || 'IN', t.colOut || 'OUT', t.colHours || 'HOURS', t.colDaySalary || 'DAY SALARY', t.colAdvance || 'ADVANCE']],
+                body: tableBody,
+                styles: {
+                    font: 'helvetica',
+                    fontSize: 8.5,
+                    cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
+                    textColor: [0, 0, 0],
+                    lineWidth: 0
+                },
+                headStyles: {
+                    fillColor: [255, 255, 255],
+                    textColor: [0, 0, 0],
+                    fontStyle: 'bold',
+                    lineWidth: { top: 0.25, bottom: 0.25 },
+                    lineColor: [0, 0, 0]
+                },
+                columnStyles: {
+                    0: { cellWidth: 30, halign: 'left' },
+                    1: { cellWidth: 26, halign: 'center' },
+                    2: { cellWidth: 26, halign: 'center' },
+                    3: { cellWidth: 26, halign: 'center' },
+                    4: { cellWidth: 36, halign: 'right' },
+                    5: { cellWidth: 36, halign: 'right' }
+                }
+            });
+
+            const finalTableY = doc.lastAutoTable.finalY;
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.25);
+            doc.line(15, finalTableY, 195, finalTableY);
+
+            let sumY = finalTableY + 4.5;
+            const labelX = 135;
+            const valX = 195;
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.text(t.totalSalary || 'Total Salary', labelX, sumY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatCurrency(data.totalSalary), valX, sumY, { align: 'right' });
+
+            sumY += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.text(t.totalAdvances || 'Total Advances', labelX, sumY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatCurrency(data.totalAdvances), valX, sumY, { align: 'right' });
+
+            doc.setLineWidth(0.25);
+            doc.line(labelX, sumY + 1.2, valX, sumY + 1.2);
+
+            sumY += 5.5;
+            doc.setFont('helvetica', 'bold');
+            doc.text(t.netSalary || 'Net Salary', labelX, sumY);
+            doc.text(formatCurrency(data.netSalary), valX, sumY, { align: 'right' });
+
+            doc.setLineWidth(0.25);
+            doc.line(labelX, sumY + 1.2, valX, sumY + 1.2);
+            doc.line(labelX, sumY + 1.8, valX, sumY + 1.8);
+
+            doc.save(`Payment_Sheet_${empName.replace(/\s+/g, '_')}_${startDate}.pdf`);
+            toast.dismiss('pdf-toast');
+            toast.success('Payment Sheet PDF downloaded!');
+        } catch (err) {
+            console.error('PDF error', err);
+            toast.dismiss('pdf-toast');
+            toast.error('Failed to export PDF: ' + err.message);
+        }
+    };
+
     return (
         <div className="p-4 max-w-4xl mx-auto font-calibri">
             {/* Header controls (hidden on print) */}
@@ -142,6 +373,9 @@ export default function EmployeePaymentSheetPage() {
                         </div>
                         <Button variant="primary" size="sm" onClick={loadSheet} loading={loading}>
                             <RefreshCw size={14} className="mr-1" /> Load
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleDownloadOfficialPdf}>
+                            <Download size={14} className="mr-1" /> Download PDF
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => { toast.dismiss(); window.print(); }}>
                             <Printer size={14} className="mr-1" /> Print Report
@@ -261,96 +495,105 @@ export default function EmployeePaymentSheetPage() {
             {/* Printable Payment Sheet */}
             {data && !loading && (
                 <ProtectedView title="Employee Payment Sheet">
-                    <Card className="employee-payment-sheet-print bg-white p-10 border border-gray-300 rounded shadow-none text-gray-900 text-sm leading-relaxed max-w-[800px] mx-auto print:border-0 print:p-0">
+                    <Card className="employee-payment-sheet-print bg-white p-8 sm:p-12 border border-gray-300 rounded shadow-none text-gray-900 text-sm leading-relaxed max-w-[800px] mx-auto print:border-0 print:p-0 font-sans">
                         
                         {/* Brand Header */}
                         {!hideHeaderAndSignature ? (
-                            <div className="text-center mb-6">
+                            <div className="text-center mb-3">
                                 <div className="flex justify-center mb-1">
-                                    <img src={systemSettings.companyLogo || "/logo.jpg"} alt="GLX Logo" className="h-12 w-12 object-contain filter grayscale" />
+                                    <img src="/logo-mono-white.png" alt="GLX Logo" className="h-12 w-auto object-contain mx-auto" />
                                 </div>
-                                <h1 className="text-xl font-bold uppercase tracking-wider">{systemSettings.companyName || 'GLX INDUSTRIES'}</h1>
-                                <h2 className="text-[11px] font-bold uppercase tracking-widest text-gray-700 border-b pb-2 max-w-[340px] mx-auto border-gray-400 mt-0.5">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-black mt-1">
                                     {t.paySheetTitle || 'EMPLOYEE PAYMENT SHEET'}
                                 </h2>
+                                <div className="border-b border-black w-full mt-2.5 mb-3"></div>
                             </div>
                         ) : (
-                            <div className="text-center mb-6 pt-2">
-                                <h2 className="text-xs font-bold uppercase tracking-widest text-gray-800 border-b pb-2 max-w-[340px] mx-auto border-gray-400">
+                            <div className="text-center mb-3 pt-6">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-black">
                                     {t.paySheetTitle || 'EMPLOYEE PAYMENT SHEET'}
                                 </h2>
+                                <div className="border-b border-black w-full mt-2.5 mb-3"></div>
                             </div>
                         )}
 
                         {/* Metadata Section */}
-                        <div className="grid grid-cols-2 gap-y-2 gap-x-6 text-[13px] border-b pb-4 mb-4 border-gray-300 font-calibri">
-                            <div className="flex gap-2">
-                                <span className="font-semibold text-gray-600 min-w-[120px]">{t.employeeName || 'Name'} :</span>
-                                <span className="font-bold text-gray-950">{data.employee.name}</span>
-                            </div>
-                            <div className="flex gap-2">
-                                <span className="font-semibold text-gray-600 min-w-[120px]">{t.hourlyRate || 'Salary Per Hour'} :</span>
-                                <span className="font-bold font-mono">{formatCurrency(data.employee.hourlyRate)}</span>
-                            </div>
-                            <div className="flex gap-2">
-                                <span className="font-semibold text-gray-600 min-w-[120px]">{t.dateFrom || 'Date From'} :</span>
-                                <span>{data.startDate}</span>
-                            </div>
-                            <div className="flex gap-2">
-                                <span className="font-semibold text-gray-600 min-w-[120px]">{t.dateTo || 'Date To'} :</span>
-                                <span>{data.endDate}</span>
-                            </div>
-                        </div>
+                        <table className="w-full text-xs font-sans text-black mb-3 border-collapse">
+                            <tbody>
+                                <tr>
+                                    <td className="w-36 font-bold py-0.5">{t.employeeName || 'Name'}</td>
+                                    <td className="w-5 font-bold text-center py-0.5">:</td>
+                                    <td className="font-bold py-0.5">{data.employee.name}</td>
+                                    <td colSpan={3}></td>
+                                </tr>
+                                <tr>
+                                    <td className="font-bold py-0.5">{t.hourlyRate || 'Salary Per Hour'}</td>
+                                    <td className="font-bold text-center py-0.5">:</td>
+                                    <td className="font-normal py-0.5 font-mono">{formatCurrency(data.employee.hourlyRate)}</td>
+                                    <td colSpan={3}></td>
+                                </tr>
+                                <tr>
+                                    <td className="font-bold py-0.5">{t.dateFrom || 'Date From'}</td>
+                                    <td className="font-bold text-center py-0.5">:</td>
+                                    <td className="font-normal py-0.5 w-40">{formatPrintDate(data.startDate)}</td>
+                                    <td className="w-20 font-bold text-right py-0.5">{t.dateTo || 'Date To'}</td>
+                                    <td className="w-5 font-bold text-center py-0.5">:</td>
+                                    <td className="font-normal py-0.5">{formatPrintDate(data.endDate)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
                         {/* Sheet Table */}
-                        <table className="w-full text-xs text-left border-collapse font-calibri mb-6">
+                        <table className="w-full text-xs text-left border-collapse font-sans mb-0">
                             <thead>
-                                <tr className="border-b-2 border-t border-gray-400 uppercase text-[10px] text-gray-800 font-bold">
-                                    <th className="py-2.5 px-3">{t.colDate || 'Date'}</th>
-                                    <th className="py-2.5 px-3 text-center">{t.colIn || 'IN'}</th>
-                                    <th className="py-2.5 px-3 text-center">{t.colOut || 'OUT'}</th>
-                                    <th className="py-2.5 px-3 text-center">{t.colHours || 'HOURS'}</th>
-                                    <th className="py-2.5 px-3 text-right">{t.colDaySalary || 'DAY SALARY'}</th>
-                                    <th className="py-2.5 px-3 text-right">{t.colAdvance || 'ADVANCE'}</th>
+                                <tr className="border-b border-t border-black uppercase text-[11px] text-black font-bold">
+                                    <th className="py-2 px-2 w-[17%]">{t.colDate || 'Date'}</th>
+                                    <th className="py-2 px-2 text-center w-[15%]">{t.colIn || 'IN'}</th>
+                                    <th className="py-2 px-2 text-center w-[15%]">{t.colOut || 'OUT'}</th>
+                                    <th className="py-2 px-2 text-center w-[15%]">{t.colHours || 'HOURS'}</th>
+                                    <th className="py-2 px-2 text-right w-[19%]">{t.colDaySalary || 'DAY SALARY'}</th>
+                                    <th className="py-2 px-2 text-right w-[19%]">{t.colAdvance || 'ADVANCE'}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {data.rows.map((row, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                        <td className="py-2 px-3 font-medium text-gray-700">{row.date}</td>
-                                        <td className="py-2 px-3 text-center font-mono text-gray-600">{row.inTime}</td>
-                                        <td className="py-2 px-3 text-center font-mono text-gray-600">{row.outTime}</td>
-                                        <td className="py-2 px-3 text-center font-mono font-semibold text-gray-800">{row.hours}</td>
-                                        <td className="py-2 px-3 text-right font-mono text-gray-800">
+                            <tbody>
+                                {(data.rows.filter(r => Number(r.hours) > 0 || Number(r.advance) > 0 || Number(r.daySalary) > 0).length > 0 
+                                    ? data.rows.filter(r => Number(r.hours) > 0 || Number(r.advance) > 0 || Number(r.daySalary) > 0)
+                                    : data.rows
+                                ).map((row, idx) => (
+                                    <tr key={idx} className="text-black">
+                                        <td className="py-1 px-2">{formatPrintDate(row.date)}</td>
+                                        <td className="py-1 px-2 text-center font-mono">{formatPrintTime(row.inTime)}</td>
+                                        <td className="py-1 px-2 text-center font-mono">{formatPrintTime(row.outTime)}</td>
+                                        <td className="py-1 px-2 text-center font-mono">{formatPrintDuration(row)}</td>
+                                        <td className="py-1 px-2 text-right font-mono">
                                             {row.daySalary > 0 ? formatCurrency(row.daySalary) : '0.00'}
                                         </td>
-                                        <td className="py-2 px-3 text-right font-mono text-red-600">
+                                        <td className="py-1 px-2 text-right font-mono">
                                             {row.advance > 0 ? formatCurrency(row.advance) : '0.00'}
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                        <div className="border-b border-black w-full mb-3"></div>
 
                         {/* Totals Summary */}
-                        <div className="flex justify-end pt-2 border-t-2 border-gray-400 font-calibri">
-                            <div className="w-72 text-xs space-y-2">
-                                <div className="flex justify-between font-semibold text-gray-700">
-                                    <span>{t.totalSalary || 'Total Salary'} :</span>
-                                    <span className="font-mono">{formatCurrency(data.totalSalary)}</span>
-                                </div>
-                                <div className="flex justify-between font-semibold text-red-600">
-                                    <span>{t.totalAdvances || 'Total Advances'} :</span>
-                                    <span className="font-mono">-{formatCurrency(data.totalAdvances)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm font-black text-gray-900 pt-2 border-t border-gray-300">
-                                    <span>{t.netSalary || 'Net Salary'} :</span>
-                                    <span className="font-mono text-blue-900 border-b-4 border-double border-gray-900 pb-0.5">
-                                        {formatCurrency(data.netSalary)}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                        <table className="w-64 ml-auto text-xs font-sans text-black border-collapse">
+                            <tbody>
+                                <tr>
+                                    <td className="font-bold py-0.5">{t.totalSalary || 'Total Salary'}</td>
+                                    <td className="text-right py-0.5 font-mono">{formatCurrency(data.totalSalary)}</td>
+                                </tr>
+                                <tr className="border-b border-black">
+                                    <td className="font-bold py-0.5 pb-1">{t.totalAdvances || 'Total Advances'}</td>
+                                    <td className="text-right py-0.5 pb-1 font-mono">{formatCurrency(data.totalAdvances)}</td>
+                                </tr>
+                                <tr className="border-b-4 border-double border-black">
+                                    <td className="font-bold py-1 pt-1.5">{t.netSalary || 'Net Salary'}</td>
+                                    <td className="font-bold text-right py-1 pt-1.5 font-mono">{formatCurrency(data.netSalary)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
                         {/* Signatures & Approval Footer Section */}
                         <div className="mt-12 pt-6 border-t border-dashed border-gray-300 flex justify-between items-end text-xs font-calibri">

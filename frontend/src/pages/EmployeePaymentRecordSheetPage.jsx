@@ -25,6 +25,71 @@ const formatDateStr = (d) => {
     return `${year}-${month}-${day}`;
 };
 
+// Helper: Format Date to M/D/YYYY matching physical payment sheet (e.g. 8/8/2026)
+const formatPrintDate = (val) => {
+    if (!val) return '';
+    if (typeof val === 'string' && val.includes('-')) {
+        const parts = val.split('-');
+        if (parts.length === 3) {
+            const y = parts[0];
+            const m = parseInt(parts[1], 10);
+            const d = parseInt(parts[2], 10);
+            if (!isNaN(m) && !isNaN(d)) {
+                return `${m}/${d}/${y}`;
+            }
+        }
+    }
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+};
+
+// Helper: Format Time to HH:mm:00 (e.g. 08:40:00)
+const formatPrintTime = (val) => {
+    if (!val) return '00:00:00';
+    const s = String(val).trim();
+    if (!s) return '00:00:00';
+    const parts = s.split(':');
+    const h = (parts[0] || '0').padStart(2, '0');
+    const m = (parts[1] || '0').padStart(2, '0');
+    const sec = parts[2] ? parts[2].padStart(2, '0') : '00';
+    return `${h}:${m}:${sec}`;
+};
+
+// Helper: Format duration between IN and OUT as HH:mm:00 (e.g. 09:20:00)
+const formatPrintDuration = (row) => {
+    if (!row) return '00:00:00';
+    const inT = row.inTime || row.in;
+    const outT = row.outTime || row.out;
+    if (inT && outT) {
+        const inMins = parseTimeToMinutes(inT);
+        let outMins = parseTimeToMinutes(outT);
+        if (inMins !== null && outMins !== null) {
+            let diff = outMins - inMins;
+            if (diff < 0) diff += 24 * 60; // overnight shift
+            const h = Math.floor(diff / 60);
+            const m = diff % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+        }
+    }
+    if (row.hours && !isNaN(row.hours) && Number(row.hours) > 0) {
+        const totalMins = Math.round(Number(row.hours) * 60);
+        const h = Math.floor(totalMins / 60);
+        const m = totalMins % 60;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+    }
+    return '00:00:00';
+};
+
+// Helper: Format Currency with 2 decimals (e.g. 2,333.33)
+const formatPrintCurrency = (amount) => {
+    const num = Number(amount) || 0;
+    return num.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+};
+
 // Flexible Time Parser
 const parseTimeToMinutes = (str) => {
     if (!str) return null;
@@ -49,6 +114,39 @@ const parseTimeToMinutes = (str) => {
     return h * 60 + (isNaN(m) ? 0 : m);
 };
 
+// Helper: Normalize user time inputs (e.g. "8" -> "08:00", "8:30" -> "08:30", "1700" -> "17:00")
+const normalizeTimeString = (val, fallback = '08:00') => {
+    if (!val || typeof val !== 'string') return fallback;
+    let clean = val.trim().replace(/[^0-9:]/g, '');
+    if (!clean) return fallback;
+
+    if (!clean.includes(':')) {
+        if (clean.length === 1 || clean.length === 2) {
+            let h = Math.min(23, Math.max(0, parseInt(clean, 10)));
+            return `${String(h).padStart(2, '0')}:00`;
+        }
+        if (clean.length === 3) {
+            let h = Math.min(23, Math.max(0, parseInt(clean.substring(0, 1), 10)));
+            let m = Math.min(59, Math.max(0, parseInt(clean.substring(1), 10)));
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+        if (clean.length >= 4) {
+            let h = Math.min(23, Math.max(0, parseInt(clean.substring(0, 2), 10)));
+            let m = Math.min(59, Math.max(0, parseInt(clean.substring(2, 4), 10)));
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+    }
+
+    const parts = clean.split(':');
+    let h = parseInt(parts[0] || '0', 10);
+    let m = parseInt(parts[1] || '0', 10);
+    if (isNaN(h)) h = 8;
+    if (isNaN(m)) m = 0;
+    h = Math.min(23, Math.max(0, h));
+    m = Math.min(59, Math.max(0, m));
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
 // Calculate Working Hours
 const calculateHoursFromTimes = (inStr, outStr) => {
     const inMin = parseTimeToMinutes(inStr);
@@ -65,62 +163,69 @@ const defaultPoliciesFallback = [
     {
         id: 'pol-1',
         type: 'LATE_DEDUCTION',
-        name: 'Late 5+ mins (-100 Rs unless hours covered)',
-        thresholdMinutes: 5,
+        name: 'Late 10+ mins (Tier 1)',
+        thresholdMinutes: 10,
         deductionAmount: 100,
         bonusAmount: 0,
-        waiveIfHoursCovered: true,
+        waiveIfHoursCovered: false,
         standardShiftHours: 9,
+        appliesTo: 'ALL',
         isActive: true
     },
     {
         id: 'pol-2',
         type: 'LATE_DEDUCTION',
-        name: 'Late 15+ mins (-200 Rs unless hours covered)',
-        thresholdMinutes: 15,
+        name: 'Late 20+ mins (Tier 2)',
+        thresholdMinutes: 20,
         deductionAmount: 200,
         bonusAmount: 0,
-        waiveIfHoursCovered: true,
+        waiveIfHoursCovered: false,
         standardShiftHours: 9,
+        appliesTo: 'ALL',
         isActive: true
     },
     {
         id: 'pol-3',
         type: 'LATE_DEDUCTION',
-        name: 'Late 30+ mins (-300 Rs unless hours covered)',
+        name: 'Late 30+ mins (Tier 3)',
         thresholdMinutes: 30,
         deductionAmount: 300,
         bonusAmount: 0,
-        waiveIfHoursCovered: true,
+        waiveIfHoursCovered: false,
         standardShiftHours: 9,
+        appliesTo: 'ALL',
         isActive: true
     },
     {
         id: 'pol-4',
         type: 'ABSENT_DEDUCTION',
-        name: 'Absent / Unticked Day (-1000 Rs)',
+        name: 'Absent / Unticked Day',
         thresholdMinutes: 0,
-        deductionAmount: 1000,
+        deductionAmount: 0,
         bonusAmount: 0,
         waiveIfHoursCovered: false,
         standardShiftHours: 9,
-        isActive: true
+        appliesTo: 'ALL',
+        isActive: false
     }
 ];
 
 // Pure Helper: Evaluate policy for a single row
-const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePolicies = []) => {
+const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePolicies = [], currentEmployeeId = null) => {
+    // Unticking day -> NO automatic 1000 cut!
     if (!row.isTicked) {
         const absentPol = activePolicies.find(p => p.isActive && p.type === 'ABSENT_DEDUCTION');
-        const cut = absentPol ? -Math.abs(absentPol.deductionAmount) : -1000;
+        const cut = (absentPol && absentPol.deductionAmount > 0) ? -Math.abs(absentPol.deductionAmount) : 0;
         return {
             ...row,
             inTime: '',
             outTime: '',
+            in: '',
+            out: '',
             hours: 0,
             daySalary: 0,
             deduction: cut,
-            reason: 'No Work'
+            reason: cut !== 0 ? (absentPol?.name || 'Absent') : ''
         };
     }
 
@@ -137,11 +242,20 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
     const outMin = parseTimeToMinutes(outT);
     const shiftOutMin = parseTimeToMinutes(shiftOffTime);
 
+    // Filter policies for this specific employee or ALL
+    const activePols = activePolicies.filter(p => p.isActive);
+
+    // Prefer employee-specific late rules if defined, otherwise fallback to ALL rules
+    const empSpecificLatePols = activePols.filter(p => p.type === 'LATE_DEDUCTION' && p.appliesTo && p.appliesTo !== 'ALL' && p.appliesTo === currentEmployeeId);
+    const latePolsToUse = empSpecificLatePols.length > 0
+        ? empSpecificLatePols
+        : activePols.filter(p => p.type === 'LATE_DEDUCTION' && (!p.appliesTo || p.appliesTo === 'ALL'));
+
     // 1. Late Arrival Policies
     if (inMin !== null && shiftInMin !== null && inMin > shiftInMin) {
         const lateMinutes = inMin - shiftInMin;
-        const matchedLatePolicies = activePolicies
-            .filter(p => p.isActive && p.type === 'LATE_DEDUCTION' && lateMinutes >= p.thresholdMinutes)
+        const matchedLatePolicies = latePolsToUse
+            .filter(p => lateMinutes >= p.thresholdMinutes)
             .sort((a, b) => b.thresholdMinutes - a.thresholdMinutes);
 
         if (matchedLatePolicies.length > 0) {
@@ -156,10 +270,15 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
     }
 
     // 2. Early Departure Policies
+    const empSpecificEarlyPols = activePols.filter(p => p.type === 'EARLY_DEPARTURE' && p.appliesTo && p.appliesTo !== 'ALL' && p.appliesTo === currentEmployeeId);
+    const earlyPolsToUse = empSpecificEarlyPols.length > 0
+        ? empSpecificEarlyPols
+        : activePols.filter(p => p.type === 'EARLY_DEPARTURE' && (!p.appliesTo || p.appliesTo === 'ALL'));
+
     if (outMin !== null && shiftOutMin !== null && outMin < shiftOutMin) {
         const earlyMinutes = shiftOutMin - outMin;
-        const matchedEarlyPolicies = activePolicies
-            .filter(p => p.isActive && p.type === 'EARLY_DEPARTURE' && earlyMinutes >= p.thresholdMinutes)
+        const matchedEarlyPolicies = earlyPolsToUse
+            .filter(p => earlyMinutes >= p.thresholdMinutes)
             .sort((a, b) => b.thresholdMinutes - a.thresholdMinutes);
 
         if (matchedEarlyPolicies.length > 0) {
@@ -171,7 +290,7 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
 
     // 3. Day Salary
     let daySalary = Number((hrs * hourlyRate).toFixed(2));
-    const minHoursPol = activePolicies.find(p => p.isActive && p.type === 'MIN_HOURS_FULL_PAY');
+    const minHoursPol = activePols.find(p => p.type === 'MIN_HOURS_FULL_PAY' && (!p.appliesTo || p.appliesTo === 'ALL' || p.appliesTo === currentEmployeeId));
     if (minHoursPol && hrs >= (minHoursPol.thresholdMinutes / 60)) {
         daySalary = Number((standardHrs * hourlyRate).toFixed(2));
     }
@@ -326,8 +445,54 @@ export default function EmployeePaymentRecordSheetPage() {
     const [isPayslipModalOpen, setIsPayslipModalOpen] = useState(false);
     const [isPoliciesModalOpen, setIsPoliciesModalOpen] = useState(false);
     const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
+    const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
     const [hideHeaderForLetterhead, setHideHeaderForLetterhead] = useState(false);
     const sheetPrintRef = useRef(null);
+    const officialPrintRef = useRef(null);
+    const [logoBase64, setLogoBase64] = useState(null);
+
+    // Preload GLX Monochrome Logo for high-resolution instant PDF rendering
+    useEffect(() => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                setLogoBase64(canvas.toDataURL('image/png'));
+            } catch (e) {
+                console.warn('Could not encode logo to base64', e);
+            }
+        };
+        img.src = '/logo-mono-white.png';
+    }, []);
+
+    const getLogoDataUrl = async () => {
+        if (logoBase64) return logoBase64;
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth || img.width;
+                    canvas.height = img.naturalHeight || img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const dataUrl = canvas.toDataURL('image/png');
+                    setLogoBase64(dataUrl);
+                    resolve(dataUrl);
+                } catch (e) {
+                    resolve(null);
+                }
+            };
+            img.onerror = () => resolve(null);
+            img.src = '/logo-mono-white.png';
+        });
+    };
 
     // EPF / ETF Toggle & Rates (Global for all employees)
     const [includeEpfEtf, setIncludeEpfEtf] = useState(false);
@@ -335,6 +500,12 @@ export default function EmployeePaymentRecordSheetPage() {
     const [epfEmployerRate, setEpfEmployerRate] = useState(12);
     const [etfEmployerRate, setEtfEmployerRate] = useState(3);
     const [salaryPolicies, setSalaryPolicies] = useState(defaultPoliciesFallback);
+
+    // Active rows filtered for official print/PDF matching GLX physical paysheet
+    const printableRows = useMemo(() => {
+        const active = rows.filter(r => r.isTicked || (Number(r.hours) > 0) || (Number(r.advance) > 0) || (Number(r.daySalary) > 0));
+        return active.length > 0 ? active : rows;
+    }, [rows]);
 
     // Fetch active employees
     const { data: employeesData } = useQuery({
@@ -344,12 +515,36 @@ export default function EmployeePaymentRecordSheetPage() {
 
     const employees = useMemo(() => employeesData?.data || [], [employeesData]);
 
-    // Select first employee automatically
+    // Do NOT auto-select an employee by default on page load (user requested blank default)
+    // Generate initial blank calendar rows if no employee selected yet
     useEffect(() => {
-        if (!selectedEmployeeId && employees.length > 0) {
-            setSelectedEmployeeId(employees[0]._id);
+        if (!selectedEmployeeId) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
+                const daysList = [];
+                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    const dateStr = formatDateStr(d);
+                    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+                    daysList.push({
+                        date: dateStr,
+                        day: dayName,
+                        isTicked: false,
+                        inTime: '08:00',
+                        outTime: '17:00',
+                        in: '08:00',
+                        out: '17:00',
+                        hours: 0,
+                        daySalary: 0,
+                        advance: 0,
+                        deduction: 0,
+                        reason: ''
+                    });
+                }
+                setRows(daysList);
+            }
         }
-    }, [selectedEmployeeId, employees]);
+    }, [selectedEmployeeId, startDate, endDate]);
 
     // Reset custom rates and advances when employee changes so their own rate is loaded
     useEffect(() => {
@@ -405,13 +600,15 @@ export default function EmployeePaymentRecordSheetPage() {
 
     // Current employee
     const currentEmployee = useMemo(() => {
+        if (!selectedEmployeeId) return {};
         if (sheetData?.employee) return sheetData.employee;
         return employees.find(e => e._id === selectedEmployeeId) || {};
     }, [sheetData, employees, selectedEmployeeId]);
 
     const employeeFullName = useMemo(() => {
-        return currentEmployee.name || currentEmployee.fullName || `${currentEmployee.firstName || ''} ${currentEmployee.lastName || ''}`.trim() || currentEmployee.displayName || 'Employee';
-    }, [currentEmployee]);
+        if (!selectedEmployeeId) return '';
+        return currentEmployee.name || currentEmployee.fullName || `${currentEmployee.firstName || ''} ${currentEmployee.lastName || ''}`.trim() || currentEmployee.displayName || '';
+    }, [currentEmployee, selectedEmployeeId]);
 
     // Effective hourly rate (uses employee profile rate by default)
     const effectiveHourlyRate = useMemo(() => {
@@ -464,18 +661,39 @@ export default function EmployeePaymentRecordSheetPage() {
     // Apply Active Policies to ALL Rows
     const handleApplyPoliciesToAllRows = (policiesToApply = salaryPolicies) => {
         setRows(prevRows => prevRows.map(r => {
-            return evaluateRowPolicy(r, onTime, offTime, effectiveHourlyRate, policiesToApply);
+            return evaluateRowPolicy(r, onTime, offTime, effectiveHourlyRate, policiesToApply, selectedEmployeeId);
         }));
         toast.success('Policies applied to all days successfully!');
     };
 
-    // Save policies from modal and optionally apply to sheet
+    // Save policies from modal and immediately apply to sheet
     const handleSavePoliciesFromModal = async (payload) => {
         await savePoliciesMutation.mutateAsync(payload);
         setSalaryPolicies(payload.salaryPolicies);
-        setEpfEmployeeRate(payload.epfEmployeeRate);
-        setEpfEmployerRate(payload.epfEmployerRate);
-        setEtfEmployerRate(payload.etfEmployerRate);
+        if (payload.epfEmployeeRate !== undefined) setEpfEmployeeRate(payload.epfEmployeeRate);
+        if (payload.epfEmployerRate !== undefined) setEpfEmployerRate(payload.epfEmployerRate);
+        if (payload.etfEmployerRate !== undefined) setEtfEmployerRate(payload.etfEmployerRate);
+
+        // Immediately recalculate all rows currently in the sheet with the newly saved policies!
+        setRows(prevRows => prevRows.map(r => {
+            return evaluateRowPolicy(r, onTime, offTime, effectiveHourlyRate, payload.salaryPolicies, selectedEmployeeId);
+        }));
+    };
+
+    // Helper: Select all text on mouse click/focus/mouseup (never leaves cursor in the middle)
+    const handleCellSelectAll = (e) => {
+        const target = e.target;
+        if (!target || target.type === 'checkbox') return;
+        setTimeout(() => {
+            try {
+                if (typeof target.select === 'function') {
+                    target.select();
+                }
+                if (typeof target.setSelectionRange === 'function' && target.value !== undefined) {
+                    target.setSelectionRange(0, String(target.value).length);
+                }
+            } catch {}
+        }, 15);
     };
 
     // Handle in-place row editing with AUTO-POLICY EVALUATION
@@ -502,14 +720,20 @@ export default function EmployeePaymentRecordSheetPage() {
 
         if (target) {
             target.focus();
-            if (typeof target.select === 'function' && target.type !== 'checkbox' && target.type !== 'time') {
-                try { target.select(); } catch {}
-            }
+            setTimeout(() => {
+                try {
+                    if (target.type !== 'checkbox') {
+                        target.select();
+                        if (typeof target.setSelectionRange === 'function' && target.value !== undefined) {
+                            target.setSelectionRange(0, String(target.value).length);
+                        }
+                    }
+                } catch {}
+            }, 15);
         }
     };
 
     const handleCellKeyDown = (e, rowIndex, colIndex) => {
-        const isTime = e.target.type === 'time';
         const isText = e.target.type === 'text';
         let cursorAtStart = true;
         let cursorAtEnd = true;
@@ -523,30 +747,36 @@ export default function EmployeePaymentRecordSheetPage() {
             }
         }
 
-        // Enter -> Next row, same column (Excel style)
+        // Enter -> Next column in current row (or wrap to next row)
         if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (colIndex < 7) {
+                focusGridCell(rowIndex, colIndex + 1, 'next');
+            } else if (rowIndex < rows.length - 1) {
+                focusGridCell(rowIndex + 1, 1, 'next');
+            }
+            return;
+        }
+        // Shift + Enter -> Prev column in current row (or wrap to prev row)
+        if (e.key === 'Enter' && e.shiftKey) {
+            e.preventDefault();
+            if (colIndex > 1) {
+                focusGridCell(rowIndex, colIndex - 1, 'prev');
+            } else if (rowIndex > 0) {
+                focusGridCell(rowIndex - 1, 7, 'prev');
+            }
+            return;
+        }
+        // ArrowDown / ArrowUp -> Navigate rows smoothly with full cell selection
+        if (e.key === 'ArrowDown') {
             e.preventDefault();
             focusGridCell(rowIndex + 1, colIndex, 'down');
             return;
         }
-        // Shift + Enter -> Prev row, same column
-        if (e.key === 'Enter' && e.shiftKey) {
+        if (e.key === 'ArrowUp') {
             e.preventDefault();
             focusGridCell(rowIndex - 1, colIndex, 'up');
             return;
-        }
-        // ArrowDown / ArrowUp: If inside time input, let native browser adjust hours/minutes; otherwise navigate rows
-        if (!isTime) {
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                focusGridCell(rowIndex + 1, colIndex, 'down');
-                return;
-            }
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                focusGridCell(rowIndex - 1, colIndex, 'up');
-                return;
-            }
         }
         // Tab -> Next cell in row or wrap to next row
         if (e.key === 'Tab' && !e.shiftKey) {
@@ -650,28 +880,39 @@ export default function EmployeePaymentRecordSheetPage() {
 
             if (field === 'isTicked') {
                 row.isTicked = Boolean(value);
-                row = evaluateRowPolicy(row, onTime, offTime, effectiveHourlyRate, salaryPolicies);
+                row = evaluateRowPolicy(row, onTime, offTime, effectiveHourlyRate, salaryPolicies, selectedEmployeeId);
             } else if (field === 'inTime' || field === 'outTime') {
                 row[field] = value;
                 row.isTicked = true;
-                row = evaluateRowPolicy(row, onTime, offTime, effectiveHourlyRate, salaryPolicies);
+                row = evaluateRowPolicy(row, onTime, offTime, effectiveHourlyRate, salaryPolicies, selectedEmployeeId);
             } else if (field === 'hours') {
-                const hrs = Number(value) || 0;
-                row.hours = hrs;
-                if (hrs > 0) {
+                const val = String(value).trim();
+                const hrs = val === '' ? 0 : Number(val);
+                row.hours = isNaN(hrs) ? row.hours : hrs;
+                if (row.hours > 0) {
                     row.isTicked = true;
-                    row.daySalary = Number((hrs * effectiveHourlyRate).toFixed(2));
+                    row.daySalary = Number((row.hours * effectiveHourlyRate).toFixed(2));
                 } else {
                     row.daySalary = 0;
                 }
             } else if (field === 'daySalary') {
-                row.daySalary = Number(value) || 0;
+                const val = String(value).trim();
+                const num = val === '' ? 0 : Number(val);
+                row.daySalary = isNaN(num) ? row.daySalary : num;
                 if (row.daySalary > 0) row.isTicked = true;
             } else if (field === 'advance') {
-                row.advance = value === '' ? 0 : Number(value);
+                const val = String(value).trim();
+                const num = val === '' ? 0 : Number(val);
+                row.advance = isNaN(num) ? row.advance : num;
                 setCustomTotalAdvance(null);
             } else if (field === 'deduction') {
-                row.deduction = Number(value) || 0;
+                // Allow user to freely type '-', '-100', '100', ''
+                if (value === '' || value === '-') {
+                    row.deduction = value;
+                } else {
+                    const num = Number(value);
+                    row.deduction = isNaN(num) ? value : num;
+                }
             } else if (field === 'reason') {
                 row.reason = value;
             }
@@ -698,7 +939,7 @@ export default function EmployeePaymentRecordSheetPage() {
                 outTime: offTime,
                 hours: hrs
             };
-            return evaluateRowPolicy(raw, onTime, offTime, effectiveHourlyRate, salaryPolicies);
+            return evaluateRowPolicy(raw, onTime, offTime, effectiveHourlyRate, salaryPolicies, selectedEmployeeId);
         }));
         toast.success(`Filled all days with ${onTime} - ${offTime} and applied policies`);
     };
@@ -762,14 +1003,10 @@ export default function EmployeePaymentRecordSheetPage() {
         });
     };
 
-    // Dedicated Corporate Print Handler - Prints Full Record Sheet & Signatures with Zero Scrollbars
+    // Dedicated Corporate Print Handler - Prints Official 6-Column Format Matching GLX Physical Paysheet
     const handlePrint = () => {
         toast.dismiss();
-        const sheetElement = sheetPrintRef.current;
-        if (!sheetElement) {
-            window.print();
-            return;
-        }
+        const empName = employeeFullName || 'Employee';
 
         // Clean up any existing print iframe
         const existingFrame = document.getElementById('employee-sheet-print-iframe');
@@ -786,10 +1023,16 @@ export default function EmployeePaymentRecordSheetPage() {
         iframe.style.visibility = 'hidden';
         document.body.appendChild(iframe);
 
-        // Collect all style tags and stylesheets from the main document
-        const styleTags = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-            .map(el => el.outerHTML)
-            .join('\n');
+        const rowsHtml = printableRows.map(r => `
+            <tr>
+                <td style="padding: 3px 6px; text-align: left;">${formatPrintDate(r.date)}</td>
+                <td style="padding: 3px 6px; text-align: center; font-family: 'Courier New', Courier, monospace;">${formatPrintTime(r.inTime || r.in)}</td>
+                <td style="padding: 3px 6px; text-align: center; font-family: 'Courier New', Courier, monospace;">${formatPrintTime(r.outTime || r.out)}</td>
+                <td style="padding: 3px 6px; text-align: center; font-family: 'Courier New', Courier, monospace;">${formatPrintDuration(r)}</td>
+                <td style="padding: 3px 6px; text-align: right; font-family: 'Courier New', Courier, monospace;">${formatPrintCurrency(r.daySalary)}</td>
+                <td style="padding: 3px 6px; text-align: right; font-family: 'Courier New', Courier, monospace;">${formatPrintCurrency(r.advance)}</td>
+            </tr>
+        `).join('');
 
         const doc = iframe.contentDocument || iframe.contentWindow.document;
         doc.open();
@@ -798,12 +1041,14 @@ export default function EmployeePaymentRecordSheetPage() {
             <html>
             <head>
                 <meta charset="utf-8" />
-                <title>Employee Payment Record Sheet - ${employeeFullName}</title>
-                ${styleTags}
+                <title>Employee Payment Sheet - ${empName}</title>
                 <style>
                     @page {
                         size: A4 portrait;
-                        margin: 5mm 6mm 5mm 6mm;
+                        margin: 12mm 15mm 12mm 15mm;
+                    }
+                    * {
+                        box-sizing: border-box;
                     }
                     html, body {
                         margin: 0 !important;
@@ -813,125 +1058,181 @@ export default function EmployeePaymentRecordSheetPage() {
                         font-family: Arial, "Helvetica Neue", Helvetica, sans-serif !important;
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
-                        width: 100% !important;
-                        height: auto !important;
-                        min-height: auto !important;
-                        overflow: visible !important;
-                        overflow-y: visible !important;
-                        overflow-x: visible !important;
                     }
-                    * {
-                        box-sizing: border-box;
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                        scrollbar-width: none !important;
-                        -ms-overflow-style: none !important;
-                    }
-                    ::-webkit-scrollbar {
-                        display: none !important;
-                        width: 0 !important;
-                        height: 0 !important;
-                    }
-                    .sheet-print-container {
+                    .container {
                         width: 100% !important;
                         max-width: 100% !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                        overflow: visible !important;
-                        display: block !important;
+                        margin: 0 auto !important;
                     }
-                    .no-sticky-height,
-                    .employee-payment-sheet-print,
-                    div:has(> table),
-                    div.overflow-x-auto,
-                    div.overflow-auto {
-                        height: auto !important;
-                        max-height: none !important;
-                        min-height: auto !important;
-                        overflow: visible !important;
-                        overflow-x: visible !important;
-                        overflow-y: visible !important;
-                        display: block !important;
-                        border: none !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
+                    .header-box {
+                        text-align: center !important;
+                        margin-bottom: 8px !important;
                     }
-                    table {
+                    .logo-img {
+                        height: 48px !important;
+                        max-height: 48px !important;
+                        width: auto !important;
+                        margin: 0 auto 4px auto !important;
+                        display: block !important;
+                        object-fit: contain !important;
+                    }
+                    .sheet-title {
+                        font-size: 11pt !important;
+                        font-weight: 700 !important;
+                        letter-spacing: 0.5px !important;
+                        text-transform: uppercase !important;
+                        margin: 4px 0 6px 0 !important;
+                    }
+                    .divider-line {
+                        border: none !important;
+                        border-top: 1px solid #000000 !important;
+                        width: 100% !important;
+                        margin: 0 0 10px 0 !important;
+                    }
+                    .meta-table {
                         width: 100% !important;
                         border-collapse: collapse !important;
-                        page-break-inside: auto;
-                        margin-bottom: 2mm !important;
+                        font-size: 9pt !important;
+                        margin-bottom: 10px !important;
                     }
-                    thead {
-                        display: table-header-group !important;
+                    .meta-table td {
+                        padding: 2.5px 0 !important;
+                        vertical-align: middle !important;
                     }
-                    tbody {
-                        display: table-row-group !important;
+                    .meta-label {
+                        font-weight: 700 !important;
+                        width: 130px !important;
                     }
-                    tr {
-                        page-break-inside: avoid !important;
-                        break-inside: avoid !important;
+                    .meta-sep {
+                        font-weight: 700 !important;
+                        width: 18px !important;
+                        text-align: center !important;
                     }
-                    th, td {
-                        border: 1px solid #000000 !important;
-                        padding: 1.5px 2.5px !important;
-                        font-size: 8px !important;
-                        line-height: 1.15 !important;
+                    .meta-val {
+                        font-weight: 400 !important;
                     }
-                    .signature-section {
-                        display: block !important;
-                        page-break-inside: avoid !important;
-                        break-inside: avoid !important;
-                        margin-top: 3mm !important;
-                        padding-top: 2mm !important;
-                        border-top: 2px solid #000000 !important;
+                    .meta-val-bold {
+                        font-weight: 700 !important;
                     }
-                    .print-hide-input {
-                        display: none !important;
+                    .data-table {
+                        width: 100% !important;
+                        border-collapse: collapse !important;
+                        font-size: 8.5pt !important;
                     }
-                    .print\\:hidden {
-                        display: none !important;
+                    .data-table th {
+                        border-top: 1px solid #000000 !important;
+                        border-bottom: 1px solid #000000 !important;
+                        padding: 5px 6px !important;
+                        font-weight: 700 !important;
+                        text-transform: uppercase !important;
                     }
-                    .hidden.print\\:block {
-                        display: block !important;
-                    }
-                    .hidden.print\\:inline {
-                        display: inline !important;
-                    }
-                    .print\\:p-0 {
-                        padding: 0 !important;
-                    }
-                    .print\\:m-0 {
-                        margin: 0 !important;
-                    }
-                    .print\\:border-none {
+                    .data-table td {
+                        padding: 3px 6px !important;
                         border: none !important;
                     }
-                    .bg-\\[\\#BAC8E8\\] {
-                        background-color: #BAC8E8 !important;
+                    .table-bottom-line {
+                        border-top: 1px solid #000000 !important;
+                        width: 100% !important;
+                        margin-top: 0 !important;
+                        margin-bottom: 8px !important;
                     }
-                    .bg-\\[\\#D9D9D9\\] {
-                        background-color: #D9D9D9 !important;
+                    .summary-table {
+                        width: 250px !important;
+                        border-collapse: collapse !important;
+                        font-size: 9pt !important;
+                        margin-left: auto !important;
+                        margin-right: 0 !important;
                     }
-                    .bg-\\[\\#FFF2CC\\] {
-                        background-color: #FFF2CC !important;
+                    .summary-table td {
+                        padding: 2.5px 0 !important;
                     }
-                    .bg-\\[\\#E2EFDA\\] {
-                        background-color: #E2EFDA !important;
+                    .line-single {
+                        border-bottom: 1px solid #000000 !important;
                     }
-                    .bg-\\[\\#FCE8E6\\] {
-                        background-color: #FCE8E6 !important;
+                    .line-double {
+                        border-bottom: 3px double #000000 !important;
                     }
-                    .text-\\[\\#C00000\\] {
-                        color: #C00000 !important;
-                    }
+                    .text-left { text-align: left !important; }
+                    .text-center { text-align: center !important; }
+                    .text-right { text-align: right !important; }
+                    .font-bold { font-weight: 700 !important; }
                 </style>
             </head>
-            <body class="bg-white">
-                <div class="sheet-print-container">
-                    ${sheetElement.innerHTML}
+            <body>
+                <div class="container">
+                    ${!hideHeaderForLetterhead ? `
+                        <div class="header-box">
+                            <img src="/logo-mono-white.png" class="logo-img" alt="GLX Logo" />
+                            <div class="sheet-title">EMPLOYEE PAYMENT SHEET</div>
+                            <hr class="divider-line" />
+                        </div>
+                    ` : `
+                        <div class="header-box" style="padding-top: 25mm;">
+                            <div class="sheet-title">EMPLOYEE PAYMENT SHEET</div>
+                            <hr class="divider-line" />
+                        </div>
+                    `}
+
+                    <table class="meta-table">
+                        <tr>
+                            <td class="meta-label">Name</td>
+                            <td class="meta-sep">:</td>
+                            <td class="meta-val meta-val-bold">${empName}</td>
+                            <td colspan="3"></td>
+                        </tr>
+                        <tr>
+                            <td class="meta-label">Salary Per Hour</td>
+                            <td class="meta-sep">:</td>
+                            <td class="meta-val">${formatPrintCurrency(effectiveHourlyRate)}</td>
+                            <td colspan="3"></td>
+                        </tr>
+                        <tr>
+                            <td class="meta-label">Date From</td>
+                            <td class="meta-sep">:</td>
+                            <td class="meta-val" style="width: 160px;">${formatPrintDate(startDate)}</td>
+                            <td class="meta-label" style="width: 80px; text-align: right;">Date To</td>
+                            <td class="meta-sep">:</td>
+                            <td class="meta-val">${formatPrintDate(endDate)}</td>
+                        </tr>
+                    </table>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="text-left" style="width: 17%;">Date</th>
+                                <th class="text-center" style="width: 15%;">IN</th>
+                                <th class="text-center" style="width: 15%;">OUT</th>
+                                <th class="text-center" style="width: 15%;">HOURS</th>
+                                <th class="text-right" style="width: 19%;">DAY SALARY</th>
+                                <th class="text-right" style="width: 19%;">ADVANCE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                    <div class="table-bottom-line"></div>
+
+                    <table class="summary-table">
+                        <tr>
+                            <td class="font-bold text-left">Total Salary</td>
+                            <td class="text-right">${formatPrintCurrency(dynamicTotals.totalSalary)}</td>
+                        </tr>
+                        <tr class="line-single">
+                            <td class="font-bold text-left" style="padding-bottom: 3px;">Total Advances</td>
+                            <td class="text-right" style="padding-bottom: 3px;">${formatPrintCurrency(dynamicTotals.totalAdvance)}</td>
+                        </tr>
+                        ${includeEpfEtf && dynamicTotals.epfEmployeeDeduction > 0 ? `
+                            <tr class="line-single">
+                                <td class="font-bold text-left" style="padding-bottom: 3px;">EPF (${epfEmployeeRate}%)</td>
+                                <td class="text-right" style="padding-bottom: 3px;">-${formatPrintCurrency(dynamicTotals.epfEmployeeDeduction)}</td>
+                            </tr>
+                        ` : ''}
+                        <tr class="line-double">
+                            <td class="font-bold text-left" style="padding-top: 4px; padding-bottom: 3px;">Net Salary</td>
+                            <td class="font-bold text-right" style="padding-top: 4px; padding-bottom: 3px;">${formatPrintCurrency(dynamicTotals.netSalary)}</td>
+                        </tr>
+                    </table>
                 </div>
             </body>
             </html>
@@ -954,160 +1255,176 @@ export default function EmployeePaymentRecordSheetPage() {
         }, 300);
     };
 
-    // Executive PDF Download Function
-    const handleDownloadOfficialPdf = () => {
+    // Executive PDF Download Function - Exact 6-Column Layout Matching GLX Physical Paysheet
+    const handleDownloadOfficialPdf = async () => {
         try {
+            toast.loading('Generating official PDF...', { id: 'pdf-toast' });
             const doc = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
                 format: 'a4'
             });
 
-            const empName = employeeFullName;
-            const payrollNo = currentEmployee.payrollNumber || '000-00-0293';
+            const empName = employeeFullName || 'Employee';
+            const logoData = await getLogoDataUrl();
 
-            let startY = 8;
+            let currentY = 12;
+
             if (!hideHeaderForLetterhead) {
+                if (logoData) {
+                    // Centered GLX Monochrome Logo (210mm A4 width -> (210 - 22) / 2 = 94mm)
+                    doc.addImage(logoData, 'PNG', 94, currentY, 22, 21.7);
+                    currentY += 23.5;
+                }
+
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(13);
-                doc.text(systemSettings.companyName || 'GLX INDUSTRIES (PVT) LTD', 105, startY, { align: 'center' });
-                doc.setFontSize(8);
-                doc.setFont('helvetica', 'normal');
-                doc.text(systemSettings.companyAddress || 'High-Quality Manufacturing & Vehicle Body Engineering', 105, startY + 4.5, { align: 'center' });
-                doc.text(`Contact: ${systemSettings.companyPhone || '+94 11 234 5678'} | Email: ${systemSettings.companyEmail || 'info@glx.lk'}`, 105, startY + 8.5, { align: 'center' });
-                startY += 12;
-            }
+                doc.setFontSize(11);
+                doc.text('EMPLOYEE PAYMENT SHEET', 105, currentY, { align: 'center' });
+                currentY += 3.5;
 
-            // Title Banner
-            doc.setDrawColor(0, 0, 0);
-            doc.setLineWidth(0.35);
-            doc.rect(10, startY, 190, 6.5);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9.5);
-            doc.text('EMPLOYEE PAYMENT RECORD SHEET', 105, startY + 4.5, { align: 'center' });
-
-            startY += 8;
-
-            // Header Metadata Grid
-            const metadataBody = [
-                ['NAME', `: ${empName}`, 'Payroll No', `: ${payrollNo}`],
-                ['SALARY PER HOURS', `: Rs. ${Number(effectiveHourlyRate).toFixed(0)}`, '', ''],
-                ['ON TIME', `: ${onTime}`, 'OFF TIME', `: ${offTime}`],
-                ['DATE FROM', `: ${startDate}`, 'DATE TO', `: ${endDate}`],
-                ['TOTAL LEAVE', `: ${dynamicTotals.totalLeave}`, 'TOTAL SALARY', `: Rs. ${dynamicTotals.totalSalary.toLocaleString()}`],
-                ['TOTAL DAYS', `: ${dynamicTotals.totalDays}`, 'TOTAL ADVANCE', `: Rs. ${dynamicTotals.totalAdvance.toLocaleString()}`],
-            ];
-
-            if (includeEpfEtf) {
-                metadataBody.push(['TOTAL HOURS', `: ${dynamicTotals.totalHours}`, `EPF (${epfEmployeeRate}%)`, `: -Rs. ${dynamicTotals.epfEmployeeDeduction.toLocaleString()}`]);
-                metadataBody.push(['', '', 'NET SALARY', `: Rs. ${dynamicTotals.netSalary.toLocaleString()}`]);
+                // Horizontal divider line
+                doc.setDrawColor(0, 0, 0);
+                doc.setLineWidth(0.25);
+                doc.line(15, currentY, 195, currentY);
+                currentY += 5.5;
             } else {
-                metadataBody.push(['TOTAL HOURS', `: ${dynamicTotals.totalHours}`, 'NET SALARY', `: Rs. ${dynamicTotals.netSalary.toLocaleString()}`]);
+                currentY += 25;
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
+                doc.text('EMPLOYEE PAYMENT SHEET', 105, currentY, { align: 'center' });
+                currentY += 3.5;
+                doc.setDrawColor(0, 0, 0);
+                doc.setLineWidth(0.25);
+                doc.line(15, currentY, 195, currentY);
+                currentY += 5.5;
             }
 
-            autoTable(doc, {
-                startY: startY,
-                margin: { left: 10, right: 10 },
-                theme: 'plain',
-                styles: { fontSize: 7.5, cellPadding: 0.9, textColor: [0, 0, 0] },
-                columnStyles: {
-                    0: { fontStyle: 'bold', cellWidth: 32 },
-                    1: { cellWidth: 55 },
-                    2: { fontStyle: 'bold', cellWidth: 32, halign: 'right' },
-                    3: { cellWidth: 71, halign: 'right', fontStyle: 'bold' }
-                },
-                body: metadataBody
-            });
+            // Header Metadata Rows
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Name', 15, currentY);
+            doc.text(':', 48, currentY);
+            doc.text(empName, 52, currentY);
+            currentY += 5;
 
-            const tableStartY = doc.lastAutoTable.finalY + 2;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Salary Per Hour', 15, currentY);
+            doc.text(':', 48, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatPrintCurrency(effectiveHourlyRate), 52, currentY);
+            currentY += 5;
 
-            // 31-Day Ledger Table
-            const tableRows = rows.map(r => [
-                r.isTicked ? '✓' : '',
-                r.date ? r.date.substring(5) : '',
-                r.day || '',
-                r.isTicked ? (r.inTime || '') : '',
-                r.isTicked ? (r.outTime || '') : '',
-                r.isTicked && r.hours > 0 ? Number(r.hours).toFixed(2) : '',
-                r.isTicked && r.daySalary > 0 ? Number(r.daySalary).toFixed(0) : '',
-                r.advance > 0 ? Number(r.advance).toFixed(0) : '',
-                r.deduction !== 0 ? Number(r.deduction).toFixed(0) : '0',
-                r.reason || ''
+            doc.setFont('helvetica', 'bold');
+            doc.text('Date From', 15, currentY);
+            doc.text(':', 48, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatPrintDate(startDate), 52, currentY);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text('Date To', 105, currentY);
+            doc.text(':', 125, currentY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatPrintDate(endDate), 129, currentY);
+            currentY += 5.5;
+
+            // 6-Column Data Rows
+            const tableBody = printableRows.map(r => [
+                formatPrintDate(r.date),
+                formatPrintTime(r.inTime || r.in),
+                formatPrintTime(r.outTime || r.out),
+                formatPrintDuration(r),
+                formatPrintCurrency(r.daySalary),
+                formatPrintCurrency(r.advance)
             ]);
 
             autoTable(doc, {
-                startY: tableStartY,
-                margin: { left: 10, right: 10 },
-                theme: 'grid',
+                startY: currentY,
+                margin: { left: 15, right: 15 },
+                theme: 'plain',
+                head: [['Date', 'IN', 'OUT', 'HOURS', 'DAY SALARY', 'ADVANCE']],
+                body: tableBody,
                 styles: {
-                    fontSize: 6.8,
-                    cellPadding: 0.8,
+                    font: 'helvetica',
+                    fontSize: 8.5,
+                    cellPadding: { top: 1.5, bottom: 1.5, left: 1, right: 1 },
                     textColor: [0, 0, 0],
-                    lineColor: [0, 0, 0],
-                    lineWidth: 0.15
+                    lineWidth: 0
                 },
                 headStyles: {
                     fillColor: [255, 255, 255],
                     textColor: [0, 0, 0],
                     fontStyle: 'bold',
-                    halign: 'center',
+                    lineWidth: { top: 0.25, bottom: 0.25 },
                     lineColor: [0, 0, 0]
                 },
                 columnStyles: {
-                    0: { halign: 'center', cellWidth: 9, fillColor: [255, 242, 204] }, // TICK
-                    1: { halign: 'center', cellWidth: 15, fillColor: [226, 239, 218] }, // DATE
-                    2: { halign: 'left', cellWidth: 26, fontStyle: 'bold', fillColor: [226, 239, 218] }, // DAY
-                    3: { halign: 'center', cellWidth: 16, fillColor: [255, 242, 204] }, // IN
-                    4: { halign: 'center', cellWidth: 16, fillColor: [255, 242, 204] }, // OUT
-                    5: { halign: 'center', cellWidth: 14, fontStyle: 'bold', fillColor: [226, 239, 218] }, // HOURS
-                    6: { halign: 'right', cellWidth: 24, fontStyle: 'bold', fillColor: [226, 239, 218] }, // DAY SALARY
-                    7: { halign: 'right', cellWidth: 18, fillColor: [255, 242, 204] }, // ADVANCE
-                    8: { halign: 'right', cellWidth: 18, fontStyle: 'bold', fillColor: [226, 239, 218] }, // DEDUCTION
-                    9: { halign: 'left', cellWidth: 34, fillColor: [226, 239, 218] } // Reason
-                },
-                head: [['TICK', 'DATE', 'DAY', 'IN', 'OUT', 'HOURS', 'DAY SALARY', 'ADVANCE', 'DEDUCTION', 'Reason']],
-                body: tableRows,
-                didParseCell: (data) => {
-                    if (data.section === 'body') {
-                        const r = rows[data.row.index];
-                        if (r && r.day === 'SUNDAY') {
-                            if (data.column.index === 1 || data.column.index === 2) {
-                                data.cell.styles.fillColor = [252, 232, 230];
-                                data.cell.styles.textColor = [192, 0, 0];
-                                data.cell.styles.fontStyle = 'bold';
-                            }
-                        }
-                    }
+                    0: { cellWidth: 30, halign: 'left' },
+                    1: { cellWidth: 26, halign: 'center' },
+                    2: { cellWidth: 26, halign: 'center' },
+                    3: { cellWidth: 26, halign: 'center' },
+                    4: { cellWidth: 36, halign: 'right' },
+                    5: { cellWidth: 36, halign: 'right' }
                 }
             });
 
-            const finalY = doc.lastAutoTable.finalY + 3;
+            const finalTableY = doc.lastAutoTable.finalY;
+            // Horizontal rule below table
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.25);
+            doc.line(15, finalTableY, 195, finalTableY);
 
-            // Optional EPF/ETF statutory note if included
-            if (includeEpfEtf) {
-                doc.setFontSize(7);
-                doc.setFont('helvetica', 'italic');
-                doc.text(`* Statutory: Employer EPF (${epfEmployerRate}%): Rs. ${dynamicTotals.epfEmployerContribution.toLocaleString()} | Employer ETF (${etfEmployerRate}%): Rs. ${dynamicTotals.etfEmployerContribution.toLocaleString()} (Paid by company)`, 10, finalY);
+            // Right-Aligned Summary Box
+            let sumY = finalTableY + 4.5;
+            const labelX = 135;
+            const valX = 195;
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.text('Total Salary', labelX, sumY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatPrintCurrency(dynamicTotals.totalSalary), valX, sumY, { align: 'right' });
+
+            sumY += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Total Advances', labelX, sumY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatPrintCurrency(dynamicTotals.totalAdvance), valX, sumY, { align: 'right' });
+
+            // Single underline under Total Advances
+            doc.setLineWidth(0.25);
+            doc.line(labelX, sumY + 1.2, valX, sumY + 1.2);
+
+            if (includeEpfEtf && dynamicTotals.epfEmployeeDeduction > 0) {
+                sumY += 5;
+                doc.setFont('helvetica', 'bold');
+                doc.text(`EPF (${epfEmployeeRate}%)`, labelX, sumY);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`-${formatPrintCurrency(dynamicTotals.epfEmployeeDeduction)}`, valX, sumY, { align: 'right' });
+                doc.line(labelX, sumY + 1.2, valX, sumY + 1.2);
             }
 
-            // Signature Section
-            const sigY = includeEpfEtf ? finalY + 4 : finalY + 2;
-            doc.setFontSize(7.5);
-            doc.setFont('helvetica', 'normal');
-            doc.text('Prepared By: __________________________', 10, sigY + 4);
-            doc.text('Checked By: __________________________', 60, sigY + 4);
-            doc.text('Employee Signature: __________________________', 110, sigY + 4);
-            doc.text('Authorized Signature: __________________________', 155, sigY + 4);
+            sumY += 5.5;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Net Salary', labelX, sumY);
+            doc.text(formatPrintCurrency(dynamicTotals.netSalary), valX, sumY, { align: 'right' });
+
+            // Double underline under Net Salary
+            doc.setLineWidth(0.25);
+            doc.line(labelX, sumY + 1.2, valX, sumY + 1.2);
+            doc.line(labelX, sumY + 1.8, valX, sumY + 1.8);
 
             doc.save(`Payment_Sheet_${empName.replace(/\s+/g, '_')}_${startDate}.pdf`);
-            toast.success('Executive PDF downloaded successfully!');
+            toast.dismiss('pdf-toast');
+            toast.success('Official Payment Sheet PDF downloaded!');
         } catch (err) {
+            console.error('PDF generation error:', err);
+            toast.dismiss('pdf-toast');
             toast.error('Failed to export PDF: ' + err.message);
         }
     };
 
     return (
-        <div className="min-h-screen bg-slate-100/90 p-3 sm:p-6 font-sans text-slate-900 print:bg-white print:p-0">
+        <div className="min-h-screen bg-slate-50 p-3 sm:p-6 font-sans text-slate-900 w-full print:bg-white print:p-0">
             
             {/* PRISTINE EXECUTIVE PRINT CSS */}
             <style>{`
@@ -1233,37 +1550,28 @@ export default function EmployeePaymentRecordSheetPage() {
                 }
             `}</style>
 
-            {/* TOP EXECUTIVE APP BAR (Screen Only - No Emojis) */}
-            <div className="max-w-[960px] mx-auto mb-4 print:hidden">
-                <div className="bg-white border border-slate-200/90 rounded-xl p-4 shadow-xs mb-3 flex flex-wrap items-center justify-between gap-4">
+            {/* TOP EXECUTIVE APP BAR (Screen Only - Fills Full Screen Width) */}
+            <div className="w-full mb-3 print:hidden">
+                <div className="bg-white border border-slate-200/90 rounded-xl p-3 sm:p-3.5 shadow-xs mb-2 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-extrabold tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-2 py-0.5 rounded-full uppercase">
-                                Human Resources Operations
-                            </span>
-                            <span className="text-xs text-slate-400">•</span>
-                            <span className="text-xs font-medium text-slate-500">
-                                Manual Spreadsheet & Payment Ledger
-                            </span>
-                        </div>
-                        <h1 className="text-lg font-bold text-slate-900 tracking-tight">
+                        <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
                             Employee Payment Record Sheet
                         </h1>
                     </div>
 
                     {/* Live Overview Badges */}
-                    <div className="flex items-center gap-2 flex-wrap text-xs">
-                        <div className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-center min-w-[85px]">
-                            <span className="text-[10px] text-slate-500 font-semibold block uppercase">Days Worked</span>
-                            <span className="font-bold text-slate-900 font-mono text-sm">{dynamicTotals.totalDays}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                        <div className="bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg text-center min-w-[75px]">
+                            <span className="text-[9px] text-slate-500 font-semibold block uppercase">Days Worked</span>
+                            <span className="font-bold text-slate-900 font-mono text-xs">{dynamicTotals.totalDays}</span>
                         </div>
-                        <div className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-center min-w-[85px]">
-                            <span className="text-[10px] text-slate-500 font-semibold block uppercase">Total Hours</span>
-                            <span className="font-bold text-slate-900 font-mono text-sm">{dynamicTotals.totalHours}</span>
+                        <div className="bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg text-center min-w-[75px]">
+                            <span className="text-[9px] text-slate-500 font-semibold block uppercase">Total Hours</span>
+                            <span className="font-bold text-slate-900 font-mono text-xs">{dynamicTotals.totalHours}</span>
                         </div>
-                        <div className="bg-indigo-50/80 border border-indigo-200 px-3 py-1.5 rounded-lg text-center min-w-[105px]">
-                            <span className="text-[10px] text-indigo-700 font-semibold block uppercase">Net Payable</span>
-                            <span className="font-extrabold text-indigo-950 font-mono text-sm">
+                        <div className="bg-indigo-50/80 border border-indigo-200 px-2.5 py-1 rounded-lg text-center min-w-[95px]">
+                            <span className="text-[9px] text-indigo-700 font-semibold block uppercase">Net Payable</span>
+                            <span className="font-extrabold text-indigo-950 font-mono text-xs">
                                 Rs. {Number(dynamicTotals.netSalary).toLocaleString()}
                             </span>
                         </div>
@@ -1271,119 +1579,130 @@ export default function EmployeePaymentRecordSheetPage() {
                 </div>
 
                 {/* Keyboard Navigation Shortcuts Bar (Screen Only) */}
-                <div className="flex items-center justify-between text-[11px] bg-slate-50 border border-slate-200/90 rounded-lg px-3 py-1.5 text-slate-600 mt-2.5 shadow-2xs">
-                    <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="flex items-center justify-between text-[10px] bg-slate-50 border border-slate-200/90 rounded-lg px-2.5 py-1 text-slate-600 mb-2 shadow-2xs">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-slate-800 flex items-center gap-1">
-                            <Keyboard size={13} className="text-indigo-600" />
-                            Keyboard Shortcuts:
+                            <Keyboard size={12} className="text-indigo-600" />
+                            Shortcuts:
                         </span>
-                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[10px]">Enter</kbd> / <kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[10px]">↓</kbd> Down</span>
-                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[10px]">Shift+Enter</kbd> / <kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[10px]">↑</kbd> Up</span>
-                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[10px]">Tab</kbd> / <kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[10px]">→</kbd> Next Cell</span>
-                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[10px]">Space</kbd> Toggle Tick</span>
+                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[9px]">Enter</kbd> Down</span>
+                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[9px]">Tab</kbd> Next</span>
+                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[9px]">Space</kbd> Tick</span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[10px]">Ctrl+S</kbd> Save</span>
-                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[10px]">Ctrl+P</kbd> Print</span>
-                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[10px]">Alt+A</kbd> Advance</span>
+                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[9px]">Ctrl+S</kbd> Save</span>
+                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[9px]">Ctrl+P</kbd> Print</span>
+                        <span><kbd className="bg-white border border-slate-300 px-1 py-0.2 rounded font-mono font-semibold text-[9px]">Alt+A</kbd> Advance</span>
                     </div>
                 </div>
 
                 {/* Streamlined Action Control Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                     {/* Left Workflow Buttons */}
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                         <button
                             onClick={() => navigate('/hr/daily-manual-attendance')}
-                            className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 text-slate-700 rounded-lg shadow-xs hover:bg-slate-50 hover:border-slate-400 flex items-center gap-1.5 transition"
+                            className="px-2.5 py-1 text-xs font-semibold bg-white border border-slate-300 text-slate-700 rounded-lg shadow-xs hover:bg-slate-50 hover:border-slate-400 flex items-center gap-1.5 transition cursor-pointer"
                         >
-                            <ArrowLeft size={14} className="text-slate-500" />
+                            <ArrowLeft size={13} className="text-slate-500" />
                             Daily Attendance Grid
                         </button>
                         
                         <button
                             onClick={() => setIsPoliciesModalOpen(true)}
-                            className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 text-slate-800 rounded-lg shadow-xs hover:bg-slate-50 hover:border-slate-400 flex items-center gap-1.5 transition"
+                            className="px-2.5 py-1 text-xs font-semibold bg-white border border-slate-300 text-slate-800 rounded-lg shadow-xs hover:bg-slate-50 hover:border-slate-400 flex items-center gap-1.5 transition cursor-pointer"
                             title="Configure Late Arrival rules, grace cover hours, absent cuts and EPF/ETF rates"
                         >
-                            <Sliders size={14} className="text-slate-600" />
+                            <Sliders size={13} className="text-slate-600" />
                             Salary Policies
                         </button>
 
                         <button
                             onClick={handleFillAllDays}
-                            className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 text-slate-800 rounded-lg shadow-xs hover:bg-slate-50 hover:border-slate-400 flex items-center gap-1.5 transition"
+                            className="px-2.5 py-1 text-xs font-semibold bg-white border border-slate-300 text-slate-800 rounded-lg shadow-xs hover:bg-slate-50 hover:border-slate-400 flex items-center gap-1.5 transition cursor-pointer"
                             title="Auto-tick all days with default shift hours & apply policies"
                         >
-                            <CheckCheck size={14} className="text-slate-600" />
+                            <CheckCheck size={13} className="text-slate-600" />
                             Fill Shift Hours
                         </button>
 
                         <button
                             onClick={() => setIsPayslipModalOpen(true)}
-                            className="px-3.5 py-1.5 text-xs font-semibold bg-[#131943] hover:bg-[#1a2259] text-white rounded-lg shadow-xs flex items-center gap-1.5 transition"
+                            className="px-3 py-1 text-xs font-semibold bg-[#131943] hover:bg-[#1a2259] text-white rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer"
                             title="View and download modern executive salary slip"
                         >
-                            <FileText size={14} className="text-emerald-400" />
-                            Salary Slip (Slip)
+                            <FileText size={13} className="text-emerald-400" />
+                            Salary Slip
                         </button>
 
                         <button
                             onClick={() => setIsAdvanceModalOpen(true)}
-                            className="px-3.5 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition"
+                            className="px-3 py-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer"
                             title="Record salary advance for this employee"
                         >
-                            <Plus size={14} className="text-white" />
+                            <Plus size={13} className="text-white" />
                             Record Advance
                         </button>
                     </div>
 
                     {/* Right Output & Print Controls */}
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                         <button
                             type="button"
                             onClick={() => setHideHeaderForLetterhead(!hideHeaderForLetterhead)}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg border flex items-center gap-1.5 transition ${
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg border flex items-center gap-1.5 transition cursor-pointer ${
                                 hideHeaderForLetterhead
                                     ? 'bg-amber-50 border-amber-300 text-amber-900 font-bold'
                                     : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
                             }`}
                             title={hideHeaderForLetterhead ? 'For printing on pre-printed letterhead paper' : 'Print with company header'}
                         >
-                            {hideHeaderForLetterhead ? <EyeOff size={13} className="text-amber-700" /> : <Eye size={13} className="text-slate-500" />}
-                            {hideHeaderForLetterhead ? 'Letterhead Mode' : 'With Header'}
+                            {hideHeaderForLetterhead ? <EyeOff size={12} className="text-amber-700" /> : <Eye size={12} className="text-slate-500" />}
+                            {hideHeaderForLetterhead ? 'Letterhead' : 'Header'}
                         </button>
 
                         <button
+                            type="button"
+                            onClick={() => setIsPrintPreviewOpen(true)}
+                            className="px-3 py-1 text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800 border border-indigo-200 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+                            title="Open official paper print preview matching GLX physical paysheet"
+                        >
+                            <Eye size={13} className="text-indigo-600 dark:text-indigo-400" />
+                            Print Preview
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={handleDownloadOfficialPdf}
-                            className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-lg shadow-xs flex items-center gap-1.5 transition"
+                            className="px-2.5 py-1 text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer"
                         >
-                            <Download size={14} className="text-slate-600" />
-                            Download PDF
+                            <Download size={13} className="text-slate-600" />
+                            PDF
                         </button>
 
                         <button
+                            type="button"
                             onClick={handlePrint}
-                            className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 text-slate-800 rounded-lg shadow-xs hover:bg-slate-50 flex items-center gap-1.5 transition"
+                            className="px-3 py-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer"
                         >
-                            <Printer size={14} className="text-slate-600" />
-                            Print Sheet
+                            <Printer size={13} />
+                            Print
                         </button>
 
                         <button
                             onClick={() => refetch()}
                             disabled={Boolean(isFetching)}
-                            className="p-1.5 text-xs bg-white border border-slate-300 rounded-lg shadow-xs hover:bg-slate-50 text-slate-700 transition"
+                            className="p-1 text-xs bg-white border border-slate-300 rounded-lg shadow-xs hover:bg-slate-50 text-slate-700 transition cursor-pointer"
                             title="Reload sheet"
                         >
-                            <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
+                            <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* SPREADSHEET PAGE CANVAS (Matches Reference Design on Paper & Pure White in Print) */}
-            <div ref={sheetPrintRef} className="sheet-print-container max-w-[960px] mx-auto bg-white border border-slate-300 rounded-xl p-4 sm:p-8 shadow-xl print:shadow-none print:border-0 print:p-0 print:rounded-none">
+            {/* SPREADSHEET PAGE CANVAS (Interactive on-screen spreadsheet - Fills Full Screen Width) */}
+            <div ref={sheetPrintRef} className="sheet-print-container w-full bg-white border border-slate-200/90 rounded-xl p-3 sm:p-4 shadow-xs print:hidden">
                 
                 {/* Optional Company Letterhead Banner (Print Only) */}
                 {!hideHeaderForLetterhead && (
@@ -1475,249 +1794,230 @@ export default function EmployeePaymentRecordSheetPage() {
                     </div>
                 </div>
 
-                {/* 1. Header Box (Screen Only) */}
-                <div className="border border-black py-1 px-4 text-center font-bold text-gray-950 tracking-wider text-sm uppercase bg-white mb-3 print:hidden">
-                    EMPLOYEE PAYMENT RECORD SHEET
-                </div>
-
-                {/* 2. Top Header Metadata Grid — STRICT 2-COLUMN PARALLEL GRID (Screen Only) */}
-                <div 
-                    className="header-two-columns mb-3 text-[12px] print:hidden"
-                    style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: '24px', rowGap: '4px' }}
-                >
-                    {/* Left Column */}
-                    <div className="space-y-1">
-                        {/* NAME */}
-                        <div className="flex items-center">
-                            <span className="w-36 font-bold text-black uppercase text-right pr-2">NAME</span>
-                            <div className="flex-1 bg-[#BAC8E8] border border-black p-0.5 min-h-[24px] flex items-center relative">
-                                <EmployeeSearchCombobox
-                                    employees={employees}
-                                    selectedEmployeeId={selectedEmployeeId}
-                                    onSelectEmployee={(empId) => {
-                                        setSelectedEmployeeId(empId);
-                                        setCustomHourlyRate(null);
-                                        setSearchParams({ employeeId: empId, startDate, endDate });
-                                    }}
-                                    employeeFullName={employeeFullName}
-                                />
-                            </div>
-                        </div>
-
-                        {/* SALARY PER HOURS */}
-                        <div className="flex items-center">
-                            <span className="w-36 font-bold text-black uppercase text-right pr-2">SALARY PER HOURS</span>
-                            <div className="w-24 bg-[#BAC8E8] border border-black px-1 py-0.5 text-center min-h-[24px] flex items-center justify-center">
-                                <input
-                                    type="number"
-                                    value={effectiveHourlyRate}
-                                    onChange={(e) => handleHourlyRateChange(e.target.value)}
-                                    className="w-full bg-transparent text-center font-bold text-black focus:bg-white focus:outline-none print-hide-input"
-                                    placeholder="260"
-                                />
-                                <span className="hidden print:block font-bold text-black font-mono">
-                                    {effectiveHourlyRate}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* ON TIME */}
-                        <div className="flex items-center">
-                            <span className="w-36 font-bold text-black uppercase text-right pr-2">ON TIME</span>
-                            <div className="w-44 bg-[#D9D9D9] border border-black px-2 py-0.5 font-bold text-black text-center min-h-[24px] flex items-center justify-center">
-                                <input
-                                    type="time"
-                                    value={onTime}
-                                    onChange={(e) => setOnTime(e.target.value)}
-                                    className="bg-transparent w-full text-center font-bold focus:bg-white focus:outline-none print-hide-input text-xs cursor-pointer"
-                                />
-                                <span className="hidden print:block font-bold text-black font-mono">
-                                    {onTime}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* DATE FROM */}
-                        <div className="flex items-center">
-                            <span className="w-36 font-bold text-black uppercase text-right pr-2">DATE FROM</span>
-                            <div className="w-44 bg-[#D9D9D9] border border-black px-1.5 py-0.5 font-bold text-black text-center min-h-[24px] flex items-center justify-center">
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => {
-                                        setStartDate(e.target.value);
-                                        setSearchParams({ employeeId: selectedEmployeeId, startDate: e.target.value, endDate });
-                                    }}
-                                    className="bg-transparent w-full text-center focus:outline-none cursor-pointer print-hide-input"
-                                />
-                                <span className="hidden print:block font-bold text-black font-mono">
-                                    {startDate}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Space before Totals */}
-                        <div className="pt-2 space-y-1">
-                            {/* TOTAL LEAVE */}
-                            <div className="flex items-center">
-                                <span className="w-36 font-bold text-black uppercase text-right pr-2">TOTAL LEAVE</span>
-                                <div className="w-24 bg-[#BAC8E8] border border-black px-2 py-0.5 font-bold text-black text-center font-mono">
-                                    {dynamicTotals.totalLeave}
+                {/* Screen Only: Ultra-Modern Executive Parameters Deck */}
+                <div className="print:hidden space-y-2 mb-2.5">
+                    {/* 1. Employee Selection & Status Card (Clean Modern Light Surface) */}
+                    <div className="bg-white border border-slate-200/90 rounded-xl p-2 sm:p-2.5 shadow-2xs text-slate-900">
+                        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
+                            {/* Employee Profile & Autocomplete */}
+                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center font-black text-xs shadow-2xs shrink-0">
+                                    {employeeFullName ? employeeFullName.slice(0, 2).toUpperCase() : 'EMP'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                        <span className="text-[9px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.2 rounded-full">
+                                            Active Employee Record
+                                        </span>
+                                        {currentEmployee.payrollNumber && (
+                                            <span className="text-[9px] font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.2 rounded-full border border-slate-200">
+                                                #{currentEmployee.payrollNumber}
+                                            </span>
+                                        )}
+                                        {currentEmployee.designationId?.title && (
+                                            <span className="text-[9px] text-slate-500 font-semibold truncate">
+                                                · {currentEmployee.designationId.title}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {/* Modern Clean Combobox Search */}
+                                    <div className="bg-slate-50 hover:bg-slate-100/70 focus-within:bg-white border border-slate-200 focus-within:border-indigo-500 rounded-lg px-2 py-1 transition">
+                                        <EmployeeSearchCombobox
+                                            employees={employees}
+                                            selectedEmployeeId={selectedEmployeeId}
+                                            onSelectEmployee={(empId) => {
+                                                setSelectedEmployeeId(empId);
+                                                setCustomHourlyRate(null);
+                                                setSearchParams({ employeeId: empId, startDate, endDate });
+                                            }}
+                                            employeeFullName={employeeFullName}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* TOTAL DAYS */}
-                            <div className="flex items-center">
-                                <span className="w-36 font-bold text-black uppercase text-right pr-2">TOTAL DAYS</span>
-                                <div className="w-24 bg-[#BAC8E8] border border-black px-2 py-0.5 font-bold text-black text-center font-mono">
-                                    {dynamicTotals.totalDays}
+                            {/* Shift Rate Pill & Actions */}
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                <div className="bg-slate-50 border border-slate-200/90 rounded-lg px-3 py-1 text-center min-w-[110px]">
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block">Wage Rate / Hr</span>
+                                    <div className="flex items-center justify-center gap-1">
+                                        <span className="text-[11px] text-emerald-600 font-bold">Rs.</span>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={effectiveHourlyRate}
+                                            onChange={(e) => handleHourlyRateChange(e.target.value)}
+                                            onFocus={handleCellSelectAll}
+                                            className="bg-transparent text-slate-900 font-bold font-mono text-sm w-12 text-center outline-none focus:bg-white rounded border border-transparent focus:border-slate-300"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* TOTAL HOURS */}
-                            <div className="flex items-center">
-                                <span className="w-36 font-bold text-black uppercase text-right pr-2">TOTAL HOURS</span>
-                                <div className="w-24 bg-[#BAC8E8] border border-black px-2 py-0.5 font-bold text-black text-center font-mono">
-                                    {dynamicTotals.totalHours}
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleSave}
+                                    disabled={saveMutation.isPending}
+                                    className="px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                >
+                                    <Save size={14} className={saveMutation.isPending ? 'animate-spin' : ''} />
+                                    {saveMutation.isPending ? 'Saving...' : 'Save Sheet'}
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Right Column */}
-                    <div className="space-y-1">
-                        {/* Row 1: Payroll No + EPF/ETF Checkbox */}
-                        <div className="flex items-center justify-between h-6 pr-2">
-                            {/* INCLUDE EPF/ETF TICK CHECKBOX */}
-                            <label className="flex items-center gap-1.5 cursor-pointer select-none text-[11px] font-bold text-slate-800 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded print-hide-input hover:bg-slate-200 transition">
-                                <input
-                                    type="checkbox"
-                                    checked={includeEpfEtf}
-                                    onChange={(e) => setIncludeEpfEtf(e.target.checked)}
-                                    className="w-3.5 h-3.5 text-indigo-600 rounded cursor-pointer"
-                                />
-                                <span>Include EPF / ETF ({epfEmployeeRate}%)</span>
-                            </label>
-
-                            <div className="flex items-center ml-auto">
-                                <span className="font-bold text-black mr-2">Payroll No</span>
-                                <span className="font-bold text-black font-mono">{currentEmployee.payrollNumber || '000-00-0293'}</span>
-                            </div>
-                        </div>
-
-                        {/* Row 2: Spacer to align horizontally with SALARY PER HOURS */}
-                        <div className="h-6"></div>
-
-                        {/* Row 3: OFF TIME + SAVE Button */}
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                                <span className="w-28 font-bold text-black uppercase text-right pr-2">OFF TIME</span>
-                                <div className="w-44 bg-[#D9D9D9] border border-black px-2 py-0.5 font-bold text-black text-center min-h-[24px] flex items-center justify-center">
+                    {/* 2. Shift & Date Range Control Deck (Clean 3-tile grid) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        {/* Tile A: Shift Hours */}
+                        <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5">
+                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">
+                                Shift Working Hours
+                            </span>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">ON TIME (In)</label>
                                     <input
-                                        type="time"
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={onTime}
+                                        placeholder="08:00"
+                                        maxLength={5}
+                                        onChange={(e) => setOnTime(e.target.value.replace(/[^0-9:]/g, '').slice(0, 5))}
+                                        onBlur={(e) => setOnTime(normalizeTimeString(e.target.value, '08:00'))}
+                                        onFocus={handleCellSelectAll}
+                                        className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 dark:text-white text-center outline-none focus:ring-1 focus:ring-indigo-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">OFF TIME (Out)</label>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
                                         value={offTime}
-                                        onChange={(e) => setOffTime(e.target.value)}
-                                        className="bg-transparent w-full text-center font-bold focus:bg-white focus:outline-none print-hide-input text-xs cursor-pointer"
+                                        placeholder="17:00"
+                                        maxLength={5}
+                                        onChange={(e) => setOffTime(e.target.value.replace(/[^0-9:]/g, '').slice(0, 5))}
+                                        onBlur={(e) => setOffTime(normalizeTimeString(e.target.value, '17:00'))}
+                                        onFocus={handleCellSelectAll}
+                                        className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 dark:text-white text-center outline-none focus:ring-1 focus:ring-indigo-500"
                                     />
-                                    <span className="hidden print:block font-bold text-black font-mono">
-                                        {offTime}
-                                    </span>
                                 </div>
-                            </div>
-
-                            {/* SAVE BUTTON */}
-                            <button
-                                onClick={handleSave}
-                                disabled={saveMutation.isPending}
-                                className="bg-[#EFEFEF] hover:bg-[#E0E0E0] active:bg-[#CCCCCC] border border-black px-5 py-0.5 font-bold text-black uppercase tracking-wider rounded-none shadow-xs text-xs cursor-pointer ml-2 print:hidden"
-                            >
-                                {saveMutation.isPending ? 'SAVING...' : 'SAVE'}
-                            </button>
-                        </div>
-
-                        {/* Row 4: DATE TO */}
-                        <div className="flex items-center">
-                            <span className="w-28 font-bold text-black uppercase text-right pr-2">DATE TO</span>
-                            <div className="w-44 bg-[#D9D9D9] border border-black px-1.5 py-0.5 font-bold text-black text-center min-h-[24px] flex items-center justify-center">
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => {
-                                        setEndDate(e.target.value);
-                                        setSearchParams({ employeeId: selectedEmployeeId, startDate, endDate: e.target.value });
-                                    }}
-                                    className="bg-transparent w-full text-center focus:outline-none cursor-pointer print-hide-input"
-                                />
-                                <span className="hidden print:block font-bold text-black font-mono">
-                                    {endDate}
-                                </span>
                             </div>
                         </div>
 
-                        {/* Space before Totals */}
-                        <div className="pt-2 space-y-1">
-                            {/* TOTAL SALARY */}
-                            <div className="flex items-center">
-                                <span className="w-28 font-bold text-black uppercase text-right pr-2">TOTAL SALARY</span>
-                                <div className="w-44 bg-[#BAC8E8] border border-black px-2 py-0.5 font-bold text-black text-right font-mono">
-                                    {Number(dynamicTotals.totalSalary).toLocaleString('en-US', { minimumFractionDigits: 0 })}
-                                </div>
-                            </div>
-
-                            {/* TOTAL ADVANCE */}
-                            <div className="flex items-center">
-                                <div className="w-28 flex items-center justify-end gap-1 pr-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsAdvanceModalOpen(true)}
-                                        className="print:hidden text-emerald-700 hover:text-emerald-900 bg-emerald-100 hover:bg-emerald-200 p-0.5 rounded text-[10px] font-bold flex items-center transition"
-                                        title="Record Salary Advance"
-                                    >
-                                        <Plus size={11} />
-                                    </button>
-                                    <span className="font-bold text-black uppercase">TOTAL ADVANCE</span>
-                                </div>
-                                <div className="w-44 bg-[#BAC8E8] border border-black px-1 py-0.5 min-h-[24px] flex items-center justify-end">
+                        {/* Tile B: Pay Period Date Range */}
+                        <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5">
+                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">
+                                Pay Period Range
+                            </span>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">DATE FROM</label>
                                     <input
-                                        type="number"
-                                        value={dynamicTotals.totalAdvance === 0 ? '' : dynamicTotals.totalAdvance}
-                                        placeholder="0"
-                                        onChange={(e) => handleHeaderAdvanceChange(e.target.value)}
-                                        className="w-full bg-transparent text-right font-bold text-black font-mono focus:bg-white focus:outline-none print-hide-input"
-                                        title="Type monthly total advance or enter daily advances in the table below"
+                                        type="date"
+                                        value={startDate}
+                                        onChange={(e) => {
+                                            setStartDate(e.target.value);
+                                            setSearchParams({ employeeId: selectedEmployeeId, startDate: e.target.value, endDate });
+                                        }}
+                                        className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                                     />
-                                    <span className="hidden print:block font-bold text-black font-mono text-right">
-                                        {dynamicTotals.totalAdvance > 0 ? dynamicTotals.totalAdvance.toLocaleString() : '0'}
-                                    </span>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">DATE TO</label>
+                                    <input
+                                        type="date"
+                                        value={endDate}
+                                        onChange={(e) => {
+                                            setEndDate(e.target.value);
+                                            setSearchParams({ employeeId: selectedEmployeeId, startDate, endDate: e.target.value });
+                                        }}
+                                        className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                                    />
                                 </div>
                             </div>
+                        </div>
 
-                            {/* CONDITIONAL EPF DEDUCTION LINE */}
-                            {includeEpfEtf && (
-                                <div className="flex items-center">
-                                    <span className="w-28 font-bold text-rose-800 uppercase text-right pr-2">
-                                        EPF ({epfEmployeeRate}%)
-                                    </span>
-                                    <div className="w-44 bg-[#BAC8E8] border border-black px-2 py-0.5 font-bold text-rose-800 text-right font-mono">
-                                        -{Number(dynamicTotals.epfEmployeeDeduction).toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                        {/* Tile C: Statutory & Advance Control */}
+                        <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 flex flex-col justify-between">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                    Statutory & Advance
+                                </span>
+                                <label className="flex items-center gap-1 cursor-pointer text-[10px] font-bold text-indigo-700 dark:text-indigo-400">
+                                    <input
+                                        type="checkbox"
+                                        checked={includeEpfEtf}
+                                        onChange={(e) => setIncludeEpfEtf(e.target.checked)}
+                                        className="w-3 h-3 accent-indigo-600 rounded cursor-pointer"
+                                    />
+                                    <span>EPF / ETF ({epfEmployeeRate}%)</span>
+                                </label>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-1.5 mt-1.5">
+                                <div className="flex-1">
+                                    <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block">Total Month Advance</span>
+                                    <div className="relative">
+                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">Rs.</span>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={dynamicTotals.totalAdvance === 0 ? '' : dynamicTotals.totalAdvance}
+                                            placeholder="0"
+                                            onChange={(e) => handleHeaderAdvanceChange(e.target.value)}
+                                            onFocus={handleCellSelectAll}
+                                            className="w-full pl-6 pr-2 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-indigo-500 text-right"
+                                        />
                                     </div>
                                 </div>
-                            )}
-
-                            {/* NET SALARY */}
-                            <div className="flex items-center">
-                                <span className="w-28 font-bold text-black uppercase text-right pr-2">NET SALARY</span>
-                                <div className="w-44 bg-[#BAC8E8] border border-black px-2 py-0.5 font-bold text-black text-right font-mono text-sm sm:text-base">
-                                    {Number(dynamicTotals.netSalary).toLocaleString('en-US', { minimumFractionDigits: 0 })}
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAdvanceModalOpen(true)}
+                                    className="mt-3.5 p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 transition cursor-pointer"
+                                    title="Record advance payment"
+                                >
+                                    <Plus size={14} />
+                                </button>
                             </div>
+                        </div>
+                    </div>
 
-                            {/* Statutory Employer Contributions Callout */}
-                            {includeEpfEtf && (
-                                <div className="text-[10px] text-gray-600 text-right pr-1 pt-0.5 font-medium">
-                                    Employer EPF ({epfEmployerRate}%): Rs. {Number(dynamicTotals.epfEmployerContribution).toLocaleString()} | ETF ({etfEmployerRate}%): Rs. {Number(dynamicTotals.etfEmployerContribution).toLocaleString()}
-                                </div>
-                            )}
+                    {/* 3. Live Financial KPI Metric Strip */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                        <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Days Worked</span>
+                            <span className="text-sm sm:text-base font-black font-mono text-slate-900 dark:text-white">{dynamicTotals.totalDays}</span>
+                            <span className="text-[8.5px] text-slate-400 block">({dynamicTotals.totalLeave} Off)</span>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Hours</span>
+                            <span className="text-sm sm:text-base font-black font-mono text-indigo-600 dark:text-indigo-400">{dynamicTotals.totalHours}</span>
+                            <span className="text-[8.5px] text-slate-400 block">worked</span>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Gross Earnings</span>
+                            <span className="text-sm sm:text-base font-black font-mono text-slate-900 dark:text-white">Rs. {Math.round(dynamicTotals.totalSalary).toLocaleString()}</span>
+                            <span className="text-[8.5px] text-slate-400 block">earned</span>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Advance Taken</span>
+                            <span className="text-sm sm:text-base font-black font-mono text-amber-600 dark:text-amber-400">Rs. {Math.round(dynamicTotals.totalAdvance).toLocaleString()}</span>
+                            <span className="text-[8.5px] text-slate-400 block">deducted</span>
+                        </div>
+                        {includeEpfEtf && (
+                            <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
+                                <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider block">EPF ({epfEmployeeRate}%)</span>
+                                <span className="text-sm sm:text-base font-black font-mono text-rose-600">-Rs. {Math.round(dynamicTotals.epfEmployeeDeduction).toLocaleString()}</span>
+                                <span className="text-[8.5px] text-slate-400 block">statutory</span>
+                            </div>
+                        )}
+                        <div className={`bg-gradient-to-br from-emerald-500/10 to-teal-500/10 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-300 dark:border-emerald-800 p-2 rounded-xl text-center ${includeEpfEtf ? '' : 'col-span-2 sm:col-span-1'}`}>
+                            <span className="text-[9px] font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block">Net Payable</span>
+                            <span className="text-base sm:text-lg font-black font-mono text-emerald-700 dark:text-emerald-400">
+                                Rs. {Math.round(dynamicTotals.netSalary).toLocaleString()}
+                            </span>
+                            <span className="text-[8.5px] text-emerald-700/80 font-bold block">Take home</span>
                         </div>
                     </div>
                 </div>
@@ -1729,42 +2029,42 @@ export default function EmployeePaymentRecordSheetPage() {
                         <p className="font-semibold text-xs">Loading sheet rows...</p>
                     </div>
                 ) : (
-                    <div className="no-sticky-height employee-payment-sheet-print print-container overflow-x-auto border border-black mb-3 print:overflow-visible print:border-none print:m-0 print:p-0">
-                        <table className="no-sticky-height employee-payment-sheet-print w-full border-collapse text-[11px] font-sans">
-                            <thead>
-                                <tr className="bg-white border-b border-black font-bold text-black text-center">
-                                    <th className="border-r border-black py-1 px-1 w-10">
+                    <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-270px)] border border-slate-200 rounded-2xl shadow-xs mb-3 relative">
+                        <table className="w-full border-collapse text-xs font-sans">
+                            <thead className="sticky top-0 z-20 bg-slate-100 shadow-xs border-b border-slate-300 select-none">
+                                <tr className="border-b border-slate-300 font-black text-slate-800 text-center text-[11px] uppercase tracking-wider">
+                                    <th className="sticky top-0 z-20 bg-slate-100 border-r border-slate-200 py-2.5 px-1.5 w-12 text-slate-800">
                                         <button
                                             type="button"
                                             onClick={handleFillAllDays}
-                                            className="text-[9px] text-blue-700 underline font-bold print-hide-input"
+                                            className="text-[10px] text-indigo-600 underline font-bold print-hide-input hover:text-indigo-800 cursor-pointer"
                                             title="Click to check all days & apply policies"
                                         >
                                             TICK
                                         </button>
                                         <span className="hidden print:inline font-bold text-black">TICK</span>
                                     </th>
-                                    <th className="border-r border-black py-1 px-2 w-16">DATE</th>
-                                    <th className="border-r border-black py-1 px-2 w-28">DAY</th>
-                                    <th className="border-r border-black py-1 px-1 w-24">IN</th>
-                                    <th className="border-r border-black py-1 px-1 w-24">OUT</th>
-                                    <th className="border-r border-black py-1 px-2 w-16">HOURS</th>
-                                    <th className="border-r border-black py-1 px-2 w-24">DAY SALARY</th>
-                                    <th className="border-r border-black py-1 px-2 w-20">ADVANCE</th>
-                                    <th className="border-r border-black py-1 px-2 w-20">DEDUCTION</th>
-                                    <th className="py-1 px-2 text-left w-32">Reason</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 border-r border-slate-200 py-2.5 px-2 w-16 text-slate-800">DATE</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 border-r border-slate-200 py-2.5 px-2 w-28 text-slate-800">DAY</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 border-r border-slate-200 py-2.5 px-1 w-24 text-slate-800">IN</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 border-r border-slate-200 py-2.5 px-1 w-24 text-slate-800">OUT</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 border-r border-slate-200 py-2.5 px-2 w-20 text-slate-800">HOURS</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 border-r border-slate-200 py-2.5 px-2 w-28 text-right text-slate-800">DAY SALARY</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 border-r border-slate-200 py-2.5 px-2 w-24 text-right text-slate-800">ADVANCE</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 border-r border-slate-200 py-2.5 px-2 w-24 text-right text-slate-800">DEDUCTION</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 py-2.5 px-2 text-left w-36 text-slate-800">REASON</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {rows.map((row, idx) => (
                                     <tr 
                                         key={row.date || idx} 
-                                        className={`border-b border-black transition-colors ${
-                                            !row.isTicked ? 'opacity-80' : ''
+                                        className={`border-b border-slate-100 dark:border-slate-800/80 print:border-black transition-colors ${
+                                            !row.isTicked ? 'opacity-80' : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/30'
                                         }`}
                                     >
-                                        {/* 1. TICK (Light Yellow) */}
-                                        <td className="border-r border-black bg-[#FFF2CC] text-center p-0.5">
+                                        {/* 1. TICK (Checkbox) */}
+                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-amber-50/40 dark:bg-amber-950/20 print:bg-[#FFF2CC] text-center p-1">
                                             <input
                                                 type="checkbox"
                                                 checked={Boolean(row.isTicked)}
@@ -1773,112 +2073,151 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 data-row={idx}
                                                 data-col={0}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 0)}
-                                                className="w-3.5 h-3.5 cursor-pointer accent-blue-600 print-hide-input focus:ring-2 focus:ring-blue-500 rounded"
+                                                className="w-4 h-4 cursor-pointer accent-emerald-600 print-hide-input focus:ring-2 focus:ring-emerald-500 rounded transition"
                                             />
                                             <span className="hidden print:inline font-bold text-black text-xs">
                                                 {row.isTicked ? '✓' : ''}
                                             </span>
                                         </td>
 
-                                        {/* 2. DATE (Light Green, or Red for Sunday) */}
-                                        <td className={`border-r border-black px-1 py-0.5 text-center font-bold ${
-                                            row.day === 'SUNDAY' ? 'bg-[#FCE8E6] text-[#C00000]' : 'bg-[#E2EFDA] text-black font-medium'
+                                        {/* 2. DATE */}
+                                        <td className={`border-r border-slate-200 dark:border-slate-800 print:border-black px-1.5 py-1 text-center font-bold font-mono text-xs ${
+                                            row.day === 'SUNDAY' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 print:bg-[#FCE8E6] print:text-[#C00000]' : 'bg-slate-50/70 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 print:bg-[#E2EFDA] print:text-black font-medium'
                                         }`}>
                                             {row.date ? row.date.substring(5) : ''}
                                         </td>
 
-                                        {/* 3. DAY (Light Green, or Red for Sunday) */}
-                                        <td className={`border-r border-black px-2 py-0.5 font-bold uppercase ${
-                                            row.day === 'SUNDAY' ? 'bg-[#FCE8E6] text-[#C00000]' : 'bg-[#E2EFDA] text-black'
+                                        {/* 3. DAY */}
+                                        <td className={`border-r border-slate-200 dark:border-slate-800 print:border-black px-2.5 py-1 font-bold uppercase text-[10.5px] ${
+                                            row.day === 'SUNDAY' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 print:bg-[#FCE8E6] print:text-[#C00000]' : 'bg-slate-50/70 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 print:bg-[#E2EFDA] print:text-black'
                                         }`}>
                                             {row.day}
                                         </td>
 
-                                        {/* 4. IN TIME (Light Yellow) — STRICT TIME ONLY */}
-                                        <td className="border-r border-black bg-[#FFF2CC] p-0.5 text-center font-mono">
+                                        {/* 4. IN TIME */}
+                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-emerald-50/30 dark:bg-emerald-950/20 print:bg-[#FFF2CC] p-1 text-center font-mono">
                                             <input
-                                                type="time"
+                                                type="text"
+                                                inputMode="numeric"
                                                 value={row.isTicked ? (row.inTime || onTime) : ''}
                                                 disabled={!row.isTicked}
-                                                onChange={(e) => handleRowChange(idx, 'inTime', e.target.value)}
+                                                placeholder="08:00"
+                                                maxLength={5}
+                                                onChange={(e) => {
+                                                    const clean = e.target.value.replace(/[^0-9:]/g, '').slice(0, 5);
+                                                    handleRowChange(idx, 'inTime', clean);
+                                                }}
+                                                onBlur={(e) => {
+                                                    if (!row.isTicked) return;
+                                                    const formatted = normalizeTimeString(e.target.value, onTime);
+                                                    handleRowChange(idx, 'inTime', formatted);
+                                                }}
+                                                onFocus={handleCellSelectAll}
+                                                onMouseUp={handleCellSelectAll}
+                                                onClick={handleCellSelectAll}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={1}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 1)}
-                                                className="w-full bg-transparent text-center focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none p-0 text-[11px] font-semibold text-black print-hide-input cursor-pointer disabled:cursor-not-allowed"
+                                                className="w-full bg-transparent text-center focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-emerald-500 focus:outline-none px-1 py-0.5 rounded text-xs font-semibold text-slate-900 dark:text-white print:text-black print-hide-input cursor-text disabled:cursor-not-allowed"
                                             />
                                             <span className="hidden print:inline font-mono font-semibold text-black">
                                                 {row.isTicked ? (row.inTime || onTime) : ''}
                                             </span>
                                         </td>
 
-                                        {/* 5. OUT TIME (Light Yellow) — STRICT TIME ONLY */}
-                                        <td className="border-r border-black bg-[#FFF2CC] p-0.5 text-center font-mono">
+                                        {/* 5. OUT TIME */}
+                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-amber-50/30 dark:bg-amber-950/20 print:bg-[#FFF2CC] p-1 text-center font-mono">
                                             <input
-                                                type="time"
+                                                type="text"
+                                                inputMode="numeric"
                                                 value={row.isTicked ? (row.outTime || offTime) : ''}
                                                 disabled={!row.isTicked}
-                                                onChange={(e) => handleRowChange(idx, 'outTime', e.target.value)}
+                                                placeholder="17:00"
+                                                maxLength={5}
+                                                onChange={(e) => {
+                                                    const clean = e.target.value.replace(/[^0-9:]/g, '').slice(0, 5);
+                                                    handleRowChange(idx, 'outTime', clean);
+                                                }}
+                                                onBlur={(e) => {
+                                                    if (!row.isTicked) return;
+                                                    const formatted = normalizeTimeString(e.target.value, offTime);
+                                                    handleRowChange(idx, 'outTime', formatted);
+                                                }}
+                                                onFocus={handleCellSelectAll}
+                                                onMouseUp={handleCellSelectAll}
+                                                onClick={handleCellSelectAll}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={2}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 2)}
-                                                className="w-full bg-transparent text-center focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none p-0 text-[11px] font-semibold text-black print-hide-input cursor-pointer disabled:cursor-not-allowed"
+                                                className="w-full bg-transparent text-center focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none px-1 py-0.5 rounded text-xs font-semibold text-slate-900 dark:text-white print:text-black print-hide-input cursor-text disabled:cursor-not-allowed"
                                             />
                                             <span className="hidden print:inline font-mono font-semibold text-black">
                                                 {row.isTicked ? (row.outTime || offTime) : ''}
                                             </span>
                                         </td>
 
-                                        {/* 6. HOURS (Light Green) */}
-                                        <td className="border-r border-black bg-[#E2EFDA] p-0.5 text-center font-mono font-bold text-black">
+                                        {/* 6. HOURS */}
+                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-indigo-50/30 dark:bg-indigo-950/20 print:bg-[#E2EFDA] p-1 text-center font-mono font-black text-indigo-700 dark:text-indigo-300 print:text-black">
                                             <input
-                                                type="number"
-                                                step="0.5"
+                                                type="text"
+                                                inputMode="decimal"
                                                 value={row.isTicked && row.hours > 0 ? row.hours : ''}
                                                 placeholder=""
                                                 onChange={(e) => handleRowChange(idx, 'hours', e.target.value)}
+                                                onFocus={handleCellSelectAll}
+                                                onMouseUp={handleCellSelectAll}
+                                                onClick={handleCellSelectAll}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={3}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 3)}
-                                                className="w-full bg-transparent text-center font-bold text-black focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none p-0 text-[11px] print-hide-input"
+                                                className="w-full bg-transparent text-center font-black text-indigo-700 dark:text-indigo-300 print:text-black focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-indigo-500 focus:outline-none p-0 text-xs print-hide-input"
                                             />
                                             <span className="hidden print:inline font-mono font-bold text-black">
                                                 {row.isTicked && row.hours > 0 ? row.hours : ''}
                                             </span>
                                         </td>
 
-                                        {/* 7. DAY SALARY (Light Green) */}
-                                        <td className="border-r border-black bg-[#E2EFDA] p-0.5 text-right font-mono font-bold text-black">
+                                        {/* 7. DAY SALARY */}
+                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-emerald-50/30 dark:bg-emerald-950/20 print:bg-[#E2EFDA] p-1 text-right font-mono font-bold text-emerald-700 dark:text-emerald-300 print:text-black">
                                             <input
-                                                type="number"
+                                                type="text"
+                                                inputMode="numeric"
                                                 value={row.isTicked && row.daySalary > 0 ? row.daySalary : ''}
                                                 placeholder=""
                                                 onChange={(e) => handleRowChange(idx, 'daySalary', e.target.value)}
+                                                onFocus={handleCellSelectAll}
+                                                onMouseUp={handleCellSelectAll}
+                                                onClick={handleCellSelectAll}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={4}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 4)}
-                                                className="w-full bg-transparent text-right font-bold text-black focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none p-0 text-[11px] print-hide-input"
+                                                className="w-full bg-transparent text-right font-bold text-emerald-700 dark:text-emerald-300 print:text-black focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-emerald-500 focus:outline-none p-0 text-xs print-hide-input"
                                             />
                                             <span className="hidden print:inline font-mono font-bold text-black">
                                                 {row.isTicked && row.daySalary > 0 ? Number(row.daySalary).toLocaleString() : ''}
                                             </span>
                                         </td>
 
-                                        {/* 8. ADVANCE (Light Yellow) */}
-                                        <td className="border-r border-black bg-[#FFF2CC] p-0.5 text-right font-mono">
+                                        {/* 8. ADVANCE */}
+                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-white dark:bg-slate-900 print:bg-[#FFF2CC] p-1 text-right font-mono">
                                             <input
-                                                type="number"
+                                                type="text"
+                                                inputMode="numeric"
                                                 value={row.advance > 0 ? row.advance : ''}
                                                 placeholder=""
                                                 onChange={(e) => handleRowChange(idx, 'advance', e.target.value)}
+                                                onFocus={handleCellSelectAll}
+                                                onMouseUp={handleCellSelectAll}
+                                                onClick={handleCellSelectAll}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={5}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 5)}
-                                                className="w-full bg-transparent text-right focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none p-0 text-[11px] font-bold text-black print-hide-input"
+                                                className="w-full bg-transparent text-right focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none p-0 text-xs font-bold text-amber-700 dark:text-amber-400 print:text-black print-hide-input"
                                                 title="Type advance for this date"
                                             />
                                             <span className="hidden print:inline font-mono font-bold text-black">
@@ -1886,35 +2225,62 @@ export default function EmployeePaymentRecordSheetPage() {
                                             </span>
                                         </td>
 
-                                        {/* 9. DEDUCTION (Light Green) */}
-                                        <td className="border-r border-black bg-[#E2EFDA] p-0.5 text-right font-mono font-bold text-black">
+                                        {/* 9. DEDUCTION */}
+                                        <td className={`border-r border-slate-200 dark:border-slate-800 print:border-black print:bg-[#E2EFDA] p-1 text-right font-mono font-bold ${
+                                            Number(row.deduction) < 0 || String(row.deduction).startsWith('-')
+                                                ? 'bg-rose-50/60 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300'
+                                                : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 print:text-black'
+                                        }`}>
                                             <input
-                                                type="number"
-                                                value={row.deduction}
+                                                type="text"
+                                                inputMode="text"
+                                                value={row.deduction !== undefined && row.deduction !== null && row.deduction !== 0 ? row.deduction : ''}
+                                                placeholder=""
                                                 onChange={(e) => handleRowChange(idx, 'deduction', e.target.value)}
+                                                onFocus={handleCellSelectAll}
+                                                onMouseUp={handleCellSelectAll}
+                                                onClick={handleCellSelectAll}
+                                                onBlur={(e) => {
+                                                    let val = String(e.target.value).trim();
+                                                    if (val === '' || val === '-') {
+                                                        handleRowChange(idx, 'deduction', 0);
+                                                    } else {
+                                                        const num = Number(val);
+                                                        if (!isNaN(num)) {
+                                                            handleRowChange(idx, 'deduction', num > 0 ? -num : num);
+                                                        }
+                                                    }
+                                                }}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={6}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 6)}
-                                                className={`w-full bg-transparent text-right focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none p-0 text-[11px] print-hide-input ${row.deduction < 0 ? 'text-rose-700 font-bold' : ''}`}
+                                                className={`w-full bg-transparent text-right focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-rose-500 focus:outline-none p-0 text-xs font-bold print-hide-input ${
+                                                    Number(row.deduction) < 0 || String(row.deduction).startsWith('-')
+                                                        ? 'text-rose-700 dark:text-rose-300'
+                                                        : 'text-slate-800 dark:text-slate-200 print:text-black'
+                                                }`}
                                             />
                                             <span className={`hidden print:inline font-mono font-bold ${row.deduction < 0 ? 'text-black' : 'text-black'}`}>
                                                 {row.deduction !== 0 ? row.deduction : ''}
                                             </span>
                                         </td>
 
-                                        {/* 10. REASON (Light Green) */}
-                                        <td className="bg-[#E2EFDA] p-0.5">
+                                        {/* 10. REASON */}
+                                        <td className="bg-white dark:bg-slate-900 print:bg-[#E2EFDA] p-1">
                                             <input
                                                 type="text"
                                                 value={row.reason || ''}
                                                 placeholder=""
                                                 onChange={(e) => handleRowChange(idx, 'reason', e.target.value)}
+                                                onFocus={handleCellSelectAll}
+                                                onMouseUp={handleCellSelectAll}
+                                                onClick={handleCellSelectAll}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={7}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 7)}
-                                                className="w-full bg-transparent px-1 focus:bg-white focus:ring-1 focus:ring-blue-500 focus:outline-none text-[11px] font-semibold text-black print-hide-input"
+                                                className="w-full bg-transparent px-1.5 focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-medium text-slate-800 dark:text-slate-200 print:text-black print-hide-input"
                                             />
                                             <span className="hidden print:inline font-semibold text-black px-1">
                                                 {row.reason || ''}
@@ -1969,6 +2335,265 @@ export default function EmployeePaymentRecordSheetPage() {
                 </div>
             </div>
 
+            {/* DEDICATED OFFICIAL PRINT CONTAINER (Matching GLX Physical Paysheet - Rendered on physical print & used for iframe print) */}
+            <div ref={officialPrintRef} className="hidden print:block bg-white text-black font-sans w-full max-w-[800px] mx-auto p-4 print:p-0">
+                {/* Centered Brand Header */}
+                {!hideHeaderForLetterhead ? (
+                    <div className="text-center mb-3">
+                        <div className="flex justify-center mb-1">
+                            <img
+                                src="/logo-mono-white.png"
+                                alt="GLX Logo"
+                                className="h-12 w-auto object-contain mx-auto"
+                            />
+                        </div>
+                        <h2 className="text-xs font-bold uppercase tracking-wider text-black mt-1">
+                            EMPLOYEE PAYMENT SHEET
+                        </h2>
+                        <div className="border-b border-black w-full mt-2.5 mb-3"></div>
+                    </div>
+                ) : (
+                    <div className="text-center mb-3 pt-8">
+                        <h2 className="text-xs font-bold uppercase tracking-wider text-black">
+                            EMPLOYEE PAYMENT SHEET
+                        </h2>
+                        <div className="border-b border-black w-full mt-2.5 mb-3"></div>
+                    </div>
+                )}
+
+                {/* Metadata Section */}
+                <table className="w-full text-xs font-sans text-black mb-3 border-collapse">
+                    <tbody>
+                        <tr>
+                            <td className="w-36 font-bold py-0.5">Name</td>
+                            <td className="w-5 font-bold text-center py-0.5">:</td>
+                            <td className="font-bold py-0.5">{employeeFullName}</td>
+                            <td colSpan={3}></td>
+                        </tr>
+                        <tr>
+                            <td className="font-bold py-0.5">Salary Per Hour</td>
+                            <td className="font-bold text-center py-0.5">:</td>
+                            <td className="font-normal py-0.5">{formatPrintCurrency(effectiveHourlyRate)}</td>
+                            <td colSpan={3}></td>
+                        </tr>
+                        <tr>
+                            <td className="font-bold py-0.5">Date From</td>
+                            <td className="font-bold text-center py-0.5">:</td>
+                            <td className="font-normal py-0.5 w-40">{formatPrintDate(startDate)}</td>
+                            <td className="w-20 font-bold text-right py-0.5">Date To</td>
+                            <td className="w-5 font-bold text-center py-0.5">:</td>
+                            <td className="font-normal py-0.5">{formatPrintDate(endDate)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                {/* 6-Column Data Table */}
+                <table className="w-full text-xs font-sans border-collapse mb-0">
+                    <thead>
+                        <tr className="border-t border-b border-black text-[11px] font-bold text-black uppercase">
+                            <th className="py-1.5 px-2 text-left font-bold w-[17%]">Date</th>
+                            <th className="py-1.5 px-2 text-center font-bold w-[15%]">IN</th>
+                            <th className="py-1.5 px-2 text-center font-bold w-[15%]">OUT</th>
+                            <th className="py-1.5 px-2 text-center font-bold w-[15%]">HOURS</th>
+                            <th className="py-1.5 px-2 text-right font-bold w-[19%]">DAY SALARY</th>
+                            <th className="py-1.5 px-2 text-right font-bold w-[19%]">ADVANCE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {printableRows.map((r, i) => (
+                            <tr key={i} className="text-black">
+                                <td className="py-1 px-2 text-left">{formatPrintDate(r.date)}</td>
+                                <td className="py-1 px-2 text-center font-mono">{formatPrintTime(r.inTime || r.in)}</td>
+                                <td className="py-1 px-2 text-center font-mono">{formatPrintTime(r.outTime || r.out)}</td>
+                                <td className="py-1 px-2 text-center font-mono">{formatPrintDuration(r)}</td>
+                                <td className="py-1 px-2 text-right font-mono">{formatPrintCurrency(r.daySalary)}</td>
+                                <td className="py-1 px-2 text-right font-mono">{formatPrintCurrency(r.advance)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <div className="border-b border-black w-full mb-3"></div>
+
+                {/* Bottom Summary Section */}
+                <table className="w-64 ml-auto text-xs font-sans text-black border-collapse">
+                    <tbody>
+                        <tr>
+                            <td className="font-bold py-0.5">Total Salary</td>
+                            <td className="text-right py-0.5 font-mono">{formatPrintCurrency(dynamicTotals.totalSalary)}</td>
+                        </tr>
+                        <tr className="border-b border-black">
+                            <td className="font-bold py-0.5 pb-1">Total Advances</td>
+                            <td className="text-right py-0.5 pb-1 font-mono">{formatPrintCurrency(dynamicTotals.totalAdvance)}</td>
+                        </tr>
+                        {includeEpfEtf && dynamicTotals.epfEmployeeDeduction > 0 && (
+                            <tr className="border-b border-black">
+                                <td className="font-bold py-0.5 pb-1">EPF ({epfEmployeeRate}%)</td>
+                                <td className="text-right py-0.5 pb-1 font-mono">-{formatPrintCurrency(dynamicTotals.epfEmployeeDeduction)}</td>
+                            </tr>
+                        )}
+                        <tr className="border-b-4 border-double border-black">
+                            <td className="font-bold py-1 pt-1.5">Net Salary</td>
+                            <td className="font-bold text-right py-1 pt-1.5 font-mono">{formatPrintCurrency(dynamicTotals.netSalary)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {/* OFFICIAL PRINT PREVIEW MODAL */}
+            {isPrintPreviewOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
+                    <div className="bg-slate-100 dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-300 dark:border-slate-800 w-full max-w-4xl max-h-[96vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-5 py-3.5 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                                    <Eye size={18} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                                        Official Payment Sheet Print Preview
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                        Exact layout matching GLX Industries physical A4 paysheet
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadOfficialPdf}
+                                    className="px-3.5 py-1.5 text-xs font-bold bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-800 dark:text-white border border-slate-300 dark:border-slate-600 rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+                                >
+                                    <Download size={14} className="text-slate-600 dark:text-slate-300" />
+                                    Download PDF
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handlePrint}
+                                    className="px-4 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+                                >
+                                    <Printer size={14} />
+                                    Print Now
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPrintPreviewOpen(false)}
+                                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg transition ml-1 text-base font-bold cursor-pointer"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Scrollable Canvas */}
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-300/60 dark:bg-slate-950 flex justify-center">
+                            <div className="bg-white text-black shadow-2xl border border-slate-300 w-full max-w-[760px] p-8 sm:p-12 min-h-[950px] font-sans">
+                                {/* Centered Brand Header */}
+                                {!hideHeaderForLetterhead ? (
+                                    <div className="text-center mb-3">
+                                        <div className="flex justify-center mb-1">
+                                            <img
+                                                src="/logo-mono-white.png"
+                                                alt="GLX Logo"
+                                                className="h-12 w-auto object-contain mx-auto"
+                                            />
+                                        </div>
+                                        <h2 className="text-xs font-bold uppercase tracking-wider text-black mt-1">
+                                            EMPLOYEE PAYMENT SHEET
+                                        </h2>
+                                        <div className="border-b border-black w-full mt-2.5 mb-3"></div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center mb-3 pt-8">
+                                        <h2 className="text-xs font-bold uppercase tracking-wider text-black">
+                                            EMPLOYEE PAYMENT SHEET
+                                        </h2>
+                                        <div className="border-b border-black w-full mt-2.5 mb-3"></div>
+                                    </div>
+                                )}
+
+                                {/* Metadata Section */}
+                                <table className="w-full text-xs font-sans text-black mb-3 border-collapse">
+                                    <tbody>
+                                        <tr>
+                                            <td className="w-36 font-bold py-0.5">Name</td>
+                                            <td className="w-5 font-bold text-center py-0.5">:</td>
+                                            <td className="font-bold py-0.5">{employeeFullName}</td>
+                                            <td colSpan={3}></td>
+                                        </tr>
+                                        <tr>
+                                            <td className="font-bold py-0.5">Salary Per Hour</td>
+                                            <td className="font-bold text-center py-0.5">:</td>
+                                            <td className="font-normal py-0.5">{formatPrintCurrency(effectiveHourlyRate)}</td>
+                                            <td colSpan={3}></td>
+                                        </tr>
+                                        <tr>
+                                            <td className="font-bold py-0.5">Date From</td>
+                                            <td className="font-bold text-center py-0.5">:</td>
+                                            <td className="font-normal py-0.5 w-40">{formatPrintDate(startDate)}</td>
+                                            <td className="w-20 font-bold text-right py-0.5">Date To</td>
+                                            <td className="w-5 font-bold text-center py-0.5">:</td>
+                                            <td className="font-normal py-0.5">{formatPrintDate(endDate)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                {/* Table */}
+                                <table className="w-full text-xs font-sans border-collapse mb-0">
+                                    <thead>
+                                        <tr className="border-t border-b border-black text-[11px] font-bold text-black uppercase">
+                                            <th className="py-2 px-2 text-left font-bold w-[17%]">Date</th>
+                                            <th className="py-2 px-2 text-center font-bold w-[15%]">IN</th>
+                                            <th className="py-2 px-2 text-center font-bold w-[15%]">OUT</th>
+                                            <th className="py-2 px-2 text-center font-bold w-[15%]">HOURS</th>
+                                            <th className="py-2 px-2 text-right font-bold w-[19%]">DAY SALARY</th>
+                                            <th className="py-2 px-2 text-right font-bold w-[19%]">ADVANCE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {printableRows.map((r, i) => (
+                                            <tr key={i} className="text-black">
+                                                <td className="py-1 px-2 text-left">{formatPrintDate(r.date)}</td>
+                                                <td className="py-1 px-2 text-center font-mono">{formatPrintTime(r.inTime || r.in)}</td>
+                                                <td className="py-1 px-2 text-center font-mono">{formatPrintTime(r.outTime || r.out)}</td>
+                                                <td className="py-1 px-2 text-center font-mono">{formatPrintDuration(r)}</td>
+                                                <td className="py-1 px-2 text-right font-mono">{formatPrintCurrency(r.daySalary)}</td>
+                                                <td className="py-1 px-2 text-right font-mono">{formatPrintCurrency(r.advance)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                <div className="border-b border-black w-full mb-3"></div>
+
+                                {/* Summary Totals */}
+                                <table className="w-64 ml-auto text-xs font-sans text-black border-collapse">
+                                    <tbody>
+                                        <tr>
+                                            <td className="font-bold py-0.5">Total Salary</td>
+                                            <td className="text-right py-0.5 font-mono">{formatPrintCurrency(dynamicTotals.totalSalary)}</td>
+                                        </tr>
+                                        <tr className="border-b border-black">
+                                            <td className="font-bold py-0.5 pb-1">Total Advances</td>
+                                            <td className="text-right py-0.5 pb-1 font-mono">{formatPrintCurrency(dynamicTotals.totalAdvance)}</td>
+                                        </tr>
+                                        {includeEpfEtf && dynamicTotals.epfEmployeeDeduction > 0 && (
+                                            <tr className="border-b border-black">
+                                                <td className="font-bold py-0.5 pb-1">EPF (${epfEmployeeRate}%)</td>
+                                                <td className="text-right py-0.5 pb-1 font-mono">-{formatPrintCurrency(dynamicTotals.epfEmployeeDeduction)}</td>
+                                            </tr>
+                                        )}
+                                        <tr className="border-b-4 border-double border-black">
+                                            <td className="font-bold py-1 pt-1.5">Net Salary</td>
+                                            <td className="font-bold text-right py-1 pt-1.5 font-mono">{formatPrintCurrency(dynamicTotals.netSalary)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Normal Payslip Modal */}
             <NormalPayslipModal
                 isOpen={isPayslipModalOpen}
@@ -1996,6 +2621,8 @@ export default function EmployeePaymentRecordSheetPage() {
                 isOpen={isPoliciesModalOpen}
                 onClose={() => setIsPoliciesModalOpen(false)}
                 policies={salaryPolicies}
+                employees={employees}
+                selectedEmployeeId={selectedEmployeeId}
                 epfRates={{
                     employeeRate: epfEmployeeRate,
                     employerRate: epfEmployerRate,

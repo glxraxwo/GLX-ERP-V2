@@ -180,11 +180,15 @@ export default function EmployeeFormPage() {
             }
         }
         try {
+            const isMonthly = form.paymentType === 'monthly';
+            const baseSalaryNum = +form.basicSalary || 0;
+            const computedHourly = isMonthly && baseSalaryNum > 0 ? Number((baseSalaryNum / 200).toFixed(2)) : +(form.hourlyRate || form.labourRate || 0);
+
             const payload = {
                 ...form,
-                basicSalary: +form.basicSalary || 0,
-                labourRate: +form.labourRate || 0,
-                hourlyRate: +(form.hourlyRate || form.labourRate || 0),
+                basicSalary: baseSalaryNum,
+                labourRate: isMonthly ? 0 : (+form.labourRate || 0),
+                hourlyRate: computedHourly,
                 departmentId: form.departmentId || undefined,
                 designationId: form.designationId || undefined,
                 reportsToId: form.reportsToId || undefined,
@@ -722,29 +726,40 @@ export default function EmployeeFormPage() {
                                         { value: 'per_hour', label: 'Per Hour (පැයකට ගෙවන ගාස්තුව)' },
                                     ]}
                                     value={form.paymentType} onChange={(e) => update('paymentType', e.target.value)} />
-                                <Input label="Labour Rate Amount (LKR per hour/day)" type="number" step="0.01" min="0"
-                                    value={form.labourRate} onChange={(e) => {
-                                        const val = Number(e.target.value);
-                                        update('labourRate', val);
-                                        if (!form.hourlyRate || form.paymentType === 'per_hour') {
-                                            update('hourlyRate', val);
-                                        }
-                                    }} />
+
+                                {form.paymentType === 'monthly' ? (
+                                    <Input label="Monthly Basic Salary (LKR/month)" type="number" step="0.01" min="0" required
+                                        value={form.basicSalary} onChange={(e) => update('basicSalary', e.target.value)} />
+                                ) : (
+                                    <Input label={`Labour Rate Amount (LKR per ${form.paymentType === 'per_hour' ? 'hour' : 'day'})`} type="number" step="0.01" min="0" required
+                                        value={form.labourRate} onChange={(e) => {
+                                            const val = Number(e.target.value);
+                                            update('labourRate', val);
+                                            if (!form.hourlyRate || form.paymentType === 'per_hour') {
+                                                update('hourlyRate', val);
+                                            }
+                                        }} />
+                                )}
                             </div>
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                <Input label="Hourly Rate (LKR/hour) - Manual Paysheet Rate" type="number" step="0.01" min="0"
-                                    value={form.hourlyRate || ''} 
-                                    onChange={(e) => update('hourlyRate', Number(e.target.value))} 
-                                    helperText="Used automatically in Manual Payment Record Sheet"
-                                />
+                                {form.paymentType !== 'monthly' && (
+                                    <Input label="Hourly Rate (LKR/hour) - Manual Paysheet Rate" type="number" step="0.01" min="0"
+                                        value={form.hourlyRate || ''} 
+                                        onChange={(e) => update('hourlyRate', Number(e.target.value))} 
+                                        helperText="Used automatically in Manual Payment Record Sheet"
+                                    />
+                                )}
                                 <Select label="Employee Category" required
                                     options={[
                                         { value: 'Permanent', label: 'Permanent' },
                                         { value: 'Trainee', label: 'Trainee' }
                                     ]}
                                     value={form.employeeCategory} onChange={(e) => update('employeeCategory', e.target.value)} />
-                                <Input label="Monthly Basic Salary (LKR/month)" type="number" step="0.01" min="0"
-                                    value={form.basicSalary} onChange={(e) => update('basicSalary', e.target.value)} />
+                                {form.paymentType !== 'monthly' && (
+                                    <Input label="Monthly Basic Salary (LKR/month) - Optional" type="number" step="0.01" min="0"
+                                        value={form.basicSalary} onChange={(e) => update('basicSalary', e.target.value)} />
+                                )}
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                                 <Input label="EPF Rate (%)" type="number" min="0" max="100"

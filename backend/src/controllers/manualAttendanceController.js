@@ -117,8 +117,8 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
     });
 
     // 4. Default Shift Times
-    const defaultOnTime = '08:00';
-    const defaultOffTime = '17:00';
+    const defaultOnTime = settings?.defaultOnTime || '08:00';
+    const defaultOffTime = settings?.defaultOffTime || '17:00';
 
     // 5. Construct rows
     const rows = employees.map(emp => {
@@ -203,6 +203,15 @@ export const saveDailyManualAttendance = asyncHandler(async (req, res) => {
     }
 
     const dateObj = new Date(date + 'T00:00:00.000Z');
+
+    if (defaultOnTime || defaultOffTime) {
+        let settings = await Settings.findOne();
+        if (settings) {
+            if (defaultOnTime) settings.defaultOnTime = defaultOnTime;
+            if (defaultOffTime) settings.defaultOffTime = defaultOffTime;
+            await settings.save();
+        }
+    }
 
     const bulkOperations = [];
     const advancesToUpsert = [];
@@ -513,6 +522,10 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
             totalDeduction: Number(totalDeduction.toFixed(2)),
             netSalary: Number(netSalary.toFixed(2))
         },
+        salaryPolicies: activePolicies,
+        epfEmployeeRate: settings?.epfEmployeeRate !== undefined ? settings.epfEmployeeRate : 8,
+        epfEmployerRate: settings?.epfEmployerRate !== undefined ? settings.epfEmployerRate : 12,
+        etfEmployerRate: settings?.etfEmployerRate !== undefined ? settings.etfEmployerRate : 3,
         rows
     });
 });
@@ -800,46 +813,50 @@ export const defaultSalaryPolicies = [
     {
         id: 'pol-1',
         type: 'LATE_DEDUCTION',
-        name: 'Late > 5 mins (Cut Rs. 100 unless hours covered)',
-        thresholdMinutes: 5,
+        name: 'Late > 10 mins (Tier 1)',
+        thresholdMinutes: 10,
         deductionAmount: 100,
         bonusAmount: 0,
-        waiveIfHoursCovered: true,
+        waiveIfHoursCovered: false,
         standardShiftHours: 9,
+        appliesTo: 'ALL',
         isActive: true
     },
     {
         id: 'pol-2',
         type: 'LATE_DEDUCTION',
-        name: 'Late > 15 mins (Cut Rs. 200 unless hours covered)',
-        thresholdMinutes: 15,
+        name: 'Late > 20 mins (Tier 2)',
+        thresholdMinutes: 20,
         deductionAmount: 200,
         bonusAmount: 0,
-        waiveIfHoursCovered: true,
+        waiveIfHoursCovered: false,
         standardShiftHours: 9,
+        appliesTo: 'ALL',
         isActive: true
     },
     {
         id: 'pol-3',
         type: 'LATE_DEDUCTION',
-        name: 'Late > 30 mins (Cut Rs. 300 unless hours covered)',
+        name: 'Late > 30 mins (Tier 3)',
         thresholdMinutes: 30,
         deductionAmount: 300,
         bonusAmount: 0,
-        waiveIfHoursCovered: true,
+        waiveIfHoursCovered: false,
         standardShiftHours: 9,
+        appliesTo: 'ALL',
         isActive: true
     },
     {
         id: 'pol-4',
         type: 'ABSENT_DEDUCTION',
-        name: 'Absent / Unticked Day (Cut Rs. 1000)',
+        name: 'Absent / Unticked Day',
         thresholdMinutes: 0,
-        deductionAmount: 1000,
+        deductionAmount: 0,
         bonusAmount: 0,
         waiveIfHoursCovered: false,
         standardShiftHours: 9,
-        isActive: true
+        appliesTo: 'ALL',
+        isActive: false
     },
     {
         id: 'pol-5',
@@ -850,6 +867,7 @@ export const defaultSalaryPolicies = [
         bonusAmount: 0,
         waiveIfHoursCovered: false,
         standardShiftHours: 9,
+        appliesTo: 'ALL',
         isActive: false
     }
 ];

@@ -30,6 +30,7 @@ export default function AttendancePage() {
     const [isImportOpen, setIsImportOpen] = useState(false);
     const [importLoading, setImportLoading] = useState(false);
     const [importResult, setImportResult] = useState(null);
+    const [statusFilterTab, setStatusFilterTab] = useState('all');
     const [actionLoadingId, setActionLoadingId] = useState(null);
 
     // Search filters
@@ -376,9 +377,14 @@ export default function AttendancePage() {
     const columns = [
         {
             key: 'employee', label: 'Employee', render: (r) => (
-                <div>
-                    <p className="font-bold text-sm text-gray-900 dark:text-white">{r.employeeName}</p>
-                    <p className="text-xs font-mono text-gray-500 dark:text-slate-400">{r.employeeCode} {r.department && `· ${r.department}`}</p>
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60 flex items-center justify-center font-bold text-xs text-indigo-700 dark:text-indigo-300 uppercase shrink-0">
+                        {r.employeeName ? r.employeeName.slice(0, 2) : 'EM'}
+                    </div>
+                    <div>
+                        <p className="font-bold text-sm text-gray-900 dark:text-white">{r.employeeName}</p>
+                        <p className="text-xs font-mono text-gray-500 dark:text-slate-400">{r.employeeCode} {r.department && `· ${r.department}`}</p>
+                    </div>
                 </div>
             )
         },
@@ -516,13 +522,19 @@ export default function AttendancePage() {
                 description="Record daily employee clock-in & clock-out timestamps and compute earned daily wages automatically."
                 actions={
                     <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" onClick={() => navigate('/hr/daily-manual-attendance')} className="font-bold border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100">
+                            <CalendarIcon size={16} className="mr-1.5 text-emerald-600" /> Daily Manual Roster
+                        </Button>
+                        <Button variant="outline" onClick={() => navigate('/manual-paysheet')} className="font-bold border-indigo-300 dark:border-indigo-800 text-indigo-800 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100">
+                            <FileSpreadsheet size={16} className="mr-1.5 text-indigo-600" /> Manual Paysheet
+                        </Button>
                         <Button variant="outline" onClick={() => navigate('/attendance-policies')}>
-                            <Clock size={16} className="mr-1.5" /> Manage Policies
+                            <Clock size={16} className="mr-1.5" /> Policies
                         </Button>
                         <Button variant="outline" onClick={() => setIsImportOpen(true)}>
-                            <Upload size={16} className="mr-1.5" /> Import Fingerprint Sheet
+                            <Upload size={16} className="mr-1.5" /> Import Sheet
                         </Button>
-                        <Button variant="primary" onClick={openBulk}>
+                        <Button variant="primary" onClick={openBulk} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 font-bold shadow-md shadow-blue-500/20">
                             <Plus size={16} className="mr-1.5" /> Bulk Mark Attendance
                         </Button>
                     </div>

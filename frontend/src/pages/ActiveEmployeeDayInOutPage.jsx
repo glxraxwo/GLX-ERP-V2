@@ -2,13 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-    Calendar as CalendarIcon, Clock, Save, FileText, Printer,
+    Calendar as CalendarIcon, Clock, Save, FileText,
     RefreshCw, CheckSquare, Square, ChevronLeft, ChevronRight,
-    Search, UserCheck, AlertCircle, ArrowRight
+    Search, UserCheck, UserX, Users, AlertCircle, ArrowRight, ArrowLeft,
+    Sparkles, Sliders, DollarSign, CheckCircle2, Zap, Filter, Check, X,
+    FileSpreadsheet, ShieldCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { manualAttendanceApi } from '../features/hr/hrApi';
+import { manualAttendanceApi, employeesApi } from '../features/hr/hrApi';
 import Button from '../components/ui/Button';
+import SalaryPoliciesModal from '../components/SalaryPoliciesModal';
 
 // Format Date to YYYY-MM-DD
 const formatDateStr = (d) => {
@@ -31,19 +34,218 @@ const formatLongDate = (dateStr) => {
     });
 };
 
-// Calculate Working Hours
-const calculateHours = (inTime, outTime) => {
-    if (!inTime || !outTime) return 0;
-    const [inH, inM] = inTime.split(':').map(Number);
-    const [outH, outM] = outTime.split(':').map(Number);
-    if (isNaN(inH) || isNaN(outH)) return 0;
+// Flexible Time Parser
+const parseTimeToMinutes = (str) => {
+    if (!str) return null;
+    const s = String(str).trim().toLowerCase();
+    const isPm = s.includes('pm') || s.includes('p');
+    const isAm = s.includes('am') || s.includes('a');
+    const cleaned = s.replace(/[a-z]/g, '').trim();
+    if (!cleaned) return null;
 
-    let inMin = inH * 60 + (inM || 0);
-    let outMin = outH * 60 + (outM || 0);
-    if (outMin < inMin) {
-        outMin += 24 * 60; // Overnight shift
+    let parts;
+    if (cleaned.includes(':')) parts = cleaned.split(':');
+    else if (cleaned.includes('.')) parts = cleaned.split('.');
+    else parts = [cleaned, '0'];
+
+    let h = parseInt(parts[0], 10);
+    let m = parseInt(parts[1] || '0', 10);
+    if (isNaN(h)) return null;
+
+    if (isPm && h < 12) h += 12;
+    if (isAm && h === 12) h = 0;
+
+    return h * 60 + (isNaN(m) ? 0 : m);
+};
+
+// Helper: Normalize user time inputs (e.g. "8" -> "08:00", "8:30" -> "08:30", "1700" -> "17:00")
+const normalizeTimeString = (val, fallback = '08:00') => {
+    if (!val || typeof val !== 'string') return fallback;
+    let clean = val.trim().replace(/[^0-9:]/g, '');
+    if (!clean) return fallback;
+
+    if (!clean.includes(':')) {
+        if (clean.length === 1 || clean.length === 2) {
+            let h = Math.min(23, Math.max(0, parseInt(clean, 10)));
+            return `${String(h).padStart(2, '0')}:00`;
+        }
+        if (clean.length === 3) {
+            let h = Math.min(23, Math.max(0, parseInt(clean.substring(0, 1), 10)));
+            let m = Math.min(59, Math.max(0, parseInt(clean.substring(1), 10)));
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+        if (clean.length >= 4) {
+            let h = Math.min(23, Math.max(0, parseInt(clean.substring(0, 2), 10)));
+            let m = Math.min(59, Math.max(0, parseInt(clean.substring(2, 4), 10)));
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
     }
-    return Number(((outMin - inMin) / 60).toFixed(2));
+
+    const parts = clean.split(':');
+    let h = parseInt(parts[0] || '0', 10);
+    let m = parseInt(parts[1] || '0', 10);
+    if (isNaN(h)) h = 8;
+    if (isNaN(m)) m = 0;
+    h = Math.min(23, Math.max(0, h));
+    m = Math.min(59, Math.max(0, m));
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
+// Calculate Working Hours
+const calculateHoursFromTimes = (inStr, outStr) => {
+    const inMin = parseTimeToMinutes(inStr);
+    const outMin = parseTimeToMinutes(outStr);
+    if (inMin === null || outMin === null) return 0;
+
+    let diff = outMin - inMin;
+    if (diff < 0) diff += 24 * 60; // Overnight shift
+    return Number((diff / 60).toFixed(2));
+};
+
+// Default Policies Fallback
+const defaultPoliciesFallback = [
+    {
+        id: 'pol-1',
+        type: 'LATE_DEDUCTION',
+        name: 'Late 10+ mins (Tier 1)',
+        thresholdMinutes: 10,
+        deductionAmount: 100,
+        bonusAmount: 0,
+        waiveIfHoursCovered: false,
+        standardShiftHours: 9,
+        appliesTo: 'ALL',
+        isActive: true
+    },
+    {
+        id: 'pol-2',
+        type: 'LATE_DEDUCTION',
+        name: 'Late 20+ mins (Tier 2)',
+        thresholdMinutes: 20,
+        deductionAmount: 200,
+        bonusAmount: 0,
+        waiveIfHoursCovered: false,
+        standardShiftHours: 9,
+        appliesTo: 'ALL',
+        isActive: true
+    },
+    {
+        id: 'pol-3',
+        type: 'LATE_DEDUCTION',
+        name: 'Late 30+ mins (Tier 3)',
+        thresholdMinutes: 30,
+        deductionAmount: 300,
+        bonusAmount: 0,
+        waiveIfHoursCovered: false,
+        standardShiftHours: 9,
+        appliesTo: 'ALL',
+        isActive: true
+    },
+    {
+        id: 'pol-4',
+        type: 'ABSENT_DEDUCTION',
+        name: 'Absent / Unticked Day',
+        thresholdMinutes: 0,
+        deductionAmount: 0,
+        bonusAmount: 0,
+        waiveIfHoursCovered: false,
+        standardShiftHours: 9,
+        appliesTo: 'ALL',
+        isActive: false
+    }
+];
+
+// Pure Helper: Evaluate policy for a single row
+const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePolicies = [], currentEmployeeId = null) => {
+    // Unticking day -> NO automatic 1000 cut if deductionAmount is 0!
+    if (!row.isTicked) {
+        const absentPol = activePolicies.find(p => p.isActive && p.type === 'ABSENT_DEDUCTION');
+        const cut = (absentPol && absentPol.deductionAmount > 0) ? -Math.abs(absentPol.deductionAmount) : 0;
+        return {
+            ...row,
+            inTime: '',
+            outTime: '',
+            hours: 0,
+            daySalary: 0,
+            deduction: cut,
+            reason: cut !== 0 ? (absentPol?.name || 'Absent') : ''
+        };
+    }
+
+    const inT = row.inTime || shiftOnTime;
+    const outT = row.outTime || shiftOffTime;
+    const hrs = calculateHoursFromTimes(inT, outT) || 9;
+    const standardHrs = calculateHoursFromTimes(shiftOnTime, shiftOffTime) || 9;
+
+    let deduction = 0;
+    let reasonParts = [];
+
+    const inMin = parseTimeToMinutes(inT);
+    const shiftInMin = parseTimeToMinutes(shiftOnTime);
+    const outMin = parseTimeToMinutes(outT);
+    const shiftOutMin = parseTimeToMinutes(shiftOffTime);
+
+    // Filter policies for this specific employee or ALL
+    const activePols = (activePolicies || []).filter(p => p.isActive);
+
+    // Prefer employee-specific late rules if defined, otherwise fallback to ALL rules
+    const empSpecificLatePols = activePols.filter(p => p.type === 'LATE_DEDUCTION' && p.appliesTo && p.appliesTo !== 'ALL' && p.appliesTo === currentEmployeeId);
+    const latePolsToUse = empSpecificLatePols.length > 0
+        ? empSpecificLatePols
+        : activePols.filter(p => p.type === 'LATE_DEDUCTION' && (!p.appliesTo || p.appliesTo === 'ALL'));
+
+    // 1. Late Arrival Policies
+    if (inMin !== null && shiftInMin !== null && inMin > shiftInMin) {
+        const lateMinutes = inMin - shiftInMin;
+        const matchedLatePolicies = latePolsToUse
+            .filter(p => lateMinutes >= p.thresholdMinutes)
+            .sort((a, b) => b.thresholdMinutes - a.thresholdMinutes);
+
+        if (matchedLatePolicies.length > 0) {
+            const matchedPol = matchedLatePolicies[0];
+            if (matchedPol.waiveIfHoursCovered && hrs >= standardHrs) {
+                reasonParts.push(`Late ${lateMinutes}m (Covered)`);
+            } else {
+                deduction -= Math.abs(matchedPol.deductionAmount);
+                reasonParts.push(`Late ${lateMinutes}m (-${matchedPol.deductionAmount})`);
+            }
+        }
+    }
+
+    // 2. Early Departure Policies
+    const empSpecificEarlyPols = activePols.filter(p => p.type === 'EARLY_DEPARTURE' && p.appliesTo && p.appliesTo !== 'ALL' && p.appliesTo === currentEmployeeId);
+    const earlyPolsToUse = empSpecificEarlyPols.length > 0
+        ? empSpecificEarlyPols
+        : activePols.filter(p => p.type === 'EARLY_DEPARTURE' && (!p.appliesTo || p.appliesTo === 'ALL'));
+
+    if (outMin !== null && shiftOutMin !== null && outMin < shiftOutMin) {
+        const earlyMinutes = shiftOutMin - outMin;
+        const matchedEarlyPolicies = earlyPolsToUse
+            .filter(p => earlyMinutes >= p.thresholdMinutes)
+            .sort((a, b) => b.thresholdMinutes - a.thresholdMinutes);
+
+        if (matchedEarlyPolicies.length > 0) {
+            const matchedPol = matchedEarlyPolicies[0];
+            deduction -= Math.abs(matchedPol.deductionAmount);
+            reasonParts.push(`Early ${earlyMinutes}m (-${matchedPol.deductionAmount})`);
+        }
+    }
+
+    // 3. Day Salary
+    let daySalary = Number((hrs * hourlyRate).toFixed(2));
+    const minHoursPol = activePols.find(p => p.type === 'MIN_HOURS_FULL_PAY' && (!p.appliesTo || p.appliesTo === 'ALL' || p.appliesTo === currentEmployeeId));
+    if (minHoursPol && hrs >= (minHoursPol.thresholdMinutes / 60)) {
+        daySalary = Number((standardHrs * hourlyRate).toFixed(2));
+    }
+
+    return {
+        ...row,
+        inTime: inT,
+        outTime: outT,
+        hours: hrs,
+        daySalary,
+        deduction,
+        reason: reasonParts.join(', ') || (row.reason && row.reason !== 'No Work' ? row.reason : 'FILL')
+    };
 };
 
 export default function ActiveEmployeeDayInOutPage() {
@@ -57,6 +259,21 @@ export default function ActiveEmployeeDayInOutPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [rows, setRows] = useState([]);
 
+    // Policy & Statutory Rates State
+    const [salaryPolicies, setSalaryPolicies] = useState(defaultPoliciesFallback);
+    const [epfEmployeeRate, setEpfEmployeeRate] = useState(8);
+    const [epfEmployerRate, setEpfEmployerRate] = useState(12);
+    const [etfEmployerRate, setEtfEmployerRate] = useState(3);
+    const [isPoliciesModalOpen, setIsPoliciesModalOpen] = useState(false);
+
+    // Fetch active employees list for policy mapping
+    const { data: employeesData } = useQuery({
+        queryKey: ['active-employees-list'],
+        queryFn: () => employeesApi.list({ limit: 500, status: 'active' }),
+        staleTime: 1000 * 60 * 5,
+    });
+    const employees = employeesData?.data || [];
+
     // Query daily manual attendance
     const { data: dailyData, isLoading, isFetching, refetch } = useQuery({
         queryKey: ['manual-attendance-daily', selectedDate],
@@ -64,12 +281,31 @@ export default function ActiveEmployeeDayInOutPage() {
         staleTime: 1000 * 60 * 2,
     });
 
-    // Populate rows when data arrives
+    // Populate rows and policies when data arrives
     useEffect(() => {
-        if (dailyData?.rows) {
-            setRows(dailyData.rows);
+        if (dailyData) {
+            const shiftOn = dailyData.defaultOnTime || onTime;
+            const shiftOff = dailyData.defaultOffTime || offTime;
             if (dailyData.defaultOnTime) setOnTime(dailyData.defaultOnTime);
             if (dailyData.defaultOffTime) setOffTime(dailyData.defaultOffTime);
+
+            const pols = (dailyData.salaryPolicies && dailyData.salaryPolicies.length > 0)
+                ? dailyData.salaryPolicies
+                : salaryPolicies;
+
+            if (dailyData.salaryPolicies && dailyData.salaryPolicies.length > 0) {
+                setSalaryPolicies(dailyData.salaryPolicies);
+            }
+            if (dailyData.epfEmployeeRate !== undefined) setEpfEmployeeRate(dailyData.epfEmployeeRate);
+            if (dailyData.epfEmployerRate !== undefined) setEpfEmployerRate(dailyData.epfEmployerRate);
+            if (dailyData.etfEmployerRate !== undefined) setEtfEmployerRate(dailyData.etfEmployerRate);
+
+            if (dailyData.rows) {
+                setRows(dailyData.rows.map(r => {
+                    // Evaluate policies right away for accurate late/early deductions
+                    return evaluateRowPolicy(r, shiftOn, shiftOff, r.hourlyRate || 260, pols, r.employeeId);
+                }));
+            }
         }
     }, [dailyData]);
 
@@ -79,46 +315,114 @@ export default function ActiveEmployeeDayInOutPage() {
         onSuccess: (res) => {
             toast.success(res.message || 'Daily attendance saved successfully!');
             queryClient.invalidateQueries(['manual-attendance-daily', selectedDate]);
+            queryClient.invalidateQueries(['employee-payment-sheet']);
         },
         onError: (err) => {
             toast.error(err.response?.data?.message || err.message || 'Failed to save attendance');
         }
     });
 
-    // Handle Field Change in Row
+    // Save Policies Mutation
+    const savePoliciesMutation = useMutation({
+        mutationFn: (payload) => manualAttendanceApi.savePolicies(payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['manual-attendance-policies']);
+            queryClient.invalidateQueries(['manual-attendance-daily', selectedDate]);
+        }
+    });
+
+    // Helper: Select all text on mouse click/focus/mouseup (never leaves cursor in the middle)
+    const handleCellSelectAll = (e) => {
+        const target = e.target;
+        if (!target || target.type === 'checkbox') return;
+        setTimeout(() => {
+            try {
+                if (typeof target.select === 'function') {
+                    target.select();
+                }
+                if (typeof target.setSelectionRange === 'function' && target.value !== undefined) {
+                    target.setSelectionRange(0, String(target.value).length);
+                }
+            } catch {}
+        }, 15);
+    };
+
+    // Save policies from modal and immediately apply to daily sheet
+    const handleSavePoliciesFromModal = async (payload) => {
+        await savePoliciesMutation.mutateAsync(payload);
+        setSalaryPolicies(payload.salaryPolicies);
+        if (payload.epfEmployeeRate !== undefined) setEpfEmployeeRate(payload.epfEmployeeRate);
+        if (payload.epfEmployerRate !== undefined) setEpfEmployerRate(payload.epfEmployerRate);
+        if (payload.etfEmployerRate !== undefined) setEtfEmployerRate(payload.etfEmployerRate);
+
+        // Immediately recalculate all rows currently on screen with newly saved policies
+        setRows(prevRows => prevRows.map(r => {
+            return evaluateRowPolicy(r, onTime, offTime, r.hourlyRate || 260, payload.salaryPolicies, r.employeeId);
+        }));
+        toast.success('Policies saved & applied to attendance grid!');
+    };
+
+    // When Header ON TIME or OFF TIME changes, re-evaluate all rows automatically!
+    const handleHeaderTimeChange = (type, val) => {
+        const clean = val.replace(/[^0-9:]/g, '').slice(0, 5);
+        const newOnTime = type === 'on' ? clean : onTime;
+        const newOffTime = type === 'off' ? clean : offTime;
+
+        if (type === 'on') setOnTime(clean);
+        if (type === 'off') setOffTime(clean);
+
+        // Recalculate policies dynamically for all rows with the new shift time period
+        setRows(prevRows => prevRows.map(r => {
+            const rowIn = r.inTime || newOnTime;
+            const rowOut = r.outTime || newOffTime;
+            const updated = { ...r, inTime: rowIn, outTime: rowOut };
+            return evaluateRowPolicy(updated, newOnTime, newOffTime, r.hourlyRate || 260, salaryPolicies, r.employeeId);
+        }));
+    };
+
+    // Handle in-place row editing with AUTO-POLICY EVALUATION
     const handleRowChange = (index, field, value) => {
         setRows(prevRows => {
             const updated = [...prevRows];
-            const row = { ...updated[index] };
+            let row = { ...updated[index] };
 
             if (field === 'isTicked') {
-                const isTicked = Boolean(value);
-                row.isTicked = isTicked;
-                if (!isTicked) {
-                    row.hours = 0;
-                    row.daySalary = 0;
-                    row.deduction = -1000;
-                    row.reason = 'No Work';
-                } else {
-                    const hrs = calculateHours(row.inTime || onTime, row.outTime || offTime);
-                    row.hours = hrs;
-                    row.daySalary = Number((hrs * (row.hourlyRate || 260)).toFixed(2));
-                    row.deduction = 0;
-                    row.reason = 'FILL';
-                }
+                row.isTicked = Boolean(value);
+                row = evaluateRowPolicy(row, onTime, offTime, row.hourlyRate || 260, salaryPolicies, row.employeeId);
             } else if (field === 'inTime' || field === 'outTime') {
-                row[field] = value;
-                if (row.isTicked) {
-                    const inT = field === 'inTime' ? value : (row.inTime || onTime);
-                    const outT = field === 'outTime' ? value : (row.outTime || offTime);
-                    const hrs = calculateHours(inT, outT);
-                    row.hours = hrs;
-                    row.daySalary = Number((hrs * (row.hourlyRate || 260)).toFixed(2));
+                const clean = String(value).replace(/[^0-9:]/g, '').slice(0, 5);
+                row[field] = clean;
+                row.isTicked = true;
+                row = evaluateRowPolicy(row, onTime, offTime, row.hourlyRate || 260, salaryPolicies, row.employeeId);
+            } else if (field === 'hours') {
+                const val = String(value).trim();
+                const hrs = val === '' ? 0 : Number(val);
+                row.hours = isNaN(hrs) ? row.hours : hrs;
+                if (row.hours > 0) {
+                    row.isTicked = true;
+                    row.daySalary = Number((row.hours * (row.hourlyRate || 260)).toFixed(2));
+                } else {
+                    row.daySalary = 0;
                 }
-            } else if (field === 'advance' || field === 'deduction') {
-                row[field] = Number(value) || 0;
-            } else {
-                row[field] = value;
+            } else if (field === 'daySalary') {
+                const val = String(value).trim();
+                const num = val === '' ? 0 : Number(val);
+                row.daySalary = isNaN(num) ? row.daySalary : num;
+                if (row.daySalary > 0) row.isTicked = true;
+            } else if (field === 'advance') {
+                const val = String(value).trim();
+                const num = val === '' ? 0 : Number(val);
+                row.advance = isNaN(num) ? row.advance : num;
+            } else if (field === 'deduction') {
+                // Freely allow typing '-', '-100', '100', ''
+                if (value === '' || value === '-') {
+                    row.deduction = value;
+                } else {
+                    const num = Number(value);
+                    row.deduction = isNaN(num) ? value : num;
+                }
+            } else if (field === 'reason') {
+                row.reason = value;
             }
 
             updated[index] = row;
@@ -126,21 +430,18 @@ export default function ActiveEmployeeDayInOutPage() {
         });
     };
 
-    // Quick Apply Default Times to All Ticked Employees
+    // Quick Apply Default Times to All Ticked Employees with immediate Policy Evaluation
     const handleApplyDefaultTimes = () => {
         setRows(prevRows => prevRows.map(row => {
             if (!row.isTicked) return row;
-            const hrs = calculateHours(onTime, offTime);
-            return {
+            const updated = {
                 ...row,
                 inTime: onTime,
-                outTime: offTime,
-                hours: hrs,
-                daySalary: Number((hrs * (row.hourlyRate || 260)).toFixed(2)),
-                reason: row.reason === 'No Work' ? 'FILL' : row.reason
+                outTime: offTime
             };
+            return evaluateRowPolicy(updated, onTime, offTime, row.hourlyRate || 260, salaryPolicies, row.employeeId);
         }));
-        toast.success(`Applied default times (${onTime} - ${offTime}) to all ticked employees`);
+        toast.success(`Applied shift period ${onTime} - ${offTime} & recalculated all policies!`);
     };
 
     // Save All Changes
@@ -153,15 +454,29 @@ export default function ActiveEmployeeDayInOutPage() {
         });
     };
 
-    // Filtered Rows for Search
+    // Filter state: 'all' | 'present' | 'absent'
+    const [statusFilter, setStatusFilter] = useState('all');
+
+    // Quick Date Shift
+    const changeDate = (days) => {
+        const d = new Date(selectedDate);
+        d.setDate(d.getDate() + days);
+        setSelectedDate(formatDateStr(d));
+    };
+
+    // Filtered Rows for Search and Status Filter
     const filteredRows = useMemo(() => {
-        if (!searchQuery.trim()) return rows;
-        const q = searchQuery.toLowerCase();
-        return rows.filter(r =>
-            r.name?.toLowerCase().includes(q) ||
-            r.payrollNumber?.toLowerCase().includes(q)
-        );
-    }, [rows, searchQuery]);
+        return rows.filter(r => {
+            const matchesSearch = !searchQuery.trim() ||
+                r.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                r.payrollNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+
+            if (!matchesSearch) return false;
+            if (statusFilter === 'present') return Boolean(r.isTicked);
+            if (statusFilter === 'absent') return !r.isTicked;
+            return true;
+        });
+    }, [rows, searchQuery, statusFilter]);
 
     // Totals Calculation
     const totals = useMemo(() => {
@@ -181,7 +496,8 @@ export default function ActiveEmployeeDayInOutPage() {
                 absentCount++;
             }
             totalAdvance += Number(r.advance) || 0;
-            if (r.deduction < 0) totalDeductions += Math.abs(r.deduction);
+            const dedNum = Number(r.deduction) || 0;
+            if (dedNum < 0) totalDeductions += Math.abs(dedNum);
         });
 
         return {
@@ -194,253 +510,552 @@ export default function ActiveEmployeeDayInOutPage() {
         };
     }, [rows]);
 
+    const netEstimatedPay = Math.max(0, totals.totalSalary - totals.totalAdvance - totals.totalDeductions);
+
     return (
-        <div className="min-h-screen bg-gray-50/70 p-3 sm:p-6 font-sans">
-            {/* Top Toolbar / Navigation */}
-            <div className="max-w-7xl mx-auto mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => navigate('/hr/manual-payment-sheet')}
-                        className="px-3 py-1.5 text-xs font-semibold bg-white border border-gray-300 rounded shadow-xs hover:bg-gray-100 flex items-center gap-1.5 text-gray-700"
-                    >
-                        <FileText size={14} className="text-blue-600" />
-                        Detailed Payment Record Sheet
-                    </button>
+        <div className="min-h-screen bg-slate-50 p-3 sm:p-6 font-sans text-slate-900 w-full print:bg-white print:p-0">
+            {/* Top Corporate Command Bar */}
+            <div className="w-full mb-3 print:hidden space-y-2.5">
+                {/* Header & Navigation */}
+                <div className="bg-white border border-slate-200/90 rounded-xl p-3 sm:p-3.5 shadow-2xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+                    <div>
+                        <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                            Active Employee Day In / Out
+                        </h1>
+                    </div>
+
+                    {/* Quick Action Navigation Buttons */}
+                    <div className="flex flex-wrap items-center gap-1.5 w-full lg:w-auto">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/hr/manual-payment-sheet')}
+                            className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                        >
+                            <FileSpreadsheet size={13} className="text-indigo-600" />
+                            31-Day Paysheet
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsPoliciesModalOpen(true)}
+                            className="px-2.5 py-1 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                            title="Configure late arrival rules, grace times, and absent deductions"
+                        >
+                            <Sliders size={13} className="text-indigo-600" />
+                            Policies
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => refetch()}
+                            disabled={isFetching}
+                            className="p-1.5 text-xs text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-2xs transition cursor-pointer"
+                            title="Refresh data"
+                        >
+                            <RefreshCw size={13} className={isFetching ? 'animate-spin text-blue-600' : 'text-slate-500'} />
+                        </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => window.print()}
-                        className="px-3 py-1.5 text-xs font-semibold bg-white border border-gray-300 rounded shadow-xs hover:bg-gray-100 flex items-center gap-1.5 text-gray-700"
-                    >
-                        <Printer size={14} />
-                        Print Sheet
-                    </button>
-                    <button
-                        onClick={() => refetch()}
-                        disabled={isFetching}
-                        className="px-3 py-1.5 text-xs font-semibold bg-white border border-gray-300 rounded shadow-xs hover:bg-gray-100 flex items-center gap-1.5 text-gray-700"
-                    >
-                        <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
-                        Reload
-                    </button>
+
+                {/* Metric KPI Cards (5 Pillars - Same Executive Theme) */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                    {/* 1. Total Employees */}
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs relative overflow-hidden group hover:border-blue-300 transition">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Total Staff</span>
+                            <div className="p-1 rounded-lg bg-blue-50 text-blue-600">
+                                <Users size={13} />
+                            </div>
+                        </div>
+                        <p className="text-base sm:text-lg font-black text-slate-900 mt-0.5 font-mono">{rows.length}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">Active on roll</p>
+                    </div>
+
+                    {/* 2. Present Today */}
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs relative overflow-hidden group hover:border-emerald-300 transition">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600">Present</span>
+                            <div className="p-1 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <span className="relative flex h-1.5 w-1.5 mr-1">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                                </span>
+                                <UserCheck size={13} />
+                            </div>
+                        </div>
+                        <p className="text-base sm:text-lg font-black text-emerald-600 mt-0.5 font-mono">{totals.presentCount}</p>
+                        <p className="text-[9px] text-emerald-600/80 mt-0.5 font-semibold">Ticked & on shift</p>
+                    </div>
+
+                    {/* 3. Absent / Off */}
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs relative overflow-hidden group hover:border-rose-300 transition">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-rose-600">Absent / Leave</span>
+                            <div className="p-1 rounded-lg bg-rose-50 text-rose-600">
+                                <UserX size={13} />
+                            </div>
+                        </div>
+                        <p className="text-base sm:text-lg font-black text-rose-600 mt-0.5 font-mono">{totals.absentCount}</p>
+                        <p className="text-[9px] text-rose-500 mt-0.5 font-medium">Off duty today</p>
+                    </div>
+
+                    {/* 4. Total Worked Hours */}
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs relative overflow-hidden group hover:border-purple-300 transition">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-purple-600">Hours Logged</span>
+                            <div className="p-1 rounded-lg bg-purple-50 text-purple-600">
+                                <Clock size={13} />
+                            </div>
+                        </div>
+                        <p className="text-base sm:text-lg font-black text-purple-600 mt-0.5 font-mono">{totals.totalHours}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">Shift hours</p>
+                    </div>
+
+                    {/* 5. Total Daily Wages */}
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs relative overflow-hidden group hover:border-indigo-300 transition col-span-2 sm:col-span-1">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-600">Daily Gross Wage</span>
+                            <div className="p-1 rounded-lg bg-indigo-50 text-indigo-600">
+                                <DollarSign size={13} />
+                            </div>
+                        </div>
+                        <p className="text-base sm:text-lg font-black text-indigo-600 mt-0.5 font-mono">
+                            Rs. {Math.round(totals.totalSalary).toLocaleString()}
+                        </p>
+                        <p className="text-[9px] text-indigo-500/80 mt-0.5 font-medium">
+                            Net: Rs. {Math.round(netEstimatedPay).toLocaleString()}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Shift Control & Quick Action Bar (Compact Same Theme) */}
+                <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 sm:p-3 shadow-2xs">
+                    <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
+                        {/* Left: Date Switcher */}
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => changeDate(-1)}
+                                className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition"
+                                title="Previous Day"
+                            >
+                                <ChevronLeft size={14} />
+                            </button>
+
+                            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg">
+                                <CalendarIcon size={13} className="text-indigo-600" />
+                                <input
+                                    type="date"
+                                    value={selectedDate}
+                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                    className="bg-transparent font-bold text-xs text-slate-900 outline-none cursor-pointer font-mono"
+                                />
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => changeDate(1)}
+                                className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition"
+                                title="Next Day"
+                            >
+                                <ChevronRight size={14} />
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => setSelectedDate(formatDateStr(new Date()))}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                                    selectedDate === formatDateStr(new Date())
+                                        ? 'bg-blue-600 text-white shadow-2xs'
+                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                }`}
+                            >
+                                Today
+                            </button>
+                        </div>
+
+                        {/* Center: Shift Times (ON TIME & OFF TIME) */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-1 bg-emerald-50/70 border border-emerald-200/80 px-2 py-1 rounded-lg">
+                                <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wide">In Time</span>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={onTime}
+                                    placeholder="08:00"
+                                    maxLength={5}
+                                    onChange={(e) => handleHeaderTimeChange('on', e.target.value)}
+                                    onBlur={(e) => {
+                                        const norm = normalizeTimeString(e.target.value, '08:00');
+                                        handleHeaderTimeChange('on', norm);
+                                    }}
+                                    onFocus={handleCellSelectAll}
+                                    className="bg-white border border-emerald-300 text-emerald-950 font-mono font-bold text-xs px-1.5 py-0.5 rounded w-14 text-center outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-1 bg-amber-50/70 border border-amber-200/80 px-2 py-1 rounded-lg">
+                                <span className="text-[10px] font-black uppercase text-amber-800 tracking-wide">Out Time</span>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={offTime}
+                                    placeholder="17:00"
+                                    maxLength={5}
+                                    onChange={(e) => handleHeaderTimeChange('off', e.target.value)}
+                                    onBlur={(e) => {
+                                        const norm = normalizeTimeString(e.target.value, '17:00');
+                                        handleHeaderTimeChange('off', norm);
+                                    }}
+                                    onFocus={handleCellSelectAll}
+                                    className="bg-white border border-amber-300 text-amber-950 font-mono font-bold text-xs px-1.5 py-0.5 rounded w-14 text-center outline-none focus:ring-1 focus:ring-amber-500"
+                                />
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={handleApplyDefaultTimes}
+                                className="px-2.5 py-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                                title="Apply these shift times to all ticked present staff"
+                            >
+                                <Zap size={12} />
+                                Apply to Present
+                            </button>
+                        </div>
+
+                        {/* Right: Primary Save Attendance Button */}
+                        <button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={saveMutation.isPending}
+                            className="px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                            <Save size={14} className={saveMutation.isPending ? 'animate-spin' : ''} />
+                            {saveMutation.isPending ? 'Saving...' : 'Save Attendance'}
+                        </button>
+                    </div>
+
+                    {/* Filter Tabs & Search Row */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2 mt-2 border-t border-slate-100">
+                        {/* Status Filter Pills */}
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-slate-400 mr-0.5 flex items-center gap-1">
+                                <Filter size={11} /> Filter:
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setStatusFilter('all')}
+                                className={`px-2 py-0.5 rounded-lg text-xs font-bold transition ${
+                                    statusFilter === 'all'
+                                        ? 'bg-slate-900 text-white shadow-2xs'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                }`}
+                            >
+                                All ({rows.length})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setStatusFilter('present')}
+                                className={`px-2 py-0.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                                    statusFilter === 'present'
+                                        ? 'bg-emerald-600 text-white shadow-2xs'
+                                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                }`}
+                            >
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                Present ({totals.presentCount})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setStatusFilter('absent')}
+                                className={`px-2 py-0.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                                    statusFilter === 'absent'
+                                        ? 'bg-rose-600 text-white shadow-2xs'
+                                        : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                                }`}
+                            >
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                                Absent ({totals.absentCount})
+                            </button>
+                        </div>
+
+                        {/* Search Input */}
+                        <div className="relative w-full sm:w-64">
+                            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search by name, employee code..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-8 pr-7 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                                >
+                                    ✕
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Main Sheet Container */}
-            <div className="max-w-7xl mx-auto bg-white border border-gray-300 shadow-sm rounded-sm p-4 sm:p-6 print:p-0 print:border-0 print:shadow-none">
-                
-                {/* 1. Header Title Box (Matching Screenshot 2) */}
-                <div className="border border-gray-400 py-2.5 px-4 text-center font-bold text-gray-900 tracking-wide text-sm sm:text-base uppercase bg-white mb-6">
-                    ACTIVE EMPOLYEE DAY IN OUT (Manual Enter)
+            {/* Main Interactive Spreadsheet Canvas */}
+            <div className="w-full bg-white border border-slate-200/90 shadow-sm rounded-2xl overflow-hidden print:border-none print:shadow-none print:rounded-none">
+                {/* Print Title Header (Only for Print) */}
+                <div className="hidden print:block text-center border-b pb-2 mb-3">
+                    <h1 className="text-base font-bold uppercase tracking-wide">ACTIVE EMPLOYEE DAY IN / OUT</h1>
+                    <p className="text-xs text-slate-600">Date: {formatLongDate(selectedDate)} | Shift: {onTime} - {offTime}</p>
                 </div>
 
-                {/* 2. Top Header Controls (ON TIME, OFF TIME, DATE, SAVE) */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center mb-6 text-xs sm:text-sm">
-                    {/* ON TIME */}
-                    <div className="md:col-span-3 flex items-center gap-2">
-                        <span className="font-bold text-gray-800 uppercase min-w-[70px]">ON TIME</span>
-                        <input
-                            type="time"
-                            value={onTime}
-                            onChange={(e) => setOnTime(e.target.value)}
-                            className="bg-gray-200 border border-gray-400 px-3 py-1.5 font-bold text-gray-800 rounded-none w-32 focus:bg-white focus:outline-none focus:ring-1 focus:ring-gray-600 text-center"
-                        />
-                    </div>
-
-                    {/* OFF TIME */}
-                    <div className="md:col-span-3 flex items-center gap-2">
-                        <span className="font-bold text-gray-800 uppercase min-w-[75px]">OFF TIME</span>
-                        <input
-                            type="time"
-                            value={offTime}
-                            onChange={(e) => setOffTime(e.target.value)}
-                            className="bg-gray-200 border border-gray-400 px-3 py-1.5 font-bold text-gray-800 rounded-none w-32 focus:bg-white focus:outline-none focus:ring-1 focus:ring-gray-600 text-center"
-                        />
-                        <button
-                            type="button"
-                            onClick={handleApplyDefaultTimes}
-                            className="text-[11px] text-blue-700 underline font-semibold hover:text-blue-900"
-                            title="Set this ON/OFF time for all ticked employees"
-                        >
-                            Apply All
-                        </button>
-                    </div>
-
-                    {/* DATE PICKER & FORMATTED DISPLAY */}
-                    <div className="md:col-span-4 flex items-center gap-2">
-                        <span className="font-bold text-gray-800 uppercase min-w-[50px]">DATE</span>
-                        <div className="relative flex-1">
-                            <input
-                                type="date"
-                                value={selectedDate}
-                                onChange={(e) => setSelectedDate(e.target.value)}
-                                className="bg-gray-200 border border-gray-400 px-3 py-1.5 font-bold text-gray-800 rounded-none w-full focus:bg-white focus:outline-none focus:ring-1 focus:ring-gray-600 cursor-pointer"
-                            />
-                        </div>
-                    </div>
-
-                    {/* SAVE BUTTON */}
-                    <div className="md:col-span-2 flex justify-end">
-                        <button
-                            onClick={handleSave}
-                            disabled={saveMutation.isPending}
-                            className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 border border-gray-400 px-6 py-1.5 font-bold text-gray-900 uppercase tracking-wider rounded-none shadow-xs transition flex items-center gap-1.5 text-xs sm:text-sm"
-                        >
-                            <Save size={14} className={saveMutation.isPending ? 'animate-spin' : ''} />
-                            {saveMutation.isPending ? 'SAVING...' : 'SAVE'}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Subtitle / Selected Date Confirmation Bar */}
-                <div className="flex flex-wrap items-center justify-between pb-3 mb-2 border-b border-gray-300 text-xs text-gray-600">
-                    <div className="flex items-center gap-2">
-                        <CalendarIcon size={14} className="text-gray-500" />
-                        <span className="font-bold text-gray-800 text-sm">
-                            {formatLongDate(selectedDate)}
-                        </span>
-                        <span className="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2 py-0.5 rounded">
-                            {totals.presentCount} Present
-                        </span>
-                        <span className="bg-rose-100 text-rose-800 text-[11px] font-bold px-2 py-0.5 rounded">
-                            {totals.absentCount} Absent
-                        </span>
-                    </div>
-
-                    {/* Quick Search */}
-                    <div className="relative w-64">
-                        <input
-                            type="text"
-                            placeholder="Filter employee name..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full border border-gray-300 rounded px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                        <Search size={12} className="absolute right-2.5 top-2 text-gray-400" />
-                    </div>
-                </div>
-
-                {/* 3. The Spreadsheet Grid (Matching Screenshots Exact Colors) */}
                 {isLoading ? (
-                    <div className="py-20 text-center text-gray-500">
-                        <RefreshCw size={24} className="animate-spin text-blue-600 mx-auto mb-2" />
-                        <p className="font-semibold text-xs">Loading attendance records for {selectedDate}...</p>
+                    <div className="py-24 text-center text-slate-500 flex flex-col items-center justify-center">
+                        <RefreshCw size={28} className="animate-spin text-blue-600 mb-2" />
+                        <p className="font-bold text-sm text-slate-800">Loading attendance records...</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Evaluating active policies and shift calculations</p>
                     </div>
                 ) : filteredRows.length === 0 ? (
-                    <div className="py-16 text-center text-gray-500 border border-dashed border-gray-300 my-4">
-                        <AlertCircle size={24} className="mx-auto mb-2 text-amber-500" />
-                        <p className="font-semibold">No active employees found.</p>
-                        <p className="text-xs text-gray-400">Ensure active employees are registered in Employee Management.</p>
+                    <div className="py-20 text-center text-slate-500 space-y-2">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 mx-auto flex items-center justify-center text-slate-400">
+                            <AlertCircle size={24} />
+                        </div>
+                        <p className="font-bold text-slate-800 text-sm">No employee records match the filter</p>
+                        <p className="text-xs text-slate-400">Try adjusting your search query or reset the filter status.</p>
+                        {(searchQuery || statusFilter !== 'all') && (
+                            <button
+                                type="button"
+                                onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}
+                                className="text-xs font-bold text-indigo-600 hover:underline pt-1"
+                            >
+                                Reset all filters
+                            </button>
+                        )}
                     </div>
                 ) : (
-                    <div className="overflow-x-auto border border-gray-400">
-                        <table className="w-full border-collapse text-xs select-none">
-                            <thead>
-                                <tr className="bg-white border-b border-gray-400 font-bold text-gray-900 text-center">
-                                    <th className="border-r border-gray-400 py-2 px-3 w-14">TICK</th>
-                                    <th className="border-r border-gray-400 py-2 px-3 text-left min-w-[200px]">NAME</th>
-                                    <th className="border-r border-gray-400 py-2 px-3 w-24">IN</th>
-                                    <th className="border-r border-gray-400 py-2 px-3 w-24">OUT</th>
-                                    <th className="border-r border-gray-400 py-2 px-3 w-20">HOURS</th>
-                                    <th className="border-r border-gray-400 py-2 px-3 w-28 text-right">DAY SALARY</th>
-                                    <th className="border-r border-gray-400 py-2 px-3 w-28 text-right">ADVANCE</th>
-                                    <th className="border-r border-gray-400 py-2 px-3 w-28 text-right">DEDUCTION</th>
-                                    <th className="py-2 px-3 text-left w-36">Reason</th>
+                    <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-270px)] relative">
+                        <table className="w-full text-left text-xs border-collapse">
+                            {/* Sticky Column Header - Does not scroll off screen */}
+                            <thead className="sticky top-0 z-20 bg-slate-100 shadow-xs border-b border-slate-300 select-none">
+                                <tr className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                                    <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 text-center w-14">Tick</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 min-w-[220px]">Employee Name</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 text-center w-28">Clock In</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 text-center w-28">Clock Out</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 text-center w-20">Hours</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 text-right w-28">Day Salary</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 text-right w-28">Advance</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 text-right w-28">Deduction</th>
+                                    <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 min-w-[160px]">Status / Policy Reason</th>
                                 </tr>
                             </thead>
-                            <tbody>
+
+                            {/* Table Rows with Modern Styling */}
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                                 {filteredRows.map((row, idx) => {
-                                    // True original index in the main rows state
                                     const realIdx = rows.findIndex(r => r.employeeId === row.employeeId);
+                                    const isPresent = Boolean(row.isTicked);
+                                    const hasDeduction = Number(row.deduction) < 0 || String(row.deduction).startsWith('-');
 
                                     return (
-                                        <tr key={row.employeeId || idx} className="border-b border-gray-300">
-                                            {/* 1. TICK (Light Yellow) */}
-                                            <td className="border-r border-gray-400 bg-[#FFF2CC] text-center p-1.5">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={Boolean(row.isTicked)}
-                                                    onChange={(e) => handleRowChange(realIdx, 'isTicked', e.target.checked)}
-                                                    className="w-4 h-4 cursor-pointer accent-blue-600"
-                                                />
+                                        <tr
+                                            key={row.employeeId || idx}
+                                            className={`transition-colors group ${
+                                                isPresent
+                                                    ? 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40 bg-white dark:bg-[#111F33]'
+                                                    : 'bg-rose-50/20 dark:bg-rose-950/10 hover:bg-rose-50/40 opacity-85'
+                                            }`}
+                                        >
+                                            {/* 1. TICK (Checkbox) */}
+                                            <td className="py-2.5 px-3 text-center">
+                                                <label className="inline-flex items-center justify-center cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isPresent}
+                                                        onChange={(e) => handleRowChange(realIdx, 'isTicked', e.target.checked)}
+                                                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 dark:bg-slate-900 border-slate-300 dark:border-slate-700 cursor-pointer accent-emerald-600 transition"
+                                                    />
+                                                </label>
                                             </td>
 
-                                            {/* 2. NAME (Light Green) */}
-                                            <td className="border-r border-gray-400 bg-[#E2EFDA] px-3 py-1.5 font-medium text-gray-900">
-                                                <div className="flex items-center justify-between gap-1">
-                                                    <span className="truncate">{row.name}</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => navigate(`/hr/manual-payment-sheet?employeeId=${row.employeeId}`)}
-                                                        className="text-[10px] text-blue-600 hover:text-blue-800 underline ml-1"
-                                                        title="Open detailed payment record sheet"
-                                                    >
-                                                        sheet
-                                                    </button>
+                                            {/* 2. Employee Name & Badges */}
+                                            <td className="py-2.5 px-3 font-medium">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs uppercase shrink-0 ${
+                                                        isPresent
+                                                            ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60'
+                                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                                                    }`}>
+                                                        {row.name ? row.name.slice(0, 2) : 'EM'}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <p className="font-bold text-slate-900 dark:text-white truncate text-xs sm:text-[13px]">
+                                                                {row.name}
+                                                            </p>
+                                                            {!isPresent && (
+                                                                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 shrink-0">
+                                                                    Absent
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                                                            <span>{row.payrollNumber || 'EMP'}</span>
+                                                            {row.hourlyRate && (
+                                                                <>
+                                                                    <span>•</span>
+                                                                    <span>Rs. {row.hourlyRate}/hr</span>
+                                                                </>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => navigate(`/hr/manual-payment-sheet?employeeId=${row.employeeId}`)}
+                                                                className="text-indigo-600 dark:text-indigo-400 hover:underline font-sans font-bold print:hidden"
+                                                                title="Open 31-day paysheet"
+                                                            >
+                                                                Paysheet →
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </td>
 
-                                            {/* 3. IN TIME (Light Yellow) */}
-                                            <td className="border-r border-gray-400 bg-[#FFF2CC] p-1 text-center font-mono">
-                                                <input
-                                                    type="time"
-                                                    disabled={!row.isTicked}
-                                                    value={row.inTime || ''}
-                                                    onChange={(e) => handleRowChange(realIdx, 'inTime', e.target.value)}
-                                                    className="w-full bg-transparent text-center font-mono focus:bg-white focus:outline-none px-1 py-0.5 rounded-none disabled:opacity-30"
-                                                />
+                                            {/* 3. Clock In Time */}
+                                            <td className="py-2.5 px-3 text-center">
+                                                <div className="relative inline-block w-24">
+                                                    <input
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        disabled={!isPresent}
+                                                        value={isPresent ? (row.inTime || onTime) : ''}
+                                                        placeholder="08:00"
+                                                        maxLength={5}
+                                                        onChange={(e) => handleRowChange(realIdx, 'inTime', e.target.value)}
+                                                        onBlur={(e) => {
+                                                            if (!isPresent) return;
+                                                            const norm = normalizeTimeString(e.target.value, onTime);
+                                                            handleRowChange(realIdx, 'inTime', norm);
+                                                        }}
+                                                        onFocus={handleCellSelectAll}
+                                                        className={`w-full text-center font-mono text-xs font-bold px-2 py-1.5 rounded-xl border transition ${
+                                                            isPresent
+                                                                ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500'
+                                                                : 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+                                                        }`}
+                                                    />
+                                                </div>
                                             </td>
 
-                                            {/* 4. OUT TIME (Light Yellow) */}
-                                            <td className="border-r border-gray-400 bg-[#FFF2CC] p-1 text-center font-mono">
-                                                <input
-                                                    type="time"
-                                                    disabled={!row.isTicked}
-                                                    value={row.outTime || ''}
-                                                    onChange={(e) => handleRowChange(realIdx, 'outTime', e.target.value)}
-                                                    className="w-full bg-transparent text-center font-mono focus:bg-white focus:outline-none px-1 py-0.5 rounded-none disabled:opacity-30"
-                                                />
+                                            {/* 4. Clock Out Time */}
+                                            <td className="py-2.5 px-3 text-center">
+                                                <div className="relative inline-block w-24">
+                                                    <input
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        disabled={!isPresent}
+                                                        value={isPresent ? (row.outTime || offTime) : ''}
+                                                        placeholder="17:00"
+                                                        maxLength={5}
+                                                        onChange={(e) => handleRowChange(realIdx, 'outTime', e.target.value)}
+                                                        onBlur={(e) => {
+                                                            if (!isPresent) return;
+                                                            const norm = normalizeTimeString(e.target.value, offTime);
+                                                            handleRowChange(realIdx, 'outTime', norm);
+                                                        }}
+                                                        onFocus={handleCellSelectAll}
+                                                        className={`w-full text-center font-mono text-xs font-bold px-2 py-1.5 rounded-xl border transition ${
+                                                            isPresent
+                                                                ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-amber-500'
+                                                                : 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+                                                        }`}
+                                                    />
+                                                </div>
                                             </td>
 
-                                            {/* 5. HOURS (Light Green) */}
-                                            <td className="border-r border-gray-400 bg-[#E2EFDA] px-2 py-1.5 text-center font-mono font-bold text-gray-800">
-                                                {row.isTicked ? Number(row.hours || 0).toFixed(2) : '0.00'}
+                                            {/* 5. Hours Worked */}
+                                            <td className="py-2.5 px-3 text-center">
+                                                {isPresent && row.hours > 0 ? (
+                                                    <span className="font-mono text-xs font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60 px-2 py-1 rounded-lg inline-block">
+                                                        {Number(row.hours).toFixed(2)} hrs
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400 font-mono text-xs">0.00</span>
+                                                )}
                                             </td>
 
-                                            {/* 6. DAY SALARY (Light Green) */}
-                                            <td className="border-r border-gray-400 bg-[#E2EFDA] px-3 py-1.5 text-right font-mono font-bold text-gray-900">
-                                                {row.isTicked ? Number(row.daySalary || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                                            {/* 6. Day Salary */}
+                                            <td className="py-2.5 px-3 text-right">
+                                                {isPresent && row.daySalary > 0 ? (
+                                                    <span className="font-mono text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 px-2 py-1 rounded-lg inline-block">
+                                                        Rs. {Math.round(row.daySalary).toLocaleString()}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400 font-mono text-xs">Rs. 0</span>
+                                                )}
                                             </td>
 
-                                            {/* 7. ADVANCE (Light Yellow) */}
-                                            <td className="border-r border-gray-400 bg-[#FFF2CC] p-1 text-right font-mono">
-                                                <input
-                                                    type="number"
-                                                    value={row.advance === 0 ? '' : row.advance}
-                                                    placeholder="0"
-                                                    onChange={(e) => handleRowChange(realIdx, 'advance', e.target.value)}
-                                                    className="w-full bg-transparent text-right font-mono focus:bg-white focus:outline-none px-1 py-0.5 rounded-none"
-                                                />
+                                            {/* 7. Advance */}
+                                            <td className="py-2.5 px-3 text-right">
+                                                <div className="relative inline-block w-24">
+                                                    <input
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        value={row.advance === 0 ? '' : row.advance}
+                                                        placeholder="0"
+                                                        onChange={(e) => handleRowChange(realIdx, 'advance', e.target.value)}
+                                                        onFocus={handleCellSelectAll}
+                                                        className="w-full text-right font-mono text-xs font-bold px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                    />
+                                                </div>
                                             </td>
 
-                                            {/* 8. DEDUCTION (Light Green) */}
-                                            <td className="border-r border-gray-400 bg-[#E2EFDA] p-1 text-right font-mono font-semibold text-gray-800">
-                                                <input
-                                                    type="number"
-                                                    value={row.deduction}
-                                                    onChange={(e) => handleRowChange(realIdx, 'deduction', e.target.value)}
-                                                    className={`w-full bg-transparent text-right font-mono focus:bg-white focus:outline-none px-1 py-0.5 rounded-none ${row.deduction < 0 ? 'text-red-700 font-bold' : ''}`}
-                                                />
+                                            {/* 8. Deduction */}
+                                            <td className="py-2.5 px-3 text-right">
+                                                <div className="relative inline-block w-24">
+                                                    <input
+                                                        type="text"
+                                                        inputMode="text"
+                                                        value={row.deduction !== undefined && row.deduction !== null && row.deduction !== 0 ? row.deduction : ''}
+                                                        placeholder="0"
+                                                        onChange={(e) => handleRowChange(realIdx, 'deduction', e.target.value)}
+                                                        onFocus={handleCellSelectAll}
+                                                        onBlur={(e) => {
+                                                            let val = String(e.target.value).trim();
+                                                            if (val === '' || val === '-') {
+                                                                handleRowChange(realIdx, 'deduction', 0);
+                                                            } else {
+                                                                const num = Number(val);
+                                                                if (!isNaN(num)) {
+                                                                    handleRowChange(realIdx, 'deduction', num > 0 ? -num : num);
+                                                                }
+                                                            }
+                                                        }}
+                                                        className={`w-full text-right font-mono text-xs font-bold px-2 py-1.5 rounded-xl border outline-none transition ${
+                                                            hasDeduction
+                                                                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 focus:ring-2 focus:ring-rose-500'
+                                                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500'
+                                                        }`}
+                                                    />
+                                                </div>
                                             </td>
 
-                                            {/* 9. REASON (Light Green) */}
-                                            <td className="bg-[#E2EFDA] p-1">
+                                            {/* 9. Policy Reason */}
+                                            <td className="py-2.5 px-3">
                                                 <input
                                                     type="text"
                                                     value={row.reason || ''}
                                                     onChange={(e) => handleRowChange(realIdx, 'reason', e.target.value)}
-                                                    placeholder="FILL"
-                                                    className="w-full bg-transparent px-2 py-0.5 focus:bg-white focus:outline-none text-gray-800 font-medium"
+                                                    onFocus={handleCellSelectAll}
+                                                    placeholder="Normal Day"
+                                                    className={`w-full text-xs font-medium px-2 py-1.5 rounded-xl border outline-none transition ${
+                                                        row.reason && row.reason.includes('Late')
+                                                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
+                                                            : row.reason && row.reason.includes('Absent')
+                                                            ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                                                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                                                    }`}
                                                 />
                                             </td>
                                         </tr>
@@ -448,26 +1063,26 @@ export default function ActiveEmployeeDayInOutPage() {
                                 })}
                             </tbody>
 
-                            {/* Summary Footer Row */}
+                            {/* Executive Summary Footer Bar */}
                             <tfoot>
-                                <tr className="bg-gray-100 border-t-2 border-gray-400 font-bold text-gray-900">
-                                    <td colSpan={4} className="border-r border-gray-400 py-2.5 px-3 text-right uppercase">
-                                        Total ({totals.presentCount} Employees Present):
+                                <tr className="bg-slate-50 dark:bg-slate-900/90 border-t-2 border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white">
+                                    <td colSpan={4} className="py-3 px-3 text-right uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                        Summary ({totals.presentCount} Staff Present):
                                     </td>
-                                    <td className="border-r border-gray-400 py-2.5 px-2 text-center font-mono">
-                                        {totals.totalHours.toFixed(2)}
+                                    <td className="py-3 px-3 text-center font-mono text-indigo-700 dark:text-indigo-300 font-black">
+                                        {totals.totalHours.toFixed(2)}h
                                     </td>
-                                    <td className="border-r border-gray-400 py-2.5 px-3 text-right font-mono text-emerald-800">
-                                        Rs. {totals.totalSalary.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                    <td className="py-3 px-3 text-right font-mono text-emerald-700 dark:text-emerald-300 font-black">
+                                        Rs. {Math.round(totals.totalSalary).toLocaleString()}
                                     </td>
-                                    <td className="border-r border-gray-400 py-2.5 px-3 text-right font-mono text-amber-800">
-                                        Rs. {totals.totalAdvance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                    <td className="py-3 px-3 text-right font-mono text-amber-700 dark:text-amber-300 font-black">
+                                        Rs. {Math.round(totals.totalAdvance).toLocaleString()}
                                     </td>
-                                    <td className="border-r border-gray-400 py-2.5 px-3 text-right font-mono text-rose-800">
-                                        Rs. -{totals.totalDeductions.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                    <td className="py-3 px-3 text-right font-mono text-rose-700 dark:text-rose-300 font-black">
+                                        -Rs. {Math.round(totals.totalDeductions).toLocaleString()}
                                     </td>
-                                    <td className="py-2.5 px-3 text-xs text-gray-500">
-                                        Net: Rs. {(totals.totalSalary - totals.totalAdvance - totals.totalDeductions).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                    <td className="py-3 px-3 font-mono text-slate-900 dark:text-white font-black text-xs">
+                                        Net: <span className="text-emerald-600 dark:text-emerald-400">Rs. {Math.round(netEstimatedPay).toLocaleString()}</span>
                                     </td>
                                 </tr>
                             </tfoot>
@@ -475,29 +1090,57 @@ export default function ActiveEmployeeDayInOutPage() {
                     </div>
                 )}
 
-                {/* Bottom Action Footer */}
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 pt-4 border-t border-gray-200">
-                    <div className="flex items-center gap-4">
-                        <span className="flex items-center gap-1.5">
-                            <span className="w-3.5 h-3.5 bg-[#FFF2CC] border border-gray-400 inline-block"></span>
-                            Manual Entry (Editable)
+                {/* Bottom Card Footer Action Bar */}
+                <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 text-[11px]">
+                        <span className="flex items-center gap-1.5 font-medium">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                            Clock In (Emerald)
                         </span>
-                        <span className="flex items-center gap-1.5">
-                            <span className="w-3.5 h-3.5 bg-[#E2EFDA] border border-gray-400 inline-block"></span>
-                            Calculated / Status Fields
+                        <span className="flex items-center gap-1.5 font-medium">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+                            Clock Out (Amber)
+                        </span>
+                        <span className="flex items-center gap-1.5 font-medium">
+                            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block"></span>
+                            Auto-Policy Evaluated
                         </span>
                     </div>
 
-                    <button
-                        onClick={handleSave}
-                        disabled={saveMutation.isPending}
-                        className="bg-gray-800 hover:bg-gray-900 text-white font-bold px-6 py-2 rounded shadow-xs flex items-center gap-2"
-                    >
-                        <Save size={14} />
-                        {saveMutation.isPending ? 'Saving to Database...' : 'Save All Attendance Records'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={saveMutation.isPending}
+                            className="px-6 py-2 rounded-xl text-xs font-black uppercase tracking-wide text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/20 transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                        >
+                            <Save size={15} className={saveMutation.isPending ? 'animate-spin' : ''} />
+                            {saveMutation.isPending ? 'Saving Records...' : 'Save All Attendance'}
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            {/* Salary Policies Modal */}
+            <SalaryPoliciesModal
+                isOpen={isPoliciesModalOpen}
+                onClose={() => setIsPoliciesModalOpen(false)}
+                policies={salaryPolicies}
+                employees={employees}
+                selectedEmployeeId={null}
+                epfRates={{
+                    employeeRate: epfEmployeeRate,
+                    employerRate: epfEmployerRate,
+                    etfRate: etfEmployerRate
+                }}
+                onSavePolicies={handleSavePoliciesFromModal}
+                onApplyToSheet={(newPolicies) => {
+                    setRows(prevRows => prevRows.map(r => {
+                        return evaluateRowPolicy(r, onTime, offTime, r.hourlyRate || 260, newPolicies, r.employeeId);
+                    }));
+                    toast.success('Policies applied to all employees on grid!');
+                }}
+            />
         </div>
     );
 }

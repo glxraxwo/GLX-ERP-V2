@@ -51,13 +51,13 @@ const settingsSchema = new mongoose.Schema({
     invoiceCustomTemplateUrl: String,
     quotationCustomTemplateUrl: String,
     activeInvoiceTemplate: {
-        type: String,
         enum: ['default', 'custom'],
+        type: String,
         default: 'default'
     },
     activeQuotationTemplate: {
-        type: String,
         enum: ['default', 'custom'],
+        type: String,
         default: 'default'
     },
     // Default Shift Times & Rate for Manual Attendance
@@ -91,6 +91,23 @@ const settingsSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
         description: 'Allow salary payment before scheduled date'
+    },
+    // Manual Attendance Salary Policies & Statutory EPF/ETF Rates
+    salaryPolicies: {
+        type: Array,
+        default: []
+    },
+    epfEmployeeRate: {
+        type: Number,
+        default: 8
+    },
+    epfEmployerRate: {
+        type: Number,
+        default: 12
+    },
+    etfEmployerRate: {
+        type: Number,
+        default: 3
     },
     updatedBy: {
         type: mongoose.Schema.Types.ObjectId,

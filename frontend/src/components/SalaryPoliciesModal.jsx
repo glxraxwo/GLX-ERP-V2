@@ -6,6 +6,8 @@ export default function SalaryPoliciesModal({
     isOpen,
     onClose,
     policies = [],
+    employees = [],
+    selectedEmployeeId = '',
     epfRates = { employeeRate: 8, employerRate: 12, etfRate: 3 },
     onSavePolicies,
     onApplyToSheet
@@ -20,51 +22,55 @@ export default function SalaryPoliciesModal({
         if (policies && policies.length > 0) {
             setLocalPolicies(JSON.parse(JSON.stringify(policies)));
         } else {
-            // Default starter set
+            // Default starter set matching user's tiered structure
             setLocalPolicies([
                 {
                     id: 'pol-1',
                     type: 'LATE_DEDUCTION',
-                    name: 'Late 5+ mins (-100 Rs unless hours covered)',
-                    thresholdMinutes: 5,
+                    name: 'Late 10+ mins (Tier 1)',
+                    thresholdMinutes: 10,
                     deductionAmount: 100,
                     bonusAmount: 0,
                     waiveIfHoursCovered: true,
                     standardShiftHours: 9,
+                    appliesTo: 'ALL',
                     isActive: true
                 },
                 {
                     id: 'pol-2',
                     type: 'LATE_DEDUCTION',
-                    name: 'Late 15+ mins (-200 Rs unless hours covered)',
-                    thresholdMinutes: 15,
+                    name: 'Late 20+ mins (Tier 2)',
+                    thresholdMinutes: 20,
                     deductionAmount: 200,
                     bonusAmount: 0,
                     waiveIfHoursCovered: true,
                     standardShiftHours: 9,
+                    appliesTo: 'ALL',
                     isActive: true
                 },
                 {
                     id: 'pol-3',
                     type: 'LATE_DEDUCTION',
-                    name: 'Late 30+ mins (-300 Rs unless hours covered)',
+                    name: 'Late 30+ mins (Tier 3)',
                     thresholdMinutes: 30,
                     deductionAmount: 300,
                     bonusAmount: 0,
                     waiveIfHoursCovered: true,
                     standardShiftHours: 9,
+                    appliesTo: 'ALL',
                     isActive: true
                 },
                 {
                     id: 'pol-4',
                     type: 'ABSENT_DEDUCTION',
-                    name: 'Absent / Unticked Day (-1000 Rs)',
+                    name: 'Absent / Unticked Day',
                     thresholdMinutes: 0,
-                    deductionAmount: 1000,
+                    deductionAmount: 0,
                     bonusAmount: 0,
                     waiveIfHoursCovered: false,
                     standardShiftHours: 9,
-                    isActive: true
+                    appliesTo: 'ALL',
+                    isActive: false
                 }
             ]);
         }
@@ -89,11 +95,29 @@ export default function SalaryPoliciesModal({
             thresholdMinutes: 10,
             deductionAmount: 150,
             bonusAmount: 0,
-            waiveIfHoursCovered: true,
+            waiveIfHoursCovered: false,
             standardShiftHours: 9,
+            appliesTo: selectedEmployeeId || 'ALL',
             isActive: true
         };
         setLocalPolicies([...localPolicies, newPolicy]);
+    };
+
+    // Add preset late tier
+    const handleAddPresetTier = (thresholdMinutes, deductionAmount, name) => {
+        const newPolicy = {
+            id: `pol-${Date.now()}`,
+            type: 'LATE_DEDUCTION',
+            name,
+            thresholdMinutes,
+            deductionAmount,
+            bonusAmount: 0,
+            waiveIfHoursCovered: false,
+            standardShiftHours: 9,
+            appliesTo: selectedEmployeeId || 'ALL',
+            isActive: true
+        };
+        setLocalPolicies(prev => [...prev, newPolicy]);
     };
 
     // Update field
@@ -111,7 +135,7 @@ export default function SalaryPoliciesModal({
     };
 
     // Save
-    const handleSave = async (andApply = false) => {
+    const handleSave = async (andApply = true) => {
         setIsSaving(true);
         try {
             if (onSavePolicies) {
@@ -122,10 +146,10 @@ export default function SalaryPoliciesModal({
                     etfEmployerRate: Number(etfRate)
                 });
             }
-            if (andApply && onApplyToSheet) {
+            if (onApplyToSheet) {
                 onApplyToSheet(localPolicies, { employeeRate, employerRate, etfRate });
             }
-            toast.success('Policies and EPF/ETF rates saved successfully!');
+            toast.success('Policies and EPF/ETF rates saved & applied to sheet successfully!');
             onClose();
         } catch (err) {
             toast.error(err.message || 'Failed to save policies');
@@ -249,6 +273,42 @@ export default function SalaryPoliciesModal({
                                 <Plus size={14} />
                                 + Add Policy Rule
                             </button>
+                        </div>
+
+                        {/* Quick Preset Buttons for Tiered Late Deductions */}
+                        <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-3 mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <Sparkles size={15} className="text-amber-600 shrink-0" />
+                                <span className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                                    Quick Late Tiers (ප්‍රමාද කාල පරාස ඉක්මනින් එක් කරන්න):
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                <button
+                                    type="button"
+                                    onClick={() => handleAddPresetTier(10, 100, 'Late 10+ mins (Tier 1)')}
+                                    className="px-2.5 py-1 text-[11px] font-bold bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 rounded shadow-2xs transition cursor-pointer"
+                                    title="Add 10-minute late penalty rule"
+                                >
+                                    + 10-Min Late (Rs. 100)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleAddPresetTier(20, 200, 'Late 20+ mins (Tier 2)')}
+                                    className="px-2.5 py-1 text-[11px] font-bold bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 rounded shadow-2xs transition cursor-pointer"
+                                    title="Add 20-minute late penalty rule"
+                                >
+                                    + 20-Min Late (Rs. 200)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleAddPresetTier(30, 300, 'Late 30+ mins (Tier 3)')}
+                                    className="px-2.5 py-1 text-[11px] font-bold bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 rounded shadow-2xs transition cursor-pointer"
+                                    title="Add 30-minute late penalty rule"
+                                >
+                                    + 30-Min Late (Rs. 300)
+                                </button>
+                            </div>
                         </div>
 
                         {/* Policies List */}
@@ -410,6 +470,32 @@ export default function SalaryPoliciesModal({
                                                 <span className="text-gray-700">hours: Pay full shift day salary.</span>
                                             </div>
                                         )}
+
+                                        {/* Target Employee Selector */}
+                                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100 text-xs">
+                                            <span className="font-bold text-gray-700">Applies To (අදාළ සේවකයා):</span>
+                                            <select
+                                                value={pol.appliesTo || 'ALL'}
+                                                onChange={(e) => handlePolicyChange(idx, 'appliesTo', e.target.value)}
+                                                className="bg-white border border-gray-300 rounded px-2 py-1 text-xs font-semibold text-gray-800 focus:outline-none focus:border-indigo-500"
+                                            >
+                                                <option value="ALL">All Employees (සියලුම සේවකයින්ට පොදුයි)</option>
+                                                {employees.map(emp => {
+                                                    const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.name;
+                                                    const code = emp.payrollNumber || emp.employeeCode || '';
+                                                    return (
+                                                        <option key={emp._id} value={emp._id}>
+                                                            {name} {code ? `(${code})` : ''} - Only this employee
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                            {pol.appliesTo && pol.appliesTo !== 'ALL' && (
+                                                <span className="text-[10px] bg-purple-100 text-purple-800 font-extrabold px-2 py-0.5 rounded-full border border-purple-200">
+                                                    Custom Employee Rule
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -441,7 +527,7 @@ export default function SalaryPoliciesModal({
 
                         <button
                             type="button"
-                            onClick={() => handleSave(false)}
+                            onClick={() => handleSave(true)}
                             disabled={isSaving}
                             className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-1.5 shadow-sm transition"
                         >
