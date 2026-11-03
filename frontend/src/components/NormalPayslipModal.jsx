@@ -7,7 +7,17 @@ import autoTable from 'jspdf-autotable';
 import { manualAttendanceApi } from '../features/hr/hrApi';
 import { useSettings } from '../features/settings/useSettings';
 
-export default function NormalPayslipModal({ isOpen, onClose, employeeId, startDate, endDate, includeEpfEtf = false, dynamicTotals = null }) {
+export default function NormalPayslipModal({
+    isOpen,
+    onClose,
+    employeeId,
+    startDate,
+    endDate,
+    includeEpfEtf = false,
+    dynamicTotals = null,
+    employee = null,
+    hourlyRate = null
+}) {
     const printRef = useRef(null);
     const { data: settingsData } = useSettings();
     const systemSettings = settingsData?.data || {};
@@ -33,33 +43,59 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
 
     const payslip = payslipData || {};
     const comp = payslip.company || {};
-    const emp = payslip.employee || {};
-    const earn = (payslip.earnings && payslip.earnings.grossEarnings > 0)
-        ? payslip.earnings
-        : (dynamicTotals ? {
-            basicSalary: dynamicTotals.basicSalary,
-            totalHours: dynamicTotals.totalHours,
-            overtimePayment: dynamicTotals.otCommission,
-            grossEarnings: dynamicTotals.totalSalary,
+    
+    // Resolve employee details (use passed active employee info if available, then fallback to API)
+    const empFromProps = employee ? {
+        name: employee.fullName || (employee.firstName ? `${employee.firstName} ${employee.lastName || ''}`.trim() : ''),
+        payrollNumber: employee.payrollNumber || employee.employeeId || '',
+        department: employee.departmentId?.name || employee.department || 'Manufacturing & Operations',
+        designation: employee.designationId?.title || employee.designation || '',
+        hourlyRate: hourlyRate || employee.hourlyRate || 0,
+        ...employee
+    } : null;
+
+    const emp = {
+        ...(empFromProps || {}),
+        ...(payslip.employee || {}),
+        ...(empFromProps?.name ? { name: empFromProps.name } : {}),
+        ...(empFromProps?.payrollNumber ? { payrollNumber: empFromProps.payrollNumber } : {}),
+        ...(hourlyRate ? { hourlyRate } : {})
+    };
+
+    // When dynamicTotals is provided from the live Attendance Sheet, prioritize its real-time values!
+    const hasDynamic = dynamicTotals !== null && dynamicTotals !== undefined && typeof dynamicTotals.totalSalary === 'number';
+
+    const earn = hasDynamic
+        ? {
+            basicSalary: dynamicTotals.basicSalary ?? 0,
+            totalHours: dynamicTotals.totalHours ?? 0,
+            overtimePayment: dynamicTotals.otCommission ?? 0,
+            grossEarnings: dynamicTotals.totalSalary ?? 0,
             commission: 0,
             otherAllowances: 0
-        } : (payslip.earnings || {}));
-    const ded = (payslip.deductions && payslip.deductions.totalDeductions > 0)
-        ? payslip.deductions
-        : (dynamicTotals ? {
-            epfEmployee: dynamicTotals.epfEmployeeDeduction,
-            advances: dynamicTotals.totalAdvance,
+        }
+        : (payslip.earnings || {});
+
+    const ded = hasDynamic
+        ? {
+            epfEmployee: dynamicTotals.epfEmployeeDeduction ?? 0,
+            advances: dynamicTotals.totalAdvance ?? 0,
             otherDeductions: Math.abs(dynamicTotals.totalDeduction < 0 ? dynamicTotals.totalDeduction : 0),
-            totalDeductions: dynamicTotals.epfEmployeeDeduction + dynamicTotals.totalAdvance
-        } : (payslip.deductions || {}));
-    const empContrib = payslip.employerContributions || (dynamicTotals ? {
-        epfEmployer: dynamicTotals.epfEmployerContribution,
-        etfEmployer: dynamicTotals.etfEmployerContribution,
-        totalContributions: dynamicTotals.epfEmployerContribution + dynamicTotals.etfEmployerContribution
-    } : {});
-    const net = (payslip.netSalary !== undefined && payslip.netSalary > 0)
-        ? payslip.netSalary
-        : (dynamicTotals ? dynamicTotals.netSalary : (payslip.netSalary || 0));
+            totalDeductions: (dynamicTotals.epfEmployeeDeduction || 0) + (dynamicTotals.totalAdvance || 0) + Math.abs(dynamicTotals.totalDeduction < 0 ? dynamicTotals.totalDeduction : 0)
+        }
+        : (payslip.deductions || {});
+
+    const empContrib = hasDynamic
+        ? {
+            epfEmployer: dynamicTotals.epfEmployerContribution ?? 0,
+            etfEmployer: dynamicTotals.etfEmployerContribution ?? 0,
+            totalContributions: (dynamicTotals.epfEmployerContribution || 0) + (dynamicTotals.etfEmployerContribution || 0)
+        }
+        : (payslip.employerContributions || {});
+
+    const net = hasDynamic
+        ? (dynamicTotals.netSalary ?? 0)
+        : (payslip.netSalary !== undefined ? payslip.netSalary : 0);
 
     // Use admin uploaded signature from backend company object or client systemSettings
     const companySealUrl = comp.companySeal || systemSettings.companySeal || '';

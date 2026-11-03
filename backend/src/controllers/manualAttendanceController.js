@@ -712,14 +712,11 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
     const startStr = startDate || formatDateStr(defaultStart);
     const endStr = endDate || formatDateStr(today);
 
-    // Get attendance records in date range (match ticked or present attendance)
+    // Get attendance records in date range: strictly count explicitly ticked records
     const attendances = await Attendance.find({
         employeeId: employee._id,
         dateString: { $gte: startStr, $lte: endStr },
-        $or: [
-            { isTicked: true },
-            { isTicked: { $ne: false }, status: { $in: ['present', 'late', 'half_day'] } }
-        ]
+        isTicked: true
     });
 
     const hourlyRate = getEmployeeRegisteredRate(employee, 260);
@@ -729,8 +726,12 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
     let totalDeductions = 0;
 
     attendances.forEach(att => {
-        totalHours += att.payableHours || 0;
-        totalEarnedSalary += att.daySalary || 0;
+        const hrs = att.payableHours || 0;
+        totalHours += hrs;
+        const dSal = (att.daySalary !== undefined && att.daySalary > 0)
+            ? att.daySalary
+            : Number((hrs * (att.hourlyRateApplied || hourlyRate)).toFixed(2));
+        totalEarnedSalary += dSal;
         totalAdvance += att.dailyAdvance || 0;
         if (att.dailyDeduction < 0) {
             totalDeductions += Math.abs(att.dailyDeduction);

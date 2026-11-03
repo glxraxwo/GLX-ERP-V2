@@ -2799,6 +2799,8 @@ export default function EmployeePaymentRecordSheetPage() {
                 endDate={endDate}
                 includeEpfEtf={includeEpfEtf}
                 dynamicTotals={dynamicTotals}
+                employee={currentEmployee}
+                hourlyRate={effectiveHourlyRate}
             />
 
             {/* Record Advance Modal */}
