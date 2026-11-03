@@ -40,8 +40,7 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
     const net = payslip.netSalary || 0;
 
     // Use admin uploaded signature from backend company object or client systemSettings
-    const bossSignatureUrl = comp.bossSignature || systemSettings.bossSignature || '';
-    const bossTitle = comp.bossTitle || systemSettings.bossTitle || 'MANAGING DIRECTOR';
+    const companySealUrl = comp.companySeal || systemSettings.companySeal || '';
 
     // Build the Exact Pixel-Perfect Modern Salary Slip jsPDF Document
     const buildSalarySlipPdfDoc = () => {
@@ -181,38 +180,52 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
         doc.text('Thank you for', 20, bottomY);
         doc.text('your hard work!', 20, bottomY + 6);
 
-        // Uploaded Admin Signature Image / Script
-        const sigImgEl = document.querySelector('img[alt="Authorized Signature"]');
-        if (sigImgEl && sigImgEl.complete && sigImgEl.naturalWidth > 0) {
+        // Official Company Seal
+        const sealImgEl = document.querySelector('img[alt="Official Company Seal"]');
+        let sealAdded = false;
+        if (sealImgEl && sealImgEl.complete && sealImgEl.naturalWidth > 0) {
             try {
-                doc.addImage(sigImgEl, 'PNG', 20, bottomY + 10, 48, 16, undefined, 'FAST');
+                doc.addImage(sealImgEl, 'PNG', 20, bottomY + 8, 20, 20, undefined, 'FAST');
+                sealAdded = true;
             } catch (imgErr) {
-                console.warn('Could not render signature element in PDF:', imgErr);
+                console.warn('Could not render seal element in PDF:', imgErr);
             }
-        } else if (bossSignatureUrl && bossSignatureUrl.startsWith('data:image')) {
+        }
+        if (!sealAdded && companySealUrl && companySealUrl.startsWith('data:image')) {
             try {
-                const format = (bossSignatureUrl.includes('image/jpeg') || bossSignatureUrl.includes('image/jpg')) ? 'JPEG' : 'PNG';
-                doc.addImage(bossSignatureUrl, format, 20, bottomY + 10, 48, 16, undefined, 'FAST');
+                const format = (companySealUrl.includes('image/jpeg') || companySealUrl.includes('image/jpg')) ? 'JPEG' : 'PNG';
+                doc.addImage(companySealUrl, format, 20, bottomY + 8, 20, 20, undefined, 'FAST');
+                sealAdded = true;
             } catch (imgErr) {
-                console.warn('Could not render signature in PDF:', imgErr);
+                console.warn('Could not render seal in PDF:', imgErr);
             }
-        } else if (bossSignatureUrl && !bossSignatureUrl.startsWith('data:image')) {
-            doc.setFont('times', 'italic');
-            doc.setFontSize(18);
-            doc.setTextColor(40, 40, 80);
-            doc.text(bossSignatureUrl, 25, bottomY + 24);
+        }
+        if (!sealAdded) {
+            // Vector circular company seal stamp
+            doc.setDrawColor(185, 28, 28);
+            doc.setLineWidth(0.6);
+            doc.circle(30, bottomY + 18, 10);
+            doc.circle(30, bottomY + 18, 9.2);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(5);
+            doc.setTextColor(185, 28, 28);
+            doc.text('GLX INDUSTRIES', 30, bottomY + 15.5, { align: 'center' });
+            doc.setFontSize(6);
+            doc.text('OFFICIAL SEAL', 30, bottomY + 18.5, { align: 'center' });
+            doc.setFontSize(4.5);
+            doc.text('★ AUTHORIZED ★', 30, bottomY + 21, { align: 'center' });
         }
 
-        // Signature Line
+        // Authorization Line
         doc.setDrawColor(0, 0, 0);
         doc.setLineWidth(0.4);
-        doc.line(20, bottomY + 29, 75, bottomY + 29);
+        doc.line(20, bottomY + 30, 75, bottomY + 30);
 
-        // Boss Title (e.g. MANAGING DIRECTOR)
+        // Authorized Person
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
         doc.setTextColor(20, 20, 20);
-        doc.text(bossTitle.toUpperCase(), 20, bottomY + 34);
+        doc.text('Authorized Person', 20, bottomY + 35);
 
         // Right Side: Deductions Breakdown (EPF only if includeEpfEtf is true!)
         let rightY = bottomY + 1;
@@ -553,27 +566,25 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
                                 </h3>
 
                                 <div className="mt-5">
-                                    {bossSignatureUrl ? (
-                                        bossSignatureUrl.startsWith('data:image') || bossSignatureUrl.startsWith('http') || bossSignatureUrl.startsWith('/') ? (
+                                    <div className="relative mb-2 min-h-[64px] flex items-center">
+                                        {companySealUrl ? (
                                             <img
-                                                src={bossSignatureUrl}
-                                                alt="Authorized Signature"
-                                                style={{ maxHeight: '56px', maxWidth: '180px', objectFit: 'contain' }}
-                                                className="h-14 max-w-[180px] object-contain mb-1"
+                                                src={companySealUrl}
+                                                alt="Official Company Seal"
+                                                style={{ maxHeight: '64px', maxWidth: '120px', objectFit: 'contain' }}
+                                                className="h-16 w-auto object-contain"
                                             />
                                         ) : (
-                                            <div className="font-serif italic text-2xl text-indigo-950 tracking-wider mb-1">
-                                                {bossSignatureUrl}
+                                            <div className="w-16 h-16 rounded-full border-2 border-red-700/85 flex flex-col items-center justify-center p-1 text-red-700 rotate-[-6deg] select-none shadow-xs">
+                                                <span className="text-[6.5px] font-black uppercase tracking-tight text-center leading-none">GLX INDUSTRIES</span>
+                                                <span className="text-[7.5px] font-extrabold my-0.5">★ SEAL ★</span>
+                                                <span className="text-[5.5px] font-bold uppercase tracking-tighter">OFFICIAL</span>
                                             </div>
-                                        )
-                                    ) : (
-                                        <div className="h-10 flex items-end text-xs text-gray-400 italic">
-                                            (Authorized Signatory)
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                     <div className="w-48 border-b-2 border-gray-900 pb-1"></div>
-                                    <div className="text-[11px] font-bold text-gray-900 mt-1 uppercase tracking-wider font-mono">
-                                        {bossTitle.toUpperCase()}
+                                    <div className="text-[11px] font-bold text-gray-900 mt-1 uppercase tracking-wider font-sans">
+                                        Authorized Person
                                     </div>
                                 </div>
                             </div>

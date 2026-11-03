@@ -178,11 +178,19 @@ export default function PublicPayslipPage() {
 
                         <div className="text-right flex flex-col items-end">
                             <p className="font-semibold text-gray-600 mb-1">Approved &amp; Authorized By:</p>
-                            <div className="h-10 w-44 border border-dashed border-gray-300 rounded flex items-center justify-center text-[10px] text-gray-400 my-1">
-                                [ Authorized Signature ]
+                            <div className="relative mb-2 min-h-[56px] flex items-center justify-end">
+                                {data?.company?.companySeal ? (
+                                    <img src={data.company.companySeal} alt="Official Company Seal" className="h-14 w-auto object-contain" />
+                                ) : (
+                                    <div className="w-14 h-14 rounded-full border-2 border-red-700/85 flex flex-col items-center justify-center p-1 text-red-700 rotate-[-6deg] select-none shadow-xs">
+                                        <span className="text-[6px] font-black uppercase tracking-tight text-center leading-none">GLX</span>
+                                        <span className="text-[7px] font-extrabold my-0.5">★ SEAL ★</span>
+                                        <span className="text-[5px] font-bold uppercase tracking-tighter">OFFICIAL</span>
+                                    </div>
+                                )}
                             </div>
                             <div className="border-t border-gray-400 w-48 mt-1"></div>
-                            <p className="text-[11px] font-bold text-gray-900 mt-0.5">Authorized Signatory</p>
+                            <p className="text-[11px] font-bold text-gray-900 mt-0.5">Authorized Person</p>
                         </div>
                     </div>
                 </Card>
