@@ -145,6 +145,7 @@ const employeeSchema = new mongoose.Schema({
     salaryStructureId: { type: mongoose.Schema.Types.ObjectId, ref: 'SalaryStructure' },
     leaveStructureId: { type: mongoose.Schema.Types.ObjectId, ref: 'LeaveStructure' },
     basicSalary: { type: Number, default: 0 }, // monthly basic
+    minimumSalary: { type: Number, default: 0 },
     currency: { type: String, default: 'LKR' },
 
     // Leave balances (current year)

@@ -112,7 +112,7 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
 
         const tableBody = [
             [
-                'Basic / Day Salary',
+                'Basic Salary',
                 `${earn.totalHours || 0} Hours`,
                 `Rs. ${Number(emp.hourlyRate || 0).toFixed(0)}`,
                 `Rs. ${Number(earn.basicSalary || 0).toLocaleString()}`
@@ -120,7 +120,7 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
         ];
 
         if (earn.overtimePayment > 0) {
-            tableBody.push(['Overtime Pay', 'Approved OT', 'Hourly', `Rs. ${Number(earn.overtimePayment).toLocaleString()}`]);
+            tableBody.push(['OT / Commission', 'Excess Balance', 'Performance & OT', `Rs. ${Number(earn.overtimePayment).toLocaleString()}`]);
         }
         if (earn.commission > 0) {
             tableBody.push(['Commission / Incentives', '1 Job', 'Fixed', `Rs. ${Number(earn.commission).toLocaleString()}`]);
@@ -519,7 +519,7 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 text-gray-800">
                                     <tr>
-                                        <td className="py-3 px-4 font-medium">Basic / Day Salary</td>
+                                        <td className="py-3 px-4 font-medium">Basic Salary</td>
                                         <td className="py-3 px-4 text-center font-mono">{earn.totalHours || 0} Hours</td>
                                         <td className="py-3 px-4 text-center font-mono">Rs. {Number(emp.hourlyRate || 0).toFixed(0)}</td>
                                         <td className="py-3 px-4 text-right font-bold font-mono">Rs. {Number(earn.basicSalary || 0).toLocaleString()}</td>
@@ -527,9 +527,9 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
 
                                     {earn.overtimePayment > 0 && (
                                         <tr>
-                                            <td className="py-2.5 px-4 font-medium">Overtime Pay</td>
-                                            <td className="py-2.5 px-4 text-center font-mono">Approved OT</td>
-                                            <td className="py-2.5 px-4 text-center font-mono">Hourly</td>
+                                            <td className="py-2.5 px-4 font-medium">OT / Commission</td>
+                                            <td className="py-2.5 px-4 text-center font-mono">Excess Balance</td>
+                                            <td className="py-2.5 px-4 text-center font-mono">Performance &amp; OT</td>
                                             <td className="py-2.5 px-4 text-right font-bold font-mono">Rs. {Number(earn.overtimePayment).toLocaleString()}</td>
                                         </tr>
                                     )}

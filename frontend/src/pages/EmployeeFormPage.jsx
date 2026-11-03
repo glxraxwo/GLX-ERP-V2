@@ -60,7 +60,7 @@ export default function EmployeeFormPage() {
         hourlyRate: 0,
         epfNumber: '', etfNumber: '', taxRegistrationNumber: '',
         bankDetails: { bankName: '', branchName: '', accountNumber: '', accountName: '' },
-        salaryStructureId: '', leaveStructureId: '', basicSalary: 0,
+        salaryStructureId: '', leaveStructureId: '', basicSalary: 0, minimumSalary: 0,
         status: 'active',
         notes: '',
         employeeCategory: 'Permanent',
@@ -105,7 +105,7 @@ export default function EmployeeFormPage() {
                 bankDetails: e.bankDetails || { bankName: '', branchName: '', accountNumber: '', accountName: '' },
                 salaryStructureId: e.salaryStructureId?._id || '',
                 leaveStructureId: e.leaveStructureId?._id || '',
-                basicSalary: e.basicSalary || 0,
+                basicSalary: e.basicSalary || 0, minimumSalary: e.minimumSalary !== undefined ? e.minimumSalary : (e.basicSalary || 0),
                 status: e.status || 'active',
                 notes: e.notes || '',
                 employeeCategory: e.employeeCategory || 'Permanent',
@@ -245,7 +245,7 @@ export default function EmployeeFormPage() {
 
             const payload = {
                 ...form,
-                basicSalary: baseSalaryNum,
+                basicSalary: baseSalaryNum, minimumSalary: +(form.minimumSalary || form.basicSalary || 0),
                 labourRate: isMonthly ? 0 : (+form.labourRate || 0),
                 hourlyRate: computedHourly,
                 departmentId: finalDeptId || undefined,
@@ -824,6 +824,22 @@ export default function EmployeeFormPage() {
                                         { value: 'Trainee', label: 'Trainee' }
                                     ]}
                                     value={form.employeeCategory} onChange={(e) => update('employeeCategory', e.target.value)} />
+                                <Input
+                                    label="Minimum Salary (අවම මූලික වැටුප - LKR)"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={form.minimumSalary || form.basicSalary || ''}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        update('minimumSalary', val);
+                                        if (form.paymentType !== 'monthly') {
+                                            update('basicSalary', val);
+                                        }
+                                    }}
+                                    placeholder="e.g. 20000"
+                                    helperText="Shown as Basic Salary on payslip; excess earned amount is shown as OT / Commission"
+                                />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                                 <Input label="EPF Rate (%)" type="number" min="0" max="100"

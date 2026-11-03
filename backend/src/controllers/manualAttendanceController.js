@@ -703,13 +703,13 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
 
     const hourlyRate = getEmployeeRegisteredRate(employee, 260);
     let totalHours = 0;
-    let basicSalary = 0;
+    let totalEarnedSalary = 0;
     let totalAdvance = 0;
     let totalDeductions = 0;
 
     attendances.forEach(att => {
         totalHours += att.payableHours || 0;
-        basicSalary += att.daySalary || 0;
+        totalEarnedSalary += att.daySalary || 0;
         totalAdvance += att.dailyAdvance || 0;
         if (att.dailyDeduction < 0) {
             totalDeductions += Math.abs(att.dailyDeduction);
@@ -744,6 +744,25 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
 
     totalAdvance = Math.max(totalAdvance, advanceFromCollection);
 
+    // Calculate Minimum Salary vs OT / Commission breakdown
+    // If employee earned more than minimum salary, basic = minimum, excess = OT / Commission
+    // If employee earned less (absent/short), only pay the earned amount!
+    const minSalary = Number(employee.minimumSalary || employee.basicSalary || 0);
+    const earnedTotal = Number(totalEarnedSalary.toFixed(2));
+
+    let basicSalary = earnedTotal;
+    let overtimePayment = 0;
+
+    if (minSalary > 0) {
+        if (earnedTotal > minSalary) {
+            basicSalary = minSalary;
+            overtimePayment = Number((earnedTotal - minSalary).toFixed(2));
+        } else {
+            basicSalary = earnedTotal;
+            overtimePayment = 0;
+        }
+    }
+
     // EPF/ETF statutory calculation ONLY if includeEpfEtf is true/ticked!
     const shouldIncludeEpf = (includeEpfEtf === 'true' || includeEpfEtf === true);
 
@@ -755,7 +774,6 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
     const epfEmployer = shouldIncludeEpf ? Number(((basicSalary * epfEmployerRate) / 100).toFixed(2)) : 0;
     const etfEmployer = shouldIncludeEpf ? Number(((basicSalary * etfEmployerRate) / 100).toFixed(2)) : 0;
 
-    const overtimePayment = 0; // Configurable
     const commission = 0;
     const otherAllowances = 0;
     const grossEarnings = Number((basicSalary + overtimePayment + commission + otherAllowances).toFixed(2));
