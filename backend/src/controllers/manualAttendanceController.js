@@ -440,13 +440,14 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
 
         let row;
         if (att) {
-            const isTicked = att.isTicked !== undefined ? att.isTicked : (att.status === 'present');
+            // Do NOT auto-tick rows on employee selection unless explicitly saved in this manual payment sheet
+            const isTicked = att.isManualSheetSaved ? Boolean(att.isTicked) : false;
             const inTime = att.manualInTime || '08:00';
             const outTime = att.manualOutTime || '17:00';
             const hours = isTicked ? (att.payableHours !== undefined ? att.payableHours : calculateWorkingHours(inTime, outTime)) : 0;
             const daySalary = isTicked ? (att.daySalary !== undefined ? att.daySalary : Number((hours * hourlyRate).toFixed(2))) : 0;
             const advance = Math.max(Number(att.dailyAdvance) || 0, Number(advanceMap.get(dateStr)) || 0);
-            const deduction = att.dailyDeduction || 0;
+            const deduction = isTicked ? (att.dailyDeduction || 0) : 0;
             const reason = att.deductionReason || (isTicked ? '' : (att.dailyDeduction < 0 ? 'No Work' : ''));
 
             if (isTicked) {
@@ -618,6 +619,7 @@ export const saveDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, r
                         deductionReason: reason,
                         status: isTicked ? 'present' : 'absent',
                         checkInMethod: 'manual_spreadsheet',
+                        isManualSheetSaved: true,
                         markedBy: req.user?._id
                     }
                 },

@@ -47,7 +47,8 @@ const attendanceSchema = new mongoose.Schema({
     notes: String,
 
     // ── Spreadsheet / Manual Entry Specific Fields ─────────────────────────
-    isTicked: { type: Boolean, default: true },
+    isTicked: { type: Boolean, default: false },
+    isManualSheetSaved: { type: Boolean, default: false },
     dateString: { type: String, index: true }, // Format: YYYY-MM-DD
     manualInTime: { type: String, default: '08:00' },
     manualOutTime: { type: String, default: '17:00' },

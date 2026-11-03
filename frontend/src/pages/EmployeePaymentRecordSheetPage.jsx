@@ -515,34 +515,31 @@ export default function EmployeePaymentRecordSheetPage() {
 
     const employees = useMemo(() => employeesData?.data || [], [employeesData]);
 
-    // Do NOT auto-select an employee by default on page load (user requested blank default)
-    // Generate initial blank calendar rows if no employee selected yet
+    // Generate initial blank calendar rows (always unticked by default)
     useEffect(() => {
-        if (!selectedEmployeeId) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
-                const daysList = [];
-                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                    const dateStr = formatDateStr(d);
-                    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
-                    daysList.push({
-                        date: dateStr,
-                        day: dayName,
-                        isTicked: false,
-                        inTime: '08:00',
-                        outTime: '17:00',
-                        in: '08:00',
-                        out: '17:00',
-                        hours: 0,
-                        daySalary: 0,
-                        advance: 0,
-                        deduction: 0,
-                        reason: ''
-                    });
-                }
-                setRows(daysList);
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
+            const daysList = [];
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                const dateStr = formatDateStr(d);
+                const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+                daysList.push({
+                    date: dateStr,
+                    day: dayName,
+                    isTicked: false,
+                    inTime: onTime || '08:00',
+                    outTime: offTime || '17:00',
+                    in: onTime || '08:00',
+                    out: offTime || '17:00',
+                    hours: 0,
+                    daySalary: 0,
+                    advance: 0,
+                    deduction: 0,
+                    reason: ''
+                });
             }
+            setRows(daysList);
         }
     }, [selectedEmployeeId, startDate, endDate]);
 
