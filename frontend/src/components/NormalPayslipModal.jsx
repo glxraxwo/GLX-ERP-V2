@@ -47,7 +47,7 @@ export default function NormalPayslipModal({
     // Resolve employee details (use passed active employee info if available, then fallback to API)
     const empFromProps = employee ? {
         name: employee.fullName || (employee.firstName ? `${employee.firstName} ${employee.lastName || ''}`.trim() : ''),
-        payrollNumber: employee.payrollNumber || employee.employeeId || '',
+        payrollNumber: employee.payrollNumber || employee.employeeCode || employee.employeeId || '',
         department: employee.departmentId?.name || employee.department || 'Manufacturing & Operations',
         designation: employee.designationId?.title || employee.designation || '',
         hourlyRate: hourlyRate || employee.hourlyRate || 0,
@@ -55,14 +55,12 @@ export default function NormalPayslipModal({
     } : null;
 
     const emp = {
-        ...(empFromProps || {}),
         ...(payslip.employee || {}),
-        ...(empFromProps?.name ? { name: empFromProps.name } : {}),
-        ...(empFromProps?.payrollNumber ? { payrollNumber: empFromProps.payrollNumber } : {}),
+        ...(empFromProps || {}),
         ...(hourlyRate ? { hourlyRate } : {})
     };
 
-    // When dynamicTotals is provided from the live Attendance Sheet, prioritize its real-time values!
+    // When dynamicTotals is provided from the live Attendance Sheet, ALWAYS prioritize its real-time values!
     const hasDynamic = dynamicTotals !== null && dynamicTotals !== undefined && typeof dynamicTotals.totalSalary === 'number';
 
     const earn = hasDynamic
