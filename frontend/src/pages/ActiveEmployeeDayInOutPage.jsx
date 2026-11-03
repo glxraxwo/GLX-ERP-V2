@@ -757,6 +757,7 @@ export default function ActiveEmployeeDayInOutPage() {
                                 <input
                                     type="text"
                                     inputMode="numeric"
+                                    id="daily-header-ontime"
                                     value={onTime}
                                     placeholder="08:00"
                                     maxLength={5}
@@ -766,6 +767,13 @@ export default function ActiveEmployeeDayInOutPage() {
                                         handleHeaderTimeChange('on', norm);
                                     }}
                                     onFocus={handleCellSelectAll}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const offEl = document.getElementById('daily-header-offtime');
+                                            if (offEl) { offEl.focus(); offEl.select(); }
+                                        }
+                                    }}
                                     className="bg-white border border-emerald-300 text-emerald-950 font-mono font-bold text-xs px-1.5 py-0.5 rounded w-14 text-center outline-none focus:ring-1 focus:ring-emerald-500"
                                 />
                             </div>
@@ -775,6 +783,7 @@ export default function ActiveEmployeeDayInOutPage() {
                                 <input
                                     type="text"
                                     inputMode="numeric"
+                                    id="daily-header-offtime"
                                     value={offTime}
                                     placeholder="17:00"
                                     maxLength={5}
@@ -784,6 +793,12 @@ export default function ActiveEmployeeDayInOutPage() {
                                         handleHeaderTimeChange('off', norm);
                                     }}
                                     onFocus={handleCellSelectAll}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            focusDailyCell(0, 'in');
+                                        }
+                                    }}
                                     className="bg-white border border-amber-300 text-amber-950 font-mono font-bold text-xs px-1.5 py-0.5 rounded w-14 text-center outline-none focus:ring-1 focus:ring-amber-500"
                                 />
                             </div>

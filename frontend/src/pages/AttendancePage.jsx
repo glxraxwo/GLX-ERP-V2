@@ -820,11 +820,19 @@ export default function AttendancePage() {
                                                 <td className="py-2.5 px-3">
                                                     <input
                                                         type="time"
+                                                        data-bulk-row={idx}
+                                                        data-bulk-col="in"
                                                         value={r.checkInTime || ''}
                                                         onChange={(e) => {
                                                             const newR = [...bulkRecords];
                                                             newR[realIdx].checkInTime = e.target.value;
                                                             setBulkRecords(newR);
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                focusBulkCell(idx, 'out');
+                                                            }
                                                         }}
                                                         disabled={isAbsentOrLeave}
                                                         className="w-full px-2 py-1 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-mono font-bold bg-white dark:bg-[#132238] text-slate-900 dark:text-white disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400"
@@ -835,11 +843,19 @@ export default function AttendancePage() {
                                                 <td className="py-2.5 px-3">
                                                     <input
                                                         type="time"
+                                                        data-bulk-row={idx}
+                                                        data-bulk-col="out"
                                                         value={r.checkOutTime || ''}
                                                         onChange={(e) => {
                                                             const newR = [...bulkRecords];
                                                             newR[realIdx].checkOutTime = e.target.value;
                                                             setBulkRecords(newR);
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                focusBulkCell(idx + 1, 'in');
+                                                            }
                                                         }}
                                                         disabled={isAbsentOrLeave}
                                                         className="w-full px-2 py-1 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-mono font-bold bg-white dark:bg-[#132238] text-slate-900 dark:text-white disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400"
