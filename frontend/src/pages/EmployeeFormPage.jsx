@@ -371,8 +371,8 @@ export default function EmployeeFormPage() {
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                                 <Input label="Primary Phone (සම්බන්ධ කරගන්නා අංකය 1)" required placeholder="e.g. 0771234567" value={form.phone} onChange={(e) => update('phone', e.target.value)} />
-                                <Input label="Secondary Phone (සම්බන්ධ කරගන්නා අංකය 2)" required placeholder="e.g. 0719876543" value={form.secondaryPhone} onChange={(e) => update('secondaryPhone', e.target.value)} />
-                                <Input label="Third Phone (සම්බන්ධ කරගන්නා අංකය 3)" required placeholder="e.g. 0764567890" value={form.tertiaryPhone} onChange={(e) => update('tertiaryPhone', e.target.value)} />
+                                <Input label="Secondary Phone (සම්බන්ධ කරගන්නා අංකය 2 - Optional)" placeholder="e.g. 0719876543" value={form.secondaryPhone} onChange={(e) => update('secondaryPhone', e.target.value)} />
+                                <Input label="Third Phone (සම්බන්ධ කරගන්නා අංකය 3 - Optional)" placeholder="e.g. 0764567890" value={form.tertiaryPhone} onChange={(e) => update('tertiaryPhone', e.target.value)} />
                                 <Input label="Email Address" type="email" value={form.email} onChange={(e) => update('email', e.target.value)} />
                             </div>
                             <div>

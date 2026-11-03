@@ -94,9 +94,9 @@ export const deleteDesignation = asyncHandler(async (req, res) => {
 // ============================================================
 
 export const createEmployee = asyncHandler(async (req, res) => {
-    if (!req.body.phone || !req.body.secondaryPhone || !req.body.tertiaryPhone) {
+    if (!req.body.phone) {
         res.status(400);
-        throw new Error('Three contact numbers are required for every employee.');
+        throw new Error('Primary contact number is required.');
     }
 
     let linkedUserId = req.body.userId || null;
@@ -284,9 +284,14 @@ export const updateEmployee = asyncHandler(async (req, res) => {
         throw new Error('Employee not found');
     }
 
-    if (!req.body.phone || !req.body.secondaryPhone || !req.body.tertiaryPhone) {
-        res.status(400);
-        throw new Error('Three contact numbers are required for every employee.');
+    // Do not block partial updates (like status toggling: active / inactive)
+    const isPartialUpdate = req.body.status !== undefined && !req.body.firstName && !req.body.employeeCode;
+    if (!isPartialUpdate) {
+        const phone = req.body.phone !== undefined ? req.body.phone : existingEmp.phone;
+        if (!phone) {
+            res.status(400);
+            throw new Error('Primary contact number is required.');
+        }
     }
 
     let linkedUserId = existingEmp.userId;
