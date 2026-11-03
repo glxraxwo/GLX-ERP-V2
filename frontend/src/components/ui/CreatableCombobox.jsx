@@ -20,6 +20,7 @@ const CreatableCombobox = forwardRef(({
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState(allowFreeText ? (value || '') : '');
     const [isCreating, setIsCreating] = useState(false);
+    const [recentCreated, setRecentCreated] = useState([]);
     const containerRef = useRef(null);
     const inputRef = useRef(null);
 
@@ -30,28 +31,39 @@ const CreatableCombobox = forwardRef(({
         }
     }, [value, allowFreeText]);
 
+    // Combined options including newly created items immediately
+    const allOptions = useMemo(() => {
+        const list = [...(options || [])];
+        recentCreated.forEach(rc => {
+            if (!list.some(o => String(o.value) === String(rc.value))) {
+                list.unshift(rc);
+            }
+        });
+        return list;
+    }, [options, recentCreated]);
+
     // Current selected option object
     const selectedOption = useMemo(() => {
-        if (!options || !options.length) return null;
-        return options.find((opt) => String(opt.value) === String(value) || opt.label?.toLowerCase() === String(value).toLowerCase()) || null;
-    }, [options, value]);
+        if (!allOptions || !allOptions.length) return null;
+        return allOptions.find((opt) => String(opt.value) === String(value) || opt.label?.toLowerCase() === String(value).toLowerCase()) || null;
+    }, [allOptions, value]);
 
     // Filter options based on search query
     const filteredOptions = useMemo(() => {
-        if (!searchTerm.trim()) return options;
+        if (!searchTerm.trim()) return allOptions;
         const q = searchTerm.toLowerCase().trim();
-        return options.filter((opt) => {
+        return allOptions.filter((opt) => {
             const labelStr = String(opt.label || '').toLowerCase();
             return labelStr.includes(q);
         });
-    }, [options, searchTerm]);
+    }, [allOptions, searchTerm]);
 
     // Check if search query matches an existing option exactly
     const exactMatch = useMemo(() => {
         const q = searchTerm.trim().toLowerCase();
         if (!q) return true;
-        return options.some((opt) => String(opt.label || '').trim().toLowerCase() === q);
-    }, [options, searchTerm]);
+        return allOptions.some((opt) => String(opt.label || '').trim().toLowerCase() === q);
+    }, [allOptions, searchTerm]);
 
     // Close on click outside
     useEffect(() => {
@@ -86,11 +98,13 @@ const CreatableCombobox = forwardRef(({
             setIsCreating(true);
             const created = await onCreate(textToCreate);
             if (created) {
+                const newId = created._id || created.id || created.value || textToCreate;
+                const newLabel = created.name || created.label || textToCreate;
+                setRecentCreated(prev => [{ value: newId, label: newLabel }, ...prev]);
                 if (allowFreeText) {
-                    setSearchTerm(created.name || created.label || textToCreate);
-                    if (onChange) onChange(created.name || created.label || textToCreate, created);
+                    setSearchTerm(newLabel);
+                    if (onChange) onChange(newLabel, created);
                 } else {
-                    const newId = created._id || created.id || created.value;
                     if (onChange) onChange(newId, created);
                     setSearchTerm('');
                 }

@@ -9,9 +9,10 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Textarea from '../components/ui/Textarea';
+import CreatableCombobox from '../components/ui/CreatableCombobox';
 import {
     useEmployee, useCreateEmployee, useUpdateEmployee,
-    useDepartments, useDesignations, useShifts, useSalaryStructures, useLeaveStructures,
+    useDepartments, useCreateDepartment, useDesignations, useCreateDesignation, useShifts, useSalaryStructures, useLeaveStructures,
     useUploadEmployeeDocument, useDeleteEmployeeDocument,
 } from '../features/hr/useHr';
 
@@ -33,6 +34,8 @@ export default function EmployeeFormPage() {
 
     const createMutation = useCreateEmployee();
     const updateMutation = useUpdateEmployee();
+    const createDepartmentMutation = useCreateDepartment();
+    const createDesignationMutation = useCreateDesignation();
     const uploadDocumentMutation = useUploadEmployeeDocument();
     const deleteDocumentMutation = useDeleteEmployeeDocument();
     const { data: existingData } = useEmployee(id);
@@ -155,6 +158,44 @@ export default function EmployeeFormPage() {
         });
     };
 
+
+    const handleCreateDepartment = async (name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return null;
+        const cleanCode = trimmed.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '') + '-' + Math.floor(100 + Math.random() * 900);
+        try {
+            const res = await createDepartmentMutation.mutateAsync({
+                name: trimmed,
+                code: cleanCode
+            });
+            const created = res?.data || res;
+            toast.success(`Department "${trimmed}" auto-saved!`);
+            return created;
+        } catch (err) {
+            toast.error(err.response?.data?.message || err.message || 'Failed to auto-save department');
+            throw err;
+        }
+    };
+
+    const handleCreateDesignation = async (name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return null;
+        const cleanCode = trimmed.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '') + '-' + Math.floor(100 + Math.random() * 900);
+        try {
+            const res = await createDesignationMutation.mutateAsync({
+                name: trimmed,
+                code: cleanCode,
+                departmentId: form.departmentId || undefined
+            });
+            const created = res?.data || res;
+            toast.success(`Designation "${trimmed}" auto-saved!`);
+            return created;
+        } catch (err) {
+            toast.error(err.response?.data?.message || err.message || 'Failed to auto-save designation');
+            throw err;
+        }
+    };
+
     const submit = async () => {
         if (!form.firstName || !form.lastName || !form.dateOfJoining) {
             toast.error('First name, last name and date of joining are required');
@@ -180,6 +221,24 @@ export default function EmployeeFormPage() {
             }
         }
         try {
+
+            let finalDeptId = form.departmentId;
+            let finalDesigId = form.designationId;
+
+            if (finalDeptId && !deptOptions.some(d => String(d.value) === String(finalDeptId))) {
+                try {
+                    const created = await handleCreateDepartment(finalDeptId);
+                    if (created?._id) finalDeptId = created._id;
+                } catch { }
+            }
+
+            if (finalDesigId && !designationOptions.some(d => String(d.value) === String(finalDesigId))) {
+                try {
+                    const created = await handleCreateDesignation(finalDesigId);
+                    if (created?._id) finalDesigId = created._id;
+                } catch { }
+            }
+
             const isMonthly = form.paymentType === 'monthly';
             const baseSalaryNum = +form.basicSalary || 0;
             const computedHourly = isMonthly && baseSalaryNum > 0 ? Number((baseSalaryNum / 200).toFixed(2)) : +(form.hourlyRate || form.labourRate || 0);
@@ -189,8 +248,8 @@ export default function EmployeeFormPage() {
                 basicSalary: baseSalaryNum,
                 labourRate: isMonthly ? 0 : (+form.labourRate || 0),
                 hourlyRate: computedHourly,
-                departmentId: form.departmentId || undefined,
-                designationId: form.designationId || undefined,
+                departmentId: finalDeptId || undefined,
+                designationId: finalDesigId || undefined,
                 reportsToId: form.reportsToId || undefined,
                 workShift: form.workShift || undefined,
                 salaryStructureId: form.salaryStructureId || undefined,
@@ -344,10 +403,26 @@ export default function EmployeeFormPage() {
                     {tab === 'employment' && (
                         <>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                <Select label="Department" placeholder="Select..." options={deptOptions}
-                                    value={form.departmentId} onChange={(e) => update('departmentId', e.target.value)} />
-                                <Select label="Designation" placeholder="Select..." options={designationOptions}
-                                    value={form.designationId} onChange={(e) => update('designationId', e.target.value)} />
+                                <CreatableCombobox
+                                    label="Department (දෙපාර්තමේන්තුව)"
+                                    placeholder="Search or type department name..."
+                                    createLabel="Create & auto-save new department"
+                                    options={deptOptions}
+                                    value={form.departmentId}
+                                    onChange={(val) => update('departmentId', val)}
+                                    onCreate={handleCreateDepartment}
+                                    helperText="Select from saved or type to auto-save a new department"
+                                />
+                                <CreatableCombobox
+                                    label="Designation (තනතුර)"
+                                    placeholder="Search or type designation title..."
+                                    createLabel="Create & auto-save new designation"
+                                    options={designationOptions}
+                                    value={form.designationId}
+                                    onChange={(val) => update('designationId', val)}
+                                    onCreate={handleCreateDesignation}
+                                    helperText="Select from saved or type to auto-save a new designation"
+                                />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                 <Select label="Employment Type"

@@ -139,6 +139,32 @@ export const createEmployee = asyncHandler(async (req, res) => {
         if (ls) req.body.leaveBalances = ls.leaveBalances;
     }
 
+    // Auto-resolve or auto-create Department if typed as name string instead of ObjectId
+    if (req.body.departmentId && typeof req.body.departmentId === 'string' && !mongoose.Types.ObjectId.isValid(req.body.departmentId)) {
+        const deptName = req.body.departmentId.trim();
+        if (deptName) {
+            let dept = await Department.findOne({ name: { $regex: new RegExp('^' + deptName + '$', 'i') } });
+            if (!dept) {
+                const code = deptName.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '') + '-' + Math.floor(100 + Math.random() * 900);
+                dept = await Department.create({ name: deptName, code });
+            }
+            req.body.departmentId = dept._id;
+        }
+    }
+
+    // Auto-resolve or auto-create Designation if typed as name string instead of ObjectId
+    if (req.body.designationId && typeof req.body.designationId === 'string' && !mongoose.Types.ObjectId.isValid(req.body.designationId)) {
+        const desName = req.body.designationId.trim();
+        if (desName) {
+            let des = await Designation.findOne({ name: { $regex: new RegExp('^' + desName + '$', 'i') } });
+            if (!des) {
+                const code = desName.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '') + '-' + Math.floor(100 + Math.random() * 900);
+                des = await Designation.create({ name: desName, code, departmentId: req.body.departmentId || undefined });
+            }
+            req.body.designationId = des._id;
+        }
+    }
+
     const emp = new Employee({
         ...req.body,
         userId: linkedUserId,
@@ -301,6 +327,32 @@ export const updateEmployee = asyncHandler(async (req, res) => {
     if (req.body.leaveStructureId) {
         const ls = await LeaveStructure.findById(req.body.leaveStructureId);
         if (ls) req.body.leaveBalances = ls.leaveBalances;
+    }
+
+    // Auto-resolve or auto-create Department if typed as name string instead of ObjectId
+    if (req.body.departmentId && typeof req.body.departmentId === 'string' && !mongoose.Types.ObjectId.isValid(req.body.departmentId)) {
+        const deptName = req.body.departmentId.trim();
+        if (deptName) {
+            let dept = await Department.findOne({ name: { $regex: new RegExp('^' + deptName + '$', 'i') } });
+            if (!dept) {
+                const code = deptName.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '') + '-' + Math.floor(100 + Math.random() * 900);
+                dept = await Department.create({ name: deptName, code });
+            }
+            req.body.departmentId = dept._id;
+        }
+    }
+
+    // Auto-resolve or auto-create Designation if typed as name string instead of ObjectId
+    if (req.body.designationId && typeof req.body.designationId === 'string' && !mongoose.Types.ObjectId.isValid(req.body.designationId)) {
+        const desName = req.body.designationId.trim();
+        if (desName) {
+            let des = await Designation.findOne({ name: { $regex: new RegExp('^' + desName + '$', 'i') } });
+            if (!des) {
+                const code = desName.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '') + '-' + Math.floor(100 + Math.random() * 900);
+                des = await Designation.create({ name: desName, code, departmentId: req.body.departmentId || undefined });
+            }
+            req.body.designationId = des._id;
+        }
     }
 
     const emp = await Employee.findByIdAndUpdate(
