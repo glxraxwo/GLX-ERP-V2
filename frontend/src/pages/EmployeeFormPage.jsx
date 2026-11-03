@@ -818,23 +818,12 @@ export default function EmployeeFormPage() {
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                {form.paymentType !== 'monthly' && (
-                                    <Input label="Hourly Rate (LKR/hour) - Manual Paysheet Rate" type="number" step="0.01" min="0"
-                                        value={form.hourlyRate || ''} 
-                                        onChange={(e) => update('hourlyRate', Number(e.target.value))} 
-                                        helperText="Used automatically in Manual Payment Record Sheet"
-                                    />
-                                )}
                                 <Select label="Employee Category" required
                                     options={[
                                         { value: 'Permanent', label: 'Permanent' },
                                         { value: 'Trainee', label: 'Trainee' }
                                     ]}
                                     value={form.employeeCategory} onChange={(e) => update('employeeCategory', e.target.value)} />
-                                {form.paymentType !== 'monthly' && (
-                                    <Input label="Monthly Basic Salary (LKR/month) - Optional" type="number" step="0.01" min="0"
-                                        value={form.basicSalary} onChange={(e) => update('basicSalary', e.target.value)} />
-                                )}
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                                 <Input label="EPF Rate (%)" type="number" min="0" max="100"
