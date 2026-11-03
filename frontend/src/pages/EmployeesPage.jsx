@@ -142,10 +142,10 @@ const hrHubModules = [
         }
     },
     {
-        title: 'Working Shifts',
-        path: '/shifts',
-        icon: Clock,
-        badge: 'Shifts',
+        title: 'Designations',
+        path: '/designations',
+        icon: Award,
+        badge: 'Designations',
         theme: {
             cardBg: 'bg-gradient-to-br from-orange-50/90 to-amber-100/70 border-orange-200/90 hover:border-orange-400 hover:from-orange-100/90 hover:to-amber-200/70 shadow-xs shadow-orange-500/5',
             iconBox: 'bg-white text-orange-600 border-orange-200 shadow-2xs group-hover:bg-orange-600 group-hover:text-white',
