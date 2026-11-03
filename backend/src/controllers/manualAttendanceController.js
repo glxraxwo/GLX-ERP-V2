@@ -906,7 +906,32 @@ export const saveManualAttendancePolicies = asyncHandler(async (req, res) => {
         settings = await Settings.create({});
     }
 
-    if (salaryPolicies !== undefined) settings.salaryPolicies = salaryPolicies;
+    if (salaryPolicies !== undefined) {
+        if (!Array.isArray(salaryPolicies)) {
+            res.status(400);
+            throw new Error('Salary policies must be an array');
+        }
+
+        // Validate no duplicate thresholdMinutes for policies of same type and overlapping scope
+        const seen = new Set();
+        for (let i = 0; i < salaryPolicies.length; i++) {
+            const pol = salaryPolicies[i];
+            if (pol.type && pol.thresholdMinutes !== undefined && pol.thresholdMinutes !== null) {
+                const mins = Number(pol.thresholdMinutes);
+                const scope = pol.appliesTo || 'ALL';
+                if (['LATE_DEDUCTION', 'EARLY_DEPARTURE', 'OVERTIME_BONUS', 'MIN_HOURS_FULL_PAY'].includes(pol.type)) {
+                    const keyScope = `${pol.type}_${scope}_${mins}`;
+                    const keyAll = `${pol.type}_ALL_${mins}`;
+                    if (seen.has(keyScope) || (scope !== 'ALL' && seen.has(keyAll)) || (scope === 'ALL' && [...seen].some(k => k.startsWith(`${pol.type}_`) && k.endsWith(`_${mins}`)))) {
+                        res.status(400);
+                        throw new Error(`Duplicate minutes (${mins} mins) found for ${pol.type} policy. Duplicate minutes are not allowed.`);
+                    }
+                    seen.add(keyScope);
+                }
+            }
+        }
+        settings.salaryPolicies = salaryPolicies;
+    }
     if (epfEmployeeRate !== undefined) settings.epfEmployeeRate = Number(epfEmployeeRate);
     if (epfEmployerRate !== undefined) settings.epfEmployerRate = Number(epfEmployerRate);
     if (etfEmployerRate !== undefined) settings.etfEmployerRate = Number(etfEmployerRate);

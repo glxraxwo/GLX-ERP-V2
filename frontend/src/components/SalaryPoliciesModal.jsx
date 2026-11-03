@@ -86,38 +86,99 @@ export default function SalaryPoliciesModal({
 
     if (!isOpen) return null;
 
-    // Add new custom policy
+    // Check if a policy has duplicate thresholdMinutes compared to another policy of the same type
+    const findDuplicateConflict = (policy, index, allPolicies) => {
+        if (!policy || policy.thresholdMinutes === undefined || policy.thresholdMinutes === null) return null;
+        const currentMins = Number(policy.thresholdMinutes);
+        const currentType = policy.type;
+        const currentScope = policy.appliesTo || 'ALL';
+
+        // Check types that use thresholdMinutes / hours
+        if (!['LATE_DEDUCTION', 'EARLY_DEPARTURE', 'OVERTIME_BONUS', 'MIN_HOURS_FULL_PAY'].includes(currentType)) {
+            return null;
+        }
+
+        const match = allPolicies.find((other, otherIdx) => {
+            if (otherIdx === index) return false;
+            if (other.type !== currentType) return false;
+            const otherScope = other.appliesTo || 'ALL';
+            const scopeOverlaps = (currentScope === 'ALL' || otherScope === 'ALL' || currentScope === otherScope);
+            if (!scopeOverlaps) return false;
+            return Number(other.thresholdMinutes) === currentMins;
+        });
+
+        if (match) {
+            return {
+                minutes: currentMins,
+                type: currentType,
+                otherIndex: allPolicies.indexOf(match)
+            };
+        }
+        return null;
+    };
+
+    // Overall duplicate status
+    const hasAnyDuplicate = localPolicies.some((pol, idx) => Boolean(findDuplicateConflict(pol, idx, localPolicies)));
+
+    // Add new custom policy with next unique available minutes
     const handleAddPolicy = () => {
+        const targetScope = selectedEmployeeId || 'ALL';
+        const existingMinutes = new Set(
+            localPolicies
+                .filter(p => p.type === 'LATE_DEDUCTION')
+                .map(p => Number(p.thresholdMinutes))
+        );
+
+        let nextMinutes = 10;
+        while (existingMinutes.has(nextMinutes)) {
+            nextMinutes += 10;
+        }
+
         const newPolicy = {
             id: `pol-${Date.now()}`,
             type: 'LATE_DEDUCTION',
-            name: 'New Custom Rule',
-            thresholdMinutes: 10,
-            deductionAmount: 150,
+            name: `Late ${nextMinutes}+ mins (Rule)`,
+            thresholdMinutes: nextMinutes,
+            deductionAmount: nextMinutes * 10,
             bonusAmount: 0,
             waiveIfHoursCovered: false,
             standardShiftHours: 9,
-            appliesTo: selectedEmployeeId || 'ALL',
+            appliesTo: targetScope,
             isActive: true
         };
-        setLocalPolicies([...localPolicies, newPolicy]);
+        setLocalPolicies(prev => [...prev, newPolicy]);
     };
 
-    // Add preset late tier
+    // Add preset late tier (preventing duplicate minutes)
     const handleAddPresetTier = (thresholdMinutes, deductionAmount, name) => {
+        const numMinutes = Number(thresholdMinutes);
+        const targetScope = selectedEmployeeId || 'ALL';
+
+        const existing = localPolicies.find(p =>
+            p.type === 'LATE_DEDUCTION' &&
+            Number(p.thresholdMinutes) === numMinutes &&
+            ((p.appliesTo || 'ALL') === targetScope || (p.appliesTo || 'ALL') === 'ALL' || targetScope === 'ALL')
+        );
+
+        if (existing) {
+            toast.error(`මිනිත්තු ${thresholdMinutes} සඳහා policy එකක් දැනටමත් එකතු කර ඇත! (${thresholdMinutes} mins rule already exists)`);
+            return;
+        }
+
         const newPolicy = {
             id: `pol-${Date.now()}`,
             type: 'LATE_DEDUCTION',
             name,
-            thresholdMinutes,
+            thresholdMinutes: numMinutes,
             deductionAmount,
             bonusAmount: 0,
             waiveIfHoursCovered: false,
             standardShiftHours: 9,
-            appliesTo: selectedEmployeeId || 'ALL',
+            appliesTo: targetScope,
             isActive: true
         };
         setLocalPolicies(prev => [...prev, newPolicy]);
+        toast.success(`+${thresholdMinutes}-Min Late policy එකතු කරන ලදී.`);
     };
 
     // Update field
@@ -134,8 +195,17 @@ export default function SalaryPoliciesModal({
         setLocalPolicies(prev => prev.filter((_, i) => i !== index));
     };
 
-    // Save
+    // Save with duplicate validation
     const handleSave = async (andApply = true) => {
+        // Check for duplicates
+        for (let i = 0; i < localPolicies.length; i++) {
+            const conflict = findDuplicateConflict(localPolicies[i], i, localPolicies);
+            if (conflict) {
+                toast.error(`මිනිත්තු ${conflict.minutes} duplicate වී ඇත (Rule #${i + 1} සහ Rule #${conflict.otherIndex + 1}). කරුණාකර duplicate minutes ඉවත් කරන්න!`);
+                return;
+            }
+        }
+
         setIsSaving(true);
         try {
             if (onSavePolicies) {
@@ -283,41 +353,69 @@ export default function SalaryPoliciesModal({
                                     Quick Late Tiers (ප්‍රමාද කාල පරාස ඉක්මනින් එක් කරන්න):
                                 </span>
                             </div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                                <button
-                                    type="button"
-                                    onClick={() => handleAddPresetTier(10, 100, 'Late 10+ mins (Tier 1)')}
-                                    className="px-2.5 py-1 text-[11px] font-bold bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 rounded shadow-2xs transition cursor-pointer"
-                                    title="Add 10-minute late penalty rule"
-                                >
-                                    + 10-Min Late (Rs. 100)
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => handleAddPresetTier(20, 200, 'Late 20+ mins (Tier 2)')}
-                                    className="px-2.5 py-1 text-[11px] font-bold bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 rounded shadow-2xs transition cursor-pointer"
-                                    title="Add 20-minute late penalty rule"
-                                >
-                                    + 20-Min Late (Rs. 200)
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => handleAddPresetTier(30, 300, 'Late 30+ mins (Tier 3)')}
-                                    className="px-2.5 py-1 text-[11px] font-bold bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 rounded shadow-2xs transition cursor-pointer"
-                                    title="Add 30-minute late penalty rule"
-                                >
-                                    + 30-Min Late (Rs. 300)
-                                </button>
-                            </div>
+                            {(() => {
+                                const isAdded10 = localPolicies.some(p => p.type === 'LATE_DEDUCTION' && Number(p.thresholdMinutes) === 10);
+                                const isAdded20 = localPolicies.some(p => p.type === 'LATE_DEDUCTION' && Number(p.thresholdMinutes) === 20);
+                                const isAdded30 = localPolicies.some(p => p.type === 'LATE_DEDUCTION' && Number(p.thresholdMinutes) === 30);
+                                return (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAddPresetTier(10, 100, 'Late 10+ mins (Tier 1)')}
+                                            className={`px-2.5 py-1 text-[11px] font-bold rounded shadow-2xs transition cursor-pointer flex items-center gap-1 ${
+                                                isAdded10
+                                                    ? 'bg-emerald-50 border border-emerald-300 text-emerald-800'
+                                                    : 'bg-white border border-amber-300 text-amber-900 hover:bg-amber-100'
+                                            }`}
+                                            title={isAdded10 ? "10-minute rule already added" : "Add 10-minute late penalty rule"}
+                                        >
+                                            {isAdded10 ? <Check size={12} className="text-emerald-600" /> : null}
+                                            {isAdded10 ? '10-Min Late (Added)' : '+ 10-Min Late (Rs. 100)'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAddPresetTier(20, 200, 'Late 20+ mins (Tier 2)')}
+                                            className={`px-2.5 py-1 text-[11px] font-bold rounded shadow-2xs transition cursor-pointer flex items-center gap-1 ${
+                                                isAdded20
+                                                    ? 'bg-emerald-50 border border-emerald-300 text-emerald-800'
+                                                    : 'bg-white border border-amber-300 text-amber-900 hover:bg-amber-100'
+                                            }`}
+                                            title={isAdded20 ? "20-minute rule already added" : "Add 20-minute late penalty rule"}
+                                        >
+                                            {isAdded20 ? <Check size={12} className="text-emerald-600" /> : null}
+                                            {isAdded20 ? '20-Min Late (Added)' : '+ 20-Min Late (Rs. 200)'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAddPresetTier(30, 300, 'Late 30+ mins (Tier 3)')}
+                                            className={`px-2.5 py-1 text-[11px] font-bold rounded shadow-2xs transition cursor-pointer flex items-center gap-1 ${
+                                                isAdded30
+                                                    ? 'bg-emerald-50 border border-emerald-300 text-emerald-800'
+                                                    : 'bg-white border border-amber-300 text-amber-900 hover:bg-amber-100'
+                                            }`}
+                                            title={isAdded30 ? "30-minute rule already added" : "Add 30-minute late penalty rule"}
+                                        >
+                                            {isAdded30 ? <Check size={12} className="text-emerald-600" /> : null}
+                                            {isAdded30 ? '30-Min Late (Added)' : '+ 30-Min Late (Rs. 300)'}
+                                        </button>
+                                    </div>
+                                );
+                            })()}
                         </div>
 
                         {/* Policies List */}
                         <div className="space-y-3">
-                            {localPolicies.map((pol, idx) => (
+                            {localPolicies.map((pol, idx) => {
+                                const duplicateConflict = findDuplicateConflict(pol, idx, localPolicies);
+                                return (
                                 <div
                                     key={pol.id || idx}
                                     className={`border rounded-lg p-3 transition ${
-                                        pol.isActive ? 'bg-white border-gray-300 shadow-xs' : 'bg-gray-50 border-gray-200 opacity-60'
+                                        duplicateConflict
+                                            ? 'bg-rose-50/40 border-rose-300 shadow-sm'
+                                            : pol.isActive
+                                                ? 'bg-white border-gray-300 shadow-xs'
+                                                : 'bg-gray-50 border-gray-200 opacity-60'
                                     }`}
                                 >
                                     <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b border-gray-100">
@@ -365,7 +463,11 @@ export default function SalaryPoliciesModal({
                                                         type="number"
                                                         value={pol.thresholdMinutes}
                                                         onChange={(e) => handlePolicyChange(idx, 'thresholdMinutes', Number(e.target.value))}
-                                                        className="w-16 px-2 py-0.5 text-center font-bold border border-gray-300 rounded focus:border-indigo-500"
+                                                        className={`w-16 px-2 py-0.5 text-center font-bold border rounded focus:outline-none ${
+                                                            duplicateConflict
+                                                                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50 text-rose-900 font-extrabold'
+                                                                : 'border-gray-300 focus:border-indigo-500'
+                                                        }`}
                                                     />
                                                     <span className="text-gray-700">minutes: Cut salary by</span>
                                                     <div className="flex items-center gap-1">
@@ -378,6 +480,16 @@ export default function SalaryPoliciesModal({
                                                         />
                                                     </div>
                                                 </div>
+
+                                                {/* Duplicate Alert Banner */}
+                                                {duplicateConflict && (
+                                                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-1 rounded mt-1">
+                                                        <AlertCircle size={14} className="shrink-0 text-rose-600" />
+                                                        <span>
+                                                            මිනිත්තු {duplicateConflict.minutes} සඳහා නීතියක් Rule #{duplicateConflict.otherIndex + 1} හි දැනටමත් ඇත. Duplicate minutes දැමිය නොහැක!
+                                                        </span>
+                                                    </div>
+                                                )}
 
                                                 {/* Grace cover condition */}
                                                 <div className="bg-emerald-50/80 border border-emerald-200 rounded p-2 flex items-center gap-2 mt-1">
@@ -396,25 +508,41 @@ export default function SalaryPoliciesModal({
                                         )}
 
                                         {pol.type === 'EARLY_DEPARTURE' && (
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-gray-700">If leaves before shift end by more than</span>
-                                                <input
-                                                    type="number"
-                                                    value={pol.thresholdMinutes}
-                                                    onChange={(e) => handlePolicyChange(idx, 'thresholdMinutes', Number(e.target.value))}
-                                                    className="w-16 px-2 py-0.5 text-center font-bold border border-gray-300 rounded"
-                                                />
-                                                <span className="text-gray-700">minutes: Cut salary by</span>
-                                                <div className="flex items-center gap-1">
-                                                    <span className="font-bold text-gray-500">Rs.</span>
+                                            <>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-gray-700">If leaves before shift end by more than</span>
                                                     <input
                                                         type="number"
-                                                        value={pol.deductionAmount}
-                                                        onChange={(e) => handlePolicyChange(idx, 'deductionAmount', Number(e.target.value))}
-                                                        className="w-20 px-2 py-0.5 text-center font-bold text-rose-700 border border-rose-300 rounded"
+                                                        value={pol.thresholdMinutes}
+                                                        onChange={(e) => handlePolicyChange(idx, 'thresholdMinutes', Number(e.target.value))}
+                                                        className={`w-16 px-2 py-0.5 text-center font-bold border rounded focus:outline-none ${
+                                                            duplicateConflict
+                                                                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50 text-rose-900 font-extrabold'
+                                                                : 'border-gray-300 focus:border-indigo-500'
+                                                        }`}
                                                     />
+                                                    <span className="text-gray-700">minutes: Cut salary by</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="font-bold text-gray-500">Rs.</span>
+                                                        <input
+                                                            type="number"
+                                                            value={pol.deductionAmount}
+                                                            onChange={(e) => handlePolicyChange(idx, 'deductionAmount', Number(e.target.value))}
+                                                            className="w-20 px-2 py-0.5 text-center font-bold text-rose-700 border border-rose-300 rounded"
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
+
+                                                {/* Duplicate Alert Banner */}
+                                                {duplicateConflict && (
+                                                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-1 rounded mt-1">
+                                                        <AlertCircle size={14} className="shrink-0 text-rose-600" />
+                                                        <span>
+                                                            මිනිත්තු {duplicateConflict.minutes} සඳහා නීතියක් Rule #{duplicateConflict.otherIndex + 1} හි දැනටමත් ඇත. Duplicate minutes දැමිය නොහැක!
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
 
                                         {pol.type === 'ABSENT_DEDUCTION' && (
@@ -434,41 +562,69 @@ export default function SalaryPoliciesModal({
                                         )}
 
                                         {pol.type === 'OVERTIME_BONUS' && (
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-gray-700">If hours worked exceed</span>
-                                                <input
-                                                    type="number"
-                                                    step="0.5"
-                                                    value={pol.thresholdMinutes ? pol.thresholdMinutes / 60 : 9}
-                                                    onChange={(e) => handlePolicyChange(idx, 'thresholdMinutes', Number(e.target.value) * 60)}
-                                                    className="w-16 px-2 py-0.5 text-center font-bold border border-gray-300 rounded"
-                                                />
-                                                <span className="text-gray-700">hours: Pay extra</span>
-                                                <div className="flex items-center gap-1">
-                                                    <span className="font-bold text-gray-500">Rs.</span>
+                                            <>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-gray-700">If hours worked exceed</span>
                                                     <input
                                                         type="number"
-                                                        value={pol.bonusAmount || 150}
-                                                        onChange={(e) => handlePolicyChange(idx, 'bonusAmount', Number(e.target.value))}
-                                                        className="w-20 px-2 py-0.5 text-center font-bold text-emerald-700 border border-emerald-300 rounded"
+                                                        step="0.5"
+                                                        value={pol.thresholdMinutes ? pol.thresholdMinutes / 60 : 9}
+                                                        onChange={(e) => handlePolicyChange(idx, 'thresholdMinutes', Number(e.target.value) * 60)}
+                                                        className={`w-16 px-2 py-0.5 text-center font-bold border rounded ${
+                                                            duplicateConflict
+                                                                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50 text-rose-900 font-extrabold'
+                                                                : 'border-gray-300'
+                                                        }`}
                                                     />
-                                                    <span className="text-gray-500">per extra hour</span>
+                                                    <span className="text-gray-700">hours: Pay extra</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="font-bold text-gray-500">Rs.</span>
+                                                        <input
+                                                            type="number"
+                                                            value={pol.bonusAmount || 150}
+                                                            onChange={(e) => handlePolicyChange(idx, 'bonusAmount', Number(e.target.value))}
+                                                            className="w-20 px-2 py-0.5 text-center font-bold text-emerald-700 border border-emerald-300 rounded"
+                                                        />
+                                                        <span className="text-gray-500">per extra hour</span>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                                {duplicateConflict && (
+                                                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-1 rounded mt-1">
+                                                        <AlertCircle size={14} className="shrink-0 text-rose-600" />
+                                                        <span>
+                                                            පැය {duplicateConflict.minutes / 60} සඳහා නීතියක් Rule #{duplicateConflict.otherIndex + 1} හි දැනටමත් ඇත. Duplicate hours/minutes දැමිය නොහැක!
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
 
                                         {pol.type === 'MIN_HOURS_FULL_PAY' && (
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="text-gray-700">If hours worked are at least</span>
-                                                <input
-                                                    type="number"
-                                                    step="0.5"
-                                                    value={pol.thresholdMinutes ? pol.thresholdMinutes / 60 : 8.5}
-                                                    onChange={(e) => handlePolicyChange(idx, 'thresholdMinutes', Number(e.target.value) * 60)}
-                                                    className="w-16 px-2 py-0.5 text-center font-bold border border-gray-300 rounded"
-                                                />
-                                                <span className="text-gray-700">hours: Pay full shift day salary.</span>
-                                            </div>
+                                            <>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-gray-700">If hours worked are at least</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.5"
+                                                        value={pol.thresholdMinutes ? pol.thresholdMinutes / 60 : 8.5}
+                                                        onChange={(e) => handlePolicyChange(idx, 'thresholdMinutes', Number(e.target.value) * 60)}
+                                                        className={`w-16 px-2 py-0.5 text-center font-bold border rounded ${
+                                                            duplicateConflict
+                                                                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50 text-rose-900 font-extrabold'
+                                                                : 'border-gray-300'
+                                                        }`}
+                                                    />
+                                                    <span className="text-gray-700">hours: Pay full shift day salary.</span>
+                                                </div>
+                                                {duplicateConflict && (
+                                                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-1 rounded mt-1">
+                                                        <AlertCircle size={14} className="shrink-0 text-rose-600" />
+                                                        <span>
+                                                            පැය {duplicateConflict.minutes / 60} සඳහා නීතියක් Rule #{duplicateConflict.otherIndex + 1} හි දැනටමත් ඇත. Duplicate hours/minutes දැමිය නොහැක!
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
 
                                         {/* Target Employee Selector */}
@@ -498,42 +654,62 @@ export default function SalaryPoliciesModal({
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            );
+                        })}
                         </div>
                     </div>
                 </div>
 
                 {/* Modal Footer */}
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200 rounded-lg transition"
-                    >
-                        Cancel
-                    </button>
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col gap-3">
+                    {hasAnyDuplicate && (
+                        <div className="w-full flex items-center gap-2 p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs font-semibold animate-pulse">
+                            <AlertCircle size={16} className="shrink-0 text-rose-600" />
+                            <span>
+                                නීති වල duplicate මිනිත්තු ගණන් (Duplicate minutes) පවතී. කරුණාකර රතු පැහැයෙන් දැක්වෙන duplicate මිනිත්තු වෙනස් කර Save කරන්න.
+                            </span>
+                        </div>
+                    )}
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                         <button
                             type="button"
-                            onClick={() => handleSave(true)}
-                            disabled={isSaving}
-                            className="px-4 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-300 hover:bg-indigo-100 rounded-lg flex items-center gap-1.5 transition"
-                            title="Apply policies and recalculate all days immediately"
+                            onClick={onClose}
+                            className="px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200 rounded-lg transition"
                         >
-                            <Sparkles size={14} className="text-indigo-600" />
-                            Save & Apply to Sheet Now
+                            Cancel
                         </button>
 
-                        <button
-                            type="button"
-                            onClick={() => handleSave(true)}
-                            disabled={isSaving}
-                            className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-1.5 shadow-sm transition"
-                        >
-                            <Save size={14} />
-                            {isSaving ? 'Saving...' : 'Save Policies'}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => handleSave(true)}
+                                disabled={isSaving || hasAnyDuplicate}
+                                className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 transition ${
+                                    hasAnyDuplicate
+                                        ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                                        : 'text-indigo-700 bg-indigo-50 border border-indigo-300 hover:bg-indigo-100'
+                                }`}
+                                title={hasAnyDuplicate ? "Duplicate minutes exist" : "Apply policies and recalculate all days immediately"}
+                            >
+                                <Sparkles size={14} className={hasAnyDuplicate ? "text-gray-400" : "text-indigo-600"} />
+                                Save & Apply to Sheet Now
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => handleSave(true)}
+                                disabled={isSaving || hasAnyDuplicate}
+                                className={`px-5 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm transition ${
+                                    hasAnyDuplicate
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                                        : 'text-white bg-indigo-600 hover:bg-indigo-700'
+                                }`}
+                            >
+                                <Save size={14} />
+                                {isSaving ? 'Saving...' : 'Save Policies'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
