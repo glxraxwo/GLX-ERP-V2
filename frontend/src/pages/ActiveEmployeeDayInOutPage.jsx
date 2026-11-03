@@ -512,6 +512,82 @@ export default function ActiveEmployeeDayInOutPage() {
 
     const netEstimatedPay = Math.max(0, totals.totalSalary - totals.totalAdvance - totals.totalDeductions);
 
+    // Focus daily grid cell helper for IN/OUT Enter key navigation
+    const focusDailyCell = (rowIdx, colType) => {
+        const r = Math.max(0, Math.min(rowIdx, filteredRows.length - 1));
+        const targetRow = filteredRows[r];
+        if (!targetRow) return;
+
+        // If target row is unticked / absent, auto-tick it so inputs become active
+        if (!targetRow.isTicked) {
+            const realIdx = rows.findIndex(rowItem => rowItem.employeeId === targetRow.employeeId);
+            if (realIdx !== -1) {
+                handleRowChange(realIdx, 'isTicked', true);
+            }
+        }
+
+        setTimeout(() => {
+            const el = document.querySelector(`[data-daily-row="${r}"][data-daily-col="${colType}"]`);
+            if (el) {
+                el.focus();
+                try {
+                    if (typeof el.select === 'function') {
+                        el.select();
+                    }
+                    if (typeof el.setSelectionRange === 'function' && el.value !== undefined) {
+                        el.setSelectionRange(0, String(el.value).length);
+                    }
+                } catch {}
+            }
+        }, 30);
+    };
+
+    const handleDailyKeyDown = (e, rowIdx, colType) => {
+        // Enter -> In to Out on same row, or Out to Next Row's In
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (colType === 'in') {
+                focusDailyCell(rowIdx, 'out');
+            } else if (colType === 'out') {
+                if (rowIdx < filteredRows.length - 1) {
+                    focusDailyCell(rowIdx + 1, 'in');
+                }
+            }
+            return;
+        }
+
+        // Shift + Enter -> Out to In on same row, or In to Prev Row's Out
+        if (e.key === 'Enter' && e.shiftKey) {
+            e.preventDefault();
+            if (colType === 'out') {
+                focusDailyCell(rowIdx, 'in');
+            } else if (colType === 'in') {
+                if (rowIdx > 0) {
+                    focusDailyCell(rowIdx - 1, 'out');
+                }
+            }
+            return;
+        }
+
+        // ArrowDown -> Move to next employee in same column
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (rowIdx < filteredRows.length - 1) {
+                focusDailyCell(rowIdx + 1, colType);
+            }
+            return;
+        }
+
+        // ArrowUp -> Move to previous employee in same column
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (rowIdx > 0) {
+                focusDailyCell(rowIdx - 1, colType);
+            }
+            return;
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 p-3 sm:p-6 font-sans text-slate-900 w-full print:bg-white print:p-0">
             {/* Top Corporate Command Bar */}
@@ -875,6 +951,12 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         type="checkbox"
                                                         checked={isPresent}
                                                         onChange={(e) => handleRowChange(realIdx, 'isTicked', e.target.checked)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                focusDailyCell(idx, 'in');
+                                                            }
+                                                        }}
                                                         className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 dark:bg-slate-900 border-slate-300 dark:border-slate-700 cursor-pointer accent-emerald-600 transition"
                                                     />
                                                 </label>
@@ -939,6 +1021,9 @@ export default function ActiveEmployeeDayInOutPage() {
                                                             handleRowChange(realIdx, 'inTime', norm);
                                                         }}
                                                         onFocus={handleCellSelectAll}
+                                                        data-daily-row={idx}
+                                                        data-daily-col="in"
+                                                        onKeyDown={(e) => handleDailyKeyDown(e, idx, 'in')}
                                                         className={`w-full text-center font-mono text-xs font-bold px-2 py-1.5 rounded-xl border transition ${
                                                             isPresent
                                                                 ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500'
@@ -965,6 +1050,9 @@ export default function ActiveEmployeeDayInOutPage() {
                                                             handleRowChange(realIdx, 'outTime', norm);
                                                         }}
                                                         onFocus={handleCellSelectAll}
+                                                        data-daily-row={idx}
+                                                        data-daily-col="out"
+                                                        onKeyDown={(e) => handleDailyKeyDown(e, idx, 'out')}
                                                         className={`w-full text-center font-mono text-xs font-bold px-2 py-1.5 rounded-xl border transition ${
                                                             isPresent
                                                                 ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-amber-500'
