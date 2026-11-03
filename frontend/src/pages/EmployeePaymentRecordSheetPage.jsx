@@ -719,27 +719,39 @@ export default function EmployeePaymentRecordSheetPage() {
     // Focus grid cell helper for spreadsheet keyboard responsiveness
     const focusGridCell = (rowIndex, colIndex, preferredDirection = 'next') => {
         let r = Math.max(0, Math.min(rowIndex, rows.length - 1));
-        let c = Math.max(0, Math.min(colIndex, 7));
+        let c = colIndex;
+        // Col 3 (hours) and Col 4 (daySalary) are locked
+        if (c === 3 || c === 4) {
+            c = (preferredDirection === 'next' || preferredDirection === 'down') ? 5 : 2;
+        }
+        c = Math.max(0, Math.min(c, 7));
 
-        let target = document.querySelector(`[data-grid-cell="true"][data-row="${r}"][data-col="${c}"]`);
-        
-        if (!target) {
-            if (preferredDirection === 'next' || preferredDirection === 'down') {
-                for (let nextC = c + 1; nextC <= 7; nextC++) {
-                    target = document.querySelector(`[data-grid-cell="true"][data-row="${r}"][data-col="${nextC}"]`);
-                    if (target) break;
-                }
-            } else {
-                for (let prevC = c - 1; prevC >= 0; prevC--) {
-                    target = document.querySelector(`[data-grid-cell="true"][data-row="${r}"][data-col="${prevC}"]`);
-                    if (target) break;
-                }
-            }
+        // If target row is not ticked and user is focusing IN or OUT via keyboard navigation, auto-tick the row
+        if ((c === 1 || c === 2) && !rows[r]?.isTicked) {
+            handleRowChange(r, 'isTicked', true);
         }
 
-        if (target) {
-            target.focus();
-            setTimeout(() => {
+        setTimeout(() => {
+            let target = document.querySelector(`[data-grid-cell="true"][data-row="${r}"][data-col="${c}"]`);
+            
+            if (!target) {
+                if (preferredDirection === 'next' || preferredDirection === 'down') {
+                    for (let nextC = c + 1; nextC <= 7; nextC++) {
+                        if (nextC === 3 || nextC === 4) continue;
+                        target = document.querySelector(`[data-grid-cell="true"][data-row="${r}"][data-col="${nextC}"]`);
+                        if (target) break;
+                    }
+                } else {
+                    for (let prevC = c - 1; prevC >= 0; prevC--) {
+                        if (prevC === 3 || prevC === 4) continue;
+                        target = document.querySelector(`[data-grid-cell="true"][data-row="${r}"][data-col="${prevC}"]`);
+                        if (target) break;
+                    }
+                }
+            }
+
+            if (target) {
+                target.focus();
                 try {
                     if (target.type !== 'checkbox') {
                         target.select();
@@ -748,8 +760,8 @@ export default function EmployeePaymentRecordSheetPage() {
                         }
                     }
                 } catch {}
-            }, 15);
-        }
+            }
+        }, 30);
     };
 
     const handleCellKeyDown = (e, rowIndex, colIndex) => {
@@ -766,26 +778,46 @@ export default function EmployeePaymentRecordSheetPage() {
             }
         }
 
-        // Enter -> Next column in current row (or wrap to next row)
+        // Enter -> Alternate between IN and OUT ONLY!
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            if (colIndex < 7) {
-                focusGridCell(rowIndex, colIndex + 1, 'next');
-            } else if (rowIndex < rows.length - 1) {
-                focusGridCell(rowIndex + 1, 1, 'next');
+            if (colIndex === 1) {
+                // From IN -> go to OUT on same row
+                focusGridCell(rowIndex, 2, 'next');
+            } else if (colIndex === 2) {
+                // From OUT -> go to IN on next row
+                if (rowIndex < rows.length - 1) {
+                    focusGridCell(rowIndex + 1, 1, 'next');
+                }
+            } else if (colIndex === 0) {
+                // From Checkbox -> go to IN on same row
+                focusGridCell(rowIndex, 1, 'next');
+            } else {
+                // From advance / deduction / reason -> wrap to IN on next row
+                if (rowIndex < rows.length - 1) {
+                    focusGridCell(rowIndex + 1, 1, 'next');
+                }
             }
             return;
         }
-        // Shift + Enter -> Prev column in current row (or wrap to prev row)
+
+        // Shift + Enter -> Prev IN/OUT navigation
         if (e.key === 'Enter' && e.shiftKey) {
             e.preventDefault();
-            if (colIndex > 1) {
-                focusGridCell(rowIndex, colIndex - 1, 'prev');
-            } else if (rowIndex > 0) {
-                focusGridCell(rowIndex - 1, 7, 'prev');
+            if (colIndex === 2) {
+                // From OUT -> go to IN on same row
+                focusGridCell(rowIndex, 1, 'prev');
+            } else if (colIndex === 1) {
+                // From IN -> go to OUT on prev row
+                if (rowIndex > 0) {
+                    focusGridCell(rowIndex - 1, 2, 'prev');
+                }
+            } else {
+                focusGridCell(rowIndex, 1, 'prev');
             }
             return;
         }
+
         // ArrowDown / ArrowUp -> Navigate rows smoothly with full cell selection
         if (e.key === 'ArrowDown') {
             e.preventDefault();
@@ -797,39 +829,51 @@ export default function EmployeePaymentRecordSheetPage() {
             focusGridCell(rowIndex - 1, colIndex, 'up');
             return;
         }
-        // Tab -> Next cell in row or wrap to next row
+
+        // Tab -> Next cell in row or wrap to next row (skipping locked 3 & 4)
         if (e.key === 'Tab' && !e.shiftKey) {
             e.preventDefault();
-            if (colIndex < 7) {
-                focusGridCell(rowIndex, colIndex + 1, 'next');
+            let nextCol = colIndex + 1;
+            if (nextCol === 3 || nextCol === 4) nextCol = 5;
+            if (nextCol <= 7) {
+                focusGridCell(rowIndex, nextCol, 'next');
             } else if (rowIndex < rows.length - 1) {
                 focusGridCell(rowIndex + 1, 0, 'next');
             }
             return;
         }
-        // Shift + Tab -> Prev cell in row or wrap to prev row
+
+        // Shift + Tab -> Prev cell in row or wrap to prev row (skipping locked 4 & 3)
         if (e.key === 'Tab' && e.shiftKey) {
             e.preventDefault();
-            if (colIndex > 0) {
-                focusGridCell(rowIndex, colIndex - 1, 'prev');
+            let prevCol = colIndex - 1;
+            if (prevCol === 4 || prevCol === 3) prevCol = 2;
+            if (prevCol >= 0) {
+                focusGridCell(rowIndex, prevCol, 'prev');
             } else if (rowIndex > 0) {
                 focusGridCell(rowIndex - 1, 7, 'prev');
             }
             return;
         }
-        // ArrowRight -> if at end of text or checkbox
+
+        // ArrowRight -> if at end of text or checkbox (skipping 3 & 4)
         if (e.key === 'ArrowRight' && (cursorAtEnd || !isText)) {
-            if (colIndex < 7) {
+            let nextCol = colIndex + 1;
+            if (nextCol === 3 || nextCol === 4) nextCol = 5;
+            if (nextCol <= 7) {
                 e.preventDefault();
-                focusGridCell(rowIndex, colIndex + 1, 'next');
+                focusGridCell(rowIndex, nextCol, 'next');
             }
             return;
         }
-        // ArrowLeft -> if at start of text or checkbox
+
+        // ArrowLeft -> if at start of text or checkbox (skipping 4 & 3)
         if (e.key === 'ArrowLeft' && (cursorAtStart || !isText)) {
-            if (colIndex > 0) {
+            let prevCol = colIndex - 1;
+            if (prevCol === 4 || prevCol === 3) prevCol = 2;
+            if (prevCol >= 0) {
                 e.preventDefault();
-                focusGridCell(rowIndex, colIndex - 1, 'prev');
+                focusGridCell(rowIndex, prevCol, 'prev');
             }
             return;
         }
@@ -2179,48 +2223,14 @@ export default function EmployeePaymentRecordSheetPage() {
                                             </span>
                                         </td>
 
-                                        {/* 6. HOURS */}
-                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-indigo-50/30 dark:bg-indigo-950/20 print:bg-[#E2EFDA] p-1 text-center font-mono font-black text-indigo-700 dark:text-indigo-300 print:text-black">
-                                            <input
-                                                type="text"
-                                                inputMode="decimal"
-                                                value={row.isTicked && row.hours > 0 ? row.hours : ''}
-                                                placeholder=""
-                                                onChange={(e) => handleRowChange(idx, 'hours', e.target.value)}
-                                                onFocus={handleCellSelectAll}
-                                                onMouseUp={handleCellSelectAll}
-                                                onClick={handleCellSelectAll}
-                                                data-grid-cell="true"
-                                                data-row={idx}
-                                                data-col={3}
-                                                onKeyDown={(e) => handleCellKeyDown(e, idx, 3)}
-                                                className="w-full bg-transparent text-center font-black text-indigo-700 dark:text-indigo-300 print:text-black focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-indigo-500 focus:outline-none p-0 text-xs print-hide-input"
-                                            />
-                                            <span className="hidden print:inline font-mono font-bold text-black">
-                                                {row.isTicked && row.hours > 0 ? row.hours : ''}
-                                            </span>
+                                        {/* 6. HOURS (Locked / Read-Only Calculated) */}
+                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-slate-50/50 dark:bg-slate-900/40 print:bg-[#E2EFDA] px-2 py-1 text-center font-mono font-bold text-xs text-indigo-700 dark:text-indigo-300 print:text-black select-none cursor-not-allowed" title="Hours are auto-calculated from IN and OUT times">
+                                            <span>{row.isTicked && row.hours > 0 ? row.hours : ''}</span>
                                         </td>
 
-                                        {/* 7. DAY SALARY */}
-                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-emerald-50/30 dark:bg-emerald-950/20 print:bg-[#E2EFDA] p-1 text-right font-mono font-bold text-emerald-700 dark:text-emerald-300 print:text-black">
-                                            <input
-                                                type="text"
-                                                inputMode="numeric"
-                                                value={row.isTicked && row.daySalary > 0 ? row.daySalary : ''}
-                                                placeholder=""
-                                                onChange={(e) => handleRowChange(idx, 'daySalary', e.target.value)}
-                                                onFocus={handleCellSelectAll}
-                                                onMouseUp={handleCellSelectAll}
-                                                onClick={handleCellSelectAll}
-                                                data-grid-cell="true"
-                                                data-row={idx}
-                                                data-col={4}
-                                                onKeyDown={(e) => handleCellKeyDown(e, idx, 4)}
-                                                className="w-full bg-transparent text-right font-bold text-emerald-700 dark:text-emerald-300 print:text-black focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-emerald-500 focus:outline-none p-0 text-xs print-hide-input"
-                                            />
-                                            <span className="hidden print:inline font-mono font-bold text-black">
-                                                {row.isTicked && row.daySalary > 0 ? Number(row.daySalary).toLocaleString() : ''}
-                                            </span>
+                                        {/* 7. DAY SALARY (Locked / Read-Only Calculated) */}
+                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-slate-50/50 dark:bg-slate-900/40 print:bg-[#E2EFDA] px-2 py-1 text-right font-mono font-bold text-xs text-emerald-700 dark:text-emerald-400 print:text-black select-none cursor-not-allowed" title="Day Salary is auto-calculated from Hours × Wage Rate">
+                                            <span>{row.isTicked && row.daySalary > 0 ? Number(row.daySalary).toLocaleString() : ''}</span>
                                         </td>
 
                                         {/* 8. ADVANCE */}
