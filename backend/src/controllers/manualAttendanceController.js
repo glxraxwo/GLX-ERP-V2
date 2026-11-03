@@ -912,21 +912,31 @@ export const saveManualAttendancePolicies = asyncHandler(async (req, res) => {
             throw new Error('Salary policies must be an array');
         }
 
-        // Validate no duplicate thresholdMinutes for policies of same type and overlapping scope
-        const seen = new Set();
+        // Helper to check if two policy scopes overlap (ALL vs specific employees or shared employees)
+        const doScopesOverlap = (scopeA, scopeB) => {
+            const isAllA = !scopeA || scopeA === 'ALL' || (Array.isArray(scopeA) && (scopeA.length === 0 || scopeA.includes('ALL')));
+            const isAllB = !scopeB || scopeB === 'ALL' || (Array.isArray(scopeB) && (scopeB.length === 0 || scopeB.includes('ALL')));
+            if (isAllA || isAllB) return true;
+            const listA = Array.isArray(scopeA) ? scopeA : [scopeA];
+            const listB = Array.isArray(scopeB) ? scopeB : [scopeB];
+            return listA.some(idA => listB.some(idB => String(idA) === String(idB)));
+        };
+
+        // Validate no duplicate thresholdMinutes for policies of same type with overlapping employees
         for (let i = 0; i < salaryPolicies.length; i++) {
-            const pol = salaryPolicies[i];
-            if (pol.type && pol.thresholdMinutes !== undefined && pol.thresholdMinutes !== null) {
-                const mins = Number(pol.thresholdMinutes);
-                const scope = pol.appliesTo || 'ALL';
-                if (['LATE_DEDUCTION', 'EARLY_DEPARTURE', 'OVERTIME_BONUS', 'MIN_HOURS_FULL_PAY'].includes(pol.type)) {
-                    const keyScope = `${pol.type}_${scope}_${mins}`;
-                    const keyAll = `${pol.type}_ALL_${mins}`;
-                    if (seen.has(keyScope) || (scope !== 'ALL' && seen.has(keyAll)) || (scope === 'ALL' && [...seen].some(k => k.startsWith(`${pol.type}_`) && k.endsWith(`_${mins}`)))) {
-                        res.status(400);
-                        throw new Error(`Duplicate minutes (${mins} mins) found for ${pol.type} policy. Duplicate minutes are not allowed.`);
+            const polA = salaryPolicies[i];
+            if (polA.type && polA.thresholdMinutes !== undefined && polA.thresholdMinutes !== null) {
+                const minsA = Number(polA.thresholdMinutes);
+                if (['LATE_DEDUCTION', 'EARLY_DEPARTURE', 'OVERTIME_BONUS', 'MIN_HOURS_FULL_PAY'].includes(polA.type)) {
+                    for (let j = i + 1; j < salaryPolicies.length; j++) {
+                        const polB = salaryPolicies[j];
+                        if (polB.type === polA.type && Number(polB.thresholdMinutes) === minsA) {
+                            if (doScopesOverlap(polA.appliesTo, polB.appliesTo)) {
+                                res.status(400);
+                                throw new Error(`Duplicate minutes (${minsA} mins) found for ${polA.type} policy with overlapping employees. Duplicate minutes are not allowed.`);
+                            }
+                        }
                     }
-                    seen.add(keyScope);
                 }
             }
         }

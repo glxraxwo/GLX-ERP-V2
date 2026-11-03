@@ -1,6 +1,233 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, ShieldAlert, Check, Sparkles, Percent, Clock, AlertCircle, Save } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Plus, Trash2, ShieldAlert, Check, Sparkles, Percent, Clock, AlertCircle, Save, Users, User, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+// Helper to check if two policy scopes overlap (ALL vs specific employees or shared employees)
+const doScopesOverlap = (scopeA, scopeB) => {
+    const isAllA = !scopeA || scopeA === 'ALL' || (Array.isArray(scopeA) && (scopeA.length === 0 || scopeA.includes('ALL')));
+    const isAllB = !scopeB || scopeB === 'ALL' || (Array.isArray(scopeB) && (scopeB.length === 0 || scopeB.includes('ALL')));
+    if (isAllA || isAllB) return true;
+    const listA = Array.isArray(scopeA) ? scopeA : [scopeA];
+    const listB = Array.isArray(scopeB) ? scopeB : [scopeB];
+    return listA.some(idA => listB.some(idB => String(idA) === String(idB)));
+};
+
+// Component for Multi-Employee Selection per Policy Rule
+function PolicyEmployeeSelector({ value, employees = [], onChange }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState('');
+
+    // Normalize value: 'ALL' or array of employee ID strings
+    const isAll = !value || value === 'ALL' || (Array.isArray(value) && (value.length === 0 || value.includes('ALL')));
+    const selectedIds = useMemo(() => {
+        if (isAll) return [];
+        return (Array.isArray(value) ? value : [value]).map(String);
+    }, [value, isAll]);
+
+    const handleToggleAll = (toAll) => {
+        if (toAll) {
+            onChange('ALL');
+            setIsOpen(false);
+        } else {
+            // Default to empty or first employee
+            onChange(employees.length > 0 ? [String(employees[0]._id)] : []);
+            setIsOpen(true);
+        }
+    };
+
+    const handleToggleEmployee = (empId) => {
+        const idStr = String(empId);
+        let updated;
+        if (selectedIds.includes(idStr)) {
+            updated = selectedIds.filter(id => id !== idStr);
+        } else {
+            updated = [...selectedIds, idStr];
+        }
+        onChange(updated);
+    };
+
+    const handleSelectAllEmployees = () => {
+        onChange(employees.map(e => String(e._id)));
+    };
+
+    const handleClearEmployees = () => {
+        onChange([]);
+    };
+
+    const filteredEmployees = useMemo(() => {
+        if (!search.trim()) return employees;
+        const q = search.toLowerCase();
+        return employees.filter(emp => {
+            const name = (emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}` || emp.name || '').toLowerCase();
+            const code = (emp.payrollNumber || emp.employeeCode || '').toLowerCase();
+            return name.includes(q) || code.includes(q);
+        });
+    }, [employees, search]);
+
+    return (
+        <div className="pt-2 border-t border-gray-100 text-xs w-full">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-1.5">
+                    <Users size={14} className="text-indigo-600 shrink-0" />
+                    <span className="font-bold text-gray-800">Applies To (අදාළ සේවකයින්):</span>
+                </div>
+
+                {/* Scope Mode Switcher */}
+                <div className="inline-flex rounded-lg bg-gray-100 p-0.5 border border-gray-200">
+                    <button
+                        type="button"
+                        onClick={() => handleToggleAll(true)}
+                        className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition ${
+                            isAll
+                                ? 'bg-indigo-600 text-white shadow-xs'
+                                : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                    >
+                        All Employees (සැමටම)
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleToggleAll(false)}
+                        className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition flex items-center gap-1 ${
+                            !isAll
+                                ? 'bg-purple-600 text-white shadow-xs'
+                                : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                    >
+                        <span>Specific Employees</span>
+                        {!isAll && (
+                            <span className="bg-white/20 text-white px-1.5 py-0.2 rounded-full text-[10px]">
+                                {selectedIds.length}
+                            </span>
+                        )}
+                    </button>
+                </div>
+            </div>
+
+            {/* If Specific Employees Mode is Active */}
+            {!isAll && (
+                <div className="bg-purple-50/50 border border-purple-200/80 rounded-lg p-2.5 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsOpen(!isOpen)}
+                            className="px-2.5 py-1 text-xs font-bold bg-white border border-purple-300 text-purple-900 hover:bg-purple-50 rounded shadow-2xs flex items-center gap-1.5 transition cursor-pointer"
+                        >
+                            <Users size={13} className="text-purple-600" />
+                            <span>
+                                {selectedIds.length === 0
+                                    ? '+ Select Employees (සේවකයින් තෝරන්න)'
+                                    : `${selectedIds.length} Employee(s) Selected`}
+                            </span>
+                            {isOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                        </button>
+
+                        <div className="flex items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={handleSelectAllEmployees}
+                                className="px-2 py-0.5 text-[10px] font-bold text-purple-700 hover:bg-purple-100 rounded transition cursor-pointer"
+                            >
+                                Select All ({employees.length})
+                            </button>
+                            <span className="text-gray-300">|</span>
+                            <button
+                                type="button"
+                                onClick={handleClearEmployees}
+                                className="px-2 py-0.5 text-[10px] font-bold text-gray-500 hover:text-rose-600 rounded transition cursor-pointer"
+                            >
+                                Clear All
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Popover / Expandable Employee Checklist */}
+                    {isOpen && (
+                        <div className="bg-white border border-purple-200 rounded-lg shadow-md p-2 space-y-2 max-h-56 overflow-y-auto">
+                            {/* Search */}
+                            <div className="relative">
+                                <Search size={13} className="absolute left-2.5 top-2.5 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Search employee by name or code..."
+                                    className="w-full pl-7 pr-2.5 py-1 text-xs border border-gray-200 rounded focus:border-purple-500 focus:outline-none"
+                                />
+                            </div>
+
+                            {/* Checklist */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                                {filteredEmployees.map(emp => {
+                                    const idStr = String(emp._id);
+                                    const checked = selectedIds.includes(idStr);
+                                    const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.name;
+                                    const code = emp.payrollNumber || emp.employeeCode || '';
+                                    return (
+                                        <label
+                                            key={idStr}
+                                            className={`flex items-center gap-2 p-1.5 rounded border text-xs cursor-pointer transition select-none ${
+                                                checked
+                                                    ? 'bg-purple-50 border-purple-300 text-purple-950 font-semibold'
+                                                    : 'bg-gray-50/50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                                            }`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={() => handleToggleEmployee(idStr)}
+                                                className="w-3.5 h-3.5 accent-purple-600 rounded cursor-pointer"
+                                            />
+                                            <span className="truncate flex-1">
+                                                {name}
+                                                {code && <span className="text-gray-400 font-mono text-[10px] ml-1">({code})</span>}
+                                            </span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+
+                            {filteredEmployees.length === 0 && (
+                                <p className="text-center text-xs text-gray-400 py-2">No employees match "{search}"</p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Selected Employees Chips Preview */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        {selectedIds.length === 0 ? (
+                            <span className="text-rose-600 font-bold text-[11px] flex items-center gap-1">
+                                <AlertCircle size={12} /> සේවකයින් කිසිවෙකු තෝරාගෙන නැත. කරුණාකර අවම වශයෙන් එක් සේවකයෙකු තෝරන්න.
+                            </span>
+                        ) : (
+                            selectedIds.map(idStr => {
+                                const emp = employees.find(e => String(e._id) === idStr);
+                                const name = emp ? (emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.name) : idStr;
+                                const code = emp?.payrollNumber || emp?.employeeCode || '';
+                                return (
+                                    <span
+                                        key={idStr}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-purple-200 text-purple-900 rounded-full text-[11px] font-semibold shadow-2xs"
+                                    >
+                                        <span>{name} {code ? `(${code})` : ''}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleToggleEmployee(idStr)}
+                                            className="hover:text-rose-600 transition text-gray-400 font-bold p-0.5 rounded-full cursor-pointer"
+                                            title="Remove employee"
+                                        >
+                                            ✕
+                                        </button>
+                                    </span>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function SalaryPoliciesModal({
     isOpen,
@@ -101,8 +328,7 @@ export default function SalaryPoliciesModal({
         const match = allPolicies.find((other, otherIdx) => {
             if (otherIdx === index) return false;
             if (other.type !== currentType) return false;
-            const otherScope = other.appliesTo || 'ALL';
-            const scopeOverlaps = (currentScope === 'ALL' || otherScope === 'ALL' || currentScope === otherScope);
+            const scopeOverlaps = doScopesOverlap(currentScope, other.appliesTo);
             if (!scopeOverlaps) return false;
             return Number(other.thresholdMinutes) === currentMins;
         });
@@ -157,7 +383,7 @@ export default function SalaryPoliciesModal({
         const existing = localPolicies.find(p =>
             p.type === 'LATE_DEDUCTION' &&
             Number(p.thresholdMinutes) === numMinutes &&
-            ((p.appliesTo || 'ALL') === targetScope || (p.appliesTo || 'ALL') === 'ALL' || targetScope === 'ALL')
+            doScopesOverlap(p.appliesTo, targetScope)
         );
 
         if (existing) {
@@ -627,31 +853,12 @@ export default function SalaryPoliciesModal({
                                             </>
                                         )}
 
-                                        {/* Target Employee Selector */}
-                                        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100 text-xs">
-                                            <span className="font-bold text-gray-700">Applies To (අදාළ සේවකයා):</span>
-                                            <select
-                                                value={pol.appliesTo || 'ALL'}
-                                                onChange={(e) => handlePolicyChange(idx, 'appliesTo', e.target.value)}
-                                                className="bg-white border border-gray-300 rounded px-2 py-1 text-xs font-semibold text-gray-800 focus:outline-none focus:border-indigo-500"
-                                            >
-                                                <option value="ALL">All Employees (සියලුම සේවකයින්ට පොදුයි)</option>
-                                                {employees.map(emp => {
-                                                    const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.name;
-                                                    const code = emp.payrollNumber || emp.employeeCode || '';
-                                                    return (
-                                                        <option key={emp._id} value={emp._id}>
-                                                            {name} {code ? `(${code})` : ''} - Only this employee
-                                                        </option>
-                                                    );
-                                                })}
-                                            </select>
-                                            {pol.appliesTo && pol.appliesTo !== 'ALL' && (
-                                                <span className="text-[10px] bg-purple-100 text-purple-800 font-extrabold px-2 py-0.5 rounded-full border border-purple-200">
-                                                    Custom Employee Rule
-                                                </span>
-                                            )}
-                                        </div>
+                                        {/* Multi-Employee Selector */}
+                                        <PolicyEmployeeSelector
+                                            value={pol.appliesTo}
+                                            employees={employees}
+                                            onChange={(val) => handlePolicyChange(idx, 'appliesTo', val)}
+                                        />
                                     </div>
                                 </div>
                             );

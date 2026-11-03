@@ -211,10 +211,32 @@ const defaultPoliciesFallback = [
 ];
 
 // Pure Helper: Evaluate policy for a single row
+const doesPolicyApplyToEmployee = (policy, employeeId) => {
+    if (!policy) return false;
+    const scope = policy.appliesTo;
+    if (!scope || scope === 'ALL') return true;
+    if (Array.isArray(scope)) {
+        if (scope.length === 0 || scope.includes('ALL')) return true;
+        return scope.some(id => String(id) === String(employeeId));
+    }
+    return String(scope) === String(employeeId);
+};
+
+const isPolicyEmployeeSpecific = (policy, employeeId) => {
+    if (!policy) return false;
+    const scope = policy.appliesTo;
+    if (!scope || scope === 'ALL') return false;
+    if (Array.isArray(scope)) {
+        if (scope.length === 0 || scope.includes('ALL')) return false;
+        return scope.some(id => String(id) === String(employeeId));
+    }
+    return String(scope) === String(employeeId);
+};
+
 const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePolicies = [], currentEmployeeId = null) => {
     // Unticking day -> NO automatic 1000 cut!
     if (!row.isTicked) {
-        const absentPol = activePolicies.find(p => p.isActive && p.type === 'ABSENT_DEDUCTION');
+        const absentPol = activePolicies.find(p => p.isActive && p.type === 'ABSENT_DEDUCTION' && doesPolicyApplyToEmployee(p, currentEmployeeId));
         const cut = (absentPol && absentPol.deductionAmount > 0) ? -Math.abs(absentPol.deductionAmount) : 0;
         return {
             ...row,
@@ -246,10 +268,10 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
     const activePols = activePolicies.filter(p => p.isActive);
 
     // Prefer employee-specific late rules if defined, otherwise fallback to ALL rules
-    const empSpecificLatePols = activePols.filter(p => p.type === 'LATE_DEDUCTION' && p.appliesTo && p.appliesTo !== 'ALL' && p.appliesTo === currentEmployeeId);
+    const empSpecificLatePols = activePols.filter(p => p.type === 'LATE_DEDUCTION' && isPolicyEmployeeSpecific(p, currentEmployeeId));
     const latePolsToUse = empSpecificLatePols.length > 0
         ? empSpecificLatePols
-        : activePols.filter(p => p.type === 'LATE_DEDUCTION' && (!p.appliesTo || p.appliesTo === 'ALL'));
+        : activePols.filter(p => p.type === 'LATE_DEDUCTION' && doesPolicyApplyToEmployee(p, currentEmployeeId));
 
     // 1. Late Arrival Policies
     if (inMin !== null && shiftInMin !== null && inMin > shiftInMin) {
@@ -270,10 +292,10 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
     }
 
     // 2. Early Departure Policies
-    const empSpecificEarlyPols = activePols.filter(p => p.type === 'EARLY_DEPARTURE' && p.appliesTo && p.appliesTo !== 'ALL' && p.appliesTo === currentEmployeeId);
+    const empSpecificEarlyPols = activePols.filter(p => p.type === 'EARLY_DEPARTURE' && isPolicyEmployeeSpecific(p, currentEmployeeId));
     const earlyPolsToUse = empSpecificEarlyPols.length > 0
         ? empSpecificEarlyPols
-        : activePols.filter(p => p.type === 'EARLY_DEPARTURE' && (!p.appliesTo || p.appliesTo === 'ALL'));
+        : activePols.filter(p => p.type === 'EARLY_DEPARTURE' && doesPolicyApplyToEmployee(p, currentEmployeeId));
 
     if (outMin !== null && shiftOutMin !== null && outMin < shiftOutMin) {
         const earlyMinutes = shiftOutMin - outMin;
@@ -290,7 +312,7 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
 
     // 3. Day Salary
     let daySalary = Number((hrs * hourlyRate).toFixed(2));
-    const minHoursPol = activePols.find(p => p.type === 'MIN_HOURS_FULL_PAY' && (!p.appliesTo || p.appliesTo === 'ALL' || p.appliesTo === currentEmployeeId));
+    const minHoursPol = activePols.find(p => p.type === 'MIN_HOURS_FULL_PAY' && doesPolicyApplyToEmployee(p, currentEmployeeId));
     if (minHoursPol && hrs >= (minHoursPol.thresholdMinutes / 60)) {
         daySalary = Number((standardHrs * hourlyRate).toFixed(2));
     }
