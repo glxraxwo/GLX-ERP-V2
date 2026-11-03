@@ -328,26 +328,40 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
     };
 };
 
-// Searchable Employee Combobox with Autocomplete Suggestions
-function EmployeeSearchCombobox({ employees, selectedEmployeeId, onSelectEmployee, employeeFullName }) {
+// Searchable Employee Combobox with Autocomplete Suggestions, Status Badges & Quick Tick Activation
+function EmployeeSearchCombobox({ employees, selectedEmployeeId, onSelectEmployee, employeeFullName, onToggleStatus }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [isOpen, setIsOpen] = useState(false);
+    const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'inactive'
     const containerRef = useRef(null);
 
     useEffect(() => {
         setSearchTerm(employeeFullName || '');
     }, [employeeFullName, selectedEmployeeId]);
 
+    const counts = useMemo(() => {
+        const all = employees.length;
+        const active = employees.filter(e => e.status === 'active').length;
+        const inactive = all - active;
+        return { all, active, inactive };
+    }, [employees]);
+
     const filteredEmployees = useMemo(() => {
-        if (!searchTerm.trim()) return employees;
+        let list = employees;
+        if (statusFilter === 'active') {
+            list = list.filter(e => e.status === 'active');
+        } else if (statusFilter === 'inactive') {
+            list = list.filter(e => e.status !== 'active');
+        }
+        if (!searchTerm.trim()) return list;
         const q = searchTerm.toLowerCase();
-        return employees.filter(emp => {
+        return list.filter(emp => {
             const name = (emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.displayName || '').toLowerCase();
             const code = (emp.payrollNumber || emp.employeeCode || '').toLowerCase();
             const desig = (emp.designationId?.title || '').toLowerCase();
             return name.includes(q) || code.includes(q) || desig.includes(q);
         });
-    }, [employees, searchTerm]);
+    }, [employees, searchTerm, statusFilter]);
 
     useEffect(() => {
         const handleClickOutside = (e) => {
@@ -383,7 +397,7 @@ function EmployeeSearchCombobox({ employees, selectedEmployeeId, onSelectEmploye
                             setSearchTerm('');
                             setIsOpen(true);
                         }}
-                        className="text-gray-500 hover:text-black px-1 text-xs"
+                        className="text-gray-500 hover:text-black px-1 text-xs cursor-pointer"
                         title="Clear search"
                     >
                         ×
@@ -398,44 +412,120 @@ function EmployeeSearchCombobox({ employees, selectedEmployeeId, onSelectEmploye
 
             {/* Autocomplete Suggestions Popover */}
             {isOpen && (
-                <div className="absolute left-0 top-full mt-1 w-full min-w-[280px] bg-white border border-slate-300 shadow-2xl rounded-lg z-50 max-h-60 overflow-y-auto">
-                    <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                        Available Employees ({filteredEmployees.length})
-                    </div>
-                    {filteredEmployees.length === 0 ? (
-                        <div className="p-3 text-xs text-slate-500 text-center italic">
-                            No employees matching "{searchTerm}"
+                <div className="absolute left-0 top-full mt-1 w-full min-w-[340px] bg-white border border-slate-300 shadow-2xl rounded-xl z-50 max-h-72 overflow-hidden flex flex-col">
+                    {/* Filter Tabs Header */}
+                    <div className="p-2 bg-slate-50 border-b border-slate-200 shrink-0">
+                        <div className="flex items-center justify-between gap-1 mb-1.5">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                Employees ({filteredEmployees.length})
+                            </span>
+                            <span className="text-[9px] text-slate-400">
+                                Click tick to activate/deactivate
+                            </span>
                         </div>
-                    ) : (
-                        filteredEmployees.map(emp => {
-                            const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.displayName;
-                            const isSelected = emp._id === selectedEmployeeId;
-                            return (
-                                <button
-                                    key={emp._id}
-                                    type="button"
-                                    onClick={() => {
-                                        onSelectEmployee(emp._id);
-                                        setSearchTerm(name);
-                                        setIsOpen(false);
-                                    }}
-                                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between border-b border-slate-100 hover:bg-slate-50 transition cursor-pointer ${
-                                        isSelected ? 'bg-indigo-50 font-bold text-indigo-900 border-l-4 border-l-indigo-600' : 'text-slate-800'
-                                    }`}
-                                >
-                                    <div>
-                                        <div className="font-semibold text-slate-900">{name}</div>
-                                        {emp.designationId?.title && (
-                                            <div className="text-[10px] text-slate-500">{emp.designationId.title}</div>
-                                        )}
+                        <div className="flex items-center gap-1 bg-slate-200/70 p-0.5 rounded-lg text-[10px] font-bold">
+                            <button
+                                type="button"
+                                onClick={() => setStatusFilter('all')}
+                                className={`flex-1 py-1 px-1.5 rounded-md transition cursor-pointer text-center ${
+                                    statusFilter === 'all'
+                                        ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                            >
+                                All ({counts.all})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setStatusFilter('active')}
+                                className={`flex-1 py-1 px-1.5 rounded-md transition cursor-pointer text-center ${
+                                    statusFilter === 'active'
+                                        ? 'bg-emerald-600 text-white shadow-2xs font-extrabold'
+                                        : 'text-emerald-700 hover:text-emerald-900'
+                                }`}
+                            >
+                                Active ({counts.active})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setStatusFilter('inactive')}
+                                className={`flex-1 py-1 px-1.5 rounded-md transition cursor-pointer text-center ${
+                                    statusFilter === 'inactive'
+                                        ? 'bg-rose-600 text-white shadow-2xs font-extrabold'
+                                        : 'text-rose-700 hover:text-rose-900'
+                                }`}
+                            >
+                                Inactive ({counts.inactive})
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Scrollable list */}
+                    <div className="overflow-y-auto flex-1 divide-y divide-slate-100">
+                        {filteredEmployees.length === 0 ? (
+                            <div className="p-4 text-xs text-slate-500 text-center italic">
+                                No employees matching "{searchTerm}" ({statusFilter})
+                            </div>
+                        ) : (
+                            filteredEmployees.map(emp => {
+                                const name = emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.displayName;
+                                const isSelected = emp._id === selectedEmployeeId;
+                                const isActive = emp.status === 'active';
+
+                                return (
+                                    <div
+                                        key={emp._id}
+                                        onClick={() => {
+                                            onSelectEmployee(emp._id);
+                                            setSearchTerm(name);
+                                            setIsOpen(false);
+                                        }}
+                                        className={`w-full px-3 py-2 text-xs flex items-center justify-between gap-2 hover:bg-slate-50 transition cursor-pointer ${
+                                            isSelected ? 'bg-indigo-50/80 border-l-4 border-l-indigo-600 font-bold' : ''
+                                        }`}
+                                    >
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="font-semibold text-slate-900 truncate">{name}</span>
+                                                <span className={`px-1.5 py-0.2 rounded text-[8.5px] font-bold ${
+                                                    isActive 
+                                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                                                        : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                                }`}>
+                                                    {isActive ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-0.5">
+                                                <span>{emp.payrollNumber || emp.employeeCode || 'EMP'}</span>
+                                                {emp.designationId?.title && <span>· {emp.designationId.title}</span>}
+                                            </div>
+                                        </div>
+
+                                        {/* Quick Tick / Toggle Checkbox to Activate or Deactivate in 1-Click */}
+                                        <div 
+                                            onClick={(e) => e.stopPropagation()} 
+                                            className="shrink-0 flex items-center pl-1"
+                                        >
+                                            <label 
+                                                className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border cursor-pointer select-none transition hover:bg-slate-100"
+                                                title={isActive ? 'Active (Click tick to deactivate)' : 'Inactive (Click tick to ACTIVATE)'}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isActive}
+                                                    onChange={(e) => onToggleStatus && onToggleStatus(emp._id, emp.status, e)}
+                                                    className="w-3.5 h-3.5 text-emerald-600 accent-emerald-600 rounded cursor-pointer"
+                                                />
+                                                <span className={isActive ? 'text-emerald-700' : 'text-slate-500 font-normal'}>
+                                                    {isActive ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </label>
+                                        </div>
                                     </div>
-                                    <span className="text-[10px] font-mono bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-slate-700">
-                                        {emp.payrollNumber || emp.employeeCode || 'EMP'}
-                                    </span>
-                                </button>
-                            );
-                        })
-                    )}
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
             )}
         </div>
@@ -531,8 +621,8 @@ export default function EmployeePaymentRecordSheetPage() {
 
     // Fetch active employees
     const { data: employeesData } = useQuery({
-        queryKey: ['active-employees-list'],
-        queryFn: () => employeesApi.list({ limit: 500, status: 'active' }),
+        queryKey: ['all-employees-list'],
+        queryFn: () => employeesApi.list({ limit: 500 }),
     });
 
     const employees = useMemo(() => employeesData?.data || [], [employeesData]);
@@ -645,6 +735,26 @@ export default function EmployeePaymentRecordSheetPage() {
     }, [customHourlyRate, currentEmployee]);
 
     // Save Sheet Mutation
+    // Quick activate / deactivate employee status
+    const toggleStatusMutation = useMutation({
+        mutationFn: async ({ id, newStatus }) => {
+            return employeesApi.update(id, { status: newStatus });
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries(['all-employees-list']);
+            toast.success(`Employee marked as ${variables.newStatus}!`);
+        },
+        onError: (err) => {
+            toast.error(err.response?.data?.message || err.message || 'Failed to update employee status');
+        }
+    });
+
+    const handleToggleEmployeeStatus = (empId, currentStatus, e) => {
+        if (e) e.stopPropagation();
+        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+        toggleStatusMutation.mutate({ id: empId, newStatus });
+    };
+
     const saveMutation = useMutation({
         mutationFn: (payload) => manualAttendanceApi.saveEmployeeSheet(payload),
         onSuccess: (res) => {
@@ -1896,6 +2006,7 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 setSearchParams({ employeeId: empId, startDate, endDate });
                                             }}
                                             employeeFullName={employeeFullName}
+                                            onToggleStatus={handleToggleEmployeeStatus}
                                         />
                                     </div>
                                 </div>
