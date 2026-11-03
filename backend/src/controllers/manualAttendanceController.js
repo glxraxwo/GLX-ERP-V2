@@ -500,6 +500,20 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
     const netSalary = Math.max(0, totalSalary - totalAdvance + totalDeduction);
     const activePolicies = (settings?.salaryPolicies && settings.salaryPolicies.length > 0) ? settings.salaryPolicies : defaultSalaryPolicies;
 
+    const minSalary = Number(employee.minimumSalary || employee.basicSalary || 0);
+    const earnedTotal = Number(totalSalary.toFixed(2));
+    let basicSalary = earnedTotal;
+    let otCommission = 0;
+    if (minSalary > 0) {
+        if (earnedTotal > minSalary) {
+            basicSalary = minSalary;
+            otCommission = Number((earnedTotal - minSalary).toFixed(2));
+        } else {
+            basicSalary = earnedTotal;
+            otCommission = 0;
+        }
+    }
+
     res.json({
         success: true,
         employee: {
@@ -508,7 +522,8 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
             payrollNumber: employee.payrollNumber || employee.employeeCode || '000-00-0293',
             hourlyRate: hourlyRate,
             department: employee.departmentId?.name || '',
-            designation: employee.designationId?.title || ''
+            designation: employee.designationId?.title || '',
+            minimumSalary: minSalary
         },
         startDate: startStr,
         endDate: endStr,
@@ -519,6 +534,9 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
             totalDays,
             totalHours: Number(totalHours.toFixed(2)),
             totalSalary: Number(totalSalary.toFixed(2)),
+            basicSalary: Number(basicSalary.toFixed(2)),
+            otCommission: Number(otCommission.toFixed(2)),
+            minimumSalary: minSalary,
             totalAdvance: Number(totalAdvance.toFixed(2)),
             totalDeduction: Number(totalDeduction.toFixed(2)),
             netSalary: Number(netSalary.toFixed(2))
@@ -694,11 +712,14 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
     const startStr = startDate || formatDateStr(defaultStart);
     const endStr = endDate || formatDateStr(today);
 
-    // Get attendance records in date range
+    // Get attendance records in date range (match ticked or present attendance)
     const attendances = await Attendance.find({
         employeeId: employee._id,
         dateString: { $gte: startStr, $lte: endStr },
-        isTicked: true
+        $or: [
+            { isTicked: true },
+            { isTicked: { $ne: false }, status: { $in: ['present', 'late', 'half_day'] } }
+        ]
     });
 
     const hourlyRate = getEmployeeRegisteredRate(employee, 260);
@@ -799,6 +820,7 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
             designation: employee.designationId?.title || '',
             department: employee.departmentId?.name || '',
             hourlyRate,
+            minimumSalary: minSalary,
             epfNumber: employee.epfNumber || ''
         },
         period: {

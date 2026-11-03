@@ -7,7 +7,7 @@ import autoTable from 'jspdf-autotable';
 import { manualAttendanceApi } from '../features/hr/hrApi';
 import { useSettings } from '../features/settings/useSettings';
 
-export default function NormalPayslipModal({ isOpen, onClose, employeeId, startDate, endDate, includeEpfEtf = false }) {
+export default function NormalPayslipModal({ isOpen, onClose, employeeId, startDate, endDate, includeEpfEtf = false, dynamicTotals = null }) {
     const printRef = useRef(null);
     const { data: settingsData } = useSettings();
     const systemSettings = settingsData?.data || {};
@@ -34,10 +34,32 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
     const payslip = payslipData || {};
     const comp = payslip.company || {};
     const emp = payslip.employee || {};
-    const earn = payslip.earnings || {};
-    const ded = payslip.deductions || {};
-    const empContrib = payslip.employerContributions || {};
-    const net = payslip.netSalary || 0;
+    const earn = (payslip.earnings && payslip.earnings.grossEarnings > 0)
+        ? payslip.earnings
+        : (dynamicTotals ? {
+            basicSalary: dynamicTotals.basicSalary,
+            totalHours: dynamicTotals.totalHours,
+            overtimePayment: dynamicTotals.otCommission,
+            grossEarnings: dynamicTotals.totalSalary,
+            commission: 0,
+            otherAllowances: 0
+        } : (payslip.earnings || {}));
+    const ded = (payslip.deductions && payslip.deductions.totalDeductions > 0)
+        ? payslip.deductions
+        : (dynamicTotals ? {
+            epfEmployee: dynamicTotals.epfEmployeeDeduction,
+            advances: dynamicTotals.totalAdvance,
+            otherDeductions: Math.abs(dynamicTotals.totalDeduction < 0 ? dynamicTotals.totalDeduction : 0),
+            totalDeductions: dynamicTotals.epfEmployeeDeduction + dynamicTotals.totalAdvance
+        } : (payslip.deductions || {}));
+    const empContrib = payslip.employerContributions || (dynamicTotals ? {
+        epfEmployer: dynamicTotals.epfEmployerContribution,
+        etfEmployer: dynamicTotals.etfEmployerContribution,
+        totalContributions: dynamicTotals.epfEmployerContribution + dynamicTotals.etfEmployerContribution
+    } : {});
+    const net = (payslip.netSalary !== undefined && payslip.netSalary > 0)
+        ? payslip.netSalary
+        : (dynamicTotals ? dynamicTotals.netSalary : (payslip.netSalary || 0));
 
     // Use admin uploaded signature from backend company object or client systemSettings
     const companySealUrl = comp.companySeal || systemSettings.companySeal || '';
@@ -110,17 +132,27 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
         // 4. Breakdown Table with Deep Navy Header
         const tableY = metaY + 22;
 
-        const tableBody = [
-            [
+        const tableBody = [];
+        if (earn.overtimePayment > 0) {
+            tableBody.push([
+                'Basic Salary',
+                'Monthly Basic',
+                'Standard',
+                `Rs. ${Number(earn.basicSalary || 0).toLocaleString()}`
+            ]);
+            tableBody.push([
+                'OT / Commission',
+                'Excess Balance',
+                'Performance & OT',
+                `Rs. ${Number(earn.overtimePayment).toLocaleString()}`
+            ]);
+        } else {
+            tableBody.push([
                 'Basic Salary',
                 `${earn.totalHours || 0} Hours`,
                 `Rs. ${Number(emp.hourlyRate || 0).toFixed(0)}`,
                 `Rs. ${Number(earn.basicSalary || 0).toLocaleString()}`
-            ]
-        ];
-
-        if (earn.overtimePayment > 0) {
-            tableBody.push(['OT / Commission', 'Excess Balance', 'Performance & OT', `Rs. ${Number(earn.overtimePayment).toLocaleString()}`]);
+            ]);
         }
         if (earn.commission > 0) {
             tableBody.push(['Commission / Incentives', '1 Job', 'Fixed', `Rs. ${Number(earn.commission).toLocaleString()}`]);
@@ -518,19 +550,27 @@ export default function NormalPayslipModal({ isOpen, onClose, employeeId, startD
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 text-gray-800">
-                                    <tr>
-                                        <td className="py-3 px-4 font-medium">Basic Salary</td>
-                                        <td className="py-3 px-4 text-center font-mono">{earn.totalHours || 0} Hours</td>
-                                        <td className="py-3 px-4 text-center font-mono">Rs. {Number(emp.hourlyRate || 0).toFixed(0)}</td>
-                                        <td className="py-3 px-4 text-right font-bold font-mono">Rs. {Number(earn.basicSalary || 0).toLocaleString()}</td>
-                                    </tr>
-
-                                    {earn.overtimePayment > 0 && (
+                                    {earn.overtimePayment > 0 ? (
+                                        <>
+                                            <tr>
+                                                <td className="py-3 px-4 font-medium">Basic Salary</td>
+                                                <td className="py-3 px-4 text-center font-mono">Monthly Basic</td>
+                                                <td className="py-3 px-4 text-center font-mono">Standard</td>
+                                                <td className="py-3 px-4 text-right font-bold font-mono">Rs. {Number(earn.basicSalary || 0).toLocaleString()}</td>
+                                            </tr>
+                                            <tr>
+                                                <td className="py-2.5 px-4 font-medium">OT / Commission</td>
+                                                <td className="py-2.5 px-4 text-center font-mono">Excess Balance</td>
+                                                <td className="py-2.5 px-4 text-center font-mono">Performance &amp; OT</td>
+                                                <td className="py-2.5 px-4 text-right font-bold font-mono">Rs. {Number(earn.overtimePayment).toLocaleString()}</td>
+                                            </tr>
+                                        </>
+                                    ) : (
                                         <tr>
-                                            <td className="py-2.5 px-4 font-medium">OT / Commission</td>
-                                            <td className="py-2.5 px-4 text-center font-mono">Excess Balance</td>
-                                            <td className="py-2.5 px-4 text-center font-mono">Performance &amp; OT</td>
-                                            <td className="py-2.5 px-4 text-right font-bold font-mono">Rs. {Number(earn.overtimePayment).toLocaleString()}</td>
+                                            <td className="py-3 px-4 font-medium">Basic Salary</td>
+                                            <td className="py-3 px-4 text-center font-mono">{earn.totalHours || 0} Hours</td>
+                                            <td className="py-3 px-4 text-center font-mono">Rs. {Number(emp.hourlyRate || 0).toFixed(0)}</td>
+                                            <td className="py-3 px-4 text-right font-bold font-mono">Rs. {Number(earn.basicSalary || 0).toLocaleString()}</td>
                                         </tr>
                                     )}
 

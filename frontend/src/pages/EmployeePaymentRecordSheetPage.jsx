@@ -1148,11 +1148,29 @@ export default function EmployeePaymentRecordSheetPage() {
         // Net Salary calculation
         const netSalary = Math.max(0, totalSalary - effectiveTotalAdvance + totalDeduction - epfEmployeeDeduction);
 
+        // Minimum Salary vs OT / Commission breakdown
+        const minSalary = Number(currentEmployee?.minimumSalary || currentEmployee?.basicSalary || 0);
+        const earnedTotal = Number(totalSalary.toFixed(2));
+        let basicSalary = earnedTotal;
+        let otCommission = 0;
+        if (minSalary > 0) {
+            if (earnedTotal > minSalary) {
+                basicSalary = minSalary;
+                otCommission = Number((earnedTotal - minSalary).toFixed(2));
+            } else {
+                basicSalary = earnedTotal;
+                otCommission = 0;
+            }
+        }
+
         return {
             totalLeave,
             totalDays,
             totalHours: Number(totalHours.toFixed(2)),
             totalSalary: Number(totalSalary.toFixed(2)),
+            basicSalary: Number(basicSalary.toFixed(2)),
+            otCommission: Number(otCommission.toFixed(2)),
+            minimumSalary: minSalary,
             totalAdvance: Number(effectiveTotalAdvance.toFixed(2)),
             totalDeduction: Number(totalDeduction.toFixed(2)),
             epfEmployeeDeduction,
@@ -1160,7 +1178,7 @@ export default function EmployeePaymentRecordSheetPage() {
             etfEmployerContribution,
             netSalary: Number(netSalary.toFixed(2))
         };
-    }, [rows, customTotalAdvance, includeEpfEtf, epfEmployeeRate, epfEmployerRate, etfEmployerRate]);
+    }, [rows, customTotalAdvance, includeEpfEtf, epfEmployeeRate, epfEmployerRate, etfEmployerRate, currentEmployee]);
 
     const handleSave = () => {
         if (!selectedEmployeeId) {
@@ -1388,6 +1406,16 @@ export default function EmployeePaymentRecordSheetPage() {
 
                     <table class="summary-table">
                         <tr>
+                            <td class="font-bold text-left">Basic Salary</td>
+                            <td class="text-right">${formatPrintCurrency(dynamicTotals.basicSalary)}</td>
+                        </tr>
+                        ${dynamicTotals.otCommission > 0 ? `
+                        <tr>
+                            <td class="font-bold text-left">OT / Commission</td>
+                            <td class="text-right">${formatPrintCurrency(dynamicTotals.otCommission)}</td>
+                        </tr>
+                        ` : ''}
+                        <tr style="border-top: 1px solid #000;">
                             <td class="font-bold text-left">Total Salary</td>
                             <td class="text-right">${formatPrintCurrency(dynamicTotals.totalSalary)}</td>
                         </tr>
@@ -1555,6 +1583,20 @@ export default function EmployeePaymentRecordSheetPage() {
 
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(9);
+            doc.text('Basic Salary', labelX, sumY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatPrintCurrency(dynamicTotals.basicSalary), valX, sumY, { align: 'right' });
+
+            if (dynamicTotals.otCommission > 0) {
+                sumY += 5;
+                doc.setFont('helvetica', 'bold');
+                doc.text('OT / Commission', labelX, sumY);
+                doc.setFont('helvetica', 'normal');
+                doc.text(formatPrintCurrency(dynamicTotals.otCommission), valX, sumY, { align: 'right' });
+            }
+
+            sumY += 5;
+            doc.setFont('helvetica', 'bold');
             doc.text('Total Salary', labelX, sumY);
             doc.setFont('helvetica', 'normal');
             doc.text(formatPrintCurrency(dynamicTotals.totalSalary), valX, sumY, { align: 'right' });
@@ -2174,7 +2216,9 @@ export default function EmployeePaymentRecordSheetPage() {
                         <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Gross Earnings</span>
                             <span className="text-sm sm:text-base font-black font-mono text-slate-900 dark:text-white">Rs. {Math.round(dynamicTotals.totalSalary).toLocaleString()}</span>
-                            <span className="text-[8.5px] text-slate-400 block">earned</span>
+                            <span className="text-[8.5px] text-slate-400 block">
+                                Basic: Rs. {Math.round(dynamicTotals.basicSalary).toLocaleString()} {dynamicTotals.otCommission > 0 ? `| OT: Rs. ${Math.round(dynamicTotals.otCommission).toLocaleString()}` : ''}
+                            </span>
                         </div>
                         <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-center">
                             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Advance Taken</span>
@@ -2711,6 +2755,16 @@ export default function EmployeePaymentRecordSheetPage() {
                                 <table className="w-64 ml-auto text-xs font-sans text-black border-collapse">
                                     <tbody>
                                         <tr>
+                                            <td className="font-bold py-0.5">Basic Salary</td>
+                                            <td className="text-right py-0.5 font-mono">{formatPrintCurrency(dynamicTotals.basicSalary)}</td>
+                                        </tr>
+                                        {dynamicTotals.otCommission > 0 && (
+                                            <tr>
+                                                <td className="font-bold py-0.5">OT / Commission</td>
+                                                <td className="text-right py-0.5 font-mono">{formatPrintCurrency(dynamicTotals.otCommission)}</td>
+                                            </tr>
+                                        )}
+                                        <tr className="border-t border-gray-300">
                                             <td className="font-bold py-0.5">Total Salary</td>
                                             <td className="text-right py-0.5 font-mono">{formatPrintCurrency(dynamicTotals.totalSalary)}</td>
                                         </tr>
@@ -2744,6 +2798,7 @@ export default function EmployeePaymentRecordSheetPage() {
                 startDate={startDate}
                 endDate={endDate}
                 includeEpfEtf={includeEpfEtf}
+                dynamicTotals={dynamicTotals}
             />
 
             {/* Record Advance Modal */}

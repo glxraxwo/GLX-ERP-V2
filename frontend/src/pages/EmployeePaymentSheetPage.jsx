@@ -319,6 +319,20 @@ export default function EmployeePaymentSheetPage() {
 
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(9);
+            doc.text('Basic Salary', labelX, sumY);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formatCurrency(data.basicSalary || data.totalSalary), valX, sumY, { align: 'right' });
+
+            if (data.otCommission > 0) {
+                sumY += 5;
+                doc.setFont('helvetica', 'bold');
+                doc.text('OT / Commission', labelX, sumY);
+                doc.setFont('helvetica', 'normal');
+                doc.text(formatCurrency(data.otCommission), valX, sumY, { align: 'right' });
+            }
+
+            sumY += 5;
+            doc.setFont('helvetica', 'bold');
             doc.text(t.totalSalary || 'Total Salary', labelX, sumY);
             doc.setFont('helvetica', 'normal');
             doc.text(formatCurrency(data.totalSalary), valX, sumY, { align: 'right' });
@@ -581,6 +595,16 @@ export default function EmployeePaymentSheetPage() {
                         <table className="w-64 ml-auto text-xs font-sans text-black border-collapse">
                             <tbody>
                                 <tr>
+                                    <td className="font-bold py-0.5">Basic Salary</td>
+                                    <td className="text-right py-0.5 font-mono">{formatCurrency(data.basicSalary || data.totalSalary)}</td>
+                                </tr>
+                                {data.otCommission > 0 && (
+                                    <tr>
+                                        <td className="font-bold py-0.5">OT / Commission</td>
+                                        <td className="text-right py-0.5 font-mono">{formatCurrency(data.otCommission)}</td>
+                                    </tr>
+                                )}
+                                <tr className="border-t border-gray-300">
                                     <td className="font-bold py-0.5">{t.totalSalary || 'Total Salary'}</td>
                                     <td className="text-right py-0.5 font-mono">{formatCurrency(data.totalSalary)}</td>
                                 </tr>

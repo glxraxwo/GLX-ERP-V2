@@ -1987,6 +1987,20 @@ export const getEmployeePaymentSheet = asyncHandler(async (req, res) => {
     const totalAdvances = paymentRows.reduce((sum, r) => sum + r.advance, 0);
     const netSalary = totalSalary - totalAdvances;
 
+    const minSalary = Number(employee.minimumSalary || employee.basicSalary || 0);
+    const earnedTotal = +totalSalary.toFixed(2);
+    let basicSalary = earnedTotal;
+    let otCommission = 0;
+    if (minSalary > 0) {
+        if (earnedTotal > minSalary) {
+            basicSalary = minSalary;
+            otCommission = +(earnedTotal - minSalary).toFixed(2);
+        } else {
+            basicSalary = earnedTotal;
+            otCommission = 0;
+        }
+    }
+
     res.json({
         success: true,
         data: {
@@ -1994,12 +2008,16 @@ export const getEmployeePaymentSheet = asyncHandler(async (req, res) => {
                 id: employee._id,
                 code: employee.employeeCode,
                 name: empName,
-                hourlyRate: hourlyRate
+                hourlyRate: hourlyRate,
+                minimumSalary: minSalary
             },
             startDate: start.toLocaleDateString('en-GB'),
             endDate: end.toLocaleDateString('en-GB'),
             rows: paymentRows,
-            totalSalary: +totalSalary.toFixed(2),
+            totalSalary: earnedTotal,
+            basicSalary: +basicSalary.toFixed(2),
+            otCommission: +otCommission.toFixed(2),
+            minimumSalary: minSalary,
             totalAdvances: +totalAdvances.toFixed(2),
             netSalary: +netSalary.toFixed(2)
         }
