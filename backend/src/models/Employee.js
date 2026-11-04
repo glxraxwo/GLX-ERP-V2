@@ -145,6 +145,7 @@ const employeeSchema = new mongoose.Schema({
     salaryStructureId: { type: mongoose.Schema.Types.ObjectId, ref: 'SalaryStructure' },
     leaveStructureId: { type: mongoose.Schema.Types.ObjectId, ref: 'LeaveStructure' },
     basicSalary: { type: Number, default: 0 }, // monthly basic
+    monthlySalary: { type: Number, default: 0 },
     minimumSalary: { type: Number, default: 0 },
     currency: { type: String, default: 'LKR' },
 
@@ -206,6 +207,10 @@ employeeSchema.pre('save', async function () {
     }
     this.fullName = `${this.firstName || ''} ${this.lastName || ''}`.trim();
     if (!this.displayName) this.displayName = this.fullName;
+    if (this.paymentType === 'monthly') {
+        if (!this.monthlySalary && this.basicSalary > 0) this.monthlySalary = Number(this.basicSalary);
+        if (!this.minimumSalary && this.basicSalary > 0) this.minimumSalary = Number(this.basicSalary);
+    }
     if (this.labourRate && Number(this.labourRate) > 0 && (!this.hourlyRate || this.hourlyRate === 0 || this.hourlyRate === 260)) {
         this.hourlyRate = Number(this.labourRate);
     } else if (this.hourlyRate && Number(this.hourlyRate) > 0 && (!this.labourRate || this.labourRate === 0)) {

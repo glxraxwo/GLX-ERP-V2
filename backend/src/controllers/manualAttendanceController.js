@@ -500,19 +500,42 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
     const netSalary = Math.max(0, totalSalary - totalAdvance + totalDeduction);
     const activePolicies = (settings?.salaryPolicies && settings.salaryPolicies.length > 0) ? settings.salaryPolicies : defaultSalaryPolicies;
 
-    const minSalary = Number(employee.minimumSalary || employee.basicSalary || 0);
-    const earnedTotal = Number(totalSalary.toFixed(2));
-    let basicSalary = earnedTotal;
+    const isMonthly = employee.paymentType === 'monthly' || Number(employee.monthlySalary) > 0;
+    const monthlySalary = Number(employee.monthlySalary || employee.basicSalary || 0);
+    const minSalary = Number(employee.minimumSalary || 0);
+
+    let earnedTotal = 0;
+    let basicSalary = 0;
     let otCommission = 0;
-    if (minSalary > 0) {
-        if (earnedTotal > minSalary) {
-            basicSalary = minSalary;
-            otCommission = Number((earnedTotal - minSalary).toFixed(2));
+    let effectiveTotalSalary = Number(totalSalary.toFixed(2));
+
+    if (isMonthly && monthlySalary > 0) {
+        effectiveTotalSalary = monthlySalary;
+        earnedTotal = monthlySalary;
+        if (minSalary > 0) {
+            basicSalary = Math.min(minSalary, monthlySalary);
+            otCommission = Number((monthlySalary - basicSalary).toFixed(2));
+        } else {
+            basicSalary = monthlySalary;
+            otCommission = 0;
+        }
+    } else {
+        earnedTotal = Number(totalSalary.toFixed(2));
+        if (minSalary > 0) {
+            if (earnedTotal > minSalary) {
+                basicSalary = minSalary;
+                otCommission = Number((earnedTotal - minSalary).toFixed(2));
+            } else {
+                basicSalary = earnedTotal;
+                otCommission = 0;
+            }
         } else {
             basicSalary = earnedTotal;
             otCommission = 0;
         }
     }
+
+    const effectiveNetSalary = Math.max(0, effectiveTotalSalary - totalAdvance + totalDeduction);
 
     res.json({
         success: true,
@@ -520,6 +543,8 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
             id: employee._id,
             name: employee.fullName || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.displayName,
             payrollNumber: employee.payrollNumber || employee.employeeCode || '000-00-0293',
+            paymentType: employee.paymentType || (isMonthly ? 'monthly' : 'hourly'),
+            monthlySalary,
             hourlyRate: hourlyRate,
             department: employee.departmentId?.name || '',
             designation: employee.designationId?.title || '',
@@ -533,13 +558,13 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
             totalLeave,
             totalDays,
             totalHours: Number(totalHours.toFixed(2)),
-            totalSalary: Number(totalSalary.toFixed(2)),
+            totalSalary: effectiveTotalSalary,
             basicSalary: Number(basicSalary.toFixed(2)),
             otCommission: Number(otCommission.toFixed(2)),
             minimumSalary: minSalary,
             totalAdvance: Number(totalAdvance.toFixed(2)),
             totalDeduction: Number(totalDeduction.toFixed(2)),
-            netSalary: Number(netSalary.toFixed(2))
+            netSalary: Number(effectiveNetSalary.toFixed(2))
         },
         salaryPolicies: activePolicies,
         epfEmployeeRate: settings?.epfEmployeeRate !== undefined ? settings.epfEmployeeRate : 8,
@@ -767,18 +792,34 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
     totalAdvance = Math.max(totalAdvance, advanceFromCollection);
 
     // Calculate Minimum Salary vs OT / Commission breakdown
-    // If employee earned more than minimum salary, basic = minimum, excess = OT / Commission
-    // If employee earned less (absent/short), only pay the earned amount!
-    const minSalary = Number(employee.minimumSalary || employee.basicSalary || 0);
-    const earnedTotal = Number(totalEarnedSalary.toFixed(2));
+    // For monthly employee: Basic = minimumSalary, OT/Commission = monthlySalary - minimumSalary, Total = monthlySalary
+    const isMonthly = employee.paymentType === 'monthly' || Number(employee.monthlySalary) > 0;
+    const monthlySalary = Number(employee.monthlySalary || employee.basicSalary || 0);
+    const minSalary = Number(employee.minimumSalary || 0);
 
-    let basicSalary = earnedTotal;
+    let basicSalary = 0;
     let overtimePayment = 0;
+    let earnedTotal = 0;
 
-    if (minSalary > 0) {
-        if (earnedTotal > minSalary) {
-            basicSalary = minSalary;
-            overtimePayment = Number((earnedTotal - minSalary).toFixed(2));
+    if (isMonthly && monthlySalary > 0) {
+        earnedTotal = monthlySalary;
+        if (minSalary > 0) {
+            basicSalary = Math.min(minSalary, monthlySalary);
+            overtimePayment = Number((monthlySalary - basicSalary).toFixed(2));
+        } else {
+            basicSalary = monthlySalary;
+            overtimePayment = 0;
+        }
+    } else {
+        earnedTotal = Number(totalEarnedSalary.toFixed(2));
+        if (minSalary > 0) {
+            if (earnedTotal > minSalary) {
+                basicSalary = minSalary;
+                overtimePayment = Number((earnedTotal - minSalary).toFixed(2));
+            } else {
+                basicSalary = earnedTotal;
+                overtimePayment = 0;
+            }
         } else {
             basicSalary = earnedTotal;
             overtimePayment = 0;
@@ -820,6 +861,8 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
             payrollNumber: employee.payrollNumber || employee.employeeCode || '000-00-0293',
             designation: employee.designationId?.title || '',
             department: employee.departmentId?.name || '',
+            paymentType: employee.paymentType || (isMonthly ? 'monthly' : 'hourly'),
+            monthlySalary,
             hourlyRate,
             minimumSalary: minSalary,
             epfNumber: employee.epfNumber || ''

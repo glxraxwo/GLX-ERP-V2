@@ -60,7 +60,7 @@ export default function EmployeeFormPage() {
         hourlyRate: 0,
         epfNumber: '', etfNumber: '', taxRegistrationNumber: '',
         bankDetails: { bankName: '', branchName: '', accountNumber: '', accountName: '' },
-        salaryStructureId: '', leaveStructureId: '', basicSalary: 0, minimumSalary: 0,
+        salaryStructureId: '', leaveStructureId: '', basicSalary: 0, monthlySalary: 0, minimumSalary: 0,
         status: 'active',
         notes: '',
         employeeCategory: 'Permanent',
@@ -105,7 +105,7 @@ export default function EmployeeFormPage() {
                 bankDetails: e.bankDetails || { bankName: '', branchName: '', accountNumber: '', accountName: '' },
                 salaryStructureId: e.salaryStructureId?._id || '',
                 leaveStructureId: e.leaveStructureId?._id || '',
-                basicSalary: e.basicSalary || 0, minimumSalary: e.minimumSalary !== undefined ? e.minimumSalary : (e.basicSalary || 0),
+                basicSalary: e.basicSalary || 0, monthlySalary: e.monthlySalary || (e.paymentType === 'monthly' ? e.basicSalary : 0) || 0, minimumSalary: e.minimumSalary !== undefined ? e.minimumSalary : (e.basicSalary || 0),
                 status: e.status || 'active',
                 notes: e.notes || '',
                 employeeCategory: e.employeeCategory || 'Permanent',
@@ -240,12 +240,16 @@ export default function EmployeeFormPage() {
             }
 
             const isMonthly = form.paymentType === 'monthly';
-            const baseSalaryNum = +form.basicSalary || 0;
-            const computedHourly = isMonthly && baseSalaryNum > 0 ? Number((baseSalaryNum / 200).toFixed(2)) : +(form.hourlyRate || form.labourRate || 0);
+            const mSalary = isMonthly ? (+form.monthlySalary || +form.basicSalary || 0) : 0;
+            const minSalary = +(form.minimumSalary || 0);
+            const baseSalaryNum = isMonthly ? (minSalary || mSalary) : 0;
+            const computedHourly = isMonthly && mSalary > 0 ? Number((mSalary / 200).toFixed(2)) : +(form.hourlyRate || form.labourRate || 0);
 
             const payload = {
                 ...form,
-                basicSalary: baseSalaryNum, minimumSalary: +(form.minimumSalary || form.basicSalary || 0),
+                monthlySalary: mSalary,
+                minimumSalary: minSalary,
+                basicSalary: baseSalaryNum,
                 labourRate: isMonthly ? 0 : (+form.labourRate || 0),
                 hourlyRate: computedHourly,
                 departmentId: finalDeptId || undefined,
@@ -813,19 +817,18 @@ export default function EmployeeFormPage() {
                                         }} />
                                 ) : (
                                     <Input
-                                        label="Minimum Salary / Basic Salary (අවම මූලික වැටුප - LKR)"
+                                        label="Monthly Salary (මාසික සම්පූර්ණ වැටුප - LKR)"
                                         type="number"
                                         step="0.01"
                                         min="0"
                                         required
-                                        value={form.minimumSalary || form.basicSalary || ''}
+                                        value={form.monthlySalary || ''}
                                         onChange={(e) => {
                                             const val = Number(e.target.value);
-                                            update('minimumSalary', val);
-                                            update('basicSalary', val);
+                                            update('monthlySalary', val);
                                         }}
-                                        placeholder="e.g. 20000"
-                                        helperText="Shown as Basic Salary on payslip; excess earned amount is shown as OT / Commission"
+                                        placeholder="e.g. 50000"
+                                        helperText="The total monthly fixed salary (e.g. 50,000)"
                                     />
                                 )}
                             </div>
@@ -837,22 +840,22 @@ export default function EmployeeFormPage() {
                                         { value: 'Trainee', label: 'Trainee' }
                                     ]}
                                     value={form.employeeCategory} onChange={(e) => update('employeeCategory', e.target.value)} />
-                                {form.paymentType !== 'monthly' && (
-                                    <Input
-                                        label="Minimum Salary (අවම මූලික වැටුප - LKR)"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={form.minimumSalary || ''}
-                                        onChange={(e) => {
-                                            const val = Number(e.target.value);
-                                            update('minimumSalary', val);
+                                <Input
+                                    label="Minimum Salary / Basic Salary (අවම මූලික වැටුප - LKR)"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={form.minimumSalary || ''}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        update('minimumSalary', val);
+                                        if (form.paymentType !== 'monthly') {
                                             update('basicSalary', val);
-                                        }}
-                                        placeholder="e.g. 20000"
-                                        helperText="Shown as Basic Salary on payslip; excess earned amount is shown as OT / Commission"
-                                    />
-                                )}
+                                        }
+                                    }}
+                                    placeholder="e.g. 25000"
+                                    helperText="Shown as Basic Salary on payslip (e.g. 25,000). Remaining balance is shown as OT / Commission"
+                                />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                                 <Input label="EPF Rate (%)" type="number" min="0" max="100"

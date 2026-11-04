@@ -99,19 +99,68 @@ const parseTimeToMinutes = (str) => {
     const cleaned = s.replace(/[a-z]/g, '').trim();
     if (!cleaned) return null;
 
-    let parts;
-    if (cleaned.includes(':')) parts = cleaned.split(':');
-    else if (cleaned.includes('.')) parts = cleaned.split('.');
-    else parts = [cleaned, '0'];
+    let h = 0;
+    let m = 0;
+    if (cleaned.includes(':')) {
+        const parts = cleaned.split(':');
+        h = parseInt(parts[0], 10);
+        m = parseInt(parts[1] || '0', 10);
+    } else if (cleaned.includes('.')) {
+        const parts = cleaned.split('.');
+        h = parseInt(parts[0], 10);
+        m = parseInt(parts[1] || '0', 10);
+    } else {
+        const digits = cleaned.replace(/\D/g, '');
+        if (digits.length <= 2) {
+            h = parseInt(digits, 10);
+            m = 0;
+        } else if (digits.length === 3) {
+            if (parseInt(digits[0], 10) > 2) {
+                h = parseInt(digits.slice(0, 1), 10);
+                m = parseInt(digits.slice(1, 3), 10);
+            } else {
+                h = parseInt(digits.slice(0, 2), 10);
+                m = parseInt(digits.slice(2, 3), 10) * 10;
+            }
+        } else if (digits.length >= 4) {
+            h = parseInt(digits.slice(0, 2), 10);
+            m = parseInt(digits.slice(2, 4), 10);
+        }
+    }
 
-    let h = parseInt(parts[0], 10);
-    let m = parseInt(parts[1] || '0', 10);
     if (isNaN(h)) return null;
+    if (isNaN(m)) m = 0;
 
     if (isPm && h < 12) h += 12;
     if (isAm && h === 12) h = 0;
 
-    return h * 60 + (isNaN(m) ? 0 : m);
+    return h * 60 + m;
+};
+
+// Helper: Format time as user types digits (e.g. "1800" -> "18:00", "830" -> "8:30")
+const formatTimeAsYouType = (val) => {
+    if (!val) return '';
+    const clean = String(val).replace(/[^0-9:]/g, '');
+    if (clean.includes(':')) {
+        const parts = clean.split(':');
+        const h = parts[0].slice(0, 2);
+        const m = (parts[1] || '').slice(0, 2);
+        return `${h}:${m}`;
+    }
+    const digits = clean.replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) {
+        if (digits.length === 2 && parseInt(digits, 10) > 23) {
+            return `${digits[0]}:${digits[1]}`;
+        }
+        return digits;
+    }
+    if (digits.length === 3) {
+        if (parseInt(digits[0], 10) > 2) {
+            return `${digits[0]}:${digits.slice(1, 3)}`;
+        }
+        return `${digits.slice(0, 2)}:${digits[2]}`;
+    }
+    return `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
 };
 
 // Helper: Normalize user time inputs (e.g. "8" -> "08:00", "8:30" -> "08:30", "1700" -> "17:00")
@@ -120,26 +169,37 @@ const normalizeTimeString = (val, fallback = '08:00') => {
     let clean = val.trim().replace(/[^0-9:]/g, '');
     if (!clean) return fallback;
 
-    if (!clean.includes(':')) {
-        if (clean.length === 1 || clean.length === 2) {
-            let h = Math.min(23, Math.max(0, parseInt(clean, 10)));
-            return `${String(h).padStart(2, '0')}:00`;
+    let h = 0;
+    let m = 0;
+
+    if (clean.includes(':')) {
+        const parts = clean.split(':');
+        h = parseInt(parts[0], 10);
+        let mPart = parts[1] || '';
+        if (mPart.length === 1) {
+            m = parseInt(mPart + '0', 10);
+        } else {
+            m = parseInt(mPart, 10);
         }
-        if (clean.length === 3) {
-            let h = Math.min(23, Math.max(0, parseInt(clean.substring(0, 1), 10)));
-            let m = Math.min(59, Math.max(0, parseInt(clean.substring(1), 10)));
-            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-        }
-        if (clean.length >= 4) {
-            let h = Math.min(23, Math.max(0, parseInt(clean.substring(0, 2), 10)));
-            let m = Math.min(59, Math.max(0, parseInt(clean.substring(2, 4), 10)));
-            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    } else {
+        const digits = clean.replace(/\D/g, '');
+        if (digits.length === 1 || digits.length === 2) {
+            h = parseInt(digits, 10);
+            m = 0;
+        } else if (digits.length === 3) {
+            if (parseInt(digits[0], 10) > 2) {
+                h = parseInt(digits.slice(0, 1), 10);
+                m = parseInt(digits.slice(1, 3), 10);
+            } else {
+                h = parseInt(digits.slice(0, 2), 10);
+                m = (parseInt(digits.slice(2, 3), 10) || 0) * 10;
+            }
+        } else if (digits.length >= 4) {
+            h = parseInt(digits.slice(0, 2), 10);
+            m = parseInt(digits.slice(2, 4), 10);
         }
     }
 
-    const parts = clean.split(':');
-    let h = parseInt(parts[0] || '0', 10);
-    let m = parseInt(parts[1] || '0', 10);
     if (isNaN(h)) h = 8;
     if (isNaN(m)) m = 0;
     h = Math.min(23, Math.max(0, h));
@@ -233,11 +293,11 @@ const isPolicyEmployeeSpecific = (policy, employeeId) => {
     return String(scope) === String(employeeId);
 };
 
-const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePolicies = [], currentEmployeeId = null) => {
+const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePolicies = [], currentEmployeeId = null, isMonthly = false) => {
     // Unticking day -> NO automatic 1000 cut!
     if (!row.isTicked) {
         const absentPol = activePolicies.find(p => p.isActive && p.type === 'ABSENT_DEDUCTION' && doesPolicyApplyToEmployee(p, currentEmployeeId));
-        const cut = (absentPol && absentPol.deductionAmount > 0) ? -Math.abs(absentPol.deductionAmount) : 0;
+        const cut = (!isMonthly && absentPol && absentPol.deductionAmount > 0) ? -Math.abs(absentPol.deductionAmount) : 0;
         return {
             ...row,
             inTime: '',
@@ -255,6 +315,21 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
     const outT = row.outTime || shiftOffTime;
     const hrs = calculateHoursFromTimes(inT, outT) || 9;
     const standardHrs = calculateHoursFromTimes(shiftOnTime, shiftOffTime) || 9;
+
+    // For monthly salary employee: late/early/absent policy deductions do NOT apply
+    if (isMonthly) {
+        return {
+            ...row,
+            inTime: inT,
+            outTime: outT,
+            in: inT,
+            out: outT,
+            hours: hrs,
+            daySalary: Number((hrs * hourlyRate).toFixed(2)),
+            deduction: 0,
+            reason: ''
+        };
+    }
 
     let deduction = 0;
     let reasonParts = [];
@@ -561,6 +636,8 @@ export default function EmployeePaymentRecordSheetPage() {
     const [hideHeaderForLetterhead, setHideHeaderForLetterhead] = useState(false);
     const sheetPrintRef = useRef(null);
     const officialPrintRef = useRef(null);
+    const onTimeInputRef = useRef(null);
+    const offTimeInputRef = useRef(null);
     const [logoBase64, setLogoBase64] = useState(null);
 
     // Preload GLX Monochrome Logo for high-resolution instant PDF rendering
@@ -714,6 +791,10 @@ export default function EmployeePaymentRecordSheetPage() {
         return employees.find(e => e._id === selectedEmployeeId) || {};
     }, [sheetData, employees, selectedEmployeeId]);
 
+    const isMonthlyEmployee = useMemo(() => {
+        return currentEmployee?.paymentType === 'monthly' || Number(currentEmployee?.monthlySalary) > 0;
+    }, [currentEmployee]);
+
     const employeeFullName = useMemo(() => {
         if (!selectedEmployeeId) return '';
         return currentEmployee.name || currentEmployee.fullName || `${currentEmployee.firstName || ''} ${currentEmployee.lastName || ''}`.trim() || currentEmployee.displayName || '';
@@ -790,7 +871,7 @@ export default function EmployeePaymentRecordSheetPage() {
     // Apply Active Policies to ALL Rows
     const handleApplyPoliciesToAllRows = (policiesToApply = salaryPolicies) => {
         setRows(prevRows => prevRows.map(r => {
-            return evaluateRowPolicy(r, onTime, offTime, effectiveHourlyRate, policiesToApply, selectedEmployeeId);
+            return evaluateRowPolicy(r, onTime, offTime, effectiveHourlyRate, policiesToApply, selectedEmployeeId, isMonthlyEmployee);
         }));
         toast.success('Policies applied to all days successfully!');
     };
@@ -805,7 +886,7 @@ export default function EmployeePaymentRecordSheetPage() {
 
         // Immediately recalculate all rows currently in the sheet with the newly saved policies!
         setRows(prevRows => prevRows.map(r => {
-            return evaluateRowPolicy(r, onTime, offTime, effectiveHourlyRate, payload.salaryPolicies, selectedEmployeeId);
+            return evaluateRowPolicy(r, onTime, offTime, effectiveHourlyRate, payload.salaryPolicies, selectedEmployeeId, isMonthlyEmployee);
         }));
     };
 
@@ -892,18 +973,32 @@ export default function EmployeePaymentRecordSheetPage() {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             if (colIndex === 1) {
+                // In IN -> normalize and commit current value first
+                const formatted = normalizeTimeString(e.target.value, onTime);
+                handleRowChange(rowIndex, 'inTime', formatted);
                 // From IN -> go to OUT on same row
                 focusGridCell(rowIndex, 2, 'next');
             } else if (colIndex === 2) {
+                // In OUT -> normalize and commit current value first
+                const formatted = normalizeTimeString(e.target.value, offTime);
+                handleRowChange(rowIndex, 'outTime', formatted);
                 // From OUT -> go to IN on next row
                 if (rowIndex < rows.length - 1) {
+                    if (!rows[rowIndex + 1]?.isTicked) {
+                        handleRowChange(rowIndex + 1, 'isTicked', true);
+                    }
                     focusGridCell(rowIndex + 1, 1, 'next');
                 }
             } else if (colIndex === 0) {
                 // From Checkbox -> go to IN on same row
                 focusGridCell(rowIndex, 1, 'next');
+            } else if (colIndex === 5 || colIndex === 6) {
+                // From Advance (5) or Deduction (6) -> go down in same column
+                if (rowIndex < rows.length - 1) {
+                    focusGridCell(rowIndex + 1, colIndex, 'down');
+                }
             } else {
-                // From advance / deduction / reason -> wrap to IN on next row
+                // From reason -> wrap to IN on next row
                 if (rowIndex < rows.length - 1) {
                     focusGridCell(rowIndex + 1, 1, 'next');
                 }
@@ -915,9 +1010,13 @@ export default function EmployeePaymentRecordSheetPage() {
         if (e.key === 'Enter' && e.shiftKey) {
             e.preventDefault();
             if (colIndex === 2) {
+                const formatted = normalizeTimeString(e.target.value, offTime);
+                handleRowChange(rowIndex, 'outTime', formatted);
                 // From OUT -> go to IN on same row
                 focusGridCell(rowIndex, 1, 'prev');
             } else if (colIndex === 1) {
+                const formatted = normalizeTimeString(e.target.value, onTime);
+                handleRowChange(rowIndex, 'inTime', formatted);
                 // From IN -> go to OUT on prev row
                 if (rowIndex > 0) {
                     focusGridCell(rowIndex - 1, 2, 'prev');
@@ -1053,11 +1152,17 @@ export default function EmployeePaymentRecordSheetPage() {
 
             if (field === 'isTicked') {
                 row.isTicked = Boolean(value);
-                row = evaluateRowPolicy(row, onTime, offTime, effectiveHourlyRate, salaryPolicies, selectedEmployeeId);
+                if (row.isTicked) {
+                    if (!row.inTime) row.inTime = onTime;
+                    if (!row.outTime) row.outTime = offTime;
+                }
+                row = evaluateRowPolicy(row, onTime, offTime, effectiveHourlyRate, salaryPolicies, selectedEmployeeId, isMonthlyEmployee);
             } else if (field === 'inTime' || field === 'outTime') {
                 row[field] = value;
                 row.isTicked = true;
-                row = evaluateRowPolicy(row, onTime, offTime, effectiveHourlyRate, salaryPolicies, selectedEmployeeId);
+                if (!row.inTime) row.inTime = onTime;
+                if (!row.outTime) row.outTime = offTime;
+                row = evaluateRowPolicy(row, onTime, offTime, effectiveHourlyRate, salaryPolicies, selectedEmployeeId, isMonthlyEmployee);
             } else if (field === 'hours') {
                 const val = String(value).trim();
                 const hrs = val === '' ? 0 : Number(val);
@@ -1101,6 +1206,36 @@ export default function EmployeePaymentRecordSheetPage() {
         setCustomTotalAdvance(num);
     };
 
+    // Apply shift working hours to onTime, offTime, and update all table rows below
+    const applyShiftWorkingHours = (newOn, newOff) => {
+        const validatedOn = normalizeTimeString(newOn, onTime || '08:00');
+        const validatedOff = normalizeTimeString(newOff, offTime || '17:00');
+        setOnTime(validatedOn);
+        setOffTime(validatedOff);
+
+        setRows(prevRows => prevRows.map(r => {
+            // Update rows that match previous shift default or have no explicit custom time
+            const wasDefaultIn = !r.inTime || r.inTime === onTime || r.inTime === '08:00';
+            const wasDefaultOut = !r.outTime || r.outTime === offTime || r.outTime === '17:00';
+
+            const updatedIn = wasDefaultIn ? validatedOn : r.inTime;
+            const updatedOut = wasDefaultOut ? validatedOff : r.outTime;
+
+            const updated = {
+                ...r,
+                inTime: r.isTicked ? updatedIn : validatedOn,
+                outTime: r.isTicked ? updatedOut : validatedOff,
+                in: validatedOn,
+                out: validatedOff
+            };
+
+            if (r.isTicked) {
+                return evaluateRowPolicy(updated, validatedOn, validatedOff, effectiveHourlyRate, salaryPolicies, selectedEmployeeId, isMonthlyEmployee);
+            }
+            return updated;
+        }));
+    };
+
     // Quick Fill All Days with Default Shift
     const handleFillAllDays = () => {
         const hrs = calculateHoursFromTimes(onTime, offTime) || 9;
@@ -1112,7 +1247,7 @@ export default function EmployeePaymentRecordSheetPage() {
                 outTime: offTime,
                 hours: hrs
             };
-            return evaluateRowPolicy(raw, onTime, offTime, effectiveHourlyRate, salaryPolicies, selectedEmployeeId);
+            return evaluateRowPolicy(raw, onTime, offTime, effectiveHourlyRate, salaryPolicies, selectedEmployeeId, isMonthlyEmployee);
         }));
         toast.success(`Filled all days with ${onTime} - ${offTime} and applied policies`);
     };
@@ -2091,36 +2226,84 @@ export default function EmployeePaymentRecordSheetPage() {
                             <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">
                                 Shift Working Hours
                             </span>
-                            <div className="grid grid-cols-2 gap-1.5">
+                            <div className="grid grid-cols-2 gap-1.5 mb-1.5">
                                 <div>
                                     <label className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">ON TIME (In)</label>
                                     <input
+                                        ref={onTimeInputRef}
                                         type="text"
                                         inputMode="numeric"
                                         value={onTime}
                                         placeholder="08:00"
                                         maxLength={5}
-                                        onChange={(e) => setOnTime(e.target.value.replace(/[^0-9:]/g, '').slice(0, 5))}
-                                        onBlur={(e) => setOnTime(normalizeTimeString(e.target.value, '08:00'))}
+                                        onChange={(e) => {
+                                            const formatted = formatTimeAsYouType(e.target.value);
+                                            setOnTime(formatted);
+                                            if (formatted.length === 5 && /^([01]\d|2[0-3]):[0-5]\d$/.test(formatted)) {
+                                                applyShiftWorkingHours(formatted, offTime);
+                                            }
+                                        }}
+                                        onBlur={(e) => {
+                                            const norm = normalizeTimeString(e.target.value, '08:00');
+                                            applyShiftWorkingHours(norm, offTime);
+                                        }}
                                         onFocus={handleCellSelectAll}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                const norm = normalizeTimeString(e.target.value, '08:00');
+                                                applyShiftWorkingHours(norm, offTime);
+                                                offTimeInputRef.current?.focus();
+                                                offTimeInputRef.current?.select();
+                                            }
+                                        }}
                                         className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 dark:text-white text-center outline-none focus:ring-1 focus:ring-indigo-500"
                                     />
                                 </div>
                                 <div>
                                     <label className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">OFF TIME (Out)</label>
                                     <input
+                                        ref={offTimeInputRef}
                                         type="text"
                                         inputMode="numeric"
                                         value={offTime}
                                         placeholder="17:00"
                                         maxLength={5}
-                                        onChange={(e) => setOffTime(e.target.value.replace(/[^0-9:]/g, '').slice(0, 5))}
-                                        onBlur={(e) => setOffTime(normalizeTimeString(e.target.value, '17:00'))}
+                                        onChange={(e) => {
+                                            const formatted = formatTimeAsYouType(e.target.value);
+                                            setOffTime(formatted);
+                                            if (formatted.length === 5 && /^([01]\d|2[0-3]):[0-5]\d$/.test(formatted)) {
+                                                applyShiftWorkingHours(onTime, formatted);
+                                            }
+                                        }}
+                                        onBlur={(e) => {
+                                            const norm = normalizeTimeString(e.target.value, '17:00');
+                                            applyShiftWorkingHours(onTime, norm);
+                                        }}
                                         onFocus={handleCellSelectAll}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                const norm = normalizeTimeString(e.target.value, '17:00');
+                                                applyShiftWorkingHours(onTime, norm);
+                                                focusGridCell(0, 1, 'next');
+                                            }
+                                        }}
                                         className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-900 dark:text-white text-center outline-none focus:ring-1 focus:ring-indigo-500"
                                     />
                                 </div>
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    applyShiftWorkingHours(onTime, offTime);
+                                    toast.success(`Applied ${onTime} - ${offTime} to all rows`);
+                                }}
+                                className="w-full mt-1 py-1 px-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-[10px] rounded-lg transition-all flex items-center justify-center gap-1 shadow-sm"
+                                title="Set all table rows below to these shift hours"
+                            >
+                                ⚡ Apply Shift to All Rows
+                            </button>
                         </div>
 
                         {/* Tile B: Pay Period Date Range */}
@@ -2154,6 +2337,17 @@ export default function EmployeePaymentRecordSheetPage() {
                                     />
                                 </div>
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    applyShiftWorkingHours(onTime, offTime);
+                                    toast.success(`Applied ${onTime} - ${offTime} to all rows`);
+                                }}
+                                className="w-full mt-1 py-1 px-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-[10px] rounded-lg transition-all flex items-center justify-center gap-1 shadow-sm"
+                                title="Set all table rows below to these shift hours"
+                            >
+                                ⚡ Apply Shift to All Rows
+                            </button>
                         </div>
 
                         {/* Tile C: Statutory & Advance Control */}
@@ -2252,7 +2446,7 @@ export default function EmployeePaymentRecordSheetPage() {
                     <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-270px)] border border-slate-200 rounded-2xl shadow-xs mb-3 relative">
                         <table className="w-full border-collapse text-xs font-sans">
                             <thead className="sticky top-0 z-20 bg-slate-100 shadow-xs border-b border-slate-300 select-none">
-                                <tr className="border-b border-slate-300 font-black text-slate-800 text-center text-[11px] uppercase tracking-wider">
+                                <tr className="border-b border-slate-300 font-black text-slate-800 text-center text-[12px] uppercase tracking-wider">
                                     <th className="sticky top-0 z-20 bg-slate-100 border-r border-slate-200 py-2.5 px-1.5 w-12 text-slate-800">
                                         <button
                                             type="button"
@@ -2301,14 +2495,14 @@ export default function EmployeePaymentRecordSheetPage() {
                                         </td>
 
                                         {/* 2. DATE */}
-                                        <td className={`border-r border-slate-200 dark:border-slate-800 print:border-black px-1.5 py-1 text-center font-bold font-mono text-xs ${
-                                            row.day === 'SUNDAY' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 print:bg-[#FCE8E6] print:text-[#C00000]' : 'bg-slate-50/70 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 print:bg-[#E2EFDA] print:text-black font-medium'
+                                        <td className={`border-r border-slate-200 dark:border-slate-800 print:border-black px-1.5 py-1 text-center font-bold font-mono text-[16px] print:text-xs ${
+                                            row.day === 'SUNDAY' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 print:bg-[#FCE8E6] print:text-[#C00000]' : 'bg-slate-50/70 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 print:bg-[#E2EFDA] print:text-black font-bold'
                                         }`}>
                                             {row.date ? row.date.substring(5) : ''}
                                         </td>
 
                                         {/* 3. DAY */}
-                                        <td className={`border-r border-slate-200 dark:border-slate-800 print:border-black px-2.5 py-1 font-bold uppercase text-[10.5px] ${
+                                        <td className={`border-r border-slate-200 dark:border-slate-800 print:border-black px-2 py-1 font-bold font-mono uppercase text-[15px] print:text-xs ${
                                             row.day === 'SUNDAY' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 print:bg-[#FCE8E6] print:text-[#C00000]' : 'bg-slate-50/70 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 print:bg-[#E2EFDA] print:text-black'
                                         }`}>
                                             {row.day}
@@ -2320,26 +2514,30 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 type="text"
                                                 inputMode="numeric"
                                                 value={row.isTicked ? (row.inTime || onTime) : ''}
-                                                disabled={!row.isTicked}
-                                                placeholder="08:00"
+                                                placeholder={onTime || '08:00'}
                                                 maxLength={5}
                                                 onChange={(e) => {
-                                                    const clean = e.target.value.replace(/[^0-9:]/g, '').slice(0, 5);
-                                                    handleRowChange(idx, 'inTime', clean);
+                                                    const formatted = formatTimeAsYouType(e.target.value);
+                                                    handleRowChange(idx, 'inTime', formatted);
                                                 }}
                                                 onBlur={(e) => {
                                                     if (!row.isTicked) return;
                                                     const formatted = normalizeTimeString(e.target.value, onTime);
                                                     handleRowChange(idx, 'inTime', formatted);
                                                 }}
-                                                onFocus={handleCellSelectAll}
+                                                onFocus={(e) => {
+                                                    if (!row.isTicked) {
+                                                        handleRowChange(idx, 'isTicked', true);
+                                                    }
+                                                    handleCellSelectAll(e);
+                                                }}
                                                 onMouseUp={handleCellSelectAll}
                                                 onClick={handleCellSelectAll}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={1}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 1)}
-                                                className="w-full bg-transparent text-center focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-emerald-500 focus:outline-none px-1 py-0.5 rounded text-xs font-semibold text-slate-900 dark:text-white print:text-black print-hide-input cursor-text disabled:cursor-not-allowed"
+                                                className={`w-full bg-transparent text-center focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-emerald-500 focus:outline-none px-1 py-0.5 rounded text-[16px] font-mono font-bold ${row.isTicked ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'} print:text-black print:text-xs print-hide-input cursor-text`}
                                             />
                                             <span className="hidden print:inline font-mono font-semibold text-black">
                                                 {row.isTicked ? (row.inTime || onTime) : ''}
@@ -2352,26 +2550,30 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 type="text"
                                                 inputMode="numeric"
                                                 value={row.isTicked ? (row.outTime || offTime) : ''}
-                                                disabled={!row.isTicked}
-                                                placeholder="17:00"
+                                                placeholder={offTime || '17:00'}
                                                 maxLength={5}
                                                 onChange={(e) => {
-                                                    const clean = e.target.value.replace(/[^0-9:]/g, '').slice(0, 5);
-                                                    handleRowChange(idx, 'outTime', clean);
+                                                    const formatted = formatTimeAsYouType(e.target.value);
+                                                    handleRowChange(idx, 'outTime', formatted);
                                                 }}
                                                 onBlur={(e) => {
                                                     if (!row.isTicked) return;
                                                     const formatted = normalizeTimeString(e.target.value, offTime);
                                                     handleRowChange(idx, 'outTime', formatted);
                                                 }}
-                                                onFocus={handleCellSelectAll}
+                                                onFocus={(e) => {
+                                                    if (!row.isTicked) {
+                                                        handleRowChange(idx, 'isTicked', true);
+                                                    }
+                                                    handleCellSelectAll(e);
+                                                }}
                                                 onMouseUp={handleCellSelectAll}
                                                 onClick={handleCellSelectAll}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={2}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 2)}
-                                                className="w-full bg-transparent text-center focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none px-1 py-0.5 rounded text-xs font-semibold text-slate-900 dark:text-white print:text-black print-hide-input cursor-text disabled:cursor-not-allowed"
+                                                className={`w-full bg-transparent text-center focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none px-1 py-0.5 rounded text-[16px] font-mono font-bold ${row.isTicked ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'} print:text-black print:text-xs print-hide-input cursor-text`}
                                             />
                                             <span className="hidden print:inline font-mono font-semibold text-black">
                                                 {row.isTicked ? (row.outTime || offTime) : ''}
@@ -2379,13 +2581,15 @@ export default function EmployeePaymentRecordSheetPage() {
                                         </td>
 
                                         {/* 6. HOURS (Locked / Read-Only Calculated) */}
-                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-slate-50/50 dark:bg-slate-900/40 print:bg-[#E2EFDA] px-2 py-1 text-center font-mono font-bold text-xs text-indigo-700 dark:text-indigo-300 print:text-black select-none cursor-not-allowed" title="Hours are auto-calculated from IN and OUT times">
-                                            <span>{row.isTicked && row.hours > 0 ? row.hours : ''}</span>
+                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-slate-50/50 dark:bg-slate-900/40 print:bg-[#E2EFDA] p-1 text-center font-mono select-none cursor-not-allowed" title="Hours are auto-calculated from IN and OUT times">
+                                            <span className="block py-0.5 text-[16px] font-mono font-semibold text-slate-900 dark:text-white print:text-black print:text-xs">
+                                                {row.isTicked && row.hours > 0 ? row.hours : ''}
+                                            </span>
                                         </td>
 
                                         {/* 7. DAY SALARY (Locked / Read-Only Calculated) */}
-                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-slate-50/50 dark:bg-slate-900/40 print:bg-[#E2EFDA] px-2 py-1 text-right font-mono font-bold text-xs text-emerald-700 dark:text-emerald-400 print:text-black select-none cursor-not-allowed" title="Day Salary is auto-calculated from Hours × Wage Rate">
-                                            <span>{row.isTicked && row.daySalary > 0 ? Number(row.daySalary).toLocaleString() : ''}</span>
+                                        <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-slate-50/50 dark:bg-slate-900/40 print:bg-[#E2EFDA] p-1 text-right font-mono select-none cursor-not-allowed" title="Day Salary is auto-calculated from Hours × Wage Rate">
+                                            <span className="block py-0.5 px-1 text-[16px] font-mono font-bold text-emerald-700 dark:text-emerald-400 print:text-black print:text-xs">{row.isTicked && row.daySalary > 0 ? Number(row.daySalary).toLocaleString() : ''}</span>
                                         </td>
 
                                         {/* 8. ADVANCE */}
@@ -2403,7 +2607,7 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 data-row={idx}
                                                 data-col={5}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 5)}
-                                                className="w-full bg-transparent text-right focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none p-0 text-xs font-bold text-amber-700 dark:text-amber-400 print:text-black print-hide-input"
+                                                className="w-full bg-transparent text-right focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none p-0 text-[16px] font-mono font-bold text-amber-700 dark:text-amber-400 print:text-black print:text-xs print-hide-input"
                                                 title="Type advance for this date"
                                             />
                                             <span className="hidden print:inline font-mono font-bold text-black">
@@ -2441,7 +2645,7 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 data-row={idx}
                                                 data-col={6}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 6)}
-                                                className={`w-full bg-transparent text-right focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-rose-500 focus:outline-none p-0 text-xs font-bold print-hide-input ${
+                                                className={`w-full bg-transparent text-right focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-rose-500 focus:outline-none p-0 text-[16px] font-mono font-bold print-hide-input print:text-xs ${
                                                     Number(row.deduction) < 0 || String(row.deduction).startsWith('-')
                                                         ? 'text-rose-700 dark:text-rose-300'
                                                         : 'text-slate-800 dark:text-slate-200 print:text-black'
@@ -2466,7 +2670,7 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 data-row={idx}
                                                 data-col={7}
                                                 onKeyDown={(e) => handleCellKeyDown(e, idx, 7)}
-                                                className="w-full bg-transparent px-1.5 focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-medium text-slate-800 dark:text-slate-200 print:text-black print-hide-input"
+                                                className="w-full bg-transparent px-1.5 focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-[15px] font-medium text-slate-800 dark:text-slate-200 print:text-black print:text-xs print-hide-input"
                                             />
                                             <span className="hidden print:inline font-semibold text-black px-1">
                                                 {row.reason || ''}

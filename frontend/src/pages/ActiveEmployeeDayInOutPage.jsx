@@ -512,14 +512,14 @@ export default function ActiveEmployeeDayInOutPage() {
 
     const netEstimatedPay = Math.max(0, totals.totalSalary - totals.totalAdvance - totals.totalDeductions);
 
-    // Focus daily grid cell helper for IN/OUT Enter key navigation
+    // Focus daily grid cell helper for IN/OUT/ADVANCE/DEDUCTION keyboard navigation
     const focusDailyCell = (rowIdx, colType) => {
         const r = Math.max(0, Math.min(rowIdx, filteredRows.length - 1));
         const targetRow = filteredRows[r];
         if (!targetRow) return;
 
-        // If target row is unticked / absent, auto-tick it so inputs become active
-        if (!targetRow.isTicked) {
+        // If target row is unticked / absent and user navigates into it, auto-tick it
+        if (!targetRow.isTicked && (colType === 'in' || colType === 'out')) {
             const realIdx = rows.findIndex(rowItem => rowItem.employeeId === targetRow.employeeId);
             if (realIdx !== -1) {
                 handleRowChange(realIdx, 'isTicked', true);
@@ -543,33 +543,24 @@ export default function ActiveEmployeeDayInOutPage() {
     };
 
     const handleDailyKeyDown = (e, rowIdx, colType) => {
-        // Enter -> In to Out on same row, or Out to Next Row's In
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            if (colType === 'in') {
-                focusDailyCell(rowIdx, 'out');
-            } else if (colType === 'out') {
-                if (rowIdx < filteredRows.length - 1) {
-                    focusDailyCell(rowIdx + 1, 'in');
+        const isText = e.target.type === 'text';
+        let isAtStart = true;
+        let isAtEnd = true;
+        if (isText) {
+            try {
+                isAtStart = e.target.selectionStart === 0 && e.target.selectionEnd === 0;
+                isAtEnd = e.target.selectionStart === e.target.value?.length && e.target.selectionEnd === e.target.value?.length;
+                if (e.target.selectionStart === 0 && e.target.selectionEnd === e.target.value?.length) {
+                    isAtStart = true;
+                    isAtEnd = true;
                 }
+            } catch {
+                isAtStart = true;
+                isAtEnd = true;
             }
-            return;
         }
 
-        // Shift + Enter -> Out to In on same row, or In to Prev Row's Out
-        if (e.key === 'Enter' && e.shiftKey) {
-            e.preventDefault();
-            if (colType === 'out') {
-                focusDailyCell(rowIdx, 'in');
-            } else if (colType === 'in') {
-                if (rowIdx > 0) {
-                    focusDailyCell(rowIdx - 1, 'out');
-                }
-            }
-            return;
-        }
-
-        // ArrowDown -> Move to next employee in same column
+        // ArrowDown -> Move to next employee in same column (In, Out, Advance, Deduction)
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             if (rowIdx < filteredRows.length - 1) {
@@ -578,11 +569,77 @@ export default function ActiveEmployeeDayInOutPage() {
             return;
         }
 
-        // ArrowUp -> Move to previous employee in same column
+        // ArrowUp -> Move to previous employee in same column (In, Out, Advance, Deduction)
         if (e.key === 'ArrowUp') {
             e.preventDefault();
             if (rowIdx > 0) {
                 focusDailyCell(rowIdx - 1, colType);
+            }
+            return;
+        }
+
+        // ArrowLeft -> Move to previous column on same row
+        if (e.key === 'ArrowLeft' && isAtStart) {
+            e.preventDefault();
+            if (colType === 'deduction') focusDailyCell(rowIdx, 'advance');
+            else if (colType === 'advance') focusDailyCell(rowIdx, 'out');
+            else if (colType === 'out') focusDailyCell(rowIdx, 'in');
+            return;
+        }
+
+        // ArrowRight -> Move to next column on same row
+        if (e.key === 'ArrowRight' && isAtEnd) {
+            e.preventDefault();
+            if (colType === 'in') focusDailyCell(rowIdx, 'out');
+            else if (colType === 'out') focusDailyCell(rowIdx, 'advance');
+            else if (colType === 'advance') focusDailyCell(rowIdx, 'deduction');
+            return;
+        }
+
+        // Enter -> Smooth horizontal & vertical navigation
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            const realIdx = rows.findIndex(r => r.employeeId === filteredRows[rowIdx]?.employeeId);
+            if (colType === 'in') {
+                const norm = normalizeTimeString(e.target.value, onTime);
+                if (realIdx !== -1) handleRowChange(realIdx, 'inTime', norm);
+                focusDailyCell(rowIdx, 'out');
+            } else if (colType === 'out') {
+                const norm = normalizeTimeString(e.target.value, offTime);
+                if (realIdx !== -1) handleRowChange(realIdx, 'outTime', norm);
+                if (rowIdx < filteredRows.length - 1) {
+                    focusDailyCell(rowIdx + 1, 'in');
+                }
+            } else if (colType === 'advance') {
+                focusDailyCell(rowIdx, 'deduction');
+            } else if (colType === 'deduction') {
+                if (rowIdx < filteredRows.length - 1) {
+                    focusDailyCell(rowIdx + 1, 'advance');
+                }
+            }
+            return;
+        }
+
+        // Shift + Enter -> Reverse navigation
+        if (e.key === 'Enter' && e.shiftKey) {
+            e.preventDefault();
+            const realIdx = rows.findIndex(r => r.employeeId === filteredRows[rowIdx]?.employeeId);
+            if (colType === 'out') {
+                const norm = normalizeTimeString(e.target.value, offTime);
+                if (realIdx !== -1) handleRowChange(realIdx, 'outTime', norm);
+                focusDailyCell(rowIdx, 'in');
+            } else if (colType === 'in') {
+                const norm = normalizeTimeString(e.target.value, onTime);
+                if (realIdx !== -1) handleRowChange(realIdx, 'inTime', norm);
+                if (rowIdx > 0) {
+                    focusDailyCell(rowIdx - 1, 'out');
+                }
+            } else if (colType === 'deduction') {
+                focusDailyCell(rowIdx, 'advance');
+            } else if (colType === 'advance') {
+                if (rowIdx > 0) {
+                    focusDailyCell(rowIdx - 1, 'deduction');
+                }
             }
             return;
         }
@@ -939,7 +996,6 @@ export default function ActiveEmployeeDayInOutPage() {
                                     <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 text-right w-28">Day Salary</th>
                                     <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 text-right w-28">Advance</th>
                                     <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 text-right w-28">Deduction</th>
-                                    <th className="sticky top-0 z-20 bg-slate-100 py-3 px-3 min-w-[160px]">Status / Policy Reason</th>
                                 </tr>
                             </thead>
 
@@ -1027,19 +1083,22 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         inputMode="numeric"
                                                         disabled={!isPresent}
                                                         value={isPresent ? (row.inTime || onTime) : ''}
-                                                        placeholder="08:00"
+                                                        placeholder={onTime || '08:00'}
                                                         maxLength={5}
-                                                        onChange={(e) => handleRowChange(realIdx, 'inTime', e.target.value)}
+                                                        onChange={(e) => {
+                                                            const formatted = formatTimeAsYouType(e.target.value);
+                                                            handleRowChange(realIdx, 'inTime', formatted);
+                                                        }}
                                                         onBlur={(e) => {
-                                                            if (!isPresent) return;
-                                                            const norm = normalizeTimeString(e.target.value, onTime);
-                                                            handleRowChange(realIdx, 'inTime', norm);
+                                                             if (!isPresent) return;
+                                                             const norm = normalizeTimeString(e.target.value, onTime);
+                                                             handleRowChange(realIdx, 'inTime', norm);
                                                         }}
                                                         onFocus={handleCellSelectAll}
                                                         data-daily-row={idx}
                                                         data-daily-col="in"
                                                         onKeyDown={(e) => handleDailyKeyDown(e, idx, 'in')}
-                                                        className={`w-full text-center font-mono text-xs font-bold px-2 py-1.5 rounded-xl border transition ${
+                                                        className={`w-full text-center font-mono text-[16px] font-bold px-2 py-1.5 rounded-xl border transition ${
                                                             isPresent
                                                                 ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500'
                                                                 : 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
@@ -1056,19 +1115,22 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         inputMode="numeric"
                                                         disabled={!isPresent}
                                                         value={isPresent ? (row.outTime || offTime) : ''}
-                                                        placeholder="17:00"
+                                                        placeholder={offTime || '17:00'}
                                                         maxLength={5}
-                                                        onChange={(e) => handleRowChange(realIdx, 'outTime', e.target.value)}
+                                                        onChange={(e) => {
+                                                            const formatted = formatTimeAsYouType(e.target.value);
+                                                            handleRowChange(realIdx, 'outTime', formatted);
+                                                        }}
                                                         onBlur={(e) => {
-                                                            if (!isPresent) return;
-                                                            const norm = normalizeTimeString(e.target.value, offTime);
-                                                            handleRowChange(realIdx, 'outTime', norm);
+                                                             if (!isPresent) return;
+                                                             const norm = normalizeTimeString(e.target.value, offTime);
+                                                             handleRowChange(realIdx, 'outTime', norm);
                                                         }}
                                                         onFocus={handleCellSelectAll}
                                                         data-daily-row={idx}
                                                         data-daily-col="out"
                                                         onKeyDown={(e) => handleDailyKeyDown(e, idx, 'out')}
-                                                        className={`w-full text-center font-mono text-xs font-bold px-2 py-1.5 rounded-xl border transition ${
+                                                        className={`w-full text-center font-mono text-[16px] font-bold px-2 py-1.5 rounded-xl border transition ${
                                                             isPresent
                                                                 ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-amber-500'
                                                                 : 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
@@ -1080,22 +1142,22 @@ export default function ActiveEmployeeDayInOutPage() {
                                             {/* 5. Hours Worked */}
                                             <td className="py-2.5 px-3 text-center">
                                                 {isPresent && row.hours > 0 ? (
-                                                    <span className="font-mono text-xs font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60 px-2 py-1 rounded-lg inline-block">
+                                                    <span className="font-mono text-[16px] font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60 px-2 py-1 rounded-xl inline-block">
                                                         {Number(row.hours).toFixed(2)} hrs
                                                     </span>
                                                 ) : (
-                                                    <span className="text-slate-400 font-mono text-xs">0.00</span>
+                                                    <span className="text-slate-400 font-mono text-[16px] font-bold">0.00</span>
                                                 )}
                                             </td>
 
                                             {/* 6. Day Salary */}
                                             <td className="py-2.5 px-3 text-right">
                                                 {isPresent && row.daySalary > 0 ? (
-                                                    <span className="font-mono text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 px-2 py-1 rounded-lg inline-block">
+                                                    <span className="font-mono text-[16px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 px-2 py-1 rounded-xl inline-block">
                                                         Rs. {Math.round(row.daySalary).toLocaleString()}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-slate-400 font-mono text-xs">Rs. 0</span>
+                                                    <span className="text-slate-400 font-mono text-[16px] font-bold">Rs. 0</span>
                                                 )}
                                             </td>
 
@@ -1109,7 +1171,10 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         placeholder="0"
                                                         onChange={(e) => handleRowChange(realIdx, 'advance', e.target.value)}
                                                         onFocus={handleCellSelectAll}
-                                                        className="w-full text-right font-mono text-xs font-bold px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                        data-daily-row={idx}
+                                                        data-daily-col="advance"
+                                                        onKeyDown={(e) => handleDailyKeyDown(e, idx, 'advance')}
+                                                        className="w-full text-right font-mono text-[16px] font-bold px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                                                     />
                                                 </div>
                                             </td>
@@ -1124,6 +1189,9 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         placeholder="0"
                                                         onChange={(e) => handleRowChange(realIdx, 'deduction', e.target.value)}
                                                         onFocus={handleCellSelectAll}
+                                                        data-daily-row={idx}
+                                                        data-daily-col="deduction"
+                                                        onKeyDown={(e) => handleDailyKeyDown(e, idx, 'deduction')}
                                                         onBlur={(e) => {
                                                             let val = String(e.target.value).trim();
                                                             if (val === '' || val === '-') {
@@ -1135,7 +1203,7 @@ export default function ActiveEmployeeDayInOutPage() {
                                                                 }
                                                             }
                                                         }}
-                                                        className={`w-full text-right font-mono text-xs font-bold px-2 py-1.5 rounded-xl border outline-none transition ${
+                                                        className={`w-full text-right font-mono text-[16px] font-bold px-2 py-1.5 rounded-xl border outline-none transition ${
                                                             hasDeduction
                                                                 ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 focus:ring-2 focus:ring-rose-500'
                                                                 : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500'
@@ -1143,49 +1211,29 @@ export default function ActiveEmployeeDayInOutPage() {
                                                     />
                                                 </div>
                                             </td>
-
-                                            {/* 9. Policy Reason */}
-                                            <td className="py-2.5 px-3">
-                                                <input
-                                                    type="text"
-                                                    value={row.reason || ''}
-                                                    onChange={(e) => handleRowChange(realIdx, 'reason', e.target.value)}
-                                                    onFocus={handleCellSelectAll}
-                                                    placeholder="Normal Day"
-                                                    className={`w-full text-xs font-medium px-2 py-1.5 rounded-xl border outline-none transition ${
-                                                        row.reason && row.reason.includes('Late')
-                                                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
-                                                            : row.reason && row.reason.includes('Absent')
-                                                            ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
-                                                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
-                                                    }`}
-                                                />
-                                            </td>
                                         </tr>
                                     );
                                 })}
                             </tbody>
 
+
                             {/* Executive Summary Footer Bar */}
                             <tfoot>
-                                <tr className="bg-slate-50 dark:bg-slate-900/90 border-t-2 border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white">
+                                <tr className="bg-slate-50 dark:bg-slate-900/90 border-t-2 border-slate-200 dark:border-slate-700 text-[14px] font-bold text-slate-900 dark:text-white">
                                     <td colSpan={4} className="py-3 px-3 text-right uppercase tracking-wider text-slate-500 dark:text-slate-400">
                                         Summary ({totals.presentCount} Staff Present):
                                     </td>
-                                    <td className="py-3 px-3 text-center font-mono text-indigo-700 dark:text-indigo-300 font-black">
+                                    <td className="py-3 px-3 text-center font-mono text-indigo-700 dark:text-indigo-300 font-black text-[16px]">
                                         {totals.totalHours.toFixed(2)}h
                                     </td>
-                                    <td className="py-3 px-3 text-right font-mono text-emerald-700 dark:text-emerald-300 font-black">
+                                    <td className="py-3 px-3 text-right font-mono text-emerald-700 dark:text-emerald-300 font-black text-[16px]">
                                         Rs. {Math.round(totals.totalSalary).toLocaleString()}
                                     </td>
-                                    <td className="py-3 px-3 text-right font-mono text-amber-700 dark:text-amber-300 font-black">
+                                    <td className="py-3 px-3 text-right font-mono text-amber-700 dark:text-amber-300 font-black text-[16px]">
                                         Rs. {Math.round(totals.totalAdvance).toLocaleString()}
                                     </td>
-                                    <td className="py-3 px-3 text-right font-mono text-rose-700 dark:text-rose-300 font-black">
+                                    <td className="py-3 px-3 text-right font-mono text-rose-700 dark:text-rose-300 font-black text-[16px]">
                                         -Rs. {Math.round(totals.totalDeductions).toLocaleString()}
-                                    </td>
-                                    <td className="py-3 px-3 font-mono text-slate-900 dark:text-white font-black text-xs">
-                                        Net: <span className="text-emerald-600 dark:text-emerald-400">Rs. {Math.round(netEstimatedPay).toLocaleString()}</span>
                                     </td>
                                 </tr>
                             </tfoot>
