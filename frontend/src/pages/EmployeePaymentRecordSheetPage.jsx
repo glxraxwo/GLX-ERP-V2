@@ -792,7 +792,7 @@ export default function EmployeePaymentRecordSheetPage() {
     }, [sheetData, employees, selectedEmployeeId]);
 
     const isMonthlyEmployee = useMemo(() => {
-        return currentEmployee?.paymentType === 'monthly' || Number(currentEmployee?.monthlySalary) > 0;
+        return currentEmployee?.paymentType === 'monthly';
     }, [currentEmployee]);
 
     const employeeFullName = useMemo(() => {
@@ -1207,19 +1207,20 @@ export default function EmployeePaymentRecordSheetPage() {
     };
 
     // Apply shift working hours to onTime, offTime, and update all table rows below
-    const applyShiftWorkingHours = (newOn, newOff) => {
+    const applyShiftWorkingHours = (newOn, newOff, forceAllRows = false) => {
         const validatedOn = normalizeTimeString(newOn, onTime || '08:00');
         const validatedOff = normalizeTimeString(newOff, offTime || '17:00');
         setOnTime(validatedOn);
         setOffTime(validatedOff);
 
         setRows(prevRows => prevRows.map(r => {
-            // Update rows that match previous shift default or have no explicit custom time
-            const wasDefaultIn = !r.inTime || r.inTime === onTime || r.inTime === '08:00';
-            const wasDefaultOut = !r.outTime || r.outTime === offTime || r.outTime === '17:00';
+            const wasCustomIn = r.inTime && r.inTime !== '08:00' && r.inTime !== onTime && r.inTime !== validatedOn;
+            const wasCustomOut = r.outTime && r.outTime !== '17:00' && r.outTime !== '18:00' && r.outTime !== offTime && r.outTime !== validatedOff;
 
-            const updatedIn = wasDefaultIn ? validatedOn : r.inTime;
-            const updatedOut = wasDefaultOut ? validatedOff : r.outTime;
+            const shouldUpdate = forceAllRows || (!wasCustomIn && !wasCustomOut);
+
+            const updatedIn = shouldUpdate ? validatedOn : (r.inTime || validatedOn);
+            const updatedOut = shouldUpdate ? validatedOff : (r.outTime || validatedOff);
 
             const updated = {
                 ...r,
@@ -1274,46 +1275,65 @@ export default function EmployeePaymentRecordSheetPage() {
         });
 
         const effectiveTotalAdvance = customTotalAdvance !== null ? customTotalAdvance : rowAdvanceSum;
-        
-        // EPF / ETF calculations
-        const epfEmployeeDeduction = includeEpfEtf ? Number((totalSalary * (epfEmployeeRate / 100)).toFixed(2)) : 0;
-        const epfEmployerContribution = includeEpfEtf ? Number((totalSalary * (epfEmployerRate / 100)).toFixed(2)) : 0;
-        const etfEmployerContribution = includeEpfEtf ? Number((totalSalary * (etfEmployerRate / 100)).toFixed(2)) : 0;
-
-        // Net Salary calculation
-        const netSalary = Math.max(0, totalSalary - effectiveTotalAdvance + totalDeduction - epfEmployeeDeduction);
-
-        // Minimum Salary vs OT / Commission breakdown
         const minSalary = Number(currentEmployee?.minimumSalary || currentEmployee?.basicSalary || 0);
-        const earnedTotal = Number(totalSalary.toFixed(2));
-        let basicSalary = earnedTotal;
+        const monthlyPackage = isMonthlyEmployee ? Number(currentEmployee?.monthlySalary || currentEmployee?.basicSalary || 0) : 0;
+
+        let finalTotalSalary = Number(totalSalary.toFixed(2));
+        let basicSalary = 0;
         let otCommission = 0;
-        if (minSalary > 0) {
-            if (earnedTotal > minSalary) {
-                basicSalary = minSalary;
-                otCommission = Number((earnedTotal - minSalary).toFixed(2));
+
+        if (isMonthlyEmployee && monthlyPackage > 0) {
+            // For Monthly salaried employee: Fixed monthly package, NOT daily hours!
+            finalTotalSalary = monthlyPackage;
+            if (minSalary > 0) {
+                basicSalary = Math.min(minSalary, monthlyPackage);
+                otCommission = Math.max(0, Number((monthlyPackage - basicSalary).toFixed(2)));
+            } else {
+                basicSalary = monthlyPackage;
+                otCommission = 0;
+            }
+        } else {
+            // For Hourly/Daily employee: Accumulated from daily hours worked
+            const earnedTotal = Number(totalSalary.toFixed(2));
+            finalTotalSalary = earnedTotal;
+            if (minSalary > 0) {
+                if (earnedTotal > minSalary) {
+                    basicSalary = minSalary;
+                    otCommission = Number((earnedTotal - minSalary).toFixed(2));
+                } else {
+                    basicSalary = earnedTotal;
+                    otCommission = 0;
+                }
             } else {
                 basicSalary = earnedTotal;
                 otCommission = 0;
             }
         }
 
+        // EPF / ETF calculations
+        const epfEmployeeDeduction = includeEpfEtf ? Number((finalTotalSalary * (epfEmployeeRate / 100)).toFixed(2)) : 0;
+        const epfEmployerContribution = includeEpfEtf ? Number((finalTotalSalary * (epfEmployerRate / 100)).toFixed(2)) : 0;
+        const etfEmployerContribution = includeEpfEtf ? Number((finalTotalSalary * (etfEmployerRate / 100)).toFixed(2)) : 0;
+
+        // Net Salary calculation (no penalty policy deductions for monthly staff)
+        const netSalary = Math.max(0, finalTotalSalary - effectiveTotalAdvance + (isMonthlyEmployee ? 0 : totalDeduction) - epfEmployeeDeduction);
+
         return {
             totalLeave,
             totalDays,
             totalHours: Number(totalHours.toFixed(2)),
-            totalSalary: Number(totalSalary.toFixed(2)),
+            totalSalary: Number(finalTotalSalary.toFixed(2)),
             basicSalary: Number(basicSalary.toFixed(2)),
             otCommission: Number(otCommission.toFixed(2)),
             minimumSalary: minSalary,
             totalAdvance: Number(effectiveTotalAdvance.toFixed(2)),
-            totalDeduction: Number(totalDeduction.toFixed(2)),
+            totalDeduction: isMonthlyEmployee ? 0 : Number(totalDeduction.toFixed(2)),
             epfEmployeeDeduction,
             epfEmployerContribution,
             etfEmployerContribution,
             netSalary: Number(netSalary.toFixed(2))
         };
-    }, [rows, customTotalAdvance, includeEpfEtf, epfEmployeeRate, epfEmployerRate, etfEmployerRate, currentEmployee]);
+    }, [rows, customTotalAdvance, includeEpfEtf, epfEmployeeRate, epfEmployerRate, etfEmployerRate, currentEmployee, isMonthlyEmployee]);
 
     const handleSave = () => {
         if (!selectedEmployeeId) {
@@ -2240,19 +2260,19 @@ export default function EmployeePaymentRecordSheetPage() {
                                             const formatted = formatTimeAsYouType(e.target.value);
                                             setOnTime(formatted);
                                             if (formatted.length === 5 && /^([01]\d|2[0-3]):[0-5]\d$/.test(formatted)) {
-                                                applyShiftWorkingHours(formatted, offTime);
+                                                applyShiftWorkingHours(formatted, offTime, true);
                                             }
                                         }}
                                         onBlur={(e) => {
                                             const norm = normalizeTimeString(e.target.value, '08:00');
-                                            applyShiftWorkingHours(norm, offTime);
+                                            applyShiftWorkingHours(norm, offTime, true);
                                         }}
                                         onFocus={handleCellSelectAll}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
                                                 e.preventDefault();
                                                 const norm = normalizeTimeString(e.target.value, '08:00');
-                                                applyShiftWorkingHours(norm, offTime);
+                                                applyShiftWorkingHours(norm, offTime, true);
                                                 offTimeInputRef.current?.focus();
                                                 offTimeInputRef.current?.select();
                                             }
@@ -2273,19 +2293,19 @@ export default function EmployeePaymentRecordSheetPage() {
                                             const formatted = formatTimeAsYouType(e.target.value);
                                             setOffTime(formatted);
                                             if (formatted.length === 5 && /^([01]\d|2[0-3]):[0-5]\d$/.test(formatted)) {
-                                                applyShiftWorkingHours(onTime, formatted);
+                                                applyShiftWorkingHours(onTime, formatted, true);
                                             }
                                         }}
                                         onBlur={(e) => {
                                             const norm = normalizeTimeString(e.target.value, '17:00');
-                                            applyShiftWorkingHours(onTime, norm);
+                                            applyShiftWorkingHours(onTime, norm, true);
                                         }}
                                         onFocus={handleCellSelectAll}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
                                                 e.preventDefault();
                                                 const norm = normalizeTimeString(e.target.value, '17:00');
-                                                applyShiftWorkingHours(onTime, norm);
+                                                applyShiftWorkingHours(onTime, norm, true);
                                                 focusGridCell(0, 1, 'next');
                                             }
                                         }}
@@ -2296,7 +2316,7 @@ export default function EmployeePaymentRecordSheetPage() {
                             <button
                                 type="button"
                                 onClick={() => {
-                                    applyShiftWorkingHours(onTime, offTime);
+                                    applyShiftWorkingHours(onTime, offTime, true);
                                     toast.success(`Applied ${onTime} - ${offTime} to all rows`);
                                 }}
                                 className="w-full mt-1 py-1 px-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-[10px] rounded-lg transition-all flex items-center justify-center gap-1 shadow-sm"

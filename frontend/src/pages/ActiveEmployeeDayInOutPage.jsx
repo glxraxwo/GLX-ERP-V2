@@ -58,6 +58,32 @@ const parseTimeToMinutes = (str) => {
     return h * 60 + (isNaN(m) ? 0 : m);
 };
 
+// Helper: Format time as user types digits (e.g. "1800" -> "18:00", "830" -> "8:30")
+const formatTimeAsYouType = (val) => {
+    if (!val) return '';
+    const clean = String(val).replace(/[^0-9:]/g, '');
+    if (clean.includes(':')) {
+        const parts = clean.split(':');
+        const h = parts[0].slice(0, 2);
+        const m = (parts[1] || '').slice(0, 2);
+        return `${h}:${m}`;
+    }
+    const digits = clean.replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) {
+        if (digits.length === 2 && parseInt(digits, 10) > 23) {
+            return `${digits[0]}:${digits[1]}`;
+        }
+        return digits;
+    }
+    if (digits.length === 3) {
+        if (parseInt(digits[0], 10) > 2) {
+            return `${digits[0]}:${digits.slice(1, 3)}`;
+        }
+        return `${digits.slice(0, 2)}:${digits[2]}`;
+    }
+    return `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
+};
+
 // Helper: Normalize user time inputs (e.g. "8" -> "08:00", "8:30" -> "08:30", "1700" -> "17:00")
 const normalizeTimeString = (val, fallback = '08:00') => {
     if (!val || typeof val !== 'string') return fallback;
@@ -154,11 +180,34 @@ const defaultPoliciesFallback = [
     }
 ];
 
+// Pure Helper: Check if policy applies to employee
+const doesPolicyApplyToEmployee = (policy, employeeId) => {
+    if (!policy) return false;
+    const scope = policy.appliesTo;
+    if (!scope || scope === 'ALL') return true;
+    if (Array.isArray(scope)) {
+        if (scope.length === 0 || scope.includes('ALL')) return true;
+        return scope.some(id => String(id) === String(employeeId));
+    }
+    return String(scope) === String(employeeId);
+};
+
+const isPolicyEmployeeSpecific = (policy, employeeId) => {
+    if (!policy) return false;
+    const scope = policy.appliesTo;
+    if (!scope || scope === 'ALL') return false;
+    if (Array.isArray(scope)) {
+        if (scope.length === 0 || scope.includes('ALL')) return false;
+        return scope.some(id => String(id) === String(employeeId));
+    }
+    return String(scope) === String(employeeId);
+};
+
 // Pure Helper: Evaluate policy for a single row
 const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePolicies = [], currentEmployeeId = null) => {
     // Unticking day -> NO automatic 1000 cut if deductionAmount is 0!
     if (!row.isTicked) {
-        const absentPol = activePolicies.find(p => p.isActive && p.type === 'ABSENT_DEDUCTION');
+        const absentPol = activePolicies.find(p => p.isActive && p.type === 'ABSENT_DEDUCTION' && doesPolicyApplyToEmployee(p, currentEmployeeId));
         const cut = (absentPol && absentPol.deductionAmount > 0) ? -Math.abs(absentPol.deductionAmount) : 0;
         return {
             ...row,
@@ -188,10 +237,10 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
     const activePols = (activePolicies || []).filter(p => p.isActive);
 
     // Prefer employee-specific late rules if defined, otherwise fallback to ALL rules
-    const empSpecificLatePols = activePols.filter(p => p.type === 'LATE_DEDUCTION' && p.appliesTo && p.appliesTo !== 'ALL' && p.appliesTo === currentEmployeeId);
+    const empSpecificLatePols = activePols.filter(p => p.type === 'LATE_DEDUCTION' && isPolicyEmployeeSpecific(p, currentEmployeeId));
     const latePolsToUse = empSpecificLatePols.length > 0
         ? empSpecificLatePols
-        : activePols.filter(p => p.type === 'LATE_DEDUCTION' && (!p.appliesTo || p.appliesTo === 'ALL'));
+        : activePols.filter(p => p.type === 'LATE_DEDUCTION' && doesPolicyApplyToEmployee(p, currentEmployeeId));
 
     // 1. Late Arrival Policies
     if (inMin !== null && shiftInMin !== null && inMin > shiftInMin) {
@@ -212,10 +261,10 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
     }
 
     // 2. Early Departure Policies
-    const empSpecificEarlyPols = activePols.filter(p => p.type === 'EARLY_DEPARTURE' && p.appliesTo && p.appliesTo !== 'ALL' && p.appliesTo === currentEmployeeId);
+    const empSpecificEarlyPols = activePols.filter(p => p.type === 'EARLY_DEPARTURE' && isPolicyEmployeeSpecific(p, currentEmployeeId));
     const earlyPolsToUse = empSpecificEarlyPols.length > 0
         ? empSpecificEarlyPols
-        : activePols.filter(p => p.type === 'EARLY_DEPARTURE' && (!p.appliesTo || p.appliesTo === 'ALL'));
+        : activePols.filter(p => p.type === 'EARLY_DEPARTURE' && doesPolicyApplyToEmployee(p, currentEmployeeId));
 
     if (outMin !== null && shiftOutMin !== null && outMin < shiftOutMin) {
         const earlyMinutes = shiftOutMin - outMin;
@@ -232,7 +281,7 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
 
     // 3. Day Salary
     let daySalary = Number((hrs * hourlyRate).toFixed(2));
-    const minHoursPol = activePols.find(p => p.type === 'MIN_HOURS_FULL_PAY' && (!p.appliesTo || p.appliesTo === 'ALL' || p.appliesTo === currentEmployeeId));
+    const minHoursPol = activePols.find(p => p.type === 'MIN_HOURS_FULL_PAY' && doesPolicyApplyToEmployee(p, currentEmployeeId));
     if (minHoursPol && hrs >= (minHoursPol.thresholdMinutes / 60)) {
         daySalary = Number((standardHrs * hourlyRate).toFixed(2));
     }
@@ -254,8 +303,15 @@ export default function ActiveEmployeeDayInOutPage() {
 
     // Default to today
     const [selectedDate, setSelectedDate] = useState(() => formatDateStr(new Date()));
-    const [onTime, setOnTime] = useState('08:00');
-    const [offTime, setOffTime] = useState('17:00');
+    
+    // Official Scheduled Shift Start & End (against which late arrival & early departure policies are evaluated)
+    const [shiftOnTime, setShiftOnTime] = useState('08:00');
+    const [shiftOffTime, setShiftOffTime] = useState('18:00');
+
+    // Quick Apply In / Out Times for present employees
+    const [applyInTime, setApplyInTime] = useState('08:00');
+    const [applyOutTime, setApplyOutTime] = useState('18:00');
+
     const [searchQuery, setSearchQuery] = useState('');
     const [rows, setRows] = useState([]);
 
@@ -284,10 +340,12 @@ export default function ActiveEmployeeDayInOutPage() {
     // Populate rows and policies when data arrives
     useEffect(() => {
         if (dailyData) {
-            const shiftOn = dailyData.defaultOnTime || onTime;
-            const shiftOff = dailyData.defaultOffTime || offTime;
-            if (dailyData.defaultOnTime) setOnTime(dailyData.defaultOnTime);
-            if (dailyData.defaultOffTime) setOffTime(dailyData.defaultOffTime);
+            const shiftOn = dailyData.defaultOnTime || '08:00';
+            const shiftOff = dailyData.defaultOffTime || '18:00';
+            setShiftOnTime(shiftOn);
+            setShiftOffTime(shiftOff);
+            setApplyInTime(shiftOn);
+            setApplyOutTime(shiftOff);
 
             const pols = (dailyData.salaryPolicies && dailyData.salaryPolicies.length > 0)
                 ? dailyData.salaryPolicies
@@ -302,7 +360,7 @@ export default function ActiveEmployeeDayInOutPage() {
 
             if (dailyData.rows) {
                 setRows(dailyData.rows.map(r => {
-                    // Evaluate policies right away for accurate late/early deductions
+                    // Evaluate policies right away for accurate late/early deductions against official shift
                     return evaluateRowPolicy(r, shiftOn, shiftOff, r.hourlyRate || 260, pols, r.employeeId);
                 }));
             }
@@ -357,27 +415,26 @@ export default function ActiveEmployeeDayInOutPage() {
 
         // Immediately recalculate all rows currently on screen with newly saved policies
         setRows(prevRows => prevRows.map(r => {
-            return evaluateRowPolicy(r, onTime, offTime, r.hourlyRate || 260, payload.salaryPolicies, r.employeeId);
+            return evaluateRowPolicy(r, shiftOnTime, shiftOffTime, r.hourlyRate || 260, payload.salaryPolicies, r.employeeId);
         }));
         toast.success('Policies saved & applied to attendance grid!');
     };
 
-    // When Header ON TIME or OFF TIME changes, re-evaluate all rows automatically!
-    const handleHeaderTimeChange = (type, val) => {
-        const clean = val.replace(/[^0-9:]/g, '').slice(0, 5);
-        const newOnTime = type === 'on' ? clean : onTime;
-        const newOffTime = type === 'off' ? clean : offTime;
+    // When Official Shift Schedule changes, re-evaluate all rows automatically!
+    const handleShiftScheduleChange = (type, val) => {
+        const clean = formatTimeAsYouType(val);
+        const newShiftOn = type === 'on' ? clean : shiftOnTime;
+        const newShiftOff = type === 'off' ? clean : shiftOffTime;
 
-        if (type === 'on') setOnTime(clean);
-        if (type === 'off') setOffTime(clean);
+        if (type === 'on') setShiftOnTime(clean);
+        if (type === 'off') setShiftOffTime(clean);
 
-        // Recalculate policies dynamically for all rows with the new shift time period
-        setRows(prevRows => prevRows.map(r => {
-            const rowIn = r.inTime || newOnTime;
-            const rowOut = r.outTime || newOffTime;
-            const updated = { ...r, inTime: rowIn, outTime: rowOut };
-            return evaluateRowPolicy(updated, newOnTime, newOffTime, r.hourlyRate || 260, salaryPolicies, r.employeeId);
-        }));
+        if (clean.length === 5 && /^([01]\d|2[0-3]):[0-5]\d$/.test(clean)) {
+            // Recalculate policies dynamically for all rows against the new schedule
+            setRows(prevRows => prevRows.map(r => {
+                return evaluateRowPolicy(r, newShiftOn, newShiftOff, r.hourlyRate || 260, salaryPolicies, r.employeeId);
+            }));
+        }
     };
 
     // Handle in-place row editing with AUTO-POLICY EVALUATION
@@ -388,12 +445,12 @@ export default function ActiveEmployeeDayInOutPage() {
 
             if (field === 'isTicked') {
                 row.isTicked = Boolean(value);
-                row = evaluateRowPolicy(row, onTime, offTime, row.hourlyRate || 260, salaryPolicies, row.employeeId);
+                row = evaluateRowPolicy(row, shiftOnTime, shiftOffTime, row.hourlyRate || 260, salaryPolicies, row.employeeId);
             } else if (field === 'inTime' || field === 'outTime') {
                 const clean = String(value).replace(/[^0-9:]/g, '').slice(0, 5);
                 row[field] = clean;
                 row.isTicked = true;
-                row = evaluateRowPolicy(row, onTime, offTime, row.hourlyRate || 260, salaryPolicies, row.employeeId);
+                row = evaluateRowPolicy(row, shiftOnTime, shiftOffTime, row.hourlyRate || 260, salaryPolicies, row.employeeId);
             } else if (field === 'hours') {
                 const val = String(value).trim();
                 const hrs = val === '' ? 0 : Number(val);
@@ -430,26 +487,31 @@ export default function ActiveEmployeeDayInOutPage() {
         });
     };
 
-    // Quick Apply Default Times to All Ticked Employees with immediate Policy Evaluation
+    // Quick Apply In / Out Times to All Ticked Employees with immediate Policy Evaluation against official shift
     const handleApplyDefaultTimes = () => {
+        const normIn = normalizeTimeString(applyInTime, shiftOnTime);
+        const normOut = normalizeTimeString(applyOutTime, shiftOffTime);
+        setApplyInTime(normIn);
+        setApplyOutTime(normOut);
+
         setRows(prevRows => prevRows.map(row => {
             if (!row.isTicked) return row;
             const updated = {
                 ...row,
-                inTime: onTime,
-                outTime: offTime
+                inTime: normIn,
+                outTime: normOut
             };
-            return evaluateRowPolicy(updated, onTime, offTime, row.hourlyRate || 260, salaryPolicies, row.employeeId);
+            return evaluateRowPolicy(updated, shiftOnTime, shiftOffTime, row.hourlyRate || 260, salaryPolicies, row.employeeId);
         }));
-        toast.success(`Applied shift period ${onTime} - ${offTime} & recalculated all policies!`);
+        toast.success(`Applied ${normIn} - ${normOut} to present staff & evaluated policies against shift (${shiftOnTime} - ${shiftOffTime})!`);
     };
 
     // Save All Changes
     const handleSave = () => {
         saveMutation.mutate({
             date: selectedDate,
-            defaultOnTime: onTime,
-            defaultOffTime: offTime,
+            defaultOnTime: shiftOnTime,
+            defaultOffTime: shiftOffTime,
             rows: rows
         });
     };
@@ -601,11 +663,11 @@ export default function ActiveEmployeeDayInOutPage() {
             e.preventDefault();
             const realIdx = rows.findIndex(r => r.employeeId === filteredRows[rowIdx]?.employeeId);
             if (colType === 'in') {
-                const norm = normalizeTimeString(e.target.value, onTime);
+                const norm = normalizeTimeString(e.target.value, shiftOnTime);
                 if (realIdx !== -1) handleRowChange(realIdx, 'inTime', norm);
                 focusDailyCell(rowIdx, 'out');
             } else if (colType === 'out') {
-                const norm = normalizeTimeString(e.target.value, offTime);
+                const norm = normalizeTimeString(e.target.value, shiftOffTime);
                 if (realIdx !== -1) handleRowChange(realIdx, 'outTime', norm);
                 if (rowIdx < filteredRows.length - 1) {
                     focusDailyCell(rowIdx + 1, 'in');
@@ -625,11 +687,11 @@ export default function ActiveEmployeeDayInOutPage() {
             e.preventDefault();
             const realIdx = rows.findIndex(r => r.employeeId === filteredRows[rowIdx]?.employeeId);
             if (colType === 'out') {
-                const norm = normalizeTimeString(e.target.value, offTime);
+                const norm = normalizeTimeString(e.target.value, shiftOffTime);
                 if (realIdx !== -1) handleRowChange(realIdx, 'outTime', norm);
                 focusDailyCell(rowIdx, 'in');
             } else if (colType === 'in') {
-                const norm = normalizeTimeString(e.target.value, onTime);
+                const norm = normalizeTimeString(e.target.value, shiftOnTime);
                 if (realIdx !== -1) handleRowChange(realIdx, 'inTime', norm);
                 if (rowIdx > 0) {
                     focusDailyCell(rowIdx - 1, 'out');
@@ -807,22 +869,54 @@ export default function ActiveEmployeeDayInOutPage() {
                             </button>
                         </div>
 
-                        {/* Center: Shift Times (ON TIME & OFF TIME) */}
+                        {/* Center: Shift Schedule & Quick Apply Controls */}
                         <div className="flex flex-wrap items-center gap-2">
+                            {/* Shift Working Hours / Policy Schedule */}
+                            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 px-2.5 py-1 rounded-lg" title="Company Shift Schedule: Late arrival & early departure policies are evaluated against these scheduled hours">
+                                <span className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 tracking-wider">Shift</span>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={shiftOnTime}
+                                    placeholder="08:00"
+                                    maxLength={5}
+                                    onChange={(e) => handleShiftScheduleChange('on', e.target.value)}
+                                    onBlur={(e) => {
+                                        const norm = normalizeTimeString(e.target.value, '08:00');
+                                        handleShiftScheduleChange('on', norm);
+                                    }}
+                                    onFocus={handleCellSelectAll}
+                                    className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white font-mono font-bold text-xs px-1.5 py-0.5 rounded w-14 text-center outline-none focus:ring-1 focus:ring-indigo-500"
+                                />
+                                <span className="text-slate-400 font-bold text-xs">-</span>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={shiftOffTime}
+                                    placeholder="18:00"
+                                    maxLength={5}
+                                    onChange={(e) => handleShiftScheduleChange('off', e.target.value)}
+                                    onBlur={(e) => {
+                                        const norm = normalizeTimeString(e.target.value, '18:00');
+                                        handleShiftScheduleChange('off', norm);
+                                    }}
+                                    onFocus={handleCellSelectAll}
+                                    className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white font-mono font-bold text-xs px-1.5 py-0.5 rounded w-14 text-center outline-none focus:ring-1 focus:ring-indigo-500"
+                                />
+                            </div>
+
+                            {/* Bulk Apply Times to Present Staff */}
                             <div className="flex items-center gap-1 bg-emerald-50/70 border border-emerald-200/80 px-2 py-1 rounded-lg">
                                 <span className="text-[10px] font-black uppercase text-emerald-800 tracking-wide">In Time</span>
                                 <input
                                     type="text"
                                     inputMode="numeric"
                                     id="daily-header-ontime"
-                                    value={onTime}
-                                    placeholder="08:00"
+                                    value={applyInTime}
+                                    placeholder={shiftOnTime || '08:00'}
                                     maxLength={5}
-                                    onChange={(e) => handleHeaderTimeChange('on', e.target.value)}
-                                    onBlur={(e) => {
-                                        const norm = normalizeTimeString(e.target.value, '08:00');
-                                        handleHeaderTimeChange('on', norm);
-                                    }}
+                                    onChange={(e) => setApplyInTime(formatTimeAsYouType(e.target.value))}
+                                    onBlur={(e) => setApplyInTime(normalizeTimeString(e.target.value, shiftOnTime))}
                                     onFocus={handleCellSelectAll}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
@@ -841,19 +935,16 @@ export default function ActiveEmployeeDayInOutPage() {
                                     type="text"
                                     inputMode="numeric"
                                     id="daily-header-offtime"
-                                    value={offTime}
-                                    placeholder="17:00"
+                                    value={applyOutTime}
+                                    placeholder={shiftOffTime || '18:00'}
                                     maxLength={5}
-                                    onChange={(e) => handleHeaderTimeChange('off', e.target.value)}
-                                    onBlur={(e) => {
-                                        const norm = normalizeTimeString(e.target.value, '17:00');
-                                        handleHeaderTimeChange('off', norm);
-                                    }}
+                                    onChange={(e) => setApplyOutTime(formatTimeAsYouType(e.target.value))}
+                                    onBlur={(e) => setApplyOutTime(normalizeTimeString(e.target.value, shiftOffTime))}
                                     onFocus={handleCellSelectAll}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             e.preventDefault();
-                                            focusDailyCell(0, 'in');
+                                            handleApplyDefaultTimes();
                                         }
                                     }}
                                     className="bg-white border border-amber-300 text-amber-950 font-mono font-bold text-xs px-1.5 py-0.5 rounded w-14 text-center outline-none focus:ring-1 focus:ring-amber-500"
@@ -864,7 +955,7 @@ export default function ActiveEmployeeDayInOutPage() {
                                 type="button"
                                 onClick={handleApplyDefaultTimes}
                                 className="px-2.5 py-1 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-2xs transition flex items-center gap-1 cursor-pointer"
-                                title="Apply these shift times to all ticked present staff"
+                                title="Apply these in/out times to all present staff and calculate policy deductions against the shift schedule"
                             >
                                 <Zap size={12} />
                                 Apply to Present
@@ -956,7 +1047,7 @@ export default function ActiveEmployeeDayInOutPage() {
                 {/* Print Title Header (Only for Print) */}
                 <div className="hidden print:block text-center border-b pb-2 mb-3">
                     <h1 className="text-base font-bold uppercase tracking-wide">ACTIVE EMPLOYEE DAY IN / OUT</h1>
-                    <p className="text-xs text-slate-600">Date: {formatLongDate(selectedDate)} | Shift: {onTime} - {offTime}</p>
+                    <p className="text-xs text-slate-600">Date: {formatLongDate(selectedDate)} | Shift: {shiftOnTime} - {shiftOffTime}</p>
                 </div>
 
                 {isLoading ? (
@@ -1082,8 +1173,8 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         type="text"
                                                         inputMode="numeric"
                                                         disabled={!isPresent}
-                                                        value={isPresent ? (row.inTime || onTime) : ''}
-                                                        placeholder={onTime || '08:00'}
+                                                        value={isPresent ? (row.inTime || shiftOnTime) : ''}
+                                                        placeholder={shiftOnTime || '08:00'}
                                                         maxLength={5}
                                                         onChange={(e) => {
                                                             const formatted = formatTimeAsYouType(e.target.value);
@@ -1091,7 +1182,7 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         }}
                                                         onBlur={(e) => {
                                                              if (!isPresent) return;
-                                                             const norm = normalizeTimeString(e.target.value, onTime);
+                                                             const norm = normalizeTimeString(e.target.value, shiftOnTime);
                                                              handleRowChange(realIdx, 'inTime', norm);
                                                         }}
                                                         onFocus={handleCellSelectAll}
@@ -1114,8 +1205,8 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         type="text"
                                                         inputMode="numeric"
                                                         disabled={!isPresent}
-                                                        value={isPresent ? (row.outTime || offTime) : ''}
-                                                        placeholder={offTime || '17:00'}
+                                                        value={isPresent ? (row.outTime || shiftOffTime) : ''}
+                                                        placeholder={shiftOffTime || '18:00'}
                                                         maxLength={5}
                                                         onChange={(e) => {
                                                             const formatted = formatTimeAsYouType(e.target.value);
@@ -1123,7 +1214,7 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         }}
                                                         onBlur={(e) => {
                                                              if (!isPresent) return;
-                                                             const norm = normalizeTimeString(e.target.value, offTime);
+                                                             const norm = normalizeTimeString(e.target.value, shiftOffTime);
                                                              handleRowChange(realIdx, 'outTime', norm);
                                                         }}
                                                         onFocus={handleCellSelectAll}
@@ -1181,7 +1272,7 @@ export default function ActiveEmployeeDayInOutPage() {
 
                                             {/* 8. Deduction */}
                                             <td className="py-2.5 px-3 text-right">
-                                                <div className="relative inline-block w-24">
+                                                <div className="relative inline-block w-28">
                                                     <input
                                                         type="text"
                                                         inputMode="text"
@@ -1209,6 +1300,11 @@ export default function ActiveEmployeeDayInOutPage() {
                                                                 : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500'
                                                         }`}
                                                     />
+                                                    {row.reason && row.reason !== 'FILL' && (
+                                                        <span className="block text-[10px] text-rose-600 dark:text-rose-400 font-semibold truncate leading-tight mt-0.5 text-right" title={row.reason}>
+                                                            {row.reason}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -1287,7 +1383,7 @@ export default function ActiveEmployeeDayInOutPage() {
                 onSavePolicies={handleSavePoliciesFromModal}
                 onApplyToSheet={(newPolicies) => {
                     setRows(prevRows => prevRows.map(r => {
-                        return evaluateRowPolicy(r, onTime, offTime, r.hourlyRate || 260, newPolicies, r.employeeId);
+                        return evaluateRowPolicy(r, shiftOnTime, shiftOffTime, r.hourlyRate || 260, newPolicies, r.employeeId);
                     }));
                     toast.success('Policies applied to all employees on grid!');
                 }}

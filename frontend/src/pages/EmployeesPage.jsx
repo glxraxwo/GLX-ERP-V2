@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
     Plus, Search, Eye, Users, Mail, Phone, Receipt, Edit, Trash2,
     Calendar, DollarSign, Clock, ShieldAlert, Award, Building2,
-    Calculator, Plane, BadgeCheck, FileSpreadsheet, ChevronRight, Sliders, LayoutGrid
+    Calculator, Plane, BadgeCheck, FileSpreadsheet, FileText, ChevronRight, Sliders, LayoutGrid
 } from 'lucide-react';
 
 import PageHeader from '../components/ui/PageHeader';
@@ -24,6 +24,19 @@ const statusVariant = {
 
 // All HR Modules with compact layout & distinct Rainbow background gradients
 const hrHubModules = [
+    {
+        title: 'Monthly Payslips',
+        path: '/hr/monthly-payslips',
+        icon: FileText,
+        badge: 'Fixed Salary Hub',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-indigo-50/90 to-purple-100/70 border-indigo-200/90 hover:border-indigo-400 hover:from-indigo-100/90 hover:to-purple-200/70 shadow-xs shadow-indigo-500/5',
+            iconBox: 'bg-white text-indigo-600 border-indigo-200 shadow-2xs group-hover:bg-indigo-600 group-hover:text-white',
+            badge: 'bg-indigo-600/10 text-indigo-800 border border-indigo-300/70 font-bold',
+            title: 'text-indigo-950 group-hover:text-indigo-700',
+            arrow: 'text-indigo-400 group-hover:text-indigo-700'
+        }
+    },
     {
         title: 'Manual Paysheet',
         path: '/manual-paysheet',

@@ -110,6 +110,7 @@ import PayrollDetailPage from './pages/PayrollDetailPage';
 import PayslipDetailPage from './pages/PayslipDetailPage';
 import ActiveEmployeeDayInOutPage from './pages/ActiveEmployeeDayInOutPage';
 import EmployeePaymentRecordSheetPage from './pages/EmployeePaymentRecordSheetPage';
+import MonthlySalaryPayslipsPage from './pages/MonthlySalaryPayslipsPage';
 import EmployeePaymentSheetPage from './pages/EmployeePaymentSheetPage';
 import PublicDocumentViewPage from './pages/PublicDocumentViewPage';
 import PublicPayslipPage from './pages/PublicPayslipPage';
@@ -271,6 +272,8 @@ function App() {
         <Route path="/manual-paysheet" element={<ProtectedRoute requiredPermission="hr.employees.view" excludeRoles={['employee']}><EmployeePaymentRecordSheetPage /></ProtectedRoute>} />
         <Route path="/hr/daily-manual-attendance" element={<ProtectedRoute requiredPermission="hr.attendance.view" excludeRoles={['employee']}><ActiveEmployeeDayInOutPage /></ProtectedRoute>} />
         <Route path="/hr/manual-payment-sheet" element={<ProtectedRoute requiredPermission="hr.employees.view" excludeRoles={['employee']}><EmployeePaymentRecordSheetPage /></ProtectedRoute>} />
+        <Route path="/hr/monthly-payslips" element={<ProtectedRoute requiredPermission="hr.employees.view" excludeRoles={['employee']}><MonthlySalaryPayslipsPage /></ProtectedRoute>} />
+        <Route path="/monthly-paysheet" element={<ProtectedRoute requiredPermission="hr.employees.view" excludeRoles={['employee']}><MonthlySalaryPayslipsPage /></ProtectedRoute>} />
         <Route path="/hr/daily-payroll" element={<ProtectedRoute requiredPermission="hr.payroll.view" excludeRoles={['employee']}><DailyPayrollPage /></ProtectedRoute>} />
         <Route path="/payroll/:id" element={<ProtectedRoute requiredPermission="hr.payroll.view" excludeRoles={['employee']}><PayrollDetailPage /></ProtectedRoute>} />
         <Route path="/payroll/:payrollId/payslip/:employeeId" element={<ProtectedRoute requiredPermission="hr.payroll.view"><PayslipDetailPage /></ProtectedRoute>} />

@@ -433,6 +433,9 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
     let totalAdvance = 0;
     let totalDeduction = 0;
 
+    const defaultShiftOn = settings?.defaultOnTime || '08:00';
+    const defaultShiftOff = settings?.defaultOffTime || '17:00';
+
     while (curr <= endObj) {
         const dateStr = formatDateStr(curr);
         const dayName = getDayName(dateStr);
@@ -442,8 +445,8 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
         if (att) {
             // Do NOT auto-tick rows on employee selection unless explicitly saved in this manual payment sheet
             const isTicked = att.isManualSheetSaved ? Boolean(att.isTicked) : false;
-            const inTime = att.manualInTime || '08:00';
-            const outTime = att.manualOutTime || '17:00';
+            const inTime = att.manualInTime || defaultShiftOn;
+            const outTime = att.manualOutTime || defaultShiftOff;
             const hours = isTicked ? (att.payableHours !== undefined ? att.payableHours : calculateWorkingHours(inTime, outTime)) : 0;
             const daySalary = isTicked ? (att.daySalary !== undefined ? att.daySalary : Number((hours * hourlyRate).toFixed(2))) : 0;
             const advance = Math.max(Number(att.dailyAdvance) || 0, Number(advanceMap.get(dateStr)) || 0);
@@ -482,8 +485,8 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
                 date: dateStr,
                 day: dayName,
                 isTicked: false,
-                inTime: '08:00',
-                outTime: '17:00',
+                inTime: defaultShiftOn,
+                outTime: defaultShiftOff,
                 hours: 0,
                 daySalary: 0,
                 advance: advance,
@@ -500,9 +503,9 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
     const netSalary = Math.max(0, totalSalary - totalAdvance + totalDeduction);
     const activePolicies = (settings?.salaryPolicies && settings.salaryPolicies.length > 0) ? settings.salaryPolicies : defaultSalaryPolicies;
 
-    const isMonthly = employee.paymentType === 'monthly' || Number(employee.monthlySalary) > 0;
-    const monthlySalary = Number(employee.monthlySalary || employee.basicSalary || 0);
-    const minSalary = Number(employee.minimumSalary || 0);
+    const isMonthly = employee.paymentType === 'monthly';
+    const monthlySalary = isMonthly ? Number(employee.monthlySalary || employee.basicSalary || 0) : 0;
+    const minSalary = Number(employee.minimumSalary || employee.basicSalary || 0);
 
     let earnedTotal = 0;
     let basicSalary = 0;
@@ -753,9 +756,13 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
     attendances.forEach(att => {
         const hrs = att.payableHours || 0;
         totalHours += hrs;
-        const dSal = (att.daySalary !== undefined && att.daySalary > 0)
+        // Prioritize employee's registered hourly rate unless daySalary was locked via saved manual sheet with matching rate
+        const effectiveRate = (att.isManualSheetSaved && att.hourlyRateApplied && Math.abs(att.hourlyRateApplied - hourlyRate) < 0.01)
+            ? att.hourlyRateApplied
+            : hourlyRate;
+        const dSal = (att.isManualSheetSaved && att.daySalary !== undefined && att.daySalary > 0 && Math.abs(att.hourlyRateApplied - hourlyRate) < 0.01)
             ? att.daySalary
-            : Number((hrs * (att.hourlyRateApplied || hourlyRate)).toFixed(2));
+            : Number((hrs * effectiveRate).toFixed(2));
         totalEarnedSalary += dSal;
         totalAdvance += att.dailyAdvance || 0;
         if (att.dailyDeduction < 0) {
@@ -793,9 +800,9 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
 
     // Calculate Minimum Salary vs OT / Commission breakdown
     // For monthly employee: Basic = minimumSalary, OT/Commission = monthlySalary - minimumSalary, Total = monthlySalary
-    const isMonthly = employee.paymentType === 'monthly' || Number(employee.monthlySalary) > 0;
-    const monthlySalary = Number(employee.monthlySalary || employee.basicSalary || 0);
-    const minSalary = Number(employee.minimumSalary || 0);
+    const isMonthly = employee.paymentType === 'monthly';
+    const monthlySalary = isMonthly ? Number(employee.monthlySalary || employee.basicSalary || 0) : 0;
+    const minSalary = Number(employee.minimumSalary || employee.basicSalary || 0);
 
     let basicSalary = 0;
     let overtimePayment = 0;

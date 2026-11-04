@@ -211,6 +211,8 @@ employeeSchema.pre('save', async function () {
         if (!this.monthlySalary && this.basicSalary > 0) this.monthlySalary = Number(this.basicSalary);
         if (!this.minimumSalary && this.basicSalary > 0) this.minimumSalary = Number(this.basicSalary);
     }
+    if (!this.minimumSalary && this.basicSalary > 0) this.minimumSalary = Number(this.basicSalary);
+    if (!this.basicSalary && this.minimumSalary > 0) this.basicSalary = Number(this.minimumSalary);
     if (this.labourRate && Number(this.labourRate) > 0 && (!this.hourlyRate || this.hourlyRate === 0 || this.hourlyRate === 260)) {
         this.hourlyRate = Number(this.labourRate);
     } else if (this.hourlyRate && Number(this.hourlyRate) > 0 && (!this.labourRate || this.labourRate === 0)) {
