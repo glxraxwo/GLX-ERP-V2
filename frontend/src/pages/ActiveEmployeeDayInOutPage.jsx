@@ -279,21 +279,33 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
         }
     }
 
-    // 3. Day Salary
+    // 3. Day Salary & Effective Payable Hours (Method 1: Full shift day pay when late penalty applies)
+    let finalHrs = hrs;
     let daySalary = Number((hrs * hourlyRate).toFixed(2));
+
+    const hasLatePenalty = reasonParts.some(p => p.startsWith('Late') && p.includes('(-'));
+    const workedThroughShiftEnd = outMin !== null && shiftOutMin !== null && outMin >= shiftOutMin;
+
     const minHoursPol = activePols.find(p => p.type === 'MIN_HOURS_FULL_PAY' && doesPolicyApplyToEmployee(p, currentEmployeeId));
-    if (minHoursPol && hrs >= (minHoursPol.thresholdMinutes / 60)) {
-        daySalary = Number((standardHrs * hourlyRate).toFixed(2));
+    const meetsMinHours = minHoursPol && hrs >= (minHoursPol.thresholdMinutes / 60);
+
+    if ((hasLatePenalty && workedThroughShiftEnd) || meetsMinHours) {
+        finalHrs = Math.max(hrs, standardHrs);
+        daySalary = Number((finalHrs * hourlyRate).toFixed(2));
     }
+
+    const finalReason = deduction !== 0
+        ? (reasonParts.join(', ') || (row.reason && row.reason !== 'No Work' ? row.reason : ''))
+        : (reasonParts.filter(p => p.includes('Covered')).join(', ') || '');
 
     return {
         ...row,
         inTime: inT,
         outTime: outT,
-        hours: hrs,
+        hours: finalHrs,
         daySalary,
         deduction,
-        reason: reasonParts.join(', ') || (row.reason && row.reason !== 'No Work' ? row.reason : 'FILL')
+        reason: finalReason
     };
 };
 

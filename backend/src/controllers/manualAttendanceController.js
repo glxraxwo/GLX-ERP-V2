@@ -134,6 +134,9 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
             const isTicked = existing.isTicked !== undefined ? existing.isTicked : (existing.status === 'present');
             const daySalary = existing.daySalary !== undefined ? existing.daySalary : (isTicked ? Number((hours * hourlyRate).toFixed(2)) : 0);
 
+            const deduction = existing.dailyDeduction || 0;
+            const reason = deduction !== 0 ? (existing.deductionReason || '') : '';
+
             return {
                 employeeId: emp._id,
                 payrollNumber: emp.payrollNumber || emp.employeeCode || '',
@@ -145,8 +148,8 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
                 hours: hours,
                 daySalary: daySalary,
                 advance: existing.dailyAdvance !== undefined ? existing.dailyAdvance : recordedAdvance,
-                deduction: existing.dailyDeduction || 0,
-                reason: existing.deductionReason || (isTicked ? '' : (existing.dailyDeduction < 0 ? 'No Work' : '')),
+                deduction: deduction,
+                reason: reason,
                 isSaved: true
             };
         } else {
@@ -226,7 +229,7 @@ export const saveDailyManualAttendance = asyncHandler(async (req, res) => {
         const daySalary = isTicked ? (Number(row.daySalary) || Number((hours * hourlyRate).toFixed(2))) : 0;
         const advance = Number(row.advance) || 0;
         const deduction = Number(row.deduction) || 0;
-        const reason = row.reason || (isTicked ? '' : (row.deduction < 0 ? 'No Work' : ''));
+        const reason = deduction !== 0 ? (row.reason || '') : '';
 
         // Construct checkInTime & checkOutTime timestamps for integration
         const [inH, inM] = inTimeStr.split(':').map(Number);
@@ -450,7 +453,7 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
             const daySalary = isTicked ? (att.daySalary !== undefined ? att.daySalary : Number((hours * hourlyRate).toFixed(2))) : 0;
             const advance = Math.max(Number(att.dailyAdvance) || 0, Number(advanceMap.get(dateStr)) || 0);
             const deduction = isTicked ? (att.dailyDeduction || 0) : 0;
-            const reason = att.deductionReason || (isTicked ? '' : (att.dailyDeduction < 0 ? 'No Work' : ''));
+            const reason = deduction !== 0 ? (att.deductionReason || '') : '';
 
             if (isTicked) {
                 totalDays += 1;
@@ -640,7 +643,7 @@ export const saveDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, r
         const daySalary = isTicked ? (Number(row.daySalary) || Number((hours * hourlyRate).toFixed(2))) : 0;
         const advance = Number(row.advance) || 0;
         const deduction = Number(row.deduction) || 0;
-        const reason = row.reason || (isTicked ? '' : (row.deduction < 0 ? 'No Work' : ''));
+        const reason = deduction !== 0 ? (row.reason || '') : '';
 
         const dateObj = new Date(row.date + 'T00:00:00.000Z');
 

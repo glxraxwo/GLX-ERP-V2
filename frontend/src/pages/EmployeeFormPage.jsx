@@ -373,7 +373,7 @@ export default function EmployeeFormPage() {
     const leaveStructureOptions = (leavesData?.data || []).map((l) => ({ value: l._id, label: l.name }));
 
     return (
-        <div className="max-w-6xl mx-auto space-y-4 pb-12">
+        <div className="w-full space-y-4 pb-16">
             <PageHeader
                 title={isEdit ? 'Edit Employee / Labour Details' : 'New Employee / Labour Registration'}
                 subtitle="Complete registration in 2 simple, keyboard-friendly steps"
@@ -381,6 +381,23 @@ export default function EmployeeFormPage() {
                     <div className="flex items-center gap-2">
                         <Button variant="outline" onClick={() => navigate('/employees')}>
                             <ArrowLeft size={16} className="mr-1.5" /> Back
+                        </Button>
+                        {step === 1 ? (
+                            <Button variant="secondary" onClick={() => setStep(2)}>
+                                Next: Step 2 <ArrowRight size={16} className="ml-1.5" />
+                            </Button>
+                        ) : (
+                            <Button variant="secondary" onClick={() => setStep(1)}>
+                                <ArrowLeft size={16} className="mr-1.5" /> Back to Step 1
+                            </Button>
+                        )}
+                        <Button
+                            variant="primary"
+                            onClick={submit}
+                            loading={createMutation.isPending || updateMutation.isPending}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-bold"
+                        >
+                            <Save size={16} className="mr-1.5" /> {isEdit ? 'Update Employee' : 'Save Employee (Ctrl + Enter)'}
                         </Button>
                     </div>
                 }
@@ -403,10 +420,10 @@ export default function EmployeeFormPage() {
                 </div>
             </div>
 
-            <Card>
+            <Card className="w-full shadow-sm border border-slate-200 dark:border-slate-800">
                 {/* 2-Step Modern Segmented Tab Bar */}
                 <div className="border-b border-gray-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 p-2 sm:p-3">
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3 max-w-2xl mx-auto">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-4 w-full">
                         {/* Step 1 Button */}
                         <button
                             type="button"
@@ -685,14 +702,24 @@ export default function EmployeeFormPage() {
                                 <Button variant="outline" onClick={() => navigate('/employees')}>
                                     Cancel
                                 </Button>
-                                <Button
-                                    variant="primary"
-                                    type="button"
-                                    onClick={() => setStep(2)}
-                                    className="px-6 py-2.5 font-bold shadow-md shadow-indigo-600/20"
-                                >
-                                    Next: Salary, Bank & Credentials <ArrowRight size={16} className="ml-2" />
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        type="button"
+                                        onClick={submit}
+                                        loading={createMutation.isPending || updateMutation.isPending}
+                                    >
+                                        <Save size={16} className="mr-1.5" /> Quick Save
+                                    </Button>
+                                    <Button
+                                        variant="primary"
+                                        type="button"
+                                        onClick={() => setStep(2)}
+                                        className="px-6 py-2.5 font-bold shadow-md shadow-indigo-600/20"
+                                    >
+                                        Next: Salary, Bank & Credentials <ArrowRight size={16} className="ml-2" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     )}
