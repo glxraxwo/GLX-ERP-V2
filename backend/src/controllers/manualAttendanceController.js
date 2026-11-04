@@ -118,7 +118,7 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
 
     // 4. Default Shift Times
     const defaultOnTime = settings?.defaultOnTime || '08:00';
-    const defaultOffTime = settings?.defaultOffTime || '17:00';
+    const defaultOffTime = settings?.defaultOffTime || '18:00';
 
     // 5. Construct rows
     const rows = employees.map(emp => {
@@ -191,7 +191,7 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
  * @access  Private (hr.attendance.manage)
  */
 export const saveDailyManualAttendance = asyncHandler(async (req, res) => {
-    const { date, defaultOnTime = '08:00', defaultOffTime = '17:00', rows } = req.body;
+    const { date, defaultOnTime = '08:00', defaultOffTime = '18:00', rows } = req.body;
 
     if (!date) {
         res.status(400);
@@ -206,11 +206,10 @@ export const saveDailyManualAttendance = asyncHandler(async (req, res) => {
 
     if (defaultOnTime || defaultOffTime) {
         let settings = await Settings.findOne();
-        if (settings) {
-            if (defaultOnTime) settings.defaultOnTime = defaultOnTime;
-            if (defaultOffTime) settings.defaultOffTime = defaultOffTime;
-            await settings.save();
-        }
+        if (!settings) settings = await Settings.create({});
+        if (defaultOnTime) settings.defaultOnTime = defaultOnTime;
+        if (defaultOffTime) settings.defaultOffTime = defaultOffTime;
+        await settings.save();
     }
 
     const bulkOperations = [];
@@ -433,8 +432,8 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
     let totalAdvance = 0;
     let totalDeduction = 0;
 
-    const defaultShiftOn = settings?.defaultOnTime || '08:00';
-    const defaultShiftOff = settings?.defaultOffTime || '17:00';
+    const defaultShiftOn = employee.defaultOnTime || settings?.defaultOnTime || '08:00';
+    const defaultShiftOff = employee.defaultOffTime || settings?.defaultOffTime || '18:00';
 
     while (curr <= endObj) {
         const dateStr = formatDateStr(curr);
@@ -556,7 +555,7 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
         startDate: startStr,
         endDate: endStr,
         defaultOnTime: employee.defaultOnTime || settings?.defaultOnTime || '08:00',
-        defaultOffTime: employee.defaultOffTime || settings?.defaultOffTime || '17:00',
+        defaultOffTime: employee.defaultOffTime || settings?.defaultOffTime || '18:00',
         totals: {
             totalLeave,
             totalDays,
@@ -614,12 +613,11 @@ export const saveDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, r
 
     // Also persist as system defaults so they auto-apply to subsequent employees and sheets
     let settings = await Settings.findOne();
-    if (settings) {
-        if (onTime) settings.defaultOnTime = onTime;
-        if (offTime) settings.defaultOffTime = offTime;
-        if (inputRate && Number(inputRate) > 0) settings.defaultHourlyRate = Number(inputRate);
-        await settings.save();
-    }
+    if (!settings) settings = await Settings.create({});
+    if (onTime) settings.defaultOnTime = onTime;
+    if (offTime) settings.defaultOffTime = offTime;
+    if (inputRate && Number(inputRate) > 0) settings.defaultHourlyRate = Number(inputRate);
+    await settings.save();
 
     if (inputRate !== undefined && !isNaN(inputRate) && Number(inputRate) > 0) {
         employee.hourlyRate = Number(inputRate);
@@ -637,7 +635,7 @@ export const saveDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, r
 
         const isTicked = Boolean(row.isTicked);
         const inTimeStr = row.inTime || '08:00';
-        const outTimeStr = row.outTime || '17:00';
+        const outTimeStr = row.outTime || '18:00';
         const hours = isTicked ? (Number(row.hours) || calculateWorkingHours(inTimeStr, outTimeStr)) : 0;
         const daySalary = isTicked ? (Number(row.daySalary) || Number((hours * hourlyRate).toFixed(2))) : 0;
         const advance = Number(row.advance) || 0;

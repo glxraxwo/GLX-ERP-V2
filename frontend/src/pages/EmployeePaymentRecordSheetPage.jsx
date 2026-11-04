@@ -625,7 +625,7 @@ export default function EmployeePaymentRecordSheetPage() {
     const [startDate, setStartDate] = useState(() => searchParams.get('startDate') || formatDateStr(firstDay));
     const [endDate, setEndDate] = useState(() => searchParams.get('endDate') || formatDateStr(lastDay));
     const [onTime, setOnTime] = useState('08:00');
-    const [offTime, setOffTime] = useState('17:00');
+    const [offTime, setOffTime] = useState('18:00');
     const [customHourlyRate, setCustomHourlyRate] = useState(null);
     const [customTotalAdvance, setCustomTotalAdvance] = useState(null);
     const [rows, setRows] = useState([]);
@@ -718,9 +718,9 @@ export default function EmployeePaymentRecordSheetPage() {
                     day: dayName,
                     isTicked: false,
                     inTime: onTime || '08:00',
-                    outTime: offTime || '17:00',
+                    outTime: offTime || '18:00',
                     in: onTime || '08:00',
-                    out: offTime || '17:00',
+                    out: offTime || '18:00',
                     hours: 0,
                     daySalary: 0,
                     advance: 0,
@@ -1209,7 +1209,7 @@ export default function EmployeePaymentRecordSheetPage() {
     // Apply shift working hours to onTime, offTime, and update all table rows below
     const applyShiftWorkingHours = (newOn, newOff, forceAllRows = false) => {
         const validatedOn = normalizeTimeString(newOn, onTime || '08:00');
-        const validatedOff = normalizeTimeString(newOff, offTime || '17:00');
+        const validatedOff = normalizeTimeString(newOff, offTime || '18:00');
         setOnTime(validatedOn);
         setOffTime(validatedOff);
 
@@ -2287,7 +2287,7 @@ export default function EmployeePaymentRecordSheetPage() {
                                         type="text"
                                         inputMode="numeric"
                                         value={offTime}
-                                        placeholder="17:00"
+                                        placeholder="18:00"
                                         maxLength={5}
                                         onChange={(e) => {
                                             const formatted = formatTimeAsYouType(e.target.value);
@@ -2297,14 +2297,14 @@ export default function EmployeePaymentRecordSheetPage() {
                                             }
                                         }}
                                         onBlur={(e) => {
-                                            const norm = normalizeTimeString(e.target.value, '17:00');
+                                            const norm = normalizeTimeString(e.target.value, '18:00');
                                             applyShiftWorkingHours(onTime, norm, true);
                                         }}
                                         onFocus={handleCellSelectAll}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
                                                 e.preventDefault();
-                                                const norm = normalizeTimeString(e.target.value, '17:00');
+                                                const norm = normalizeTimeString(e.target.value, '18:00');
                                                 applyShiftWorkingHours(onTime, norm, true);
                                                 focusGridCell(0, 1, 'next');
                                             }
@@ -2570,7 +2570,7 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 type="text"
                                                 inputMode="numeric"
                                                 value={row.isTicked ? (row.outTime || offTime) : ''}
-                                                placeholder={offTime || '17:00'}
+                                                placeholder={offTime || '18:00'}
                                                 maxLength={5}
                                                 onChange={(e) => {
                                                     const formatted = formatTimeAsYouType(e.target.value);

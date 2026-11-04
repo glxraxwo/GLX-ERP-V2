@@ -67,7 +67,7 @@ const settingsSchema = new mongoose.Schema({
     },
     defaultOffTime: {
         type: String,
-        default: '17:00'
+        default: '18:00'
     },
     defaultHourlyRate: {
         type: Number,
