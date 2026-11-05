@@ -82,6 +82,7 @@ const menuGroups = [
         icon: UsersIcon,
         items: [
             { label: 'Employees Master', icon: UsersIcon, path: '/employees', permission: 'hr.employees.view' },
+            { label: 'Staff Status Manager', icon: UserCheck, path: '/hr/employee-status', permission: 'hr.employees.view' },
             { label: 'Monthly Payslips', icon: FileText, path: '/hr/monthly-payslips', permission: 'hr.employees.view' },
             { label: 'Manual Paysheet', icon: FileSpreadsheet, path: '/hr/manual-payment-sheet', permission: 'hr.employees.view' },
             { label: 'Daily Attendance', icon: CalendarIcon, path: '/hr/daily-manual-attendance', permission: 'hr.attendance.view' },

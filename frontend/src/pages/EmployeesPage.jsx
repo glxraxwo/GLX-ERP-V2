@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import {
-    Plus, Search, Eye, Users, Mail, Phone, Receipt, Edit, Trash2,
+    Plus, Search, Eye, Users, UserCheck, Mail, Phone, Receipt, Edit, Trash2,
     Calendar, DollarSign, Clock, ShieldAlert, Award, Building2,
     Calculator, Plane, BadgeCheck, FileSpreadsheet, FileText, ChevronRight, Sliders, LayoutGrid
 } from 'lucide-react';
@@ -16,14 +18,28 @@ import Pagination from '../components/ui/Pagination';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { useEmployees, useDepartments, useDeleteEmployee } from '../features/hr/useHr';
+import { employeesApi } from '../features/hr/hrApi';
 
 const statusVariant = {
-    active: 'success', on_leave: 'warning', probation: 'info',
+    active: 'success', inactive: 'danger', on_leave: 'warning', probation: 'info',
     suspended: 'danger', terminated: 'default', resigned: 'default', retired: 'default',
 };
 
 // Active HR Modules with compact layout & distinct Rainbow background gradients
 const hrHubModules = [
+    {
+        title: 'Staff Status Manager',
+        path: '/hr/employee-status',
+        icon: UserCheck,
+        badge: 'Active / Inactive',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-emerald-50/90 to-teal-100/70 border-emerald-200/90 hover:border-emerald-400 hover:from-emerald-100/90 hover:to-teal-200/70 shadow-xs shadow-emerald-500/5',
+            iconBox: 'bg-white text-emerald-600 border-emerald-200 shadow-2xs group-hover:bg-emerald-600 group-hover:text-white',
+            badge: 'bg-emerald-600/10 text-emerald-800 border border-emerald-300/70 font-bold',
+            title: 'text-emerald-950 group-hover:text-emerald-700',
+            arrow: 'text-emerald-400 group-hover:text-emerald-700'
+        }
+    },
     {
         title: 'Monthly Payslips',
         path: '/hr/monthly-payslips',
@@ -56,11 +72,11 @@ const hrHubModules = [
         icon: Calendar,
         badge: 'Daily Roster',
         theme: {
-            cardBg: 'bg-gradient-to-br from-emerald-50/90 to-teal-100/70 border-emerald-200/90 hover:border-emerald-400 hover:from-emerald-100/90 hover:to-teal-200/70 shadow-xs shadow-emerald-500/5',
-            iconBox: 'bg-white text-emerald-600 border-emerald-200 shadow-2xs group-hover:bg-emerald-600 group-hover:text-white',
-            badge: 'bg-emerald-600/10 text-emerald-800 border border-emerald-300/70 font-bold',
-            title: 'text-emerald-950 group-hover:text-emerald-700',
-            arrow: 'text-emerald-400 group-hover:text-emerald-700'
+            cardBg: 'bg-gradient-to-br from-teal-50/90 to-cyan-100/70 border-teal-200/90 hover:border-teal-400 hover:from-teal-100/90 hover:to-cyan-200/70 shadow-xs shadow-teal-500/5',
+            iconBox: 'bg-white text-teal-600 border-teal-200 shadow-2xs group-hover:bg-teal-600 group-hover:text-white',
+            badge: 'bg-teal-600/10 text-teal-800 border border-teal-300/70 font-bold',
+            title: 'text-teal-950 group-hover:text-teal-700',
+            arrow: 'text-teal-400 group-hover:text-teal-700'
         }
     },
     {
@@ -132,13 +148,35 @@ const hrHubModules = [
 
 export default function EmployeesPage() {
     const navigate = useNavigate();
-    const [filters, setFilters] = useState({ search: '', departmentId: '', status: 'active', page: 1, limit: 20 });
+    const queryClient = useQueryClient();
+    const [filters, setFilters] = useState({ search: '', departmentId: '', status: '', page: 1, limit: 25 });
     const [deletingEmp, setDeletingEmp] = useState(null);
     const [isHubExpanded, setIsHubExpanded] = useState(true);
 
     const { data, isLoading } = useEmployees(filters);
     const { data: deptsData } = useDepartments();
     const deleteMutation = useDeleteEmployee();
+
+    // Quick inline status toggle mutation
+    const updateStatusMutation = useMutation({
+        mutationFn: ({ id, newStatus }) => employeesApi.update(id, { status: newStatus }),
+        onSuccess: (res, variables) => {
+            queryClient.invalidateQueries(['employees']);
+            queryClient.invalidateQueries(['all-employees-list']);
+            queryClient.invalidateQueries(['all-employees-status-list']);
+            queryClient.invalidateQueries(['manual-attendance-daily']);
+            toast.success(`Employee marked as ${variables.newStatus.toUpperCase()}`);
+        },
+        onError: (err) => {
+            toast.error(err.response?.data?.message || err.message || 'Failed to update status');
+        }
+    });
+
+    const handleToggleEmployeeStatus = (emp) => {
+        const cur = emp.status || 'active';
+        const newStatus = cur === 'active' ? 'inactive' : 'active';
+        updateStatusMutation.mutate({ id: emp._id, newStatus });
+    };
 
     const employees = data?.data || [];
     const depts = deptsData?.data || [];
@@ -168,7 +206,40 @@ export default function EmployeesPage() {
         { key: 'designation', label: 'Designation', render: (r) => <span className="text-xs text-slate-700 font-medium">{r.designationId?.name || '—'}</span> },
         { key: 'hourlyRate', label: 'Hourly Rate', render: (r) => <span className="font-mono text-xs font-bold text-slate-800">Rs. {Number(r.hourlyRate || r.labourRate || 260).toFixed(0)}</span> },
         { key: 'employmentType', label: 'Type', render: (r) => <Badge>{r.employmentType?.replace(/_/g, ' ')}</Badge> },
-        { key: 'status', label: 'Status', render: (r) => <Badge variant={statusVariant[r.status]}>{r.status?.replace(/_/g, ' ')}</Badge> },
+        {
+            key: 'status', label: 'Status & Toggle', width: '160px', render: (r) => {
+                const isAct = (r.status || 'active') === 'active';
+                return (
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={isAct}
+                            onClick={() => handleToggleEmployeeStatus(r)}
+                            disabled={updateStatusMutation.isPending}
+                            title={`Click to mark as ${isAct ? 'INACTIVE' : 'ACTIVE'}`}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 ${
+                                isAct ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+                            }`}
+                        >
+                            <span
+                                aria-hidden="true"
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                    isAct ? 'translate-x-4' : 'translate-x-0'
+                                }`}
+                            />
+                        </button>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
+                            isAct
+                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                : 'bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300'
+                        }`}>
+                            {isAct ? 'Active' : (r.status || 'Inactive')}
+                        </span>
+                    </div>
+                );
+            }
+        },
         {
             key: 'actions', label: 'Actions', width: '250px', render: (r) => (
                 <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -307,11 +378,13 @@ export default function EmployeesPage() {
                             onChange={(e) => setFilters((f) => ({ ...f, departmentId: e.target.value, page: 1 }))} 
                         />
                     </div>
-                    <div className="w-full sm:w-40">
+                    <div className="w-full sm:w-44">
                         <Select 
                             placeholder="All Statuses"
                             options={[
+                                { value: '', label: 'All Statuses' },
                                 { value: 'active', label: 'Active' },
+                                { value: 'inactive', label: 'Inactive' },
                                 { value: 'on_leave', label: 'On Leave' },
                                 { value: 'probation', label: 'Probation' },
                                 { value: 'suspended', label: 'Suspended' },

@@ -91,6 +91,7 @@ import BarcodeGeneratorPage from './pages/BarcodeGeneratorPage';
 import SystemProgressHandoffPage from './pages/SystemProgressHandoffPage';
 
 import EmployeesPage from './pages/EmployeesPage';
+import EmployeeStatusPage from './pages/EmployeeStatusPage';
 import EmployeeFormPage from './pages/EmployeeFormPage';
 import EmployeeDetailPage from './pages/EmployeeDetailPage';
 import EmployeeAdvanceRequestPage from './pages/EmployeeAdvanceRequestPage';
@@ -246,6 +247,8 @@ function App() {
         {/* HR Module */}
         {/* HR Module */}
         <Route path="/employees" element={<ProtectedRoute requiredPermission="hr.employees.view" excludeRoles={['employee']}><EmployeesPage /></ProtectedRoute>} />
+        <Route path="/hr/employee-status" element={<ProtectedRoute requiredPermission="hr.employees.view" excludeRoles={['employee']}><EmployeeStatusPage /></ProtectedRoute>} />
+        <Route path="/employees/status" element={<ProtectedRoute requiredPermission="hr.employees.view" excludeRoles={['employee']}><EmployeeStatusPage /></ProtectedRoute>} />
         <Route path="/employees/new" element={<ProtectedRoute requiredPermission="hr.employees.manage" excludeRoles={['employee']}><EmployeeFormPage /></ProtectedRoute>} />
         <Route path="/employees/:id" element={<ProtectedRoute requiredPermission="hr.employees.view" excludeRoles={['employee']}><EmployeeDetailPage /></ProtectedRoute>} />
         <Route path="/employees/:id/payment-sheet" element={<ProtectedRoute requiredPermission="hr.employees.view" excludeRoles={['employee']}><EmployeePaymentSheetPage /></ProtectedRoute>} />
