@@ -123,7 +123,10 @@ export const createGrn = asyncHandler(async (req, res) => {
         .populate('items.productId', 'name productCode');
 
     // Trigger automated supplier confirmation SMS on creation
-    sendGrnCreationSms(populated).catch(console.error);
+    // Trigger automated supplier confirmation SMS on creation only if explicitly approved
+    if (req.body.sendSms === true) {
+        sendGrnCreationSms(populated, req.body.customMessage, req.body.recipientPhone).catch(console.error);
+    }
 
     res.status(201).json({ success: true, message: 'Material receipt entered in Pending Approval queue', data: populated });
 });
@@ -402,9 +405,9 @@ export const approveGrnQA = asyncHandler(async (req, res) => {
             .populate('items.productId', 'name productCode');
 
         // Trigger automated supplier confirmation SMS if requested
-        const sendSms = req.body.sendSms !== false;
+        const sendSms = req.body.sendSms === true;
         if (sendSms) {
-            sendGrnConfirmationSms(populated, req.body.customMessage).catch(console.error);
+            sendGrnConfirmationSms(populated, req.body.customMessage, req.body.recipientPhone).catch(console.error);
         }
 
         res.json({ success: true, message: 'QA Approved successfully, stock and payable accounts updated.', data: populated });
@@ -477,7 +480,7 @@ export const getGrnById = asyncHandler(async (req, res) => {
  * @access  Private/Admin
  */
 export const sendGrnSmsManually = asyncHandler(async (req, res) => {
-    const { customMessage } = req.body;
+    const { customMessage, recipientPhone } = req.body;
     const grn = await GoodsReceiptNote.findById(req.params.id)
         .populate('purchaseOrderId', 'poNumber')
         .populate('supplierId', 'displayName supplierCode')
@@ -494,7 +497,7 @@ export const sendGrnSmsManually = asyncHandler(async (req, res) => {
         throw new Error('Can only send SMS for approved Goods Receipt Notes');
     }
 
-    const log = await sendGrnConfirmationSms(grn, customMessage);
+    const log = await sendGrnConfirmationSms(grn, customMessage, recipientPhone);
 
     res.json({
         success: true,

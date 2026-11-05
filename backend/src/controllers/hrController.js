@@ -2281,7 +2281,7 @@ export const getEmployeePaymentSheet = asyncHandler(async (req, res) => {
  */
 export const sendPaymentSheetLinkSms = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { phone, startDate, endDate } = req.body;
+    const { phone, startDate, endDate, customMessage } = req.body;
 
     if (!phone || !phone.trim()) {
         res.status(400);
@@ -2396,7 +2396,8 @@ export const sendPaymentSheetLinkSms = asyncHandler(async (req, res) => {
         phone,
         start.toLocaleDateString('en-GB'),
         end.toLocaleDateString('en-GB'),
-        hostOrigin
+        hostOrigin,
+        customMessage
     );
 
     res.json({

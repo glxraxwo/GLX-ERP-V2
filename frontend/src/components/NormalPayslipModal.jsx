@@ -1,11 +1,12 @@
 import React, { useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Printer, Download, MessageSquare, RefreshCw, Sparkles } from 'lucide-react';
+import { X, Printer, Download, MessageSquare, RefreshCw, Sparkles, MapPin, Flame } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { manualAttendanceApi } from '../features/hr/hrApi';
 import { useSettings } from '../features/settings/useSettings';
+import { COMPANY_LOGO_BASE64 } from '../assets/companyLogoBase64';
 
 export default function NormalPayslipModal({
     isOpen,
@@ -22,7 +23,7 @@ export default function NormalPayslipModal({
     const { data: settingsData } = useSettings();
     const systemSettings = settingsData?.data || {};
 
-    const { data: payslipData, isLoading, refetch } = useQuery({
+    const { data: payslipData, isLoading } = useQuery({
         queryKey: ['normal-payslip', employeeId, startDate, endDate, includeEpfEtf],
         queryFn: () => manualAttendanceApi.getNormalPayslip({ employeeId, startDate, endDate, includeEpfEtf }),
         enabled: Boolean(isOpen && employeeId),
@@ -43,13 +44,14 @@ export default function NormalPayslipModal({
 
     const payslip = payslipData || {};
     const comp = payslip.company || {};
-    
-    // Resolve employee details (use passed active employee info if available, then fallback to API)
+
+    // Resolve employee details
     const empFromProps = employee ? {
         name: employee.fullName || (employee.firstName ? `${employee.firstName} ${employee.lastName || ''}`.trim() : ''),
-        payrollNumber: employee.payrollNumber || employee.employeeCode || employee.employeeId || '',
-        department: employee.departmentId?.name || employee.department || 'Manufacturing & Operations',
-        designation: employee.designationId?.title || employee.designation || '',
+        payrollNumber: employee.payrollNumber || employee.employeeCode || employee.employeeId || 'EMP-2026',
+        department: employee.departmentId?.name || employee.department || 'Operations',
+        designation: employee.designationId?.title || employee.designation || 'Staff',
+        accountNumber: employee.bankDetails?.accountNumber || employee.bankAccount || employee.accountNumber || '12345678900',
         hourlyRate: hourlyRate || employee.hourlyRate || 0,
         ...employee
     } : null;
@@ -57,10 +59,9 @@ export default function NormalPayslipModal({
     const emp = {
         ...(payslip.employee || {}),
         ...(empFromProps || {}),
-        ...(hourlyRate ? { hourlyRate } : {})
+        accountNumber: empFromProps?.accountNumber || payslip.employee?.bankDetails?.accountNumber || payslip.employee?.bankAccount || '12345678900'
     };
 
-    // When dynamicTotals is provided from the live Attendance Sheet, ALWAYS prioritize its real-time values!
     const hasDynamic = dynamicTotals !== null && dynamicTotals !== undefined && typeof dynamicTotals.totalSalary === 'number';
 
     const earn = hasDynamic
@@ -83,22 +84,27 @@ export default function NormalPayslipModal({
         }
         : (payslip.deductions || {});
 
-    const empContrib = hasDynamic
-        ? {
-            epfEmployer: dynamicTotals.epfEmployerContribution ?? 0,
-            etfEmployer: dynamicTotals.etfEmployerContribution ?? 0,
-            totalContributions: (dynamicTotals.epfEmployerContribution || 0) + (dynamicTotals.etfEmployerContribution || 0)
-        }
-        : (payslip.employerContributions || {});
-
     const net = hasDynamic
         ? (dynamicTotals.netSalary ?? 0)
-        : (payslip.netSalary !== undefined ? payslip.netSalary : 0);
+        : (payslip.netSalary !== undefined ? payslip.netSalary : (earn.grossEarnings || 0) - (ded.totalDeductions || 0));
 
-    // Use admin uploaded signature from backend company object or client systemSettings
-    const companySealUrl = comp.companySeal || systemSettings.companySeal || '';
+    const companyName = comp.name || systemSettings.companyName || 'GLX INDUSTRIES';
+    const companyAddress = (comp.address && comp.address.trim()) || (systemSettings.companyAddress && systemSettings.companyAddress.trim()) || 'No.14, Negambo Road, Thudella, Ja-Ela, Sri Lanka';
+    const companyLogo = comp.logo || systemSettings.companyLogo || COMPANY_LOGO_BASE64;
+    const companySeal = comp.seal || systemSettings.companySeal || '';
+    const bossName = systemSettings.bossName || 'Olivia Wilson';
+    const bossTitle = systemSettings.bossTitle || `CEO ${companyName}`;
+    const bossSignatureUrl = systemSettings.bossSignature || '';
 
-    // Build the Exact Pixel-Perfect Modern Salary Slip jsPDF Document
+    // Exactly two deduction amounts: Advance and Deduction
+    const advanceAmount = Number(ded.advances || 0);
+    const deductionAmount = Number(
+        ded.totalDeductions !== undefined
+            ? Math.max(0, Number((ded.totalDeductions - advanceAmount).toFixed(2)))
+            : Number(((ded.epfEmployee || 0) + (ded.otherDeductions || 0)).toFixed(2))
+    );
+
+    // Build the Exact Pixel-Perfect Salary Slip jsPDF Document
     const buildSalarySlipPdfDoc = () => {
         const doc = new jsPDF({
             orientation: 'portrait',
@@ -106,249 +112,232 @@ export default function NormalPayslipModal({
             format: 'a4'
         });
 
-        // 1. Top Midnight Navy Header Banner
-        doc.setFillColor(19, 25, 67); // Deep Navy #131943
-        doc.rect(0, 0, 210, 50, 'F');
+        // 1. Top-Left Decorative Geometric Triangles (Crimson / Dark Red #8B0000)
+        doc.setFillColor(139, 0, 0); // #8B0000
+        doc.triangle(0, 0, 16, 0, 0, 16, 'F');
 
-        // "Salary Slip." Title in White Bold
-        doc.setTextColor(255, 255, 255);
+        doc.setFillColor(185, 28, 28); // #B91C1C
+        doc.triangle(0, 16, 16, 0, 16, 16, 'F');
+
+        doc.setFillColor(127, 29, 29); // #7F1D1D
+        doc.triangle(0, 16, 0, 24, 16, 16, 'F');
+
+        doc.setFillColor(153, 27, 27); // #991B1B
+        doc.triangle(16, 0, 24, 0, 16, 16, 'F');
+
+        doc.setFillColor(139, 0, 0);
+        doc.triangle(16, 16, 24, 16, 16, 24, 'F');
+
+        // 2. Title Section (Left) - Kept cleanly below geometric corner
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(36);
-        doc.text('Salary Slip.', 20, 34);
+        doc.setFontSize(28);
+        doc.setTextColor(17, 24, 39);
+        doc.text('Salary Slip.', 20, 40);
 
-        // Company Name Subtitle in Top Banner
-        doc.setFontSize(10);
+        // Location Pin + Address
+        doc.setFontSize(8.5);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(200, 210, 240);
-        doc.text(comp.name || systemSettings.companyName || 'GLX INDUSTRIES (PVT) LTD', 20, 42);
+        doc.setTextColor(185, 28, 28);
+        doc.text('•', 20, 48);
+        doc.setTextColor(75, 85, 99);
+        doc.text(companyAddress, 24, 48);
 
-        // 2. Emerald Green Horizontal Accent Strip (Left half)
-        doc.setFillColor(26, 107, 61); // Emerald Green #1A6B3D
-        doc.rect(0, 50, 105, 5, 'F');
+        // 3. Company Brand Header (Right - Logo removed as requested)
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.setTextColor(17, 24, 39);
+        doc.text(companyName, 190, 40, { align: 'right' });
 
-        // 3. Employee & Period Metadata Grid (White Area)
-        let metaY = 68;
-        doc.setFontSize(9.5);
-        doc.setTextColor(20, 20, 20);
+        // 4. Metadata Two-Column Grid
+        let metaY = 56;
+        doc.setFontSize(9);
 
         // Left Column
-        doc.setFont('helvetica', 'bold');
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(75, 85, 99);
         doc.text('Employee Name:', 20, metaY);
-        doc.setFont('helvetica', 'normal');
-        doc.text(emp.name || 'Employee', 55, metaY);
-
         doc.setFont('helvetica', 'bold');
+        doc.setTextColor(17, 24, 39);
+        doc.text(emp.name || 'Cahaya Dewi', 55, metaY);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(75, 85, 99);
         doc.text('Employee ID:', 20, metaY + 6);
-        doc.setFont('helvetica', 'normal');
-        doc.text(emp.payrollNumber || 'EMP-001', 55, metaY + 6);
-
         doc.setFont('helvetica', 'bold');
-        doc.text('Department:', 20, metaY + 12);
+        doc.setTextColor(17, 24, 39);
+        doc.text(emp.payrollNumber || 'EMP-2026', 55, metaY + 6);
+
         doc.setFont('helvetica', 'normal');
-        doc.text(emp.department || emp.designation || 'Manufacturing & Operations', 55, metaY + 12);
+        doc.setTextColor(75, 85, 99);
+        doc.text('Department:', 20, metaY + 12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(17, 24, 39);
+        doc.text(emp.department || 'Marketing', 55, metaY + 12);
 
         // Right Column
-        doc.setFont('helvetica', 'bold');
-        doc.text('Pay Period:', 115, metaY);
         doc.setFont('helvetica', 'normal');
-        doc.text(`${startDate} – ${endDate}`, 145, metaY);
-
+        doc.setTextColor(75, 85, 99);
+        doc.text('Account Number:', 115, metaY);
         doc.setFont('helvetica', 'bold');
-        doc.text('Payment Date:', 115, metaY + 6);
-        doc.setFont('helvetica', 'normal');
-        doc.text(endDate, 145, metaY + 6);
+        doc.setTextColor(17, 24, 39);
+        doc.text(String(emp.accountNumber || '12345678900'), 150, metaY);
 
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(75, 85, 99);
+        doc.text('Pay Period:', 115, metaY + 6);
         doc.setFont('helvetica', 'bold');
-        doc.text('Employment Status:', 115, metaY + 12);
+        doc.setTextColor(17, 24, 39);
+        doc.text(`${startDate} – ${endDate}`, 150, metaY + 6);
+
         doc.setFont('helvetica', 'normal');
-        doc.text(emp.designation ? `${emp.designation} (Active)` : 'Full-Time Staff', 152, metaY + 12);
+        doc.setTextColor(75, 85, 99);
+        doc.text('Pay Date:', 115, metaY + 12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(17, 24, 39);
+        doc.text(endDate, 150, metaY + 12);
 
-        // 4. Breakdown Table with Deep Navy Header
-        const tableY = metaY + 22;
-
+        // 5. Table Section (Deep Crimson / Burgundy Header)
+        const tableY = metaY + 20;
         const tableBody = [];
+
+        tableBody.push(['Basic Salary', Number(earn.basicSalary || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })]);
+
         if (earn.overtimePayment > 0) {
-            tableBody.push([
-                'Basic Salary',
-                'Monthly Basic',
-                'Standard',
-                `Rs. ${Number(earn.basicSalary || 0).toLocaleString()}`
-            ]);
-            tableBody.push([
-                'OT / Commission',
-                'Excess Balance',
-                'Performance & OT',
-                `Rs. ${Number(earn.overtimePayment).toLocaleString()}`
-            ]);
-        } else {
-            tableBody.push([
-                'Basic Salary',
-                `${earn.totalHours || 0} Hours`,
-                `Rs. ${Number(emp.hourlyRate || 0).toFixed(0)}`,
-                `Rs. ${Number(earn.basicSalary || 0).toLocaleString()}`
-            ]);
-        }
-        if (earn.commission > 0) {
-            tableBody.push(['Commission / Incentives', '1 Job', 'Fixed', `Rs. ${Number(earn.commission).toLocaleString()}`]);
+            tableBody.push(['Overtime (OT) Payment', Number(earn.overtimePayment).toLocaleString('en-US', { minimumFractionDigits: 2 })]);
         }
         if (earn.otherAllowances > 0) {
-            tableBody.push(['Allowances', 'Monthly', 'Fixed', `Rs. ${Number(earn.otherAllowances).toLocaleString()}`]);
+            tableBody.push(['Other Allowances', Number(earn.otherAllowances).toLocaleString('en-US', { minimumFractionDigits: 2 })]);
+        }
+        if (earn.commission > 0) {
+            tableBody.push(['Bonus / Commission', Number(earn.commission).toLocaleString('en-US', { minimumFractionDigits: 2 })]);
         }
 
-        // Gross Pay Row
-        tableBody.push(['Gross Pay', '', '', `Rs. ${Number(earn.grossEarnings || 0).toLocaleString()}`]);
+        // Exactly two deduction rows: Advance & Deduction
+        tableBody.push([
+            'Advance',
+            advanceAmount > 0 ? `-${advanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '0.00'
+        ]);
+
+        tableBody.push([
+            'Deduction',
+            deductionAmount > 0 ? `-${deductionAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '0.00'
+        ]);
 
         autoTable(doc, {
             startY: tableY,
             margin: { left: 20, right: 20 },
-            theme: 'plain',
+            theme: 'grid',
+            tableLineColor: [209, 213, 219],
+            tableLineWidth: 0.25,
             styles: {
-                fontSize: 9,
-                cellPadding: 3.5,
-                textColor: [30, 30, 30]
+                fontSize: 9.5,
+                cellPadding: 4,
+                textColor: [31, 41, 55],
+                lineColor: [209, 213, 219],
+                lineWidth: 0.25
             },
             headStyles: {
-                fillColor: [19, 25, 67], // Deep Navy
+                fillColor: [139, 0, 0], // Dark Red / Burgundy #8B0000
                 textColor: [255, 255, 255],
                 fontStyle: 'bold',
-                fontSize: 9.5
+                fontSize: 10,
+                cellPadding: 4.5
             },
             columnStyles: {
-                0: { cellWidth: 70 },
-                1: { cellWidth: 35, halign: 'center' },
-                2: { cellWidth: 35, halign: 'center' },
-                3: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }
+                0: { cellWidth: 110, halign: 'center' },
+                1: { cellWidth: 60, halign: 'center', fontStyle: 'bold' }
             },
-            head: [['Description', 'Qty', 'Rate', 'Amount']],
-            body: tableBody,
-            didParseCell: function (data) {
-                if (data.row.index === tableBody.length - 1) {
-                    data.cell.styles.fontStyle = 'bold';
-                    data.cell.styles.textColor = [19, 25, 67];
-                }
-            }
+            head: [['Description', 'Amount ($)']],
+            body: tableBody
         });
 
-        const finalTableY = doc.lastAutoTable.finalY + 8;
+        const finalTableY = doc.lastAutoTable.finalY + 12;
 
-        // Horizontal Line under table
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        doc.line(20, finalTableY, 190, finalTableY);
-
-        // 5. Bottom Section: Left (Thank you + Uploaded Signature) & Right (Deductions + Net Pay)
-        const bottomY = finalTableY + 8;
-
-        // Left Side: "Thank you for your hard work!"
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
-        doc.setTextColor(20, 20, 20);
-        doc.text('Thank you for', 20, bottomY);
-        doc.text('your hard work!', 20, bottomY + 6);
-
-        // Official Company Seal
-        const sealImgEl = document.querySelector('img[alt="Official Company Seal"]');
-        let sealAdded = false;
-        if (sealImgEl && sealImgEl.complete && sealImgEl.naturalWidth > 0) {
+        // 6. Bottom Section: Left (Company Seal & Authorized Person) & Right (Total Earnings + Thanks Ribbon)
+        // Left: Company Seal (No Signature, No Person Name)
+        if (companySeal && companySeal.startsWith('data:image')) {
             try {
-                doc.addImage(sealImgEl, 'PNG', 20, bottomY + 8, 20, 20, undefined, 'FAST');
-                sealAdded = true;
-            } catch (imgErr) {
-                console.warn('Could not render seal element in PDF:', imgErr);
+                doc.addImage(companySeal, 'PNG', 20, finalTableY + 4, 22, 22);
+            } catch (e) {
+                doc.setDrawColor(185, 28, 28);
+                doc.setLineWidth(0.6);
+                doc.circle(32, finalTableY + 14, 11, 'S');
+                doc.setFontSize(5.5);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(185, 28, 28);
+                doc.text('GLX INDUSTRIES', 32, finalTableY + 12, { align: 'center' });
+                doc.setFontSize(5);
+                doc.text('★ OFFICIAL ★', 32, finalTableY + 15, { align: 'center' });
+                doc.text('APPROVED', 32, finalTableY + 18, { align: 'center' });
             }
-        }
-        if (!sealAdded && companySealUrl && companySealUrl.startsWith('data:image')) {
-            try {
-                const format = (companySealUrl.includes('image/jpeg') || companySealUrl.includes('image/jpg')) ? 'JPEG' : 'PNG';
-                doc.addImage(companySealUrl, format, 20, bottomY + 8, 20, 20, undefined, 'FAST');
-                sealAdded = true;
-            } catch (imgErr) {
-                console.warn('Could not render seal in PDF:', imgErr);
-            }
-        }
-        if (!sealAdded) {
-            // Vector circular company seal stamp
+        } else {
             doc.setDrawColor(185, 28, 28);
             doc.setLineWidth(0.6);
-            doc.circle(30, bottomY + 18, 10);
-            doc.circle(30, bottomY + 18, 9.2);
+            doc.circle(32, finalTableY + 14, 11, 'S');
+            doc.setLineWidth(0.3);
+            doc.circle(32, finalTableY + 14, 9, 'S');
+            doc.setFontSize(5.5);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(5);
             doc.setTextColor(185, 28, 28);
-            doc.text('GLX INDUSTRIES', 30, bottomY + 15.5, { align: 'center' });
-            doc.setFontSize(6);
-            doc.text('OFFICIAL SEAL', 30, bottomY + 18.5, { align: 'center' });
-            doc.setFontSize(4.5);
-            doc.text('★ AUTHORIZED ★', 30, bottomY + 21, { align: 'center' });
+            doc.text('GLX INDUSTRIES', 32, finalTableY + 12, { align: 'center' });
+            doc.setFontSize(5);
+            doc.text('★ OFFICIAL ★', 32, finalTableY + 15, { align: 'center' });
+            doc.text('APPROVED', 32, finalTableY + 18, { align: 'center' });
         }
 
-        // Authorization Line
-        doc.setDrawColor(0, 0, 0);
-        doc.setLineWidth(0.4);
-        doc.line(20, bottomY + 30, 75, bottomY + 30);
+        doc.setDrawColor(156, 163, 175);
+        doc.setLineWidth(0.3);
+        doc.line(20, finalTableY + 28, 65, finalTableY + 28);
 
-        // Authorized Person
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.setTextColor(20, 20, 20);
-        doc.text('Authorized Person', 20, bottomY + 35);
+        doc.setFontSize(10.5);
+        doc.setTextColor(17, 24, 39);
+        doc.text('Authorized Person', 20, finalTableY + 34);
 
-        // Right Side: Deductions Breakdown (EPF only if includeEpfEtf is true!)
-        let rightY = bottomY + 1;
-        doc.setFontSize(9);
+        // Right: Total Earnings & Thanks! Ribbon
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(139, 0, 0); // Burgundy
+        doc.text('Total Earnings:', 190, finalTableY + 4, { align: 'right' });
+
+        doc.setFontSize(16);
+        doc.setTextColor(17, 24, 39);
+        doc.text(`$${Number(net || 4000).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 190, finalTableY + 12, { align: 'right' });
+
+        // Solid Burgundy Thanks! Card
+        const ribbonX = 120;
+        const ribbonY = finalTableY + 18;
+        const ribbonW = 70;
+        const ribbonH = 22;
+
+        doc.setFillColor(139, 0, 0);
+        doc.rect(ribbonX, ribbonY, ribbonW, ribbonH, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text('Thanks!', ribbonX + 6, ribbonY + 9);
+
+        doc.setFontSize(8.5);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(60, 60, 60);
+        doc.setTextColor(254, 226, 226);
+        doc.text('For your cooperation.', ribbonX + 6, ribbonY + 16);
 
-        if (includeEpfEtf && ded.epfEmployee > 0) {
-            doc.text('EPF (8%)', 125, rightY);
-            doc.text(`-Rs. ${Number(ded.epfEmployee).toLocaleString()}`, 190, rightY, { align: 'right' });
-            rightY += 5.5;
-        }
-
-        if (ded.advances > 0) {
-            doc.text('Salary Advance', 125, rightY);
-            doc.text(`-Rs. ${Number(ded.advances).toLocaleString()}`, 190, rightY, { align: 'right' });
-            rightY += 5.5;
-        }
-
-        if (ded.otherDeductions > 0) {
-            doc.text('Other Deductions / Cuts', 125, rightY);
-            doc.text(`-Rs. ${Number(ded.otherDeductions).toLocaleString()}`, 190, rightY, { align: 'right' });
-            rightY += 5.5;
-        }
-
-        // Divider Line above Net Pay
-        doc.setDrawColor(180, 180, 180);
-        doc.line(125, rightY + 1, 190, rightY + 1);
-        rightY += 7;
-
-        // NET PAY (Large Bold)
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(13);
-        doc.setTextColor(19, 25, 67);
-        doc.text('Net Pay', 125, rightY);
-        doc.text(`Rs. ${Number(net).toLocaleString('en-US', { minimumFractionDigits: 2 })}`, 190, rightY, { align: 'right' });
-
-        // 6. Bottom Right Decorative Geometric Accent (Mirror of top header)
-        doc.setFillColor(26, 107, 61); // Emerald Green Strip
-        doc.rect(95, 273, 115, 4, 'F');
-
-        doc.setFillColor(19, 25, 67); // Deep Navy Block
-        doc.rect(95, 277, 115, 20, 'F');
+        // Ribbon Tails (two small downward triangles)
+        doc.setFillColor(139, 0, 0);
+        doc.triangle(ribbonX + ribbonW - 20, ribbonY + ribbonH, ribbonX + ribbonW - 12, ribbonY + ribbonH, ribbonX + ribbonW - 16, ribbonY + ribbonH + 7, 'F');
+        doc.triangle(ribbonX + ribbonW - 10, ribbonY + ribbonH, ribbonX + ribbonW - 2, ribbonY + ribbonH, ribbonX + ribbonW - 6, ribbonY + ribbonH + 7, 'F');
 
         return doc;
     };
 
-    // Handle Direct Print for Salary Slip — PRINTS THE EXACT SAME GENERATED PDF DOCUMENT
     const handlePrint = () => {
         try {
             const doc = buildSalarySlipPdfDoc();
             doc.autoPrint();
             const blobUrl = doc.output('bloburl');
 
-            // 1. Try to open via hidden iframe for instant seamless print dialog
             const iframe = document.createElement('iframe');
-            iframe.id = 'salary-slip-pdf-print-frame';
             iframe.style.position = 'fixed';
             iframe.style.right = '0';
             iframe.style.bottom = '0';
@@ -360,35 +349,19 @@ export default function NormalPayslipModal({
             iframe.src = blobUrl;
             document.body.appendChild(iframe);
 
-            let triggered = false;
             iframe.onload = () => {
                 try {
                     iframe.contentWindow.focus();
                     iframe.contentWindow.print();
-                    triggered = true;
-                } catch (e) {
+                } catch {
                     window.open(blobUrl, '_blank');
-                    triggered = true;
                 }
             };
-
-            // In Chrome, if iframe.onload doesn't fire for PDF plugin within 500ms, open in tab
-            setTimeout(() => {
-                if (!triggered) {
-                    window.open(blobUrl, '_blank');
-                }
-                setTimeout(() => {
-                    if (document.body.contains(iframe)) {
-                        iframe.remove();
-                    }
-                }, 5000);
-            }, 600);
         } catch (err) {
             toast.error('Failed to print salary slip: ' + err.message);
         }
     };
 
-    // Handle Modern Executive PDF Export matching the User's Template
     const handleDownloadPdf = () => {
         try {
             const doc = buildSalarySlipPdfDoc();
@@ -399,32 +372,28 @@ export default function NormalPayslipModal({
         }
     };
 
-    // Handle WhatsApp Share
     const handleWhatsAppShare = () => {
-        const text = `*SALARY SLIP — ${comp.name || systemSettings.companyName || 'GLX INDUSTRIES'}*\n\n` +
-            `*Employee:* ${emp.name}\n` +
+        const text = `*SALARY SLIP — ${companyName}*\n\n` +
+            `*Employee Name:* ${emp.name}\n` +
             `*Employee ID:* ${emp.payrollNumber}\n` +
-            `*Department:* ${emp.department || emp.designation || 'Staff'}\n` +
+            `*Department:* ${emp.department || 'Operations'}\n` +
             `*Pay Period:* ${startDate} to ${endDate}\n` +
             `━━━━━━━━━━━━━━━━━━━━\n` +
-            `• Basic / Day Salary: Rs. ${Number(earn.basicSalary || 0).toLocaleString()}\n` +
-            (earn.overtimePayment > 0 ? `• Overtime Pay: Rs. ${Number(earn.overtimePayment).toLocaleString()}\n` : '') +
-            `• Gross Earnings: Rs. ${Number(earn.grossEarnings || 0).toLocaleString()}\n` +
+            `• Basic Salary: Rs. ${Number(earn.basicSalary || 0).toLocaleString()}\n` +
+            (earn.overtimePayment > 0 ? `• Housing / OT Allowance: Rs. ${Number(earn.overtimePayment).toLocaleString()}\n` : '') +
+            (earn.otherAllowances > 0 ? `• Transport Allowance: Rs. ${Number(earn.otherAllowances).toLocaleString()}\n` : '') +
+            (earn.commission > 0 ? `• Bonus: Rs. ${Number(earn.commission).toLocaleString()}\n` : '') +
             `━━━━━━━━━━━━━━━━━━━━\n` +
-            (includeEpfEtf && ded.epfEmployee > 0 ? `• Employee EPF (8%): -Rs. ${Number(ded.epfEmployee).toLocaleString()}\n` : '') +
-            (ded.advances > 0 ? `• Salary Advances: -Rs. ${Number(ded.advances).toLocaleString()}\n` : '') +
-            (ded.otherDeductions > 0 ? `• Deductions / Cuts: -Rs. ${Number(ded.otherDeductions).toLocaleString()}\n` : '') +
-            `━━━━━━━━━━━━━━━━━━━━\n` +
-            `*NET TAKE-HOME PAY: Rs. ${Number(net).toLocaleString('en-US', { minimumFractionDigits: 2 })}*\n\n` +
-            `_Thank you for your hard work!_`;
+            `*TOTAL EARNINGS: Rs. ${Number(net || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}*\n\n` +
+            `_Thanks! For your cooperation._`;
 
         const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
     };
 
     return (
-        <div className="payslip-modal-backdrop fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
-            {/* PRISTINE SALARY SLIP PRINT CSS */}
+        <div className="payslip-modal-backdrop fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-3 backdrop-blur-xs animate-in fade-in duration-150 overflow-y-auto">
+            {/* Print Styles */}
             <style>{`
                 @media print {
                     body.payslip-modal-open {
@@ -459,7 +428,6 @@ export default function NormalPayslipModal({
                         max-width: 100% !important;
                         width: 100% !important;
                         overflow: visible !important;
-                        border-radius: 0 !important;
                     }
                     body.payslip-modal-open .payslip-modal-top-bar {
                         display: none !important;
@@ -469,45 +437,40 @@ export default function NormalPayslipModal({
                         width: 100% !important;
                         max-width: 100% !important;
                         margin: 0 !important;
-                        padding: 0 !important;
+                        padding: 20mm !important;
                         background: #ffffff !important;
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
-                    body.payslip-modal-open .salary-slip-printable-canvas * {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
                     }
                 }
             `}</style>
 
-            <div className="payslip-modal-wrapper bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden border border-gray-300 my-6">
-                
+            <div className="payslip-modal-wrapper bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-gray-300 my-6 font-sans">
                 {/* Modal Top Control Bar */}
-                <div className="payslip-modal-top-bar bg-gray-900 px-5 py-3 border-b border-gray-800 flex items-center justify-between text-white">
+                <div className="payslip-modal-top-bar bg-gray-950 px-5 py-3 border-b border-gray-800 flex items-center justify-between text-white">
                     <div className="flex items-center gap-2">
-                        <Sparkles size={16} className="text-emerald-400" />
-                        <h3 className="font-bold text-sm tracking-wide">Modern Salary Slip (Executive Template)</h3>
+                        <Sparkles size={16} className="text-red-400" />
+                        <h3 className="font-bold text-sm tracking-wide">Modern Salary Slip</h3>
                     </div>
 
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleDownloadPdf}
-                            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded flex items-center gap-1.5 transition cursor-pointer"
+                            className="px-3 py-1 bg-red-700 hover:bg-red-800 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition cursor-pointer"
                         >
                             <Download size={14} />
                             Download PDF
                         </button>
                         <button
                             onClick={handlePrint}
-                            className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded flex items-center gap-1.5 transition cursor-pointer"
+                            className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition cursor-pointer"
                         >
                             <Printer size={14} />
                             Print
                         </button>
                         <button
                             onClick={handleWhatsAppShare}
-                            className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded flex items-center gap-1.5 transition cursor-pointer"
+                            className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition cursor-pointer"
                             title="Share on WhatsApp"
                         >
                             <MessageSquare size={14} />
@@ -524,182 +487,227 @@ export default function NormalPayslipModal({
 
                 {isLoading ? (
                     <div className="py-24 text-center">
-                        <RefreshCw size={26} className="animate-spin text-indigo-600 mx-auto mb-2" />
+                        <RefreshCw size={26} className="animate-spin text-red-600 mx-auto mb-2" />
                         <p className="text-xs text-gray-500 font-semibold">Generating modern salary slip...</p>
                     </div>
                 ) : (
                     /* VISUAL SALARY SLIP CANVAS (Matches User's Screenshot Exactly) */
-                    <div className="salary-slip-printable-canvas p-0 bg-white" ref={printRef}>
+                    <div className="salary-slip-printable-canvas relative p-8 sm:p-12 bg-white text-gray-900" ref={printRef}>
                         
-                        {/* 1. Deep Midnight Navy Header */}
-                        <div className="bg-[#131943] text-white px-8 pt-8 pb-5 relative">
-                            <h1 className="text-4xl font-bold tracking-tight">Salary Slip.</h1>
-                            <p className="text-xs text-indigo-200 mt-1 uppercase tracking-wider font-semibold">
-                                {comp.name || systemSettings.companyName || 'GLX INDUSTRIES (PVT) LTD'}
-                            </p>
+                        {/* Top-Left Corner Geometric Triangles (Tightly kept at top-left edge) */}
+                        <div className="absolute top-0 left-0 w-14 h-14 sm:w-16 sm:h-16 pointer-events-none z-0">
+                            <svg viewBox="0 0 100 100" className="w-full h-full">
+                                <polygon points="0,0 55,0 0,55" fill="#8B0000" />
+                                <polygon points="0,55 55,0 55,55" fill="#B91C1C" />
+                                <polygon points="0,55 0,85 55,55" fill="#7F1D1D" />
+                                <polygon points="55,0 85,0 55,55" fill="#991B1B" />
+                                <polygon points="55,55 85,55 55,85" fill="#8B0000" />
+                            </svg>
                         </div>
 
-                        {/* 2. Emerald Green Accent Bar (Left Half) */}
-                        <div className="w-1/2 h-1.5 bg-[#1A6B3D]"></div>
-
-                        {/* 3. Metadata Section */}
-                        <div className="px-8 py-6 grid grid-cols-2 gap-y-2 text-xs border-b border-gray-100">
+                        {/* Top Header: Title (Left) and Company Logo & Name (Right) - Placed cleanly below corner motif */}
+                        <div className="flex justify-between items-start pt-10 sm:pt-12 mb-8 relative z-10">
                             <div>
-                                <span className="font-bold text-gray-900">Employee Name: </span>
-                                <span className="text-gray-800">{emp.name}</span>
-                            </div>
-                            <div>
-                                <span className="font-bold text-gray-900">Pay Period: </span>
-                                <span className="text-gray-800">{startDate} – {endDate}</span>
+                                <h1 className="text-4xl sm:text-5xl font-black text-gray-900 tracking-tight font-sans">
+                                    Salary Slip.
+                                </h1>
+                                <div className="flex items-center gap-1.5 text-xs text-gray-600 mt-2 font-medium">
+                                    <MapPin size={13} className="text-red-700 shrink-0 fill-red-100" />
+                                    <span>{companyAddress}</span>
+                                </div>
                             </div>
 
-                            <div>
-                                <span className="font-bold text-gray-900">Employee ID: </span>
-                                <span className="text-gray-800 font-mono">{emp.payrollNumber}</span>
-                            </div>
-                            <div>
-                                <span className="font-bold text-gray-900">Payment Date: </span>
-                                <span className="text-gray-800">{endDate}</span>
-                            </div>
-
-                            <div>
-                                <span className="font-bold text-gray-900">Department: </span>
-                                <span className="text-gray-800">{emp.department || emp.designation || 'Manufacturing & Operations'}</span>
-                            </div>
-                            <div>
-                                <span className="font-bold text-gray-900">Employment Status: </span>
-                                <span className="text-gray-800">{emp.designation ? `${emp.designation} (Active)` : 'Full-Time Staff'}</span>
+                            {/* Right: Company Name ONLY (Logo removed as requested) */}
+                            <div className="text-right">
+                                <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-tight">
+                                    {companyName}
+                                </h2>
                             </div>
                         </div>
 
-                        {/* 4. Table Section */}
-                        <div className="px-8 py-4">
-                            <table className="w-full text-xs">
-                                <thead>
-                                    <tr className="bg-[#131943] text-white">
-                                        <th className="py-2.5 px-4 text-left font-bold rounded-l-xs">Description</th>
-                                        <th className="py-2.5 px-4 text-center font-bold">Qty</th>
-                                        <th className="py-2.5 px-4 text-center font-bold">Rate</th>
-                                        <th className="py-2.5 px-4 text-right font-bold rounded-r-xs">Amount</th>
+                        {/* Metadata Grid (Two-Column Layout) */}
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs sm:text-sm mb-8 text-gray-800">
+                            <div className="space-y-2">
+                                <div>
+                                    <span className="text-gray-500">Employee Name: </span>
+                                    <strong className="text-gray-900 font-bold ml-1">{emp.name || 'Cahaya Dewi'}</strong>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500">Employee ID: </span>
+                                    <strong className="text-gray-900 font-bold font-mono ml-1">{emp.payrollNumber || 'EMP-2026'}</strong>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500">Department: </span>
+                                    <strong className="text-gray-900 font-bold ml-1">{emp.department || 'Marketing'}</strong>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div>
+                                    <span className="text-gray-500">Account Number: </span>
+                                    <strong className="text-gray-900 font-bold font-mono ml-1">{emp.accountNumber || '12345678900'}</strong>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500">Pay Period: </span>
+                                    <strong className="text-gray-900 font-bold ml-1">{startDate} – {endDate}</strong>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500">Pay Date: </span>
+                                    <strong className="text-gray-900 font-bold ml-1">{endDate}</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Table Section with Burgundy/Dark Red Header */}
+                        <div className="mb-10 overflow-hidden border border-gray-300 rounded-sm">
+                            <table className="w-full text-xs sm:text-sm border-collapse no-sticky no-zebra print-table salary-slip-table">
+                                <thead style={{ backgroundColor: '#8B0000', color: '#ffffff' }} className="bg-[#8B0000] text-white">
+                                    <tr style={{ backgroundColor: '#8B0000', color: '#ffffff' }} className="bg-[#8B0000] text-white">
+                                        <th
+                                            style={{ backgroundColor: '#8B0000', color: '#ffffff' }}
+                                            className="py-3 px-6 text-center font-black tracking-wider uppercase text-xs sm:text-sm border-r border-red-950 w-2/3 text-white bg-[#8B0000]"
+                                        >
+                                            Description
+                                        </th>
+                                        <th
+                                            style={{ backgroundColor: '#8B0000', color: '#ffffff' }}
+                                            className="py-3 px-6 text-center font-black tracking-wider uppercase text-xs sm:text-sm w-1/3 text-white bg-[#8B0000]"
+                                        >
+                                            Amount ({systemSettings.currencySymbol || '$'})
+                                        </th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 text-gray-800">
-                                    {earn.overtimePayment > 0 ? (
-                                        <>
-                                            <tr>
-                                                <td className="py-3 px-4 font-medium">Basic Salary</td>
-                                                <td className="py-3 px-4 text-center font-mono">Monthly Basic</td>
-                                                <td className="py-3 px-4 text-center font-mono">Standard</td>
-                                                <td className="py-3 px-4 text-right font-bold font-mono">Rs. {Number(earn.basicSalary || 0).toLocaleString()}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="py-2.5 px-4 font-medium">OT / Commission</td>
-                                                <td className="py-2.5 px-4 text-center font-mono">Excess Balance</td>
-                                                <td className="py-2.5 px-4 text-center font-mono">Performance &amp; OT</td>
-                                                <td className="py-2.5 px-4 text-right font-bold font-mono">Rs. {Number(earn.overtimePayment).toLocaleString()}</td>
-                                            </tr>
-                                        </>
-                                    ) : (
+                                <tbody className="divide-y divide-gray-300 text-gray-800 bg-white">
+                                    {/* Basic Wage / Salary */}
+                                    <tr>
+                                        <td className="py-3.5 px-6 text-center font-medium border-r border-gray-300">
+                                            Basic Salary
+                                        </td>
+                                        <td className="py-3.5 px-6 text-center font-bold font-mono">
+                                            {Number(earn.basicSalary || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                        </td>
+                                    </tr>
+
+                                    {/* Overtime payment only if present */}
+                                    {earn.overtimePayment > 0 && (
                                         <tr>
-                                            <td className="py-3 px-4 font-medium">Basic Salary</td>
-                                            <td className="py-3 px-4 text-center font-mono">{earn.totalHours || 0} Hours</td>
-                                            <td className="py-3 px-4 text-center font-mono">Rs. {Number(emp.hourlyRate || 0).toFixed(0)}</td>
-                                            <td className="py-3 px-4 text-right font-bold font-mono">Rs. {Number(earn.basicSalary || 0).toLocaleString()}</td>
+                                            <td className="py-3.5 px-6 text-center font-medium border-r border-gray-300">
+                                                Overtime (OT) Payment
+                                            </td>
+                                            <td className="py-3.5 px-6 text-center font-bold font-mono">
+                                                {Number(earn.overtimePayment).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                            </td>
                                         </tr>
                                     )}
 
+                                    {/* Allowances only if present */}
                                     {earn.otherAllowances > 0 && (
                                         <tr>
-                                            <td className="py-2.5 px-4 font-medium">Allowances</td>
-                                            <td className="py-2.5 px-4 text-center font-mono">Monthly</td>
-                                            <td className="py-2.5 px-4 text-center font-mono">Fixed</td>
-                                            <td className="py-2.5 px-4 text-right font-bold font-mono">Rs. {Number(earn.otherAllowances).toLocaleString()}</td>
+                                            <td className="py-3.5 px-6 text-center font-medium border-r border-gray-300">
+                                                Other Allowances
+                                            </td>
+                                            <td className="py-3.5 px-6 text-center font-bold font-mono">
+                                                {Number(earn.otherAllowances).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                            </td>
                                         </tr>
                                     )}
 
-                                    {/* Gross Pay Subtotal */}
-                                    <tr className="border-t-2 border-gray-200">
-                                        <td colSpan={3} className="py-3 px-4 font-bold text-gray-900">Gross Pay</td>
-                                        <td className="py-3 px-4 text-right font-bold font-mono text-gray-950 text-sm">
-                                            Rs. {Number(earn.grossEarnings || 0).toLocaleString()}
+                                    {/* Bonus only if present */}
+                                    {earn.commission > 0 && (
+                                        <tr>
+                                            <td className="py-3.5 px-6 text-center font-medium border-r border-gray-300">
+                                                Bonus / Commission
+                                            </td>
+                                            <td className="py-3.5 px-6 text-center font-bold font-mono">
+                                                {Number(earn.commission).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                            </td>
+                                        </tr>
+                                    )}
+
+                                    {/* Advance Row (Exactly two deduction rows requested) */}
+                                    <tr className={advanceAmount > 0 ? "bg-red-50/40" : ""}>
+                                        <td className="py-3.5 px-6 text-center font-medium border-r border-gray-300 text-red-900">
+                                            Advance
+                                        </td>
+                                        <td className="py-3.5 px-6 text-center font-bold font-mono text-red-700">
+                                            {advanceAmount > 0 ? `-${advanceAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '0.00'}
+                                        </td>
+                                    </tr>
+
+                                    {/* Deduction Row */}
+                                    <tr className={deductionAmount > 0 ? "bg-red-50/40" : ""}>
+                                        <td className="py-3.5 px-6 text-center font-medium border-r border-gray-300 text-red-900">
+                                            Deduction
+                                        </td>
+                                        <td className="py-3.5 px-6 text-center font-bold font-mono text-red-700">
+                                            {deductionAmount > 0 ? `-${deductionAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '0.00'}
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
 
-                        {/* Divider */}
-                        <div className="mx-8 border-t border-gray-200 my-2"></div>
-
-                        {/* 5. Bottom Section: Left (Signature) & Right (Deductions & Net Pay) */}
-                        <div className="px-8 pt-4 pb-12 flex justify-between items-start">
-                            {/* Left: Thank you + Admin's Uploaded Signature */}
+                        {/* Bottom Section: Left (Company Seal & Authorized Person) & Right (Total + Thanks Ribbon) */}
+                        <div className="flex justify-between items-end pt-2 pb-6">
+                            {/* Left: Company Seal & Authorized Person (No Signature, No Person Name) */}
                             <div>
-                                <h3 className="text-base font-bold text-gray-950 leading-tight">
-                                    Thank you for<br />your hard work!
-                                </h3>
-
-                                <div className="mt-5">
-                                    <div className="relative mb-2 min-h-[64px] flex items-center">
-                                        {companySealUrl ? (
-                                            <img
-                                                src={companySealUrl}
-                                                alt="Official Company Seal"
-                                                style={{ maxHeight: '64px', maxWidth: '120px', objectFit: 'contain' }}
-                                                className="h-16 w-auto object-contain"
-                                            />
-                                        ) : (
-                                            <div className="w-16 h-16 rounded-full border-2 border-red-700/85 flex flex-col items-center justify-center p-1 text-red-700 rotate-[-6deg] select-none shadow-xs">
-                                                <span className="text-[6.5px] font-black uppercase tracking-tight text-center leading-none">GLX INDUSTRIES</span>
-                                                <span className="text-[7.5px] font-extrabold my-0.5">★ SEAL ★</span>
-                                                <span className="text-[5.5px] font-bold uppercase tracking-tighter">OFFICIAL</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="w-48 border-b-2 border-gray-900 pb-1"></div>
-                                    <div className="text-[11px] font-bold text-gray-900 mt-1 uppercase tracking-wider font-sans">
-                                        Authorized Person
-                                    </div>
+                                <div className="mb-2 min-h-[64px] flex items-center">
+                                    {companySeal ? (
+                                        <img src={companySeal} alt="Official Company Seal" className="h-16 w-auto object-contain" />
+                                    ) : (
+                                        <div className="w-16 h-16 select-none rotate-[-5deg]">
+                                            <svg viewBox="0 0 100 100" className="w-full h-full text-red-700">
+                                                <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="2.5" />
+                                                <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="3 2" />
+                                                <circle cx="50" cy="50" r="28" fill="none" stroke="currentColor" strokeWidth="1" />
+                                                <path id="sealTopModal" d="M 18,50 A 32,32 0 0,1 82,50" fill="none" />
+                                                <path id="sealBottomModal" d="M 82,50 A 32,32 0 0,1 18,50" fill="none" />
+                                                <text fontSize="7.5" fontWeight="bold" fill="currentColor" textAnchor="middle">
+                                                    <textPath href="#sealTopModal" startOffset="50%">GLX INDUSTRIES</textPath>
+                                                </text>
+                                                <text fontSize="6" fontWeight="bold" fill="currentColor" textAnchor="middle">
+                                                    <textPath href="#sealBottomModal" startOffset="50%">★ OFFICIAL SEAL ★</textPath>
+                                                </text>
+                                                <text x="50" y="53" fontSize="7" fontWeight="900" fill="currentColor" textAnchor="middle" letterSpacing="0.5">
+                                                    APPROVED
+                                                </text>
+                                            </svg>
+                                        </div>
+                                    )}
                                 </div>
+                                <div className="border-t border-gray-400 w-44 mt-2"></div>
+                                <h3 className="text-sm font-extrabold text-gray-900 tracking-tight mt-1.5">
+                                    Authorized Person
+                                </h3>
                             </div>
 
-                            {/* Right: Deductions + Net Pay (EPF ONLY IF includeEpfEtf IS TICKED!) */}
-                            <div className="w-64 space-y-2 text-xs">
-                                {includeEpfEtf && ded.epfEmployee > 0 && (
-                                    <div className="flex justify-between text-gray-700">
-                                        <span>EPF (8%)</span>
-                                        <span className="font-mono font-semibold text-rose-700">-Rs. {Number(ded.epfEmployee).toLocaleString()}</span>
-                                    </div>
-                                )}
-
-                                {ded.advances > 0 && (
-                                    <div className="flex justify-between text-gray-700">
-                                        <span>Salary Advance</span>
-                                        <span className="font-mono font-semibold text-rose-700">-Rs. {Number(ded.advances).toLocaleString()}</span>
-                                    </div>
-                                )}
-
-                                {ded.otherDeductions > 0 && (
-                                    <div className="flex justify-between text-gray-700">
-                                        <span>Other Deductions / Cuts</span>
-                                        <span className="font-mono font-semibold text-rose-700">-Rs. {Number(ded.otherDeductions).toLocaleString()}</span>
-                                    </div>
-                                )}
-
-                                <div className="border-t border-gray-300 pt-2 flex justify-between items-baseline">
-                                    <span className="text-base font-bold text-[#131943]">Net Pay</span>
-                                    <span className="text-lg font-bold font-mono text-[#131943]">
-                                        Rs. {Number(net).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            {/* Right: Total Earnings & Thanks! Ribbon Card */}
+                            <div className="text-right">
+                                <div className="mb-4">
+                                    <span style={{ color: '#8B0000' }} className="text-xs sm:text-sm font-bold text-[#8B0000] uppercase tracking-wider block">
+                                        Total Earnings:
+                                    </span>
+                                    <span className="text-2xl sm:text-3xl font-black text-gray-900 font-mono tracking-tight">
+                                        {systemSettings.currencySymbol || '$'}{Number(net || 4000).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                     </span>
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* 6. Bottom Right Decorative Geometric Accent (Mirror of Top Header) */}
-                        <div className="flex justify-end">
-                            <div className="w-1/2">
-                                <div className="h-1 bg-[#1A6B3D]"></div>
-                                <div className="h-6 bg-[#131943]"></div>
+                                {/* Solid Burgundy Ribbon Box */}
+                                <div className="relative inline-block text-left shadow-lg">
+                                    <div style={{ backgroundColor: '#8B0000', color: '#ffffff' }} className="bg-[#8B0000] text-white px-7 py-4">
+                                        <h4 className="text-2xl font-black tracking-tight leading-none font-sans">
+                                            Thanks!
+                                        </h4>
+                                        <p className="text-xs font-semibold text-red-100 mt-1">
+                                            For your cooperation.
+                                        </p>
+                                    </div>
+                                    {/* Ribbon Cutout Tails */}
+                                    <div className="flex justify-end gap-1.5 -mt-0.5 pr-4">
+                                        <div className="w-0 h-0 border-l-[11px] border-l-transparent border-r-[11px] border-r-transparent border-t-[14px] border-t-[#8B0000]" />
+                                        <div className="w-0 h-0 border-l-[11px] border-l-transparent border-r-[11px] border-r-transparent border-t-[14px] border-t-[#8B0000]" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -756,10 +756,23 @@ textarea {
   .quotation-print-area table thead,
   .quotation-print-area table thead th,
   .employee-payment-sheet-print table thead,
-  .employee-payment-sheet-print table thead th {
+  .employee-payment-sheet-print table thead th,
+  .salary-slip-printable-canvas table thead,
+  .salary-slip-printable-canvas table thead th,
+  .salary-slip-table thead,
+  .salary-slip-table thead th {
     position: static !important;
     box-shadow: none !important;
     background-color: transparent !important;
+  }
+
+  /* Specific solid burgundy header styling for Salary Slip */
+  .salary-slip-table thead th,
+  .salary-slip-table thead tr th,
+  .salary-slip-printable-canvas table thead th,
+  .salary-slip-printable-canvas table thead tr th {
+    background-color: #8B0000 !important;
+    color: #ffffff !important;
   }
 
   /* Table overflow containers - Constrain height so inner vertical scroll engages sticky headers */

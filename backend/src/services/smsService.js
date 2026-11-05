@@ -29,15 +29,15 @@ export const formatSmsContact = (phone) => {
  * Construct and send (simulate) a confirmation SMS to the supplier after GRN QA approval.
  * Writes a record to the database SmsLog.
  */
-export const sendGrnConfirmationSms = async (grn, customMessage = null) => {
+export const sendGrnConfirmationSms = async (grn, customMessage = null, customPhone = null) => {
     try {
         if (!grn) return;
         
-        let supplierPhone = 'N/A';
+        let supplierPhone = customPhone || 'N/A';
         let supplierName = grn.supplierName || 'Supplier';
 
         // Load the supplier to get the phone number if available
-        if (grn.supplierId) {
+        if (!customPhone && grn.supplierId) {
             const supplier = await Supplier.findById(grn.supplierId);
             if (supplier && supplier.primaryContact) {
                 supplierPhone = supplier.primaryContact.mobile || supplier.primaryContact.phone || 'N/A';
@@ -139,15 +139,15 @@ export const sendGrnConfirmationSms = async (grn, customMessage = null) => {
  * Total Amount: (Total) LKR
  * If any discrepancy, please contact with this Contact No immediately.
  */
-export const sendGrnCreationSms = async (grn) => {
+export const sendGrnCreationSms = async (grn, customMessage = null, customPhone = null) => {
     try {
         if (!grn) return;
 
-        let supplierPhone = 'N/A';
+        let supplierPhone = customPhone || 'N/A';
         let supplierName = grn.supplierName || 'Supplier';
 
         // Load the supplier to get the phone number if available
-        if (grn.supplierId) {
+        if (!customPhone && grn.supplierId) {
             const supplier = await Supplier.findById(grn.supplierId);
             if (supplier && supplier.primaryContact) {
                 supplierPhone = supplier.primaryContact.mobile || supplier.primaryContact.phone || 'N/A';
@@ -194,7 +194,7 @@ export const sendGrnCreationSms = async (grn) => {
         }
 
         // Construct the SMS message using user's template
-        const message = `Dear ${supplierName}, thank you for your supply to Authentic Lanka Exports.\nDate: ${formattedDate}\nProduct: ${productText}\nQuantity: ${quantityText}\nRate: ${rateText}\nTotal Amount: ${formattedTotal} LKR\nIf any discrepancy, please contact with ${contactNo} immediately.`;
+        const message = customMessage || `Dear ${supplierName}, thank you for your supply to Authentic Lanka Exports.\nDate: ${formattedDate}\nProduct: ${productText}\nQuantity: ${quantityText}\nRate: ${rateText}\nTotal Amount: ${formattedTotal} LKR\nIf any discrepancy, please contact with ${contactNo} immediately.`;
 
         let status = 'sent';
         let formattedContact = formatSmsContact(supplierPhone);
@@ -254,7 +254,7 @@ export const sendGrnCreationSms = async (grn) => {
 /**
  * Share a public document link via SMS and send a duplicate copy to the manager.
  */
-export const sendPublicDocumentSms = async (doc, clientPhone, documentType, hostOrigin) => {
+export const sendPublicDocumentSms = async (doc, clientPhone, documentType, hostOrigin, customMessage = null) => {
     try {
         const token = doc.publicToken;
         const link = `${hostOrigin}/public/documents/${token}`;
@@ -262,7 +262,7 @@ export const sendPublicDocumentSms = async (doc, clientPhone, documentType, host
         const clientName = doc.customerName || doc.vehicleOwner || 'Valued Customer';
         const docTypeTitle = (documentType === 'estimate' ? 'Estimate' : (documentType === 'invoice' ? 'Invoice' : 'Quotation'));
         
-        const message = `Dear ${clientName}, here is the link to view your GLX Industries ${docTypeTitle} (${docCode}): ${link}`;
+        const message = customMessage || `Dear ${clientName}, here is the link to view your GLX Industries ${docTypeTitle} (${docCode}): ${link}`;
         
         // Send SMS to client
         let formattedContact = formatSmsContact(clientPhone);
@@ -336,7 +336,7 @@ export const sendPublicDocumentSms = async (doc, clientPhone, documentType, host
 /**
  * Send payslip link via SMS to employee (without company name - short mode)
  */
-export const sendPayslipSms = async (payslipData, employeePhone, hostOrigin) => {
+export const sendPayslipSms = async (payslipData, employeePhone, hostOrigin, customMessage = null) => {
     try {
         const { payslip, payrollNumber, periodMonth, periodYear } = payslipData;
         const shareToken = payslip.payslipShareToken;
@@ -347,7 +347,7 @@ export const sendPayslipSms = async (payslipData, employeePhone, hostOrigin) => 
             'July', 'August', 'September', 'October', 'November', 'December'];
         const monthName = monthNames[(periodMonth || 1) - 1];
         
-        const message = `Dear ${employeeName}, your payslip for ${monthName} ${periodYear} (${payrollNumber}) is ready. View your salary details (without company name): ${link}`;
+        const message = customMessage || `Dear ${employeeName}, your payslip for ${monthName} ${periodYear} (${payrollNumber}) is ready. View your salary details (without company name): ${link}`;
         
         let formattedContact = formatSmsContact(employeePhone);
         let status = 'sent';
@@ -422,11 +422,11 @@ export const sendPayslipSms = async (payslipData, employeePhone, hostOrigin) => 
 /**
  * Send payment sheet link via SMS to employee
  */
-export const sendPaymentSheetSms = async (employeeData, employeePhone, startDate, endDate, hostOrigin) => {
+export const sendPaymentSheetSms = async (employeeData, employeePhone, startDate, endDate, hostOrigin, customMessage = null) => {
     try {
         const { employeeName, employeeCode, totalSalary, totalAdvances, netSalary } = employeeData;
         
-        const message = `Dear ${employeeName}, your payment sheet from ${startDate} to ${endDate} is ready. Total Salary: LKR ${totalSalary}, Advances: LKR ${totalAdvances}, Net Salary: LKR ${netSalary}. Contact HR for details.`;
+        const message = customMessage || `Dear ${employeeName}, your payment sheet from ${startDate} to ${endDate} is ready. Total Salary: LKR ${totalSalary}, Advances: LKR ${totalAdvances}, Net Salary: LKR ${netSalary}. Contact HR for details.`;
         
         let formattedContact = formatSmsContact(employeePhone);
         let status = 'sent';

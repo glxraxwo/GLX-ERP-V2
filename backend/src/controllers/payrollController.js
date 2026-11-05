@@ -1041,7 +1041,7 @@ export const getPublicPayslipByToken = asyncHandler(async (req, res) => {
  */
 export const sendPayslipLinkSms = asyncHandler(async (req, res) => {
     const { payslipId } = req.params;
-    const { phone } = req.body;
+    const { phone, customMessage } = req.body;
 
     if (!phone || !phone.trim()) {
         res.status(400);
@@ -1073,7 +1073,8 @@ export const sendPayslipLinkSms = asyncHandler(async (req, res) => {
             periodYear: payroll.periodYear
         },
         phone,
-        hostOrigin
+        hostOrigin,
+        customMessage
     );
 
     res.json({

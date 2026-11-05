@@ -663,6 +663,7 @@ export default function EmployeePaymentSheetPage() {
                 }}
                 startDate={startDate}
                 endDate={endDate}
+                employeeName={employee ? `${employee.firstName} ${employee.lastName || ''}`.trim() : 'Employee'}
             />
         </div>
     );

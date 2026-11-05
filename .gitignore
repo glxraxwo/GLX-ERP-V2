@@ -40,3 +40,7 @@ gg/
 *.mdf
 *.ldf
 *.dll
+
+# Database Backups & Dumps
+backend/backups/
+backups/

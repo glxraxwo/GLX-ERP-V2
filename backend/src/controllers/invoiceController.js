@@ -238,9 +238,6 @@ export const createInvoice = asyncHandler(async (req, res) => {
         .populate('customerId', 'displayName customerCode')
         .populate('salesOrderIds', 'orderNumber');
 
-    const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
-    sendInvoiceCreationSms(populated || invoice, hostOrigin).catch((err) => console.error('[Invoice SMS Trigger error]:', err.message));
-
     res.status(201).json({ success: true, data: populated });
 });
 
@@ -346,9 +343,6 @@ export const createFromSalesOrder = asyncHandler(async (req, res) => {
     const populated = await Invoice.findById(invoice._id)
         .populate('customerId', 'displayName customerCode')
         .populate('salesOrderIds', 'orderNumber');
-
-    const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
-    sendInvoiceCreationSms(populated || invoice, hostOrigin).catch((err) => console.error('[Invoice SMS Trigger error]:', err.message));
 
     res.status(201).json({ success: true, data: populated });
 });
@@ -681,8 +675,8 @@ export const updateInvoice = asyncHandler(async (req, res) => {
         req
     });
 
-    // Auto-send SMS to customer with public view link upon invoice update
-    if (req.body.sendSms !== false) {
+    // Send SMS to customer with public view link upon invoice update only if explicitly approved
+    if (req.body.sendSms === true && (req.body.recipientPhone || invoice.customerPhone)) {
         let hostOrigin = 'http://localhost:5173';
         if (req.headers.origin) {
             hostOrigin = req.headers.origin;
@@ -696,8 +690,9 @@ export const updateInvoice = asyncHandler(async (req, res) => {
             hostOrigin = process.env.FRONTEND_URL.split(',')[0].trim();
         }
 
-        sendDocumentUpdateSms(invoice, 'invoice', hostOrigin)
-            .then(() => console.log(`[Invoice Auto-Update SMS] Dispatched to customer for ${invoice.invoiceNumber}`))
+        const targetPhone = req.body.recipientPhone || invoice.customerPhone;
+        sendPublicDocumentSms(invoice, targetPhone, 'invoice', hostOrigin, req.body.customMessage)
+            .then(() => console.log(`[Invoice Confirmed Update SMS] Dispatched to customer for ${invoice.invoiceNumber}`))
             .catch(err => console.error('[Invoice Update SMS Error]:', err.message));
     }
 

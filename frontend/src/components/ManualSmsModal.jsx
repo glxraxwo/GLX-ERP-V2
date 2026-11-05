@@ -237,6 +237,15 @@ export default function ManualSmsModal({
                 size="lg"
             >
                 <form onSubmit={handleSendSms} className="p-4 sm:p-6 space-y-5">
+                    {/* Permission Notice */}
+                    <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-lg p-3 text-xs flex items-start gap-2.5">
+                        <AlertCircle size={17} className="text-blue-600 shrink-0 mt-0.5" />
+                        <div>
+                            <strong className="block font-semibold">SMS Permission & Verification</strong>
+                            Please review the recipient contact details and message preview below. The SMS will only be dispatched upon your confirmation.
+                        </div>
+                    </div>
+
                     {/* Mode Toggle: Customer vs Custom Number */}
                     <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-800">
                         <span className="text-xs font-black uppercase tracking-wider text-gray-500">
@@ -534,7 +543,7 @@ export default function ManualSmsModal({
                             className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs shadow-md px-5 py-2.5 rounded-xl flex items-center gap-2"
                         >
                             <Send size={13} />
-                            Send SMS Immediately
+                            Confirm & Send SMS
                         </Button>
                     </div>
                 </form>

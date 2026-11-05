@@ -1,0 +1,12 @@
+export const COMPANY_LOGO_BASE64 = `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 70" width="240" height="70">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E11D48"/>
+      <stop offset="100%" stop-color="#8B0000"/>
+    </linearGradient>
+  </defs>
+  <rect x="175" y="7" width="56" height="56" rx="14" fill="url(#g)" />
+  <path d="M 203 19 C 205 24, 212 27, 210 34 C 208 40, 202 42, 197 37 C 195 34, 195.5 31, 198 29 C 194 32, 192 37, 194 41.5 C 196.5 46, 203 48, 208 45 C 213 42, 215 36, 211 30 C 209 27, 205 23, 203 19 Z" fill="#ffffff" />
+  <text x="165" y="34" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="22" font-weight="900" fill="#0F172A" text-anchor="end" letter-spacing="0.5">GLX</text>
+  <text x="165" y="53" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="12" font-weight="800" fill="#334155" text-anchor="end" letter-spacing="1.2">INDUSTRIES</text>
+</svg>`)}`;

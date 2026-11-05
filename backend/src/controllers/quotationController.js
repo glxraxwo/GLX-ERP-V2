@@ -68,9 +68,9 @@ export const createQuotation = asyncHandler(async (req, res) => {
         req
     });
 
-    // Auto-send SMS with public document link if customer phone is provided and sendSms is not explicitly false
-    const targetPhone = quotation.customerPhone || req.body.customerPhone;
-    if (targetPhone && req.body.sendSms !== false) {
+    // Send SMS with public document link only if explicitly requested/confirmed
+    const targetPhone = req.body.recipientPhone || quotation.customerPhone || req.body.customerPhone;
+    if (targetPhone && req.body.sendSms === true) {
         let hostOrigin = 'http://localhost:5173';
         if (req.headers.origin) {
             hostOrigin = req.headers.origin;
@@ -84,9 +84,9 @@ export const createQuotation = asyncHandler(async (req, res) => {
             hostOrigin = process.env.FRONTEND_URL.split(',')[0].trim();
         }
 
-        sendPublicDocumentSms(quotation, targetPhone, quotation.documentType || 'quotation', hostOrigin)
-            .then(() => console.log(`[Quotation Auto SMS] Dispatched successfully to ${targetPhone}`))
-            .catch(err => console.error('[Quotation SMS Auto-dispatch Error]:', err.message));
+        sendPublicDocumentSms(quotation, targetPhone, quotation.documentType || 'quotation', hostOrigin, req.body.customMessage)
+            .then(() => console.log(`[Quotation Confirmed SMS] Dispatched successfully to ${targetPhone}`))
+            .catch(err => console.error('[Quotation SMS Dispatch Error]:', err.message));
     }
 
     res.status(201).json({ success: true, data: quotation });
@@ -275,8 +275,8 @@ export const updateQuotation = asyncHandler(async (req, res) => {
         req
     });
 
-    // Auto-send SMS to customer with public view link upon quotation/estimate update
-    if (req.body.sendSms !== false) {
+    // Send SMS to customer with public view link upon update only if explicitly approved
+    if (req.body.sendSms === true && (req.body.recipientPhone || quotation.customerPhone)) {
         let hostOrigin = 'http://localhost:5173';
         if (req.headers.origin) {
             hostOrigin = req.headers.origin;
@@ -290,8 +290,9 @@ export const updateQuotation = asyncHandler(async (req, res) => {
             hostOrigin = process.env.FRONTEND_URL.split(',')[0].trim();
         }
 
-        sendDocumentUpdateSms(quotation, quotation.documentType || 'quotation', hostOrigin)
-            .then(() => console.log(`[Quotation/Estimate Auto-Update SMS] Dispatched to customer for ${quotation.quoteNumber || quotation.quotationCode}`))
+        const targetPhone = req.body.recipientPhone || quotation.customerPhone;
+        sendPublicDocumentSms(quotation, targetPhone, quotation.documentType || 'quotation', hostOrigin, req.body.customMessage)
+            .then(() => console.log(`[Quotation/Estimate Confirmed Update SMS] Dispatched to ${targetPhone}`))
             .catch(err => console.error('[Quotation/Estimate Update SMS Error]:', err.message));
     }
 
@@ -546,18 +547,6 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
         req
     });
 
-    const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
-    import('../services/smsService.js').then(({ sendInvoiceCreationSms, sendPaymentReceiptSms }) => {
-        sendInvoiceCreationSms(invoice, hostOrigin).catch((err) =>
-            console.error('[Quotation-Invoice SMS Error]:', err.message)
-        );
-        if (payment) {
-            sendPaymentReceiptSms(payment, hostOrigin).catch((err) =>
-                console.error('[Quotation-Advance Payment SMS Error]:', err.message)
-            );
-        }
-    }).catch(() => {});
-
     res.status(201).json({ success: true, message: 'Converted to Invoice successfully', data: invoice });
 });
 
@@ -694,16 +683,6 @@ export const convertQuotationToProject = asyncHandler(async (req, res) => {
         description: `Converted ${quotation.documentType || 'quotation'} ${quotation.quoteNumber} to Project ${project.projectNumber}`,
         req
     });
-
-    if (advanceAmount > 0 && typeof payment !== 'undefined') {
-        const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
-        import('../services/smsService.js').then(({ sendPaymentReceiptSms, sendInvoiceCreationSms }) => {
-            if (typeof invoice !== 'undefined' && invoice) {
-                sendInvoiceCreationSms(invoice, hostOrigin).catch(() => {});
-            }
-            sendPaymentReceiptSms(payment, hostOrigin).catch(() => {});
-        }).catch(() => {});
-    }
 
     res.status(201).json({ success: true, message: 'Converted to Project successfully', data: project });
 });

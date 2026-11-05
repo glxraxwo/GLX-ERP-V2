@@ -719,6 +719,7 @@ export default function InvoiceDetailPage() {
                     documentId={inv._id}
                     documentType="invoice"
                     defaultPhone={inv.customerSnapshot?.phone || ''}
+                    document={inv}
                 />
             )}
 

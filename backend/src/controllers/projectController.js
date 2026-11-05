@@ -276,9 +276,10 @@ export const deliverProject = asyncHandler(async (req, res) => {
     try {
         const Customer = mongoose.model('Customer');
         const customer = await Customer.findById(project.customer);
-        if (customer && customer.phone) {
+        if (customer && customer.phone && req.body.sendSms === true) {
             const { sendProjectDeliveredSms } = await import('../services/smsService.js');
-            sendProjectDeliveredSms(project, customer.phone).catch(e => console.warn('SMS alert error:', e.message));
+            const targetPhone = req.body.recipientPhone || customer.phone;
+            sendProjectDeliveredSms(project, targetPhone).catch(e => console.warn('SMS alert error:', e.message));
         }
     } catch (smsErr) {
         console.warn('Could not dispatch project delivery SMS:', smsErr.message);

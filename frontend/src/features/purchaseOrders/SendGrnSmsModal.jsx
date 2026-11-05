@@ -2,23 +2,47 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import { useSendGrnSms } from './usePurchaseOrders';
-import { Mail } from 'lucide-react';
+import { Mail, Phone, User, MessageSquare, AlertCircle, Sparkles } from 'lucide-react';
+import toast from 'react-hot-toast';
 
-export default function SendGrnSmsModal({ isOpen, onClose, grn }) {
+export default function SendGrnSmsModal({ isOpen, onClose, grn, supplier = null }) {
     const sendSmsMutation = useSendGrnSms();
     const [smsMessage, setSmsMessage] = useState('');
     const [isCustomized, setIsCustomized] = useState(false);
+    const [recipientMode, setRecipientMode] = useState('saved'); // 'saved' | 'custom'
+    const [selectedPhone, setSelectedPhone] = useState('');
+    const [customPhone, setCustomPhone] = useState('');
+
+    const supplierContact = supplier?.primaryContact || grn?.supplierId?.primaryContact;
+    const availablePhones = [
+        { label: 'Primary Contact', number: supplierContact?.phone || grn?.supplierPhone },
+        { label: 'Mobile Contact', number: supplierContact?.mobile }
+    ].filter(p => p.number && p.number !== 'N/A');
+
+    const supplierName = grn?.supplierName || supplier?.displayName || supplier?.companyName || 'Supplier';
 
     useEffect(() => {
         if (!isOpen) {
             setSmsMessage('');
             setIsCustomized(false);
+            setRecipientMode('saved');
+            setSelectedPhone('');
+            setCustomPhone('');
+        } else {
+            if (availablePhones.length > 0) {
+                setRecipientMode('saved');
+                setSelectedPhone(availablePhones[0].number);
+            } else if (grn?.supplierPhone && grn.supplierPhone !== 'N/A') {
+                setRecipientMode('custom');
+                setCustomPhone(grn.supplierPhone);
+            } else {
+                setRecipientMode('custom');
+            }
         }
     }, [isOpen]);
 
     useEffect(() => {
         if (isOpen && grn && !isCustomized) {
-            const supplierName = grn.supplierName || 'Supplier';
             const formattedDate = grn.receiptDate ? new Date(grn.receiptDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
             
             const productsList = (grn.items || []).map(item => {
@@ -33,36 +57,143 @@ export default function SendGrnSmsModal({ isOpen, onClose, grn }) {
             const message = `Dear ${supplierName}, your delivery on ${formattedDate} for ${productsList} has been accepted and QA approved. Total accepted value: Rs. ${formattedTotal}. Thank you.`;
             setSmsMessage(message);
         }
-    }, [isOpen, grn, isCustomized]);
+    }, [isOpen, grn, isCustomized, supplierName]);
+
+    const finalRecipientPhone = recipientMode === 'saved' ? selectedPhone : customPhone;
 
     const handleSend = async () => {
+        const trimmedPhone = (finalRecipientPhone || '').trim();
+        const trimmedMsg = (smsMessage || '').trim();
+
+        if (!trimmedPhone) {
+            toast.error('Please select or enter the recipient phone number');
+            return;
+        }
+
+        if (!trimmedMsg) {
+            toast.error('SMS message content cannot be empty');
+            return;
+        }
+
         try {
             await sendSmsMutation.mutateAsync({
                 id: grn._id,
-                data: { customMessage: smsMessage }
+                data: {
+                    customMessage: trimmedMsg,
+                    recipientPhone: trimmedPhone
+                }
             });
+            toast.success(`GRN Confirmation SMS dispatched successfully to ${trimmedPhone}!`);
             onClose();
         } catch (err) {
-            // Toast error handled by the react-query mutation handler
+            // Toast error handled by mutation
         }
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Send Manual SMS — GRN ${grn?.grnNumber}`} size="md">
-            <div className="p-6 space-y-4">
-                <p className="text-xs text-gray-500 leading-normal">
-                    You can customize and send/resend the QA approval confirmation SMS to the supplier.
-                </p>
-
-                <div className="bg-slate-50 p-3 rounded-lg text-xs border space-y-1 text-gray-700 border-gray-150">
-                    <div><strong>Supplier:</strong> {grn?.supplierName || 'Unknown'}</div>
+        <Modal isOpen={isOpen} onClose={onClose} title={`Send QA Confirmation SMS — GRN ${grn?.grnNumber}`} size="md">
+            <div className="p-6 space-y-4 font-calibri">
+                {/* Permission Alert */}
+                <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded-lg p-3 text-xs flex items-start gap-2.5">
+                    <AlertCircle size={17} className="text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                        <strong className="block font-semibold">SMS Dispatch Permission</strong>
+                        Please review the recipient supplier contact and SMS content before giving permission to send.
+                    </div>
                 </div>
 
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 block mb-1">SMS Message Content (Editable)</label>
+                {/* 1. Recipient Person Selection */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
+                            <User size={14} className="text-gray-500" />
+                            Recipient Supplier
+                        </label>
+                        <span className="text-xs text-gray-900 font-semibold bg-white px-2 py-0.5 rounded border border-gray-200">
+                            {supplierName}
+                        </span>
+                    </div>
+
+                    {availablePhones.length > 0 && (
+                        <div className="space-y-1.5">
+                            {availablePhones.map((p, idx) => (
+                                <label
+                                    key={idx}
+                                    className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition ${
+                                        recipientMode === 'saved' && selectedPhone === p.number
+                                            ? 'border-blue-500 bg-blue-50/70 text-blue-900 font-semibold'
+                                            : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="radio"
+                                            name="grnSupplierPhone"
+                                            checked={recipientMode === 'saved' && selectedPhone === p.number}
+                                            onChange={() => {
+                                                setRecipientMode('saved');
+                                                setSelectedPhone(p.number);
+                                            }}
+                                            disabled={sendSmsMutation.isPending}
+                                            className="text-blue-600"
+                                        />
+                                        <span>{p.label}</span>
+                                    </div>
+                                    <span className="font-mono text-gray-600">{p.number}</span>
+                                </label>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Custom Phone Option */}
+                    <div className="pt-1">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="grnSupplierPhone"
+                                checked={recipientMode === 'custom'}
+                                onChange={() => setRecipientMode('custom')}
+                                disabled={sendSmsMutation.isPending}
+                                className="text-blue-600"
+                            />
+                            <span>Enter custom recipient phone number</span>
+                        </label>
+                        {recipientMode === 'custom' && (
+                            <div className="mt-2">
+                                <input
+                                    type="tel"
+                                    placeholder="e.g. +94771234567 or 0771234567"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    value={customPhone}
+                                    onChange={(e) => setCustomPhone(e.target.value)}
+                                    disabled={sendSmsMutation.isPending}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 2. SMS Message Preview & Editable Area */}
+                <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
+                            <MessageSquare size={14} className="text-gray-500" />
+                            SMS Message Preview (Editable)
+                        </label>
+                        {isCustomized && (
+                            <button
+                                type="button"
+                                onClick={() => setIsCustomized(false)}
+                                className="text-[11px] text-blue-600 hover:underline flex items-center gap-1"
+                            >
+                                <Sparkles size={11} /> Reset template
+                            </button>
+                        )}
+                    </div>
+
                     <textarea
-                        className="w-full p-2.5 bg-slate-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary-500"
-                        rows={5}
+                        className="w-full p-2.5 bg-slate-50 border border-gray-300 rounded-lg text-xs leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                        rows={4}
                         value={smsMessage}
                         onChange={(e) => {
                             setSmsMessage(e.target.value);
@@ -72,17 +203,18 @@ export default function SendGrnSmsModal({ isOpen, onClose, grn }) {
                         maxLength={1000}
                         disabled={sendSmsMutation.isPending}
                     />
-                    <div className="flex justify-between text-[10px] text-gray-400">
-                        <span>{isCustomized ? '⚠️ Custom message' : '✨ Generated template'}</span>
-                        <span>{smsMessage.length} characters</span>
+
+                    <div className="flex justify-between items-center text-[11px] text-gray-500">
+                        <span>{isCustomized ? '✍️ Custom message' : '✨ Generated template'}</span>
+                        <span>{smsMessage.length} characters • approx {Math.max(1, Math.ceil(smsMessage.length / 160))} SMS</span>
                     </div>
                 </div>
             </div>
 
             <div className="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50 rounded-b-xl">
                 <Button variant="outline" onClick={onClose} disabled={sendSmsMutation.isPending}>Cancel</Button>
-                <Button variant="primary" onClick={handleSend} loading={sendSmsMutation.isPending} disabled={!smsMessage.trim()}>
-                    <Mail size={16} className="mr-1.5" /> Send Custom SMS
+                <Button variant="primary" onClick={handleSend} loading={sendSmsMutation.isPending} disabled={!finalRecipientPhone?.trim() || !smsMessage?.trim()}>
+                    <Mail size={16} className="mr-1.5" /> Confirm & Send SMS
                 </Button>
             </div>
         </Modal>

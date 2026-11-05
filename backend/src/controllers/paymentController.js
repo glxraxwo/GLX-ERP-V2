@@ -128,8 +128,8 @@ export const createPayment = asyncHandler(async (req, res) => {
             .populate('supplierId', 'displayName supplierCode')
             .populate('bankAccountId', 'bankName accountNumber accountName');
 
-        // Automatically dispatch payment receipt SMS with public view link to customer
-        if (direction === 'received') {
+        // Dispatch payment receipt SMS with public view link to customer only if explicitly requested
+        if (direction === 'received' && req.body.sendSms === true) {
             const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
             import('../services/smsService.js').then(({ sendPaymentReceiptSms }) => {
                 sendPaymentReceiptSms(populated || payment, hostOrigin).catch((err) =>

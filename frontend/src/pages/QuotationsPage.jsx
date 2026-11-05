@@ -588,7 +588,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 discount: quote.discount || 0,
                 tax: quote.tax || 0,
                 grandTotal: quote.grandTotal || quote.totalAmount || 0,
-                sendSms: true,
+                sendSms: false,
                 expiryDate: quote.expiryDate ? new Date(quote.expiryDate).toISOString().split('T')[0] : '',
                 notes: quote.notes || ''
             });
@@ -602,7 +602,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 customerName: '',
                 customerEmail: '',
                 customerPhone: '',
-                sendSms: true,
+                sendSms: false,
                 customerAddress: '',
                 insuranceCompany: '',
                 vehicleOwner: '',
@@ -749,8 +749,8 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 toast.success(`${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} updated`);
             } else {
                 await api.post('/crm/quotations', payload);
-                if (payload.customerPhone && payload.sendSms !== false) {
-                    toast.success(`${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} created & SMS sent to ${payload.customerPhone}!`);
+                if (payload.customerPhone && payload.sendSms === true) {
+                    toast.success(`${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} created & SMS dispatched to ${payload.recipientPhone || payload.customerPhone}!`);
                 } else {
                     toast.success(`${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} created`);
                 }
@@ -1710,15 +1710,36 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     onChange={(e) => handleFormChange('customerPhone', e.target.value)}
                                 />
                                 {formData.customerPhone && (
-                                    <label className="flex items-center gap-1.5 mt-1.5 cursor-pointer text-[11px] text-blue-700 font-semibold select-none bg-blue-50/70 p-1.5 rounded-lg border border-blue-100">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={formData.sendSms !== false}
-                                            onChange={(e) => handleFormChange('sendSms', e.target.checked)}
-                                            className="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
-                                        />
-                                        <span>Send SMS link with Quotation PDF to customer</span>
-                                    </label>
+                                    <div className="space-y-2 mt-2">
+                                        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-blue-700 font-semibold select-none bg-blue-50/70 p-2 rounded-lg border border-blue-100">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={formData.sendSms === true}
+                                                onChange={(e) => handleFormChange('sendSms', e.target.checked)}
+                                                className="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                                            />
+                                            <span>Send SMS link with {formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} PDF to customer</span>
+                                        </label>
+
+                                        {formData.sendSms === true && (
+                                            <div className="p-3 bg-slate-50 border border-blue-200 rounded-lg space-y-2 text-xs">
+                                                <div className="flex justify-between items-center text-gray-700">
+                                                    <span className="font-bold text-[11px] uppercase">SMS Recipient Phone</span>
+                                                    <span className="text-[11px] text-gray-500">{formData.customerName || 'Customer'}</span>
+                                                </div>
+                                                <input
+                                                    type="tel"
+                                                    value={formData.smsPhone ?? formData.customerPhone}
+                                                    onChange={(e) => handleFormChange('smsPhone', e.target.value)}
+                                                    placeholder="e.g. +94771234567"
+                                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-xs bg-white"
+                                                />
+                                                <div className="text-[11px] text-gray-500 font-medium">
+                                                    SMS Preview: <em>"Dear {formData.customerName || 'Customer'}, here is the link to view your GLX Industries {formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'}..."</em>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -2375,6 +2396,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     documentId={previewQuote._id}
                     documentType={previewQuote.documentType || 'quotation'}
                     defaultPhone={previewQuote.customerPhone || ''}
+                    document={previewQuote}
                 />
             )}
             {/* A4 Print & QR Preview Modal */}

@@ -268,9 +268,9 @@ export default function PurchaseOrderDetailPage() {
 
             <GrnModal isOpen={isGrnOpen} onClose={() => setIsGrnOpen(false)} purchaseOrder={po} />
 
-            <QaApprovalModal isOpen={!!selectedGrnToApprove} onClose={() => setSelectedGrnToApprove(null)} grn={selectedGrnToApprove} />
+            <QaApprovalModal isOpen={!!selectedGrnToApprove} onClose={() => setSelectedGrnToApprove(null)} grn={selectedGrnToApprove} supplier={po?.supplierId} />
 
-            <SendGrnSmsModal isOpen={!!selectedGrnToSendSms} onClose={() => setSelectedGrnToSendSms(null)} grn={selectedGrnToSendSms} />
+            <SendGrnSmsModal isOpen={!!selectedGrnToSendSms} onClose={() => setSelectedGrnToSendSms(null)} grn={selectedGrnToSendSms} supplier={po?.supplierId} />
 
             <ConfirmDialog
                 isOpen={!!action}

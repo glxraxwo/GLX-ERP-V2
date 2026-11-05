@@ -286,7 +286,7 @@ app.use('/api/sms', smsRoutes);
 // Unified sharing endpoint
 app.post('/api/documents/:id/share-sms', protect, asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { phone, documentType } = req.body;
+    const { phone, documentType, customMessage } = req.body;
     
     let doc;
     if (documentType === 'invoice') {
@@ -318,7 +318,7 @@ app.post('/api/documents/:id/share-sms', protect, asyncHandler(async (req, res) 
         hostOrigin = process.env.FRONTEND_URL.split(',')[0].trim();
     }
     
-    await sendPublicDocumentSms(doc, phone, documentType || (doc.documentType || 'quotation'), hostOrigin);
+    await sendPublicDocumentSms(doc, phone, documentType || (doc.documentType || 'quotation'), hostOrigin, customMessage);
     
     res.json({ success: true, message: 'Document shared via SMS successfully' });
 }));

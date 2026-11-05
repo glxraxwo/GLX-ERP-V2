@@ -86,7 +86,7 @@ export default function PayrollDetailPage() {
                         className="p-1.5 hover:bg-gray-100 rounded" title="View Payslip">
                         <FileText size={16} />
                     </button>
-                    <button onClick={() => setSmsModal({ isOpen: true, payslipId: r._id, phone: '' })}
+                    <button onClick={() => setSmsModal({ isOpen: true, payslipId: r._id, phone: '', employeeName: r.employeeName })}
                         className="p-1.5 hover:bg-gray-100 rounded text-primary-600" title="Send via SMS">
                         <MessageSquare size={16} />
                     </button>
@@ -144,6 +144,7 @@ export default function PayrollDetailPage() {
                 onClose={() => setSmsModal({ isOpen: false, payslipId: null, phone: '' })}
                 payslipId={smsModal.payslipId}
                 defaultPhone={smsModal.phone}
+                employeeName={smsModal.employeeName || 'Employee'}
             />
         </div>
     );
