@@ -1325,6 +1325,20 @@ export const createSalaryAdvance = asyncHandler(async (req, res) => {
         paidAt: req.body.isPaid ? new Date() : (isDirectAdmin ? new Date() : undefined),
         createdBy: req.user._id,
     });
+
+    // Also sync to Attendance record for the given date so it displays on that exact day\'s attendance sheet
+    try {
+        const dObj = date ? new Date(date) : new Date();
+        const dStr = dObj.toISOString().slice(0, 10);
+        const existingAtt = await Attendance.findOne({ employeeId, dateString: dStr });
+        if (existingAtt) {
+            existingAtt.dailyAdvance = (Number(existingAtt.dailyAdvance) || 0) + finalAmount;
+            await existingAtt.save();
+        }
+    } catch (attErr) {
+        console.error('Error syncing advance to attendance:', attErr);
+    }
+
     res.status(201).json({ success: true, data: advance });
 });
 
@@ -1467,6 +1481,237 @@ export const getSalaryAdvances = asyncHandler(async (req, res) => {
     });
 
     res.json({ success: true, data: advances });
+});
+
+/**
+ * @desc    Get real-time advance management overview with worked days, accrued salary, max advance, and ledgers
+ * @route   GET /api/hr/advances/earned-wage-overview
+ * @access  Private (hr.employees.view)
+ */
+export const getAdvanceManagementOverview = asyncHandler(async (req, res) => {
+    const { year, month, departmentId } = req.query;
+
+    const now = new Date();
+    const selYear = Number(year) || now.getFullYear();
+    const selMonth = Number(month) || (now.getMonth() + 1);
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const startStr = `${selYear}-${pad(selMonth)}-01`;
+    const lastDayNum = new Date(selYear, selMonth, 0).getDate();
+    const endStr = `${selYear}-${pad(selMonth)}-${pad(lastDayNum)}`;
+
+    const startObj = new Date(`${startStr}T00:00:00.000Z`);
+    const endObj = new Date(`${endStr}T23:59:59.999Z`);
+
+    // 1. Fetch non-deleted employees
+    const empFilter = { deletedAt: null };
+    if (departmentId && departmentId !== 'all') {
+        empFilter.departmentId = departmentId;
+    }
+    const employees = await Employee.find(empFilter)
+        .populate('departmentId', 'name code')
+        .populate('designationId', 'name code')
+        .sort({ status: 1, firstName: 1, lastName: 1 });
+
+    const empIds = employees.map(e => e._id);
+
+    // 2. Fetch Attendances in date range
+    const attendances = await Attendance.find({
+        employeeId: { $in: empIds },
+        $or: [
+            { dateString: { $gte: startStr, $lte: endStr } },
+            { date: { $gte: startObj, $lte: endObj } }
+        ]
+    });
+
+    // 3. Fetch Salary Advances in date range (and all-time)
+    const [periodAdvances, allTimeAdvances] = await Promise.all([
+        SalaryAdvance.find({
+            employeeId: { $in: empIds },
+            status: { $ne: 'rejected' },
+            $or: [
+                { date: { $gte: startObj, $lte: endObj } },
+                { createdAt: { $gte: startObj, $lte: endObj } }
+            ]
+        }).populate('approvedBy', 'firstName lastName')
+          .populate('createdBy', 'firstName lastName')
+          .sort({ date: -1 }),
+        SalaryAdvance.find({
+            employeeId: { $in: empIds },
+            status: { $ne: 'rejected' }
+        }).populate('approvedBy', 'firstName lastName')
+          .populate('createdBy', 'firstName lastName')
+          .sort({ date: -1 })
+    ]);
+
+    // Group Attendances by employeeId
+    const attMap = new Map();
+    attendances.forEach(att => {
+        const idStr = String(att.employeeId);
+        if (!attMap.has(idStr)) attMap.set(idStr, []);
+        attMap.get(idStr).push(att);
+    });
+
+    // Group Period Advances by employeeId
+    const advMap = new Map();
+    periodAdvances.forEach(adv => {
+        const idStr = String(adv.employeeId);
+        if (!advMap.has(idStr)) advMap.set(idStr, []);
+        advMap.get(idStr).push(adv);
+    });
+
+    // Group All-Time Advances by employeeId
+    const allAdvMap = new Map();
+    allTimeAdvances.forEach(adv => {
+        const idStr = String(adv.employeeId);
+        if (!allAdvMap.has(idStr)) allAdvMap.set(idStr, []);
+        allAdvMap.get(idStr).push(adv);
+    });
+
+    // Aggregate summary counters
+    let overallDaysWorked = 0;
+    let overallHoursWorked = 0;
+    let overallAccruedEarnings = 0;
+    let overallAdvancesIssued = 0;
+    let overallAvailableAdvance = 0;
+
+    const rows = employees.map(emp => {
+        const empIdStr = String(emp._id);
+        const empAtts = attMap.get(empIdStr) || [];
+        const empPeriodAdvs = advMap.get(empIdStr) || [];
+        const empAllAdvs = allAdvMap.get(empIdStr) || [];
+
+        // Count worked days and hours
+        let daysWorked = 0;
+        let hoursWorked = 0;
+        let accruedDaySalaryTotal = 0;
+        let totalDeductions = 0;
+
+        empAtts.forEach(att => {
+            const isPresent = att.isTicked !== undefined ? att.isTicked : (att.status === 'present');
+            if (isPresent) {
+                daysWorked++;
+                const hrs = att.payableHours || 0;
+                hoursWorked += hrs;
+                const dSal = att.daySalary !== undefined ? att.daySalary : 0;
+                accruedDaySalaryTotal += dSal;
+            }
+            if (att.dailyDeduction < 0) {
+                totalDeductions += Math.abs(att.dailyDeduction);
+            }
+        });
+
+        // Determine rates & accrued gross earnings
+        const hourlyRate = emp.hourlyRate || emp.labourRate || 260;
+        const isMonthly = emp.paymentType === 'monthly';
+        const monthlySalary = Number(emp.monthlySalary || emp.basicSalary || 0);
+
+        let accruedGross = 0;
+        if (isMonthly && monthlySalary > 0) {
+            const dailyRate = monthlySalary / lastDayNum;
+            accruedGross = Number((dailyRate * daysWorked).toFixed(2));
+        } else {
+            if (accruedDaySalaryTotal > 0) {
+                accruedGross = Number(accruedDaySalaryTotal.toFixed(2));
+            } else {
+                accruedGross = Number((hoursWorked * hourlyRate).toFixed(2));
+            }
+        }
+
+        const netAccrued = Math.max(0, Number((accruedGross - totalDeductions).toFixed(2)));
+
+        // Advances taken in this period
+        const periodAdvancesTotal = empPeriodAdvs.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+        
+        // Available advance to give (remaining unwithdrawn earned wage)
+        const availableAdvance = Math.max(0, Number((netAccrued - periodAdvancesTotal).toFixed(2)));
+
+        // All-time advances metrics
+        const allTimeTotal = empAllAdvs.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+        const allTimeRemaining = empAllAdvs.reduce((sum, a) => sum + (Number(a.remainingBalance !== undefined ? a.remainingBalance : (a.isDeducted ? 0 : a.amount)) || 0), 0);
+
+        overallDaysWorked += daysWorked;
+        overallHoursWorked += hoursWorked;
+        overallAccruedEarnings += netAccrued;
+        overallAdvancesIssued += periodAdvancesTotal;
+        overallAvailableAdvance += availableAdvance;
+
+        return {
+            employee: {
+                _id: emp._id,
+                fullName: emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || 'Employee',
+                firstName: emp.firstName,
+                lastName: emp.lastName,
+                employeeCode: emp.employeeCode || emp.payrollNumber || 'EMP',
+                payrollNumber: emp.payrollNumber,
+                phone: emp.phone || emp.mobile,
+                email: emp.email,
+                department: emp.departmentId?.name || 'Operations',
+                departmentId: emp.departmentId?._id,
+                designation: emp.designationId?.name || 'Staff',
+                status: emp.status || 'active',
+                paymentType: emp.paymentType || 'hourly',
+                hourlyRate: hourlyRate,
+                monthlySalary: monthlySalary,
+                minimumSalary: emp.minimumSalary || 0,
+            },
+            period: {
+                year: selYear,
+                month: selMonth,
+                startDate: startStr,
+                endDate: endStr,
+                lastDayNum
+            },
+            work: {
+                daysWorked,
+                hoursWorked: Number(hoursWorked.toFixed(2)),
+                totalDeductions: Number(totalDeductions.toFixed(2)),
+            },
+            earnings: {
+                accruedGross,
+                netAccrued,
+            },
+            advances: {
+                periodAdvancesTotal,
+                availableAdvance,
+                maxEligibleAdvance: availableAdvance,
+                allTimeTotal,
+                allTimeRemaining,
+                periodCount: empPeriodAdvs.length,
+            },
+            ledger: empAllAdvs.map(a => ({
+                _id: a._id,
+                date: a.date || a.createdAt,
+                amount: a.amount,
+                status: a.status,
+                reason: a.reason,
+                remainingBalance: a.remainingBalance,
+                isDeducted: a.isDeducted,
+                approvedBy: a.approvedBy ? `${a.approvedBy.firstName || ''} ${a.approvedBy.lastName || ''}`.trim() : null,
+                createdAt: a.createdAt,
+            }))
+        };
+    });
+
+    res.json({
+        success: true,
+        period: {
+            year: selYear,
+            month: selMonth,
+            startDate: startStr,
+            endDate: endStr,
+        },
+        summary: {
+            totalEmployees: employees.length,
+            activeEmployees: employees.filter(e => e.status === 'active').length,
+            overallDaysWorked,
+            overallHoursWorked: Number(overallHoursWorked.toFixed(2)),
+            overallAccruedEarnings: Number(overallAccruedEarnings.toFixed(2)),
+            overallAdvancesIssued: Number(overallAdvancesIssued.toFixed(2)),
+            overallAvailableAdvance: Number(overallAvailableAdvance.toFixed(2)),
+        },
+        data: rows
+    });
 });
 
 /**

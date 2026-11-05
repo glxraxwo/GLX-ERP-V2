@@ -130,12 +130,15 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
         if (existing) {
             const inTime = existing.manualInTime || defaultOnTime;
             const outTime = existing.manualOutTime || defaultOffTime;
-            const hours = existing.payableHours !== undefined ? existing.payableHours : calculateWorkingHours(inTime, outTime);
-            const isTicked = existing.isTicked !== undefined ? existing.isTicked : (existing.status === 'present');
-            const daySalary = existing.daySalary !== undefined ? existing.daySalary : (isTicked ? Number((hours * hourlyRate).toFixed(2)) : 0);
-
             const deduction = existing.dailyDeduction || 0;
             const reason = deduction !== 0 ? (existing.deductionReason || '') : '';
+            let hours = existing.payableHours !== undefined ? existing.payableHours : calculateWorkingHours(inTime, outTime);
+
+            // Method 1: If late penalty was applied, credit hours from defaultOnTime
+            if (deduction < 0 && reason && reason.startsWith('Late')) {
+                hours = calculateWorkingHours(defaultOnTime, outTime);
+            }
+            const daySalary = existing.daySalary !== undefined ? existing.daySalary : (isTicked ? Number((hours * hourlyRate).toFixed(2)) : 0);
 
             return {
                 employeeId: emp._id,
@@ -453,11 +456,14 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
             const isTicked = att.isManualSheetSaved ? Boolean(att.isTicked) : false;
             const inTime = att.manualInTime || defaultShiftOn;
             const outTime = att.manualOutTime || defaultShiftOff;
-            const hours = isTicked ? (att.payableHours !== undefined ? att.payableHours : calculateWorkingHours(inTime, outTime)) : 0;
-            const daySalary = isTicked ? (att.daySalary !== undefined ? att.daySalary : Number((hours * hourlyRate).toFixed(2))) : 0;
-            const advance = Math.max(Number(att.dailyAdvance) || 0, Number(advanceMap.get(dateStr)) || 0);
             const deduction = isTicked ? (att.dailyDeduction || 0) : 0;
             const reason = deduction !== 0 ? (att.deductionReason || '') : '';
+            let hours = isTicked ? (att.payableHours !== undefined ? att.payableHours : calculateWorkingHours(inTime, outTime)) : 0;
+            if (isTicked && deduction < 0 && reason && reason.startsWith('Late')) {
+                hours = calculateWorkingHours(defaultShiftOn, outTime);
+            }
+            const daySalary = isTicked ? (att.daySalary !== undefined ? att.daySalary : Number((hours * hourlyRate).toFixed(2))) : 0;
+            const advance = Math.max(Number(att.dailyAdvance) || 0, Number(advanceMap.get(dateStr)) || 0);
 
             if (isTicked) {
                 totalDays += 1;

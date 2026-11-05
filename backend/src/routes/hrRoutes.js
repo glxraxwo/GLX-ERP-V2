@@ -10,7 +10,7 @@ import {
     createSalaryStructure, getSalaryStructures, updateSalaryStructure, deleteSalaryStructure,
     createLeaveStructure, getLeaveStructures, updateLeaveStructure, deleteLeaveStructure, getMyEmployeeProfile,
     createAttendancePolicy, getAttendancePolicies, updateAttendancePolicy, deleteAttendancePolicy, importFingerprintAttendance,
-    getEmployeePaymentSheet, sendPaymentSheetLinkSms, createSalaryAdvance, getSalaryAdvances, getEmployeeAdvanceSummary, approveSalaryAdvance, declineSalaryAdvance, paySalaryAdvance, recordAdvanceRepayment, getMyAdvanceLedger, getOngoingSalaryPeriodInfo, deleteSalaryAdvance,
+    getEmployeePaymentSheet, sendPaymentSheetLinkSms, createSalaryAdvance, getSalaryAdvances, getEmployeeAdvanceSummary, approveSalaryAdvance, declineSalaryAdvance, paySalaryAdvance, recordAdvanceRepayment, getMyAdvanceLedger, getOngoingSalaryPeriodInfo, deleteSalaryAdvance, getAdvanceManagementOverview,
     uploadEmployeeDocument, getEmployeeDocuments, deleteEmployeeDocument, getPublicPayslip,
 } from '../controllers/hrController.js';
 import {
@@ -207,6 +207,7 @@ router.get('/employee-of-month', requirePermission('hr.employees.view'), async (
 
 
 // ── Salary Advances & Payment Sheets
+router.get('/advances/earned-wage-overview', requirePermission('hr.employees.view'), getAdvanceManagementOverview);
 router.get('/advances/my-ledger', getMyAdvanceLedger);
 router.get('/advances/ongoing-period', getOngoingSalaryPeriodInfo);
 

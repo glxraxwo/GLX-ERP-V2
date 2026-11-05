@@ -279,28 +279,30 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
         }
     }
 
-    // 3. Day Salary & Working Hours (Method 1: Full shift day pay when late penalty applies)
-    let daySalary = Number((hrs * hourlyRate).toFixed(2));
-
+    // 3. Day Salary & Working Hours (Method 1: Full shift day pay & hours when late penalty applies)
     const hasLatePenalty = reasonParts.some(p => p.startsWith('Late') && p.includes('(-'));
-    const workedThroughShiftEnd = outMin !== null && shiftOutMin !== null && outMin >= shiftOutMin;
-
     const minHoursPol = activePols.find(p => p.type === 'MIN_HOURS_FULL_PAY' && doesPolicyApplyToEmployee(p, currentEmployeeId));
     const meetsMinHours = minHoursPol && hrs >= (minHoursPol.thresholdMinutes / 60);
 
-    if ((hasLatePenalty && workedThroughShiftEnd) || meetsMinHours) {
-        daySalary = Number((standardHrs * hourlyRate).toFixed(2));
+    let finalHours = hrs;
+    if (hasLatePenalty) {
+        // Method 1: Credit full shift hours starting from shiftOnTime because late penalty is charged in Deductions
+        finalHours = calculateHoursFromTimes(shiftOnTime, outT);
+    } else if (meetsMinHours) {
+        finalHours = standardHrs;
     }
 
+    const daySalary = Number((finalHours * hourlyRate).toFixed(2));
+
     const finalReason = deduction !== 0
-        ? (reasonParts.join(', ') || (row.reason && row.reason !== 'No Work' ? row.reason : ''))
+        ? (reasonParts.join(', ') || (row.reason && !row.reason.startsWith('Late') && !row.reason.startsWith('Early') && row.reason !== 'No Work' ? row.reason : ''))
         : (reasonParts.filter(p => p.includes('Covered')).join(', ') || '');
 
     return {
         ...row,
         inTime: inT,
         outTime: outT,
-        hours: hrs,
+        hours: finalHours,
         daySalary,
         deduction,
         reason: finalReason
@@ -484,9 +486,15 @@ export default function ActiveEmployeeDayInOutPage() {
                 // Freely allow typing '-', '-100', '100', ''
                 if (value === '' || value === '-') {
                     row.deduction = value;
+                    if (row.reason && (row.reason.startsWith('Late') || row.reason.startsWith('Early'))) {
+                        row.reason = '';
+                    }
                 } else {
                     const num = Number(value);
                     row.deduction = isNaN(num) ? value : num;
+                    if (num === 0 && row.reason && (row.reason.startsWith('Late') || row.reason.startsWith('Early'))) {
+                        row.reason = '';
+                    }
                 }
             } else if (field === 'reason') {
                 row.reason = value;
@@ -1360,7 +1368,7 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         onKeyDown={(e) => handleDailyKeyDown(e, idx, 'deduction')}
                                                         onBlur={(e) => {
                                                             let val = String(e.target.value).trim();
-                                                            if (val === '' || val === '-') {
+                                                            if (val === '' || val === '-' || val === '0') {
                                                                 handleRowChange(realIdx, 'deduction', 0);
                                                             } else {
                                                                 const num = Number(val);
@@ -1375,7 +1383,7 @@ export default function ActiveEmployeeDayInOutPage() {
                                                                 : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500'
                                                         }`}
                                                     />
-                                                    {row.reason && row.reason !== 'FILL' && (
+                                                    {row.reason && row.reason !== 'FILL' && hasDeduction && (
                                                         <span className="block text-[10px] text-rose-600 dark:text-rose-400 font-semibold truncate leading-tight mt-0.5 text-right" title={row.reason}>
                                                             {row.reason}
                                                         </span>

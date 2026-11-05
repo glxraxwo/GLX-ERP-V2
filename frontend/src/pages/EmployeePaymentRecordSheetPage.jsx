@@ -385,28 +385,30 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
         }
     }
 
-    // 3. Day Salary & Working Hours (Method 1: Full shift day pay when late penalty applies)
-    let daySalary = Number((hrs * hourlyRate).toFixed(2));
-
+    // 3. Day Salary & Working Hours (Method 1: Full shift day pay & hours when late penalty applies)
     const hasLatePenalty = reasonParts.some(p => p.startsWith('Late') && p.includes('(-'));
-    const workedThroughShiftEnd = outMin !== null && shiftOutMin !== null && outMin >= shiftOutMin;
-
     const minHoursPol = activePols.find(p => p.type === 'MIN_HOURS_FULL_PAY' && doesPolicyApplyToEmployee(p, currentEmployeeId));
     const meetsMinHours = minHoursPol && hrs >= (minHoursPol.thresholdMinutes / 60);
 
-    if ((hasLatePenalty && workedThroughShiftEnd) || meetsMinHours) {
-        daySalary = Number((standardHrs * hourlyRate).toFixed(2));
+    let finalHours = hrs;
+    if (hasLatePenalty) {
+        // Method 1: Credit full shift hours starting from shiftOnTime because late minutes are penalized via Deduction (-100)
+        finalHours = calculateHoursFromTimes(shiftOnTime, outT);
+    } else if (meetsMinHours) {
+        finalHours = standardHrs;
     }
 
+    const daySalary = Number((finalHours * hourlyRate).toFixed(2));
+
     const finalReason = deduction !== 0
-        ? (reasonParts.join(', ') || (row.reason && row.reason !== 'No Work' ? row.reason : ''))
+        ? (reasonParts.join(', ') || (row.reason && !row.reason.startsWith('Late') && !row.reason.startsWith('Early') && row.reason !== 'No Work' ? row.reason : ''))
         : (reasonParts.filter(p => p.includes('Covered')).join(', ') || '');
 
     return {
         ...row,
         inTime: inT,
         outTime: outT,
-        hours: hrs,
+        hours: finalHours,
         daySalary,
         deduction,
         reason: finalReason
@@ -779,7 +781,19 @@ export default function EmployeePaymentRecordSheetPage() {
     // Populate rows and defaults from backend
     useEffect(() => {
         if (sheetData?.rows) {
-            setRows(sheetData.rows);
+            const defaultOn = sheetData.defaultOnTime || onTime || '08:00';
+            const defaultOff = sheetData.defaultOffTime || offTime || '18:00';
+            const pols = (sheetData.salaryPolicies && sheetData.salaryPolicies.length > 0)
+                ? sheetData.salaryPolicies
+                : salaryPolicies;
+            const rate = (sheetData.employee?.hourlyRate !== undefined && customHourlyRate === null)
+                ? sheetData.employee.hourlyRate
+                : (customHourlyRate !== null ? customHourlyRate : effectiveHourlyRate);
+
+            setRows(sheetData.rows.map(r => {
+                if (!r.isTicked) return r;
+                return evaluateRowPolicy(r, defaultOn, defaultOff, rate, pols, selectedEmployeeId, sheetData.employee?.paymentType === 'monthly');
+            }));
             if (sheetData.defaultOnTime) setOnTime(sheetData.defaultOnTime);
             if (sheetData.defaultOffTime) setOffTime(sheetData.defaultOffTime);
             if (sheetData.employee?.hourlyRate !== undefined && customHourlyRate === null) {
@@ -1197,9 +1211,15 @@ export default function EmployeePaymentRecordSheetPage() {
                 // Allow user to freely type '-', '-100', '100', ''
                 if (value === '' || value === '-') {
                     row.deduction = value;
+                    if (row.reason && (row.reason.startsWith('Late') || row.reason.startsWith('Early'))) {
+                        row.reason = '';
+                    }
                 } else {
                     const num = Number(value);
                     row.deduction = isNaN(num) ? value : num;
+                    if (num === 0 && row.reason && (row.reason.startsWith('Late') || row.reason.startsWith('Early'))) {
+                        row.reason = '';
+                    }
                 }
             } else if (field === 'reason') {
                 row.reason = value;
@@ -2662,8 +2682,11 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 onClick={handleCellSelectAll}
                                                 onBlur={(e) => {
                                                     let val = String(e.target.value).trim();
-                                                    if (val === '' || val === '-') {
+                                                    if (val === '' || val === '-' || val === '0') {
                                                         handleRowChange(idx, 'deduction', 0);
+                                                        if (row.reason && (row.reason.startsWith('Late') || row.reason.startsWith('Early'))) {
+                                                            handleRowChange(idx, 'reason', '');
+                                                        }
                                                     } else {
                                                         const num = Number(val);
                                                         if (!isNaN(num)) {

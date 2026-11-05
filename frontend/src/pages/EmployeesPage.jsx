@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
-    Plus, Search, Eye, Users, UserCheck, Mail, Phone, Receipt, Edit, Trash2,
+    Plus, Search, Eye, Users, UserCheck, Banknote, Mail, Phone, Receipt, Edit, Trash2,
     Calendar, DollarSign, Clock, ShieldAlert, Award, Building2,
     Calculator, Plane, BadgeCheck, FileSpreadsheet, FileText, ChevronRight, Sliders, LayoutGrid
 } from 'lucide-react';
@@ -38,6 +38,19 @@ const hrHubModules = [
             badge: 'bg-emerald-600/10 text-emerald-800 border border-emerald-300/70 font-bold',
             title: 'text-emerald-950 group-hover:text-emerald-700',
             arrow: 'text-emerald-400 group-hover:text-emerald-700'
+        }
+    },
+    {
+        title: 'Advance Payment',
+        path: '/hr/advance-payment',
+        icon: Banknote,
+        badge: 'Earned Wage',
+        theme: {
+            cardBg: 'bg-gradient-to-br from-amber-50/90 to-yellow-100/70 border-amber-200/90 hover:border-amber-400 hover:from-amber-100/90 hover:to-yellow-200/70 shadow-xs shadow-amber-500/5',
+            iconBox: 'bg-white text-amber-600 border-amber-200 shadow-2xs group-hover:bg-amber-600 group-hover:text-white',
+            badge: 'bg-amber-600/10 text-amber-900 border border-amber-300/70 font-bold',
+            title: 'text-amber-950 group-hover:text-amber-800',
+            arrow: 'text-amber-400 group-hover:text-amber-800'
         }
     },
     {

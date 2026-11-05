@@ -9,7 +9,7 @@ import {
     ChevronDown, ChevronRight, CheckSquare, ClipboardCheck, BadgeCheck,
     PackageCheck, CreditCard, Tag, Mail, Sparkles, Home, Search, Scale,
     Plus, ArrowLeftRight, Sliders, LineChart, PieChart, TrendingUp, UserCheck,
-    MapPin, Download, Barcode, LogOut, ArrowDownToLine, ArrowUpFromLine, Database
+    MapPin, Download, Barcode, LogOut, ArrowDownToLine, ArrowUpFromLine, Database, Banknote
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -83,6 +83,7 @@ const menuGroups = [
         items: [
             { label: 'Employees Master', icon: UsersIcon, path: '/employees', permission: 'hr.employees.view' },
             { label: 'Staff Status Manager', icon: UserCheck, path: '/hr/employee-status', permission: 'hr.employees.view' },
+            { label: 'Advance Payment', icon: Banknote, path: '/hr/advance-payment', permission: 'hr.employees.view' },
             { label: 'Monthly Payslips', icon: FileText, path: '/hr/monthly-payslips', permission: 'hr.employees.view' },
             { label: 'Manual Paysheet', icon: FileSpreadsheet, path: '/hr/manual-payment-sheet', permission: 'hr.employees.view' },
             { label: 'Daily Attendance', icon: CalendarIcon, path: '/hr/daily-manual-attendance', permission: 'hr.attendance.view' },

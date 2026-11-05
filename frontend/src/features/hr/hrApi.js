@@ -84,6 +84,7 @@ export const payrollApi = {
 
 export const advancesApi = {
     list: async (params = {}) => (await api.get('/hr/advances', { params })).data,
+    getEarnedWageOverview: async (params = {}) => (await api.get('/hr/advances/earned-wage-overview', { params })).data,
     getByEmployee: async (employeeId) => (await api.get(`/hr/employees/${employeeId}/advances`)).data,
     getMyLedger: async (params = {}) => (await api.get('/hr/advances/my-ledger', { params })).data,
     getOngoingPeriod: async (params = {}) => (await api.get('/hr/advances/ongoing-period', { params })).data,
