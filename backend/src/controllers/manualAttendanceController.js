@@ -69,12 +69,11 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
     const { date } = req.query;
     const selectedDateStr = date || formatDateStr(new Date());
 
-    // 1. Fetch active employees and settings
+    // 1. Fetch all employees (active & inactive) and settings
     const [employees, settings] = await Promise.all([
         Employee.find({
-            status: 'active',
             deletedAt: null
-        }).sort({ fullName: 1, firstName: 1 }),
+        }).sort({ status: 1, fullName: 1, firstName: 1 }),
         Settings.findOne()
     ]);
     const activePolicies = (settings?.salaryPolicies && settings.salaryPolicies.length > 0) ? settings.salaryPolicies : defaultSalaryPolicies;
@@ -126,6 +125,7 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
         const existing = attendanceMap.get(empIdStr);
         const hourlyRate = getEmployeeRegisteredRate(emp);
         const recordedAdvance = advanceMap.get(empIdStr) || 0;
+        const employeeStatus = emp.status || 'active';
 
         if (existing) {
             const inTime = existing.manualInTime || defaultOnTime;
@@ -142,6 +142,7 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
                 payrollNumber: emp.payrollNumber || emp.employeeCode || '',
                 name: emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.displayName || 'Employee',
                 hourlyRate: hourlyRate,
+                employeeStatus: employeeStatus,
                 isTicked: isTicked,
                 inTime: inTime,
                 outTime: outTime,
@@ -153,16 +154,19 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
                 isSaved: true
             };
         } else {
-            // New record for this date
-            const hours = calculateWorkingHours(defaultOnTime, defaultOffTime);
-            const daySalary = Number((hours * hourlyRate).toFixed(2));
+            // New record for this date (auto-tick only active employees)
+            const isEmpActive = employeeStatus === 'active';
+            const isTicked = isEmpActive;
+            const hours = isTicked ? calculateWorkingHours(defaultOnTime, defaultOffTime) : 0;
+            const daySalary = isTicked ? Number((hours * hourlyRate).toFixed(2)) : 0;
 
             return {
                 employeeId: emp._id,
                 payrollNumber: emp.payrollNumber || emp.employeeCode || '',
                 name: emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.displayName || 'Employee',
                 hourlyRate: hourlyRate,
-                isTicked: true,
+                employeeStatus: employeeStatus,
+                isTicked: isTicked,
                 inTime: defaultOnTime,
                 outTime: defaultOffTime,
                 hours: hours,

@@ -22,7 +22,7 @@ const statusVariant = {
     suspended: 'danger', terminated: 'default', resigned: 'default', retired: 'default',
 };
 
-// All HR Modules with compact layout & distinct Rainbow background gradients
+// Active HR Modules with compact layout & distinct Rainbow background gradients
 const hrHubModules = [
     {
         title: 'Monthly Payslips',
@@ -64,19 +64,6 @@ const hrHubModules = [
         }
     },
     {
-        title: 'Attendance Logs',
-        path: '/attendance',
-        icon: Clock,
-        badge: 'Time Logs',
-        theme: {
-            cardBg: 'bg-gradient-to-br from-purple-50/90 to-violet-100/70 border-purple-200/90 hover:border-purple-400 hover:from-purple-100/90 hover:to-violet-200/70 shadow-xs shadow-purple-500/5',
-            iconBox: 'bg-white text-purple-600 border-purple-200 shadow-2xs group-hover:bg-purple-600 group-hover:text-white',
-            badge: 'bg-purple-600/10 text-purple-800 border border-purple-300/70 font-bold',
-            title: 'text-purple-950 group-hover:text-purple-700',
-            arrow: 'text-purple-400 group-hover:text-purple-700'
-        }
-    },
-    {
         title: 'Leave Management',
         path: '/leaves',
         icon: Plane,
@@ -90,19 +77,6 @@ const hrHubModules = [
         }
     },
     {
-        title: 'Payroll Processing',
-        path: '/payroll',
-        icon: DollarSign,
-        badge: 'Payroll',
-        theme: {
-            cardBg: 'bg-gradient-to-br from-green-50/90 to-emerald-100/70 border-green-200/90 hover:border-green-400 hover:from-green-100/90 hover:to-emerald-200/70 shadow-xs shadow-green-500/5',
-            iconBox: 'bg-white text-green-700 border-green-200 shadow-2xs group-hover:bg-green-600 group-hover:text-white',
-            badge: 'bg-green-600/10 text-green-800 border border-green-300/70 font-bold',
-            title: 'text-green-950 group-hover:text-green-700',
-            arrow: 'text-green-400 group-hover:text-green-700'
-        }
-    },
-    {
         title: 'Salary Advances',
         path: '/hr/salary-advances',
         icon: BadgeCheck,
@@ -113,32 +87,6 @@ const hrHubModules = [
             badge: 'bg-rose-600/10 text-rose-800 border border-rose-300/70 font-bold',
             title: 'text-rose-950 group-hover:text-rose-700',
             arrow: 'text-rose-400 group-hover:text-rose-700'
-        }
-    },
-    {
-        title: 'Attendance Policies',
-        path: '/attendance-policies',
-        icon: ShieldAlert,
-        badge: 'Rules',
-        theme: {
-            cardBg: 'bg-gradient-to-br from-indigo-50/90 to-blue-100/70 border-indigo-200/90 hover:border-indigo-400 hover:from-indigo-100/90 hover:to-blue-200/70 shadow-xs shadow-indigo-500/5',
-            iconBox: 'bg-white text-indigo-600 border-indigo-200 shadow-2xs group-hover:bg-indigo-600 group-hover:text-white',
-            badge: 'bg-indigo-600/10 text-indigo-800 border border-indigo-300/70 font-bold',
-            title: 'text-indigo-950 group-hover:text-indigo-700',
-            arrow: 'text-indigo-400 group-hover:text-indigo-700'
-        }
-    },
-    {
-        title: 'EPF / ETF Statutory',
-        path: '/hr/epf-etf',
-        icon: Calculator,
-        badge: 'Statutory',
-        theme: {
-            cardBg: 'bg-gradient-to-br from-cyan-50/90 to-sky-100/70 border-cyan-200/90 hover:border-cyan-400 hover:from-cyan-100/90 hover:to-sky-200/70 shadow-xs shadow-cyan-500/5',
-            iconBox: 'bg-white text-cyan-700 border-cyan-200 shadow-2xs group-hover:bg-cyan-600 group-hover:text-white',
-            badge: 'bg-cyan-600/10 text-cyan-800 border border-cyan-300/70 font-bold',
-            title: 'text-cyan-950 group-hover:text-cyan-800',
-            arrow: 'text-cyan-400 group-hover:text-cyan-800'
         }
     },
     {
@@ -165,19 +113,6 @@ const hrHubModules = [
             badge: 'bg-orange-600/10 text-orange-800 border border-orange-300/70 font-bold',
             title: 'text-orange-950 group-hover:text-orange-700',
             arrow: 'text-orange-400 group-hover:text-orange-700'
-        }
-    },
-    {
-        title: 'Salary Structures',
-        path: '/salary-structures',
-        icon: Calculator,
-        badge: 'Salary',
-        theme: {
-            cardBg: 'bg-gradient-to-br from-teal-50/90 to-cyan-100/70 border-teal-200/90 hover:border-teal-400 hover:from-teal-100/90 hover:to-cyan-200/70 shadow-xs shadow-teal-500/5',
-            iconBox: 'bg-white text-teal-700 border-teal-200 shadow-2xs group-hover:bg-teal-600 group-hover:text-white',
-            badge: 'bg-teal-600/10 text-teal-800 border border-teal-300/70 font-bold',
-            title: 'text-teal-950 group-hover:text-teal-700',
-            arrow: 'text-teal-400 group-hover:text-teal-700'
         }
     },
     {
@@ -315,7 +250,7 @@ export default function EmployeesPage() {
                             </h2>
                         </div>
                         <span className="text-[10.5px] font-medium text-slate-400">
-                            12 Direct Modules
+                            {hrHubModules.length} Direct Modules
                         </span>
                     </div>
 

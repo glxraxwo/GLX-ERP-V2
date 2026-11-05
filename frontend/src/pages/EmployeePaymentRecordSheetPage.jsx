@@ -385,8 +385,7 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
         }
     }
 
-    // 3. Day Salary & Effective Payable Hours (Method 1: Full shift day pay when late penalty applies)
-    let finalHrs = hrs;
+    // 3. Day Salary & Working Hours (Method 1: Full shift day pay when late penalty applies)
     let daySalary = Number((hrs * hourlyRate).toFixed(2));
 
     const hasLatePenalty = reasonParts.some(p => p.startsWith('Late') && p.includes('(-'));
@@ -396,8 +395,7 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
     const meetsMinHours = minHoursPol && hrs >= (minHoursPol.thresholdMinutes / 60);
 
     if ((hasLatePenalty && workedThroughShiftEnd) || meetsMinHours) {
-        finalHrs = Math.max(hrs, standardHrs);
-        daySalary = Number((finalHrs * hourlyRate).toFixed(2));
+        daySalary = Number((standardHrs * hourlyRate).toFixed(2));
     }
 
     const finalReason = deduction !== 0
@@ -408,7 +406,7 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
         ...row,
         inTime: inT,
         outTime: outT,
-        hours: finalHrs,
+        hours: hrs,
         daySalary,
         deduction,
         reason: finalReason

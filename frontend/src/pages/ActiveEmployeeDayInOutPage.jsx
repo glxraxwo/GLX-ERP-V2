@@ -279,8 +279,7 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
         }
     }
 
-    // 3. Day Salary & Effective Payable Hours (Method 1: Full shift day pay when late penalty applies)
-    let finalHrs = hrs;
+    // 3. Day Salary & Working Hours (Method 1: Full shift day pay when late penalty applies)
     let daySalary = Number((hrs * hourlyRate).toFixed(2));
 
     const hasLatePenalty = reasonParts.some(p => p.startsWith('Late') && p.includes('(-'));
@@ -290,8 +289,7 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
     const meetsMinHours = minHoursPol && hrs >= (minHoursPol.thresholdMinutes / 60);
 
     if ((hasLatePenalty && workedThroughShiftEnd) || meetsMinHours) {
-        finalHrs = Math.max(hrs, standardHrs);
-        daySalary = Number((finalHrs * hourlyRate).toFixed(2));
+        daySalary = Number((standardHrs * hourlyRate).toFixed(2));
     }
 
     const finalReason = deduction !== 0
@@ -302,7 +300,7 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
         ...row,
         inTime: inT,
         outTime: outT,
-        hours: finalHrs,
+        hours: hrs,
         daySalary,
         deduction,
         reason: finalReason
@@ -528,8 +526,9 @@ export default function ActiveEmployeeDayInOutPage() {
         });
     };
 
-    // Filter state: 'all' | 'present' | 'absent'
+    // Filter states: attendance status ('all' | 'present' | 'absent') and employee employment status ('all' | 'active' | 'inactive')
     const [statusFilter, setStatusFilter] = useState('all');
+    const [employeeStatusFilter, setEmployeeStatusFilter] = useState('all');
 
     // Quick Date Shift
     const changeDate = (days) => {
@@ -538,7 +537,7 @@ export default function ActiveEmployeeDayInOutPage() {
         setSelectedDate(formatDateStr(d));
     };
 
-    // Filtered Rows for Search and Status Filter
+    // Filtered Rows for Search, Employee Status Filter and Attendance Status Filter
     const filteredRows = useMemo(() => {
         return rows.filter(r => {
             const matchesSearch = !searchQuery.trim() ||
@@ -546,22 +545,36 @@ export default function ActiveEmployeeDayInOutPage() {
                 r.payrollNumber?.toLowerCase().includes(searchQuery.toLowerCase());
 
             if (!matchesSearch) return false;
+
+            const isEmpActive = (r.employeeStatus || 'active') === 'active';
+            if (employeeStatusFilter === 'active' && !isEmpActive) return false;
+            if (employeeStatusFilter === 'inactive' && isEmpActive) return false;
+
             if (statusFilter === 'present') return Boolean(r.isTicked);
             if (statusFilter === 'absent') return !r.isTicked;
             return true;
         });
-    }, [rows, searchQuery, statusFilter]);
+    }, [rows, searchQuery, statusFilter, employeeStatusFilter]);
 
     // Totals Calculation
     const totals = useMemo(() => {
         let presentCount = 0;
         let absentCount = 0;
+        let activeStaffCount = 0;
+        let inactiveStaffCount = 0;
         let totalHours = 0;
         let totalSalary = 0;
         let totalAdvance = 0;
         let totalDeductions = 0;
 
         rows.forEach(r => {
+            const isEmpActive = (r.employeeStatus || 'active') === 'active';
+            if (isEmpActive) {
+                activeStaffCount++;
+            } else {
+                inactiveStaffCount++;
+            }
+
             if (r.isTicked) {
                 presentCount++;
                 totalHours += Number(r.hours) || 0;
@@ -577,6 +590,8 @@ export default function ActiveEmployeeDayInOutPage() {
         return {
             presentCount,
             absentCount,
+            activeStaffCount,
+            inactiveStaffCount,
             totalHours: Number(totalHours.toFixed(2)),
             totalSalary: Number(totalSalary.toFixed(2)),
             totalAdvance: Number(totalAdvance.toFixed(2)),
@@ -987,47 +1002,88 @@ export default function ActiveEmployeeDayInOutPage() {
                     </div>
 
                     {/* Filter Tabs & Search Row */}
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2 mt-2 border-t border-slate-100">
-                        {/* Status Filter Pills */}
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-bold text-slate-400 mr-0.5 flex items-center gap-1">
-                                <Filter size={11} /> Filter:
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => setStatusFilter('all')}
-                                className={`px-2 py-0.5 rounded-lg text-xs font-bold transition ${
-                                    statusFilter === 'all'
-                                        ? 'bg-slate-900 text-white shadow-2xs'
-                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                }`}
-                            >
-                                All ({rows.length})
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setStatusFilter('present')}
-                                className={`px-2 py-0.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                                    statusFilter === 'present'
-                                        ? 'bg-emerald-600 text-white shadow-2xs'
-                                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                }`}
-                            >
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                Present ({totals.presentCount})
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setStatusFilter('absent')}
-                                className={`px-2 py-0.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                                    statusFilter === 'absent'
-                                        ? 'bg-rose-600 text-white shadow-2xs'
-                                        : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
-                                }`}
-                            >
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-                                Absent ({totals.absentCount})
-                            </button>
+                    <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 pt-2 mt-2 border-t border-slate-100 dark:border-slate-800">
+                        {/* Status Filter Pills: Employee Status & Attendance Status */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            {/* 1. Employee Employment Status (Active vs Inactive) */}
+                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase px-1.5">Staff:</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setEmployeeStatusFilter('all')}
+                                    className={`px-2 py-0.5 rounded text-xs font-bold transition ${
+                                        employeeStatusFilter === 'all'
+                                            ? 'bg-slate-900 text-white shadow-2xs'
+                                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
+                                    }`}
+                                >
+                                    All ({rows.length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setEmployeeStatusFilter('active')}
+                                    className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 ${
+                                        employeeStatusFilter === 'active'
+                                            ? 'bg-emerald-600 text-white shadow-2xs'
+                                            : 'text-emerald-700 hover:bg-emerald-100/60 dark:text-emerald-400'
+                                    }`}
+                                >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                    Active ({totals.activeStaffCount})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setEmployeeStatusFilter('inactive')}
+                                    className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 ${
+                                        employeeStatusFilter === 'inactive'
+                                            ? 'bg-rose-600 text-white shadow-2xs'
+                                            : 'text-rose-700 hover:bg-rose-100/60 dark:text-rose-400'
+                                    }`}
+                                >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                                    Inactive ({totals.inactiveStaffCount})
+                                </button>
+                            </div>
+
+                            {/* 2. Attendance Status (Present vs Absent) */}
+                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase px-1.5">Attend:</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('all')}
+                                    className={`px-2 py-0.5 rounded text-xs font-bold transition ${
+                                        statusFilter === 'all'
+                                            ? 'bg-slate-900 text-white shadow-2xs'
+                                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
+                                    }`}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('present')}
+                                    className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 ${
+                                        statusFilter === 'present'
+                                            ? 'bg-emerald-600 text-white shadow-2xs'
+                                            : 'text-emerald-700 hover:bg-emerald-100/60 dark:text-emerald-400'
+                                    }`}
+                                >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                    Present ({totals.presentCount})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusFilter('absent')}
+                                    className={`px-2 py-0.5 rounded text-xs font-bold transition flex items-center gap-1 ${
+                                        statusFilter === 'absent'
+                                            ? 'bg-rose-600 text-white shadow-2xs'
+                                            : 'text-rose-700 hover:bg-rose-100/60 dark:text-rose-400'
+                                    }`}
+                                >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                                    Absent ({totals.absentCount})
+                                </button>
+                            </div>
                         </div>
 
                         {/* Search Input */}
@@ -1147,10 +1203,17 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         {row.name ? row.name.slice(0, 2) : 'EM'}
                                                     </div>
                                                     <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-1.5">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
                                                             <p className="font-bold text-slate-900 dark:text-white truncate text-xs sm:text-[13px]">
                                                                 {row.name}
                                                             </p>
+                                                            <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${
+                                                                (row.employeeStatus || 'active') === 'active'
+                                                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60'
+                                                                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300/60'
+                                                            }`}>
+                                                                {(row.employeeStatus || 'active') === 'active' ? 'Active' : 'Inactive'}
+                                                            </span>
                                                             {!isPresent && (
                                                                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 shrink-0">
                                                                     Absent
