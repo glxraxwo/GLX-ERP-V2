@@ -33,6 +33,7 @@ export default function AdvancePaymentPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [departmentFilter, setDepartmentFilter] = useState('all');
     const [tabFilter, setTabFilter] = useState('all'); // 'all' | 'eligible' | 'with_advances'
+    const [empStatusFilter, setEmpStatusFilter] = useState('active'); // 'active' | 'inactive' | 'all'
 
     // Modal state for Disbursing Advance
     const [isDisburseModalOpen, setIsDisburseModalOpen] = useState(false);
@@ -172,9 +173,13 @@ export default function AdvancePaymentPage() {
                 return false;
             }
 
+            const isEmpActive = (emp.status || 'active') === 'active';
+            if (empStatusFilter === 'active' && !isEmpActive) return false;
+            if (empStatusFilter === 'inactive' && isEmpActive) return false;
+
             return true;
         });
-    }, [overviewData, searchTerm, tabFilter]);
+    }, [overviewData, searchTerm, tabFilter, empStatusFilter]);
 
     // Live remaining balance calculation inside the modal
     const currentModalEmpRow = useMemo(() => {
@@ -332,7 +337,46 @@ export default function AdvancePaymentPage() {
                 {/* Search & Filter Bar */}
                 <div className="p-3 sm:p-4 bg-slate-50/60 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
                     
-                    {/* Status Tabs */}
+                    {/* Employment Status Filter: Active vs Inactive */}
+                    <div className="flex items-center gap-1 bg-slate-200/70 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-bold">
+                        <button
+                            type="button"
+                            onClick={() => setEmpStatusFilter('active')}
+                            className={`px-2.5 py-1 rounded-md transition flex items-center gap-1.5 ${
+                                empStatusFilter === 'active'
+                                    ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                                    : 'text-emerald-700 hover:bg-emerald-100/60 dark:text-emerald-400'
+                            }`}
+                        >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            Active ({overviewData.filter(i => (i.employee.status || 'active') === 'active').length})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEmpStatusFilter('inactive')}
+                            className={`px-2.5 py-1 rounded-md transition flex items-center gap-1.5 ${
+                                empStatusFilter === 'inactive'
+                                    ? 'bg-rose-600 text-white shadow-2xs font-bold'
+                                    : 'text-rose-700 hover:bg-rose-100/60 dark:text-rose-400'
+                            }`}
+                        >
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                            Inactive ({overviewData.filter(i => (i.employee.status || 'active') !== 'active').length})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEmpStatusFilter('all')}
+                            className={`px-2.5 py-1 rounded-md transition ${
+                                empStatusFilter === 'all'
+                                    ? 'bg-slate-900 text-white shadow-2xs dark:bg-white dark:text-slate-900'
+                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
+                            }`}
+                        >
+                            All ({overviewData.length})
+                        </button>
+                    </div>
+
+                    {/* Advance Status Tabs */}
                     <div className="flex flex-wrap items-center gap-1.5">
                         <button
                             type="button"

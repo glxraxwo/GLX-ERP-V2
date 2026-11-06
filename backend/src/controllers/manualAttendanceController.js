@@ -128,6 +128,9 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
         const employeeStatus = emp.status || 'active';
 
         if (existing) {
+            const isTicked = existing.isTicked !== undefined
+                ? Boolean(existing.isTicked)
+                : (existing.status === 'present');
             const inTime = existing.manualInTime || defaultOnTime;
             const outTime = existing.manualOutTime || defaultOffTime;
             const deduction = existing.dailyDeduction || 0;

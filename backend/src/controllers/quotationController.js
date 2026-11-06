@@ -185,6 +185,12 @@ export const getQuotationById = asyncHandler(async (req, res) => {
         throw new Error('Quotation not found');
     }
 
+    if (!quotation.publicToken) {
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        await Quotation.updateOne({ _id: quotation._id }, { $set: { publicToken: token } });
+        quotation.publicToken = token;
+    }
+
     res.json({ success: true, data: quotation });
 });
 

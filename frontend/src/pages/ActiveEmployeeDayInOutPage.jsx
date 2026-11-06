@@ -536,7 +536,7 @@ export default function ActiveEmployeeDayInOutPage() {
 
     // Filter states: attendance status ('all' | 'present' | 'absent') and employee employment status ('all' | 'active' | 'inactive')
     const [statusFilter, setStatusFilter] = useState('all');
-    const [employeeStatusFilter, setEmployeeStatusFilter] = useState('all');
+    const [employeeStatusFilter, setEmployeeStatusFilter] = useState('active');
 
     // Quick Date Shift
     const changeDate = (days) => {

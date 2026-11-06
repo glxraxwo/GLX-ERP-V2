@@ -254,7 +254,7 @@ export const sendGrnCreationSms = async (grn, customMessage = null, customPhone 
 /**
  * Share a public document link via SMS and send a duplicate copy to the manager.
  */
-export const sendPublicDocumentSms = async (doc, clientPhone, documentType, hostOrigin, customMessage = null) => {
+export const sendPublicDocumentSms = async (doc, clientPhone, documentType, hostOrigin, customMessage = null, options = {}) => {
     try {
         const token = doc.publicToken;
         const link = `${hostOrigin}/public/documents/${token}`;
@@ -262,7 +262,10 @@ export const sendPublicDocumentSms = async (doc, clientPhone, documentType, host
         const clientName = doc.customerName || doc.vehicleOwner || 'Valued Customer';
         const docTypeTitle = (documentType === 'estimate' ? 'Estimate' : (documentType === 'invoice' ? 'Invoice' : 'Quotation'));
         
-        const message = customMessage || `Dear ${clientName}, here is the link to view your GLX Industries ${docTypeTitle} (${docCode}): ${link}`;
+        let message = customMessage || `Dear ${clientName}, here is the link to view your GLX Industries ${docTypeTitle} (${docCode}): ${link}`;
+        if (customMessage && !customMessage.includes('/public/documents/') && !customMessage.includes(token)) {
+            message = `${customMessage.trim()} ${link}`;
+        }
         
         // Send SMS to client
         let formattedContact = formatSmsContact(clientPhone);
@@ -306,7 +309,7 @@ export const sendPublicDocumentSms = async (doc, clientPhone, documentType, host
         // Send duplicate copy to Manager
         const Settings = mongoose.model('Settings');
         const settings = await Settings.findOne();
-        if (settings && settings.managerSmsPhone) {
+        if (!options.skipManagerDuplicate && settings && settings.managerSmsPhone) {
             let managerContact = formatSmsContact(settings.managerSmsPhone);
             const managerMsg = `[Manager Copy] Document link sent to ${clientPhone} (${clientName}): ${link}`;
             
@@ -390,7 +393,7 @@ export const sendPayslipSms = async (payslipData, employeePhone, hostOrigin, cus
         // Send duplicate copy to Manager
         const Settings = mongoose.model('Settings');
         const settings = await Settings.findOne();
-        if (settings && settings.managerSmsPhone) {
+        if (!options.skipManagerDuplicate && settings && settings.managerSmsPhone) {
             let managerContact = formatSmsContact(settings.managerSmsPhone);
             const managerMsg = `[Manager Copy] Payslip link sent to ${employeePhone} (${employeeName}): ${link}`;
             
@@ -469,7 +472,7 @@ export const sendPaymentSheetSms = async (employeeData, employeePhone, startDate
         // Send duplicate copy to Manager
         const Settings = mongoose.model('Settings');
         const settings = await Settings.findOne();
-        if (settings && settings.managerSmsPhone) {
+        if (!options.skipManagerDuplicate && settings && settings.managerSmsPhone) {
             let managerContact = formatSmsContact(settings.managerSmsPhone);
             const managerMsg = `[Manager Copy] Payment sheet summary sent to ${employeePhone} (${employeeName}): ${message}`;
             
@@ -618,7 +621,7 @@ export const dispatchSmsNotification = async ({ contactPhone, recipientName, mes
     try {
         const Settings = mongoose.model('Settings');
         const settings = await Settings.findOne();
-        if (settings && settings.managerSmsPhone) {
+        if (!options.skipManagerDuplicate && settings && settings.managerSmsPhone) {
             let managerContact = formatSmsContact(settings.managerSmsPhone);
             const managerMsg = `[Manager Copy] Alert sent to ${contactPhone || 'client'} (${recipientName}): ${message}`;
             if (SMS_USER_ID && SMS_API_KEY && SMS_SENDER_ID && SMS_GATEWAY_URL && managerContact) {

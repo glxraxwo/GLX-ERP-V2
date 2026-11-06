@@ -26,6 +26,7 @@ export default function SalaryAdvancesPage() {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [empStatusFilter, setEmpStatusFilter] = useState('active'); // 'active' | 'inactive' | 'all'
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
     const [selectedEmployeeForModal, setSelectedEmployeeForModal] = useState(null);
 
@@ -50,9 +51,13 @@ export default function SalaryAdvancesPage() {
                 ? true 
                 : (statusFilter === 'pending' ? adv.status === 'pending' : (adv.status === statusFilter || (statusFilter === 'approved' && adv.status === 'paid')));
 
+            const isEmpActive = adv.employeeId?.status === 'active' || adv.employeeId?.status === undefined;
+            if (empStatusFilter === 'active' && adv.employeeId?.status && adv.employeeId.status !== 'active') return false;
+            if (empStatusFilter === 'inactive' && adv.employeeId?.status === 'active') return false;
+
             return matchesSearch && matchesStatus;
         });
-    }, [advances, searchTerm, statusFilter]);
+    }, [advances, searchTerm, statusFilter, empStatusFilter]);
 
     // KPI Metrics calculation
     const metrics = useMemo(() => {
@@ -268,6 +273,43 @@ export default function SalaryAdvancesPage() {
                             </span>
                         </button>
                     ))}
+                </div>
+
+                {/* Employee Status Pills (Active / Inactive / All) */}
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                    <button
+                        type="button"
+                        onClick={() => setEmpStatusFilter('active')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            empStatusFilter === 'active'
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                    >
+                        Active Staff (සක්‍රීය)
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setEmpStatusFilter('inactive')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            empStatusFilter === 'inactive'
+                                ? 'bg-rose-600 text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                    >
+                        Inactive Staff (අක්‍රීය)
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setEmpStatusFilter('all')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                            empStatusFilter === 'all'
+                                ? 'bg-indigo-600 text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                    >
+                        All Staff (සියල්ල)
+                    </button>
                 </div>
 
                 {/* Search Input */}

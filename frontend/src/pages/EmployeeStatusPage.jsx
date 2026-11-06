@@ -30,7 +30,7 @@ export default function EmployeeStatusPage() {
 
     // Filters
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'inactive' | 'other'
+    const [statusFilter, setStatusFilter] = useState('active'); // 'active' | 'inactive' | 'other' | 'all'
     const [departmentFilter, setDepartmentFilter] = useState('all');
     const [selectedEmpIds, setSelectedEmpIds] = useState([]);
 

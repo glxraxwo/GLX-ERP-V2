@@ -25,7 +25,7 @@ export default function RecordAdvanceModal({
     onSuccess
 }) {
     const qc = useQueryClient();
-    const { data: employeesData } = useEmployees({ limit: 1000 });
+    const { data: employeesData } = useEmployees({ status: 'active', limit: 1000 });
     const employees = employeesData?.data || [];
 
     const getTodayStr = () => {

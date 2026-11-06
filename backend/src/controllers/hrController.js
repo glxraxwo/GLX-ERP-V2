@@ -94,10 +94,6 @@ export const deleteDesignation = asyncHandler(async (req, res) => {
 // ============================================================
 
 export const createEmployee = asyncHandler(async (req, res) => {
-    if (!req.body.phone) {
-        res.status(400);
-        throw new Error('Primary contact number is required.');
-    }
 
     let linkedUserId = req.body.userId || null;
 
@@ -286,13 +282,7 @@ export const updateEmployee = asyncHandler(async (req, res) => {
 
     // Do not block partial updates (like status toggling: active / inactive)
     const isPartialUpdate = req.body.status !== undefined && !req.body.firstName && !req.body.employeeCode;
-    if (!isPartialUpdate) {
-        const phone = req.body.phone !== undefined ? req.body.phone : existingEmp.phone;
-        if (!phone) {
-            res.status(400);
-            throw new Error('Primary contact number is required.');
-        }
-    }
+    // Phone number is optional
 
     let linkedUserId = existingEmp.userId;
 
@@ -1457,7 +1447,7 @@ export const getSalaryAdvances = asyncHandler(async (req, res) => {
     if (req.query.status) filter.status = req.query.status;
 
     const rawAdvances = await SalaryAdvance.find(filter)
-        .populate('employeeId', 'firstName lastName employeeCode departmentId basicSalary labourRate paymentType')
+        .populate('employeeId', 'firstName lastName employeeCode departmentId basicSalary labourRate paymentType status')
         .populate('approvedBy', 'firstName lastName')
         .populate('rejectedBy', 'firstName lastName')
         .sort({ date: -1 });

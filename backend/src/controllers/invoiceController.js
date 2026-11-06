@@ -1,4 +1,4 @@
-import { backupDocumentAsPdf, sendInvoiceCreationSms, sendDocumentUpdateSms } from '../services/smsService.js';
+import { backupDocumentAsPdf, sendInvoiceCreationSms, sendDocumentUpdateSms, sendPublicDocumentSms } from '../services/smsService.js';
 import asyncHandler from 'express-async-handler';
 import mongoose from 'mongoose';
 import Invoice from '../models/Invoice.js';
@@ -234,6 +234,26 @@ export const createInvoice = asyncHandler(async (req, res) => {
         await updateCustomerBalance(customer._id);
     }
 
+    if (req.body.sendSms === true && (req.body.recipientPhone || invoice.customerPhone)) {
+        let hostOrigin = 'http://localhost:5173';
+        if (req.headers.origin) {
+            hostOrigin = req.headers.origin;
+        } else if (req.headers.referer) {
+            try {
+                hostOrigin = new URL(req.headers.referer).origin;
+            } catch {
+                hostOrigin = req.headers.referer;
+            }
+        } else if (process.env.FRONTEND_URL) {
+            hostOrigin = process.env.FRONTEND_URL.split(',')[0].trim();
+        }
+
+        const targetPhone = req.body.recipientPhone || invoice.customerPhone;
+        sendPublicDocumentSms(invoice, targetPhone, 'invoice', hostOrigin, req.body.customMessage)
+            .then(() => console.log(`[Invoice Created SMS] Dispatched to customer for ${invoice.invoiceNumber}`))
+            .catch(err => console.error('[Invoice Created SMS Error]:', err.message));
+    }
+
     const populated = await Invoice.findById(invoice._id)
         .populate('customerId', 'displayName customerCode')
         .populate('salesOrderIds', 'orderNumber');
@@ -464,6 +484,12 @@ export const getInvoiceById = asyncHandler(async (req, res) => {
         .populate('cancelledBy', 'firstName lastName')
         .lean();
     if (!invoice) { res.status(404); throw new Error('Invoice not found'); }
+
+    if (!invoice.publicToken) {
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        await Invoice.updateOne({ _id: invoice._id }, { $set: { publicToken: token } });
+        invoice.publicToken = token;
+    }
     res.json({ success: true, data: invoice });
 });
 
@@ -514,6 +540,12 @@ export const changeInvoiceStatus = asyncHandler(async (req, res) => {
     const { status, reason } = req.body;
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice) { res.status(404); throw new Error('Invoice not found'); }
+
+    if (!invoice.publicToken) {
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        await Invoice.updateOne({ _id: invoice._id }, { $set: { publicToken: token } });
+        invoice.publicToken = token;
+    }
 
     const allowed = {
         draft: ['approved', 'cancelled'],
@@ -711,6 +743,12 @@ export const updateInvoice = asyncHandler(async (req, res) => {
 export const deleteInvoice = asyncHandler(async (req, res) => {
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice) { res.status(404); throw new Error('Invoice not found'); }
+
+    if (!invoice.publicToken) {
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        await Invoice.updateOne({ _id: invoice._id }, { $set: { publicToken: token } });
+        invoice.publicToken = token;
+    }
     if (invoice.status !== 'draft') {
         res.status(400); throw new Error('Only draft invoices can be deleted');
     }

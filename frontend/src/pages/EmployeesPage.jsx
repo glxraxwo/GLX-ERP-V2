@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import {
     Plus, Search, Eye, Users, UserCheck, Banknote, Mail, Phone, Receipt, Edit, Trash2,
     Calendar, DollarSign, Clock, ShieldAlert, Award, Building2,
-    Calculator, Plane, BadgeCheck, FileSpreadsheet, FileText, ChevronRight, Sliders, LayoutGrid
+    Calculator, Plane, FileSpreadsheet, FileText, ChevronRight, Sliders, LayoutGrid
 } from 'lucide-react';
 
 import PageHeader from '../components/ui/PageHeader';
@@ -27,19 +27,7 @@ const statusVariant = {
 
 // Active HR Modules with compact layout & distinct Rainbow background gradients
 const hrHubModules = [
-    {
-        title: 'Staff Status Manager',
-        path: '/hr/employee-status',
-        icon: UserCheck,
-        badge: 'Active / Inactive',
-        theme: {
-            cardBg: 'bg-gradient-to-br from-emerald-50/90 to-teal-100/70 border-emerald-200/90 hover:border-emerald-400 hover:from-emerald-100/90 hover:to-teal-200/70 shadow-xs shadow-emerald-500/5',
-            iconBox: 'bg-white text-emerald-600 border-emerald-200 shadow-2xs group-hover:bg-emerald-600 group-hover:text-white',
-            badge: 'bg-emerald-600/10 text-emerald-800 border border-emerald-300/70 font-bold',
-            title: 'text-emerald-950 group-hover:text-emerald-700',
-            arrow: 'text-emerald-400 group-hover:text-emerald-700'
-        }
-    },
+
     {
         title: 'Advance Payment',
         path: '/hr/advance-payment',
@@ -106,19 +94,6 @@ const hrHubModules = [
         }
     },
     {
-        title: 'Salary Advances',
-        path: '/hr/salary-advances',
-        icon: BadgeCheck,
-        badge: 'Advances',
-        theme: {
-            cardBg: 'bg-gradient-to-br from-rose-50/90 to-pink-100/70 border-rose-200/90 hover:border-rose-400 hover:from-rose-100/90 hover:to-pink-200/70 shadow-xs shadow-rose-500/5',
-            iconBox: 'bg-white text-rose-600 border-rose-200 shadow-2xs group-hover:bg-rose-600 group-hover:text-white',
-            badge: 'bg-rose-600/10 text-rose-800 border border-rose-300/70 font-bold',
-            title: 'text-rose-950 group-hover:text-rose-700',
-            arrow: 'text-rose-400 group-hover:text-rose-700'
-        }
-    },
-    {
         title: 'Departments & Roles',
         path: '/departments',
         icon: Building2,
@@ -162,7 +137,7 @@ const hrHubModules = [
 export default function EmployeesPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const [filters, setFilters] = useState({ search: '', departmentId: '', status: '', page: 1, limit: 25 });
+    const [filters, setFilters] = useState({ search: '', departmentId: '', status: 'active', page: 1, limit: 25 });
     const [deletingEmp, setDeletingEmp] = useState(null);
     const [isHubExpanded, setIsHubExpanded] = useState(true);
 
@@ -372,41 +347,65 @@ export default function EmployeesPage() {
 
             {/* Main Employee Table Card */}
             <Card>
-                <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex flex-wrap gap-2 sm:gap-3">
-                    <div className="relative flex-1">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-                        <input 
-                            type="text" 
-                            placeholder="Search by name, employee code, email, phone..."
-                            className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            value={filters.search}
-                            onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))} 
-                        />
+                <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex flex-wrap gap-3 items-center justify-between">
+                    {/* Status Tabs (Active / Inactive / All) */}
+                    <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <button
+                            type="button"
+                            onClick={() => setFilters(f => ({ ...f, status: 'active', page: 1 }))}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                                filters.status === 'active'
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'text-emerald-700 hover:bg-emerald-100/60 dark:text-emerald-400'
+                            }`}
+                        >
+                            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            Active Staff (සක්‍රීය)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFilters(f => ({ ...f, status: 'inactive', page: 1 }))}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                                filters.status === 'inactive'
+                                    ? 'bg-rose-600 text-white shadow-xs'
+                                    : 'text-rose-700 hover:bg-rose-100/60 dark:text-rose-400'
+                            }`}
+                        >
+                            <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                            Inactive Staff (අක්‍රීය)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFilters(f => ({ ...f, status: '', page: 1 }))}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                                !filters.status || filters.status === 'all'
+                                    ? 'bg-slate-900 text-white shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
+                            }`}
+                        >
+                            All Staff (සියල්ල)
+                        </button>
                     </div>
-                    <div className="w-full sm:w-48">
-                        <Select 
-                            placeholder="All Departments" 
-                            options={deptOptions}
-                            value={filters.departmentId}
-                            onChange={(e) => setFilters((f) => ({ ...f, departmentId: e.target.value, page: 1 }))} 
-                        />
-                    </div>
-                    <div className="w-full sm:w-44">
-                        <Select 
-                            placeholder="All Statuses"
-                            options={[
-                                { value: '', label: 'All Statuses' },
-                                { value: 'active', label: 'Active' },
-                                { value: 'inactive', label: 'Inactive' },
-                                { value: 'on_leave', label: 'On Leave' },
-                                { value: 'probation', label: 'Probation' },
-                                { value: 'suspended', label: 'Suspended' },
-                                { value: 'terminated', label: 'Terminated' },
-                                { value: 'resigned', label: 'Resigned' },
-                            ]}
-                            value={filters.status}
-                            onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value, page: 1 }))} 
-                        />
+
+                    <div className="flex flex-wrap items-center gap-2 flex-1 md:max-w-xl justify-end">
+                        <div className="relative flex-1 min-w-[180px]">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+                            <input 
+                                type="text" 
+                                placeholder="Search by name, employee code, email, phone..."
+                                className="w-full pl-9 pr-3 py-1.5 border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                value={filters.search}
+                                onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value, page: 1 }))} 
+                            />
+                        </div>
+                        <div className="w-full sm:w-44">
+                            <Select 
+                                placeholder="All Departments" 
+                                options={deptOptions}
+                                value={filters.departmentId}
+                                onChange={(e) => setFilters((f) => ({ ...f, departmentId: e.target.value, page: 1 }))} 
+                            />
+                        </div>
                     </div>
                 </div>
 

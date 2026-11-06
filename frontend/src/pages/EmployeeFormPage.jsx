@@ -27,6 +27,7 @@ export default function EmployeeFormPage() {
 
     // 2-Step Page State: 1 = General & Employment, 2 = Salary, Bank & Credentials
     const [step, setStep] = useState(1);
+    const [pendingFiles, setPendingFiles] = useState({});
 
     const firstNameInputRef = useRef(null);
     const compensationRef = useRef(null);
@@ -182,12 +183,42 @@ export default function EmployeeFormPage() {
         }
     }, [step]);
 
-    // Keyboard Shortcuts (Ctrl+Enter to Save, Alt+N for Next, Alt+P for Back)
+    // Keyboard Shortcuts (Enter to navigate fields, Ctrl+Enter to Save, Alt+N for Next, Alt+P for Back)
     useEffect(() => {
         const handleKeyDown = (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 submit();
+            } else if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+                const target = e.target;
+                if (target && target.tagName !== 'TEXTAREA' && target.tagName !== 'BUTTON') {
+                    if (target.tagName === 'INPUT' || target.tagName === 'SELECT') {
+                        e.preventDefault();
+                        const formContainer = document.getElementById('employee-form-container') || document.body;
+                        const focusable = Array.from(
+                            formContainer.querySelectorAll(
+                                'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])'
+                            )
+                        ).filter(el => {
+                            return el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0;
+                        });
+
+                        const currentIndex = focusable.indexOf(target);
+                        if (currentIndex > -1 && currentIndex < focusable.length - 1) {
+                            const next = focusable[currentIndex + 1];
+                            next.focus();
+                            if (typeof next.select === 'function' && next.type !== 'date') {
+                                next.select();
+                            }
+                        } else if (currentIndex === focusable.length - 1) {
+                            if (step === 1) {
+                                setStep(2);
+                            } else if (step === 2) {
+                                submit();
+                            }
+                        }
+                    }
+                }
             } else if (e.altKey && (e.key.toLowerCase() === 'n' || e.key === 'ArrowRight')) {
                 e.preventDefault();
                 setStep(2);
@@ -198,7 +229,7 @@ export default function EmployeeFormPage() {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [form, isEdit, existingData]);
+    }, [form, isEdit, existingData, step]);
 
     const update = (path, value) => {
         setForm((prev) => {
@@ -260,11 +291,6 @@ export default function EmployeeFormPage() {
             setStep(1);
             return;
         }
-        if (!form.phone || !form.secondaryPhone || !form.tertiaryPhone) {
-            toast.error('සෑම සේවකයෙකුගෙන්ම දුරකථන අංක 3ක් (Contact 1, Contact 2 & Contact 3) ඇතුළත් කිරීම අනිවාර්ය වේ!');
-            setStep(1);
-            return;
-        }
         if (form.createLogin && (!isEdit || !existingData?.data?.userId)) {
             const emailToUse = form.loginEmail || form.email;
             if (!emailToUse) {
@@ -320,14 +346,41 @@ export default function EmployeeFormPage() {
                 navigate(`/employees/${id}`);
             } else {
                 const result = await createMutation.mutateAsync(payload);
-                navigate(`/employees/${result.data._id}`);
+                const newId = result?.data?._id || result?._id;
+
+                const pendingKeys = Object.keys(pendingFiles);
+                if (pendingKeys.length > 0 && newId) {
+                    const uploadPromises = pendingKeys.map(async (docType) => {
+                        const file = pendingFiles[docType];
+                        if (file) {
+                            try {
+                                await uploadDocumentMutation.mutateAsync({
+                                    employeeId: newId,
+                                    file,
+                                    documentType: docType,
+                                    title: file.name
+                                });
+                            } catch (err) {
+                                console.error(`Error uploading ${docType}:`, err);
+                            }
+                        }
+                    });
+                    await Promise.allSettled(uploadPromises);
+                }
+
+                navigate(`/employees/${newId}`);
             }
         } catch { }
     };
 
     const handleFileUpload = async (documentType, file) => {
+        if (!file) return;
+
         if (!isEdit || !id) {
-            toast.error('Please save the employee first before uploading documents');
+            setPendingFiles((prev) => ({ ...prev, [documentType]: file }));
+            update(`${documentType}.url`, file.name);
+            update(`${documentType}.status`, 'submitted');
+            toast.success(`${file.name} attached! Will be uploaded on save.`);
             return;
         }
 
@@ -345,13 +398,25 @@ export default function EmployeeFormPage() {
                 documentType === 'policeReport' ? 'police-reports' : 'general'
             }/${file.name}`);
             update(`${documentType}.status`, 'submitted');
+            toast.success(`${file.name} uploaded successfully!`);
         } catch (error) {
             console.error('Upload error:', error);
+            toast.error('Failed to upload document');
         }
     };
 
     const handleDeleteDocument = async (documentType, documentId) => {
-        if (!isEdit || !id) return;
+        if (!isEdit || !id) {
+            setPendingFiles((prev) => {
+                const next = { ...prev };
+                delete next[documentType];
+                return next;
+            });
+            update(`${documentType}.url`, '');
+            update(`${documentType}.status`, 'pending');
+            toast.success('Document removed');
+            return;
+        }
 
         try {
             await deleteDocumentMutation.mutateAsync({
@@ -362,8 +427,10 @@ export default function EmployeeFormPage() {
 
             update(`${documentType}.url`, '');
             update(`${documentType}.status`, 'pending');
+            toast.success('Document removed');
         } catch (error) {
             console.error('Delete error:', error);
+            toast.error('Failed to delete document');
         }
     };
 
@@ -407,7 +474,7 @@ export default function EmployeeFormPage() {
             <div className="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 rounded-xl px-4 py-2 flex flex-wrap items-center justify-between text-xs text-slate-600 dark:text-slate-300 gap-2 shadow-2xs">
                 <div className="flex items-center gap-2 font-medium">
                     <span className="font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">⌨️ Keyboard Navigation:</span>
-                    <span>Use <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-[11px] font-mono font-bold shadow-2xs">Tab</kbd> to move between fields</span>
+                    <span>Use <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-[11px] font-mono font-bold shadow-2xs">Enter</kbd> or <kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-[11px] font-mono font-bold shadow-2xs">Tab</kbd> to move between fields</span>
                     <span className="hidden sm:inline text-slate-300">|</span>
                     <span className="hidden sm:inline"><kbd className="px-1.5 py-0.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded text-[11px] font-mono font-bold shadow-2xs">Alt + N</kbd> Next Page</span>
                     <span className="hidden sm:inline text-slate-300">|</span>
@@ -420,7 +487,7 @@ export default function EmployeeFormPage() {
                 </div>
             </div>
 
-            <Card className="w-full shadow-sm border border-slate-200 dark:border-slate-800">
+            <Card id="employee-form-container" className="w-full shadow-sm border border-slate-200 dark:border-slate-800">
                 {/* 2-Step Modern Segmented Tab Bar */}
                 <div className="border-b border-gray-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 p-2 sm:p-3">
                     <div className="grid grid-cols-2 gap-2 sm:gap-4 w-full">
@@ -549,29 +616,26 @@ export default function EmployeeFormPage() {
                                         <Phone size={18} className="text-emerald-600" />
                                         <h3 className="font-bold text-sm sm:text-base">2. Contact Numbers & Address (සම්බන්ධතා සහ ලිපිනය)</h3>
                                     </div>
-                                    <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/60">
-                                        දුරකථන අංක 3ක් අනිවාර්යයි
+                                    <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                                        Optional / විකල්ප
                                     </span>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                                     <Input
-                                        label="Primary Phone (සම්බන්ධ කරගන්නා අංකය 1)"
-                                        required
+                                        label="Primary Phone (ප්‍රධාන දුරකථන අංකය 1)"
                                         placeholder="e.g. 0771234567"
                                         value={form.phone}
                                         onChange={(e) => update('phone', e.target.value)}
                                     />
                                     <Input
-                                        label="Secondary Phone (සම්බන්ධ කරගන්නා අංකය 2)"
-                                        required
+                                        label="Secondary Phone (දුරකථන අංකය 2)"
                                         placeholder="e.g. 0719876543"
                                         value={form.secondaryPhone}
                                         onChange={(e) => update('secondaryPhone', e.target.value)}
                                     />
                                     <Input
-                                        label="Third Phone (සම්බන්ධ කරගන්නා අංකය 3)"
-                                        required
+                                        label="Third Phone (දුරකථන අංකය 3)"
                                         placeholder="e.g. 0764567890"
                                         value={form.tertiaryPhone}
                                         onChange={(e) => update('tertiaryPhone', e.target.value)}
@@ -1053,14 +1117,16 @@ export default function EmployeeFormPage() {
                                         </div>
                                         <div className="mt-2">
                                             {form.gsCertificate.url ? (
-                                                <div className="flex items-center justify-between p-2.5 bg-green-50 border border-green-200 rounded-lg">
-                                                    <span className="text-xs text-green-800 font-bold flex items-center gap-1.5">
-                                                        <CheckCircle size={14} className="text-green-600" /> GS Certificate Uploaded
+                                                <div className="flex items-center justify-between p-2.5 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                                                    <span className="text-xs text-green-800 dark:text-green-300 font-bold flex items-center gap-1.5 truncate">
+                                                        <CheckCircle size={14} className="text-green-600 shrink-0" />
+                                                        <span className="truncate">{pendingFiles.gsCertificate ? `Attached: ${pendingFiles.gsCertificate.name}` : 'GS Certificate Uploaded'}</span>
                                                     </span>
                                                     <button
                                                         type="button"
                                                         onClick={() => handleDeleteDocument('gsCertificate')}
-                                                        className="text-red-600 hover:text-red-800 p-1"
+                                                        className="text-red-600 hover:text-red-800 p-1 shrink-0"
+                                                        title="Remove document"
                                                     >
                                                         <X size={14} />
                                                     </button>
@@ -1074,16 +1140,14 @@ export default function EmployeeFormPage() {
                                                         accept=".pdf,.jpg,.jpeg,.png"
                                                         onChange={(e) => {
                                                             if (e.target.files[0]) handleFileUpload('gsCertificate', e.target.files[0]);
+                                                            e.target.value = '';
                                                         }}
-                                                        disabled={!isEdit}
                                                     />
                                                     <label
                                                         htmlFor="gs-cert-upload"
-                                                        className={`flex items-center justify-center gap-2 p-2.5 border border-dashed rounded-lg text-xs font-semibold cursor-pointer ${
-                                                            !isEdit ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'hover:bg-slate-100 text-slate-700 dark:text-slate-200'
-                                                        }`}
+                                                        className="flex items-center justify-center gap-2 p-2.5 border border-dashed rounded-lg text-xs font-semibold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
                                                     >
-                                                        <Upload size={14} /> Upload GS Certificate {!isEdit && '(Save employee first)'}
+                                                        <Upload size={14} /> Upload GS Certificate (ග්‍රාම නිලධාරී සහතිකය)
                                                     </label>
                                                 </div>
                                             )}
@@ -1115,14 +1179,16 @@ export default function EmployeeFormPage() {
                                         </div>
                                         <div className="mt-2">
                                             {form.educationCertificates.url ? (
-                                                <div className="flex items-center justify-between p-2.5 bg-green-50 border border-green-200 rounded-lg">
-                                                    <span className="text-xs text-green-800 font-bold flex items-center gap-1.5">
-                                                        <CheckCircle size={14} className="text-green-600" /> Education Cert Uploaded
+                                                <div className="flex items-center justify-between p-2.5 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                                                    <span className="text-xs text-green-800 dark:text-green-300 font-bold flex items-center gap-1.5 truncate">
+                                                        <CheckCircle size={14} className="text-green-600 shrink-0" />
+                                                        <span className="truncate">{pendingFiles.educationCertificates ? `Attached: ${pendingFiles.educationCertificates.name}` : 'Education Cert Uploaded'}</span>
                                                     </span>
                                                     <button
                                                         type="button"
                                                         onClick={() => handleDeleteDocument('educationCertificates')}
-                                                        className="text-red-600 hover:text-red-800 p-1"
+                                                        className="text-red-600 hover:text-red-800 p-1 shrink-0"
+                                                        title="Remove document"
                                                     >
                                                         <X size={14} />
                                                     </button>
@@ -1136,16 +1202,14 @@ export default function EmployeeFormPage() {
                                                         accept=".pdf,.jpg,.jpeg,.png"
                                                         onChange={(e) => {
                                                             if (e.target.files[0]) handleFileUpload('educationCertificates', e.target.files[0]);
+                                                            e.target.value = '';
                                                         }}
-                                                        disabled={!isEdit}
                                                     />
                                                     <label
                                                         htmlFor="edu-cert-upload"
-                                                        className={`flex items-center justify-center gap-2 p-2.5 border border-dashed rounded-lg text-xs font-semibold cursor-pointer ${
-                                                            !isEdit ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'hover:bg-slate-100 text-slate-700 dark:text-slate-200'
-                                                        }`}
+                                                        className="flex items-center justify-center gap-2 p-2.5 border border-dashed rounded-lg text-xs font-semibold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
                                                     >
-                                                        <Upload size={14} /> Upload Education Certificates {!isEdit && '(Save employee first)'}
+                                                        <Upload size={14} /> Upload Education Certificates (අධ්‍යාපන සහතික)
                                                     </label>
                                                 </div>
                                             )}
@@ -1184,14 +1248,16 @@ export default function EmployeeFormPage() {
                                         </div>
                                         <div className="mt-2">
                                             {form.policeReport.url ? (
-                                                <div className="flex items-center justify-between p-2.5 bg-green-50 border border-green-200 rounded-lg">
-                                                    <span className="text-xs text-green-800 font-bold flex items-center gap-1.5">
-                                                        <CheckCircle size={14} className="text-green-600" /> Police Report Uploaded
+                                                <div className="flex items-center justify-between p-2.5 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                                                    <span className="text-xs text-green-800 dark:text-green-300 font-bold flex items-center gap-1.5 truncate">
+                                                        <CheckCircle size={14} className="text-green-600 shrink-0" />
+                                                        <span className="truncate">{pendingFiles.policeReport ? `Attached: ${pendingFiles.policeReport.name}` : 'Police Report Uploaded'}</span>
                                                     </span>
                                                     <button
                                                         type="button"
                                                         onClick={() => handleDeleteDocument('policeReport')}
-                                                        className="text-red-600 hover:text-red-800 p-1"
+                                                        className="text-red-600 hover:text-red-800 p-1 shrink-0"
+                                                        title="Remove document"
                                                     >
                                                         <X size={14} />
                                                     </button>
@@ -1205,16 +1271,14 @@ export default function EmployeeFormPage() {
                                                         accept=".pdf,.jpg,.jpeg,.png"
                                                         onChange={(e) => {
                                                             if (e.target.files[0]) handleFileUpload('policeReport', e.target.files[0]);
+                                                            e.target.value = '';
                                                         }}
-                                                        disabled={!isEdit}
                                                     />
                                                     <label
                                                         htmlFor="police-report-upload"
-                                                        className={`flex items-center justify-center gap-2 p-2.5 border border-dashed rounded-lg text-xs font-semibold cursor-pointer ${
-                                                            !isEdit ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'hover:bg-slate-100 text-slate-700 dark:text-slate-200'
-                                                        }`}
+                                                        className="flex items-center justify-center gap-2 p-2.5 border border-dashed rounded-lg text-xs font-semibold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
                                                     >
-                                                        <Upload size={14} /> Upload Police Report {!isEdit && '(Save employee first)'}
+                                                        <Upload size={14} /> Upload Police Report (පොලිස් වාර්තාව)
                                                     </label>
                                                 </div>
                                             )}

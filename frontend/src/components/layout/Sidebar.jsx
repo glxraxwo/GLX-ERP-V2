@@ -82,7 +82,6 @@ const menuGroups = [
         icon: UsersIcon,
         items: [
             { label: 'Employees Master', icon: UsersIcon, path: '/employees', permission: 'hr.employees.view' },
-            { label: 'Staff Status Manager', icon: UserCheck, path: '/hr/employee-status', permission: 'hr.employees.view' },
             { label: 'Advance Payment', icon: Banknote, path: '/hr/advance-payment', permission: 'hr.employees.view' },
             { label: 'Monthly Payslips', icon: FileText, path: '/hr/monthly-payslips', permission: 'hr.employees.view' },
             { label: 'Manual Paysheet', icon: FileSpreadsheet, path: '/hr/manual-payment-sheet', permission: 'hr.employees.view' },
@@ -108,7 +107,6 @@ const menuGroups = [
             { label: 'Roles & Permissions', icon: ShieldCheck, path: '/roles', permission: 'admin.roles.view' },
             { label: 'Data Import', icon: Upload, path: '/import', permission: 'admin.settings' },
             { label: 'Audit Logs', icon: History, path: '/audit-logs', permission: 'view_audit_logs' },
-            { label: 'SMS Logs', icon: Mail, path: '/audit-logs/sms', permission: 'view_audit_logs' },
             { label: 'My Profile', icon: UserCheck, path: '/profile' },
             { label: 'Settings', icon: Settings, path: '/settings', permission: 'admin.settings' },
         ],

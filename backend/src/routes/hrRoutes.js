@@ -158,8 +158,6 @@ router.get('/employee-of-month', requirePermission('hr.employees.view'), async (
                     totalOTMins: { $sum: '$overtimeMinutes' },
                 }
             },
-            { $sort: { daysPresent: -1, totalOTMins: -1 } },
-            { $limit: 3 },
             {
                 $lookup: {
                     from:         'employees',
@@ -168,7 +166,15 @@ router.get('/employee-of-month', requirePermission('hr.employees.view'), async (
                     as:           'employee',
                 }
             },
-            { $unwind: { path: '$employee', preserveNullAndEmptyArrays: true } },
+            { $unwind: '$employee' },
+            {
+                $match: {
+                    'employee.status': 'active',
+                    'employee.deletedAt': null
+                }
+            },
+            { $sort: { daysPresent: -1, totalOTMins: -1 } },
+            { $limit: 3 },
         ]);
 
         // Step 2: For each nominee, fetch average batch efficiency

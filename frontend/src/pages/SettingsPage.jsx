@@ -100,7 +100,7 @@ function StyledInput({ label, icon: Icon, error, type = 'text', step, placeholde
 export default function SettingsPage() {
     const { data, isLoading } = useSettings();
     const updateMutation = useUpdateSettings();
-    const [activeTab, setActiveTab] = useState('profile');
+    const [activeTab, setActiveTab] = useState('company');
     const { user: currentUser, updateUser } = useAuthStore();
     const [profileFirstName, setProfileFirstName] = useState(currentUser?.firstName || '');
     const [profileLastName, setProfileLastName] = useState(currentUser?.lastName || '');
@@ -457,6 +457,24 @@ export default function SettingsPage() {
                                                 {currentUser?.role || 'Staff'}
                                             </div>
                                         </div>
+
+                                        <div className="col-span-1 sm:col-span-2 p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
+                                            <label className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wide block mb-1">
+                                                Manager SMS Alert Phone (කළමනාකරුගේ SMS අංකය)
+                                            </label>
+                                            <p className="text-xs text-amber-800/80 dark:text-amber-400/80 mb-2">
+                                                Shared document SMS alerts will be dispatched to this number. Save settings to apply.
+                                            </p>
+                                            <div className="max-w-md">
+                                                <StyledInput
+                                                    label="Manager Phone Number (කළමනාකරුගේ SMS අංකය)"
+                                                    icon={Phone}
+                                                    placeholder="+94716666888"
+                                                    error={errors.managerSmsPhone?.message}
+                                                    registration={register('managerSmsPhone')}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center justify-end pt-4 border-t border-gray-100 dark:border-slate-800">
@@ -501,7 +519,7 @@ export default function SettingsPage() {
                                     <SectionBadge icon={Globe} label="Contact Details" accent="blue" />
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                         <StyledInput
-                                            label="Email Address"
+                                            label="Company Email Address"
                                             icon={Mail}
                                             type="email"
                                             placeholder="info@glxindustries.lk"
@@ -509,26 +527,43 @@ export default function SettingsPage() {
                                             registration={register('companyEmail')}
                                         />
                                         <StyledInput
-                                            label="Phone Number"
+                                            label="Company Phone Number"
                                             icon={Phone}
                                             placeholder="0777 140 680"
                                             error={errors.companyPhone?.message}
                                             registration={register('companyPhone')}
                                         />
-                                        <StyledInput
-                                            label="Manager SMS Phone"
-                                            icon={Phone}
-                                            placeholder="+94716666888"
-                                            error={errors.managerSmsPhone?.message}
-                                            registration={register('managerSmsPhone')}
-                                        />
-                                        <StyledInput
-                                            label="Website"
-                                            icon={Globe}
-                                            placeholder="www.glxgroup.lk"
-                                            error={errors.companyWebsite?.message}
-                                            registration={register('companyWebsite')}
-                                        />
+                                        <div className="col-span-1 sm:col-span-2">
+                                            <StyledInput
+                                                label="Company Website"
+                                                icon={Globe}
+                                                placeholder="www.glxgroup.lk"
+                                                error={errors.companyWebsite?.message}
+                                                registration={register('companyWebsite')}
+                                            />
+                                        </div>
+
+                                        {/* Dedicated Manager SMS Recipient Box */}
+                                        <div className="col-span-1 sm:col-span-2 p-4 rounded-xl bg-amber-50/90 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-700 shadow-sm my-2">
+                                            <div className="flex items-center gap-2 mb-1.5">
+                                                <Phone className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                                                <span className="text-sm font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                                                    Manager Phone Number (කළමනාකරුගේ SMS දුරකථන අංකය)
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mb-3 font-medium">
+                                                Quotation, Invoice, Estimate share කිරීමේදී Manager වෙත SMS යැවීමට මෙම දුරකථන අංකය ස්වයංක්‍රීයව භාවිත වේ.
+                                            </p>
+                                            <div className="max-w-md">
+                                                <StyledInput
+                                                    label="Manager SMS Mobile Number (කළමනාකරුගේ අංකය)"
+                                                    icon={Phone}
+                                                    placeholder="+94716666888 or 0716666888"
+                                                    error={errors.managerSmsPhone?.message}
+                                                    registration={register('managerSmsPhone')}
+                                                />
+                                            </div>
+                                        </div>
                                         <div className="col-span-2">
                                             <label className="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wide">Company Address</label>
                                             <div className="relative group mt-1.5">

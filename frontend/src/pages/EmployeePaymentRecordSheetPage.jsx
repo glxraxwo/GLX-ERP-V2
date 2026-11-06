@@ -419,7 +419,7 @@ const evaluateRowPolicy = (row, shiftOnTime, shiftOffTime, hourlyRate, activePol
 function EmployeeSearchCombobox({ employees, selectedEmployeeId, onSelectEmployee, employeeFullName, onToggleStatus }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [isOpen, setIsOpen] = useState(false);
-    const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'inactive'
+    const [statusFilter, setStatusFilter] = useState('active'); // 'active' | 'inactive' | 'all'
     const containerRef = useRef(null);
 
     useEffect(() => {
@@ -715,6 +715,16 @@ export default function EmployeePaymentRecordSheetPage() {
     });
 
     const employees = useMemo(() => employeesData?.data || [], [employeesData]);
+
+    // Auto-select first active employee on initial page load if none specified in URL
+    useEffect(() => {
+        if (!selectedEmployeeId && employees.length > 0) {
+            const firstActive = employees.find(e => (e.status === 'active' || e.isActive === true)) || employees[0];
+            if (firstActive?._id) {
+                setSelectedEmployeeId(firstActive._id);
+            }
+        }
+    }, [employees, selectedEmployeeId]);
 
     // Generate initial blank calendar rows (always unticked by default)
     useEffect(() => {

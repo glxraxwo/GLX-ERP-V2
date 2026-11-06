@@ -25,6 +25,7 @@ import { masterDataApi } from '../features/masterData/masterDataApi';
 import { getSalesRepOptions, saveSalesRep } from '../utils/salesRepService';
 import { getSavedTerms, saveDefaultTerms } from '../utils/termsService';
 import { useCreateInvoice } from '../features/invoices/useInvoices';
+import ShareDocumentSmsModal from '../components/ShareDocumentSmsModal';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import api from '../api/axios';
@@ -55,6 +56,16 @@ export default function InvoiceFormPage({ defaultDocType }) {
     const { user } = useAuthStore();
     const editDocId = searchParams.get('edit') || routeId;
     const [existingInvoice, setExistingInvoice] = useState(null);
+
+    // Post-Action SMS Confirmation State (Invoice, Quotation, Estimate - Create / Edit)
+    const [postActionSms, setPostActionSms] = useState({
+        isOpen: false,
+        docId: null,
+        docType: 'invoice',
+        doc: null,
+        actionTitle: '',
+        onFinish: null
+    });
 
     // Initial document category from prop, route, or query param
     const routeCategory = defaultDocType || (
@@ -1107,11 +1118,29 @@ export default function InvoiceFormPage({ defaultDocType }) {
                     await queryClient.invalidateQueries({ queryKey: ['invoices'] });
                     await queryClient.invalidateQueries({ queryKey: ['invoicesAging'] });
                     toast.success(`Invoice ${existingInvoice?.invoiceNumber || ''} updated successfully!`);
-                    navigate(`/invoices/${editDocId}`);
+                    const updatedInvoice = res?.data || existingInvoice;
+                    setPostActionSms({
+                        isOpen: true,
+                        docId: editDocId,
+                        docType: 'invoice',
+                        doc: updatedInvoice,
+                        actionTitle: `Invoice ${existingInvoice?.invoiceNumber || ''} Updated`,
+                        defaultPhone: customerPhone || customerWhatsapp || selectedCustomer?.primaryContact?.phone || '',
+                        onFinish: () => navigate(`/invoices/${editDocId}`)
+                    });
                 } else {
                     const result = await createMutation.mutateAsync(invoicePayload);
                     toast.success('Invoice created successfully!');
-                    navigate(`/invoices/${result.data._id}`);
+                    const createdInvoice = result.data;
+                    setPostActionSms({
+                        isOpen: true,
+                        docId: createdInvoice._id,
+                        docType: 'invoice',
+                        doc: createdInvoice,
+                        actionTitle: `Invoice ${createdInvoice.invoiceNumber || ''} Created`,
+                        defaultPhone: customerPhone || customerWhatsapp || selectedCustomer?.primaryContact?.phone || '',
+                        onFinish: () => navigate(`/invoices/${createdInvoice._id}`)
+                    });
                 }
             } else {
                 // Quotation or Estimate document
@@ -1190,15 +1219,33 @@ export default function InvoiceFormPage({ defaultDocType }) {
 
                 const docLabel = effectiveDocType === 'estimate' ? 'Estimate' : 'Quotation';
                 if (editDocId) {
-                    await api.put(`/crm/quotations/${editDocId}`, quotePayload);
+                    const { data: res } = await api.put(`/crm/quotations/${editDocId}`, quotePayload);
                     await queryClient.invalidateQueries({ queryKey: ['quotations'] });
                     await queryClient.invalidateQueries({ queryKey: ['quotation', editDocId] });
                     toast.success(`${docLabel} ${paddedQuoteNumber || existingInvoice?.quoteNumber || ''} updated successfully!`);
-                    navigate(`/invoices?tab=${effectiveDocType === 'estimate' ? 'estimates' : 'quotations'}`);
+                    const updatedQuote = res?.data || { ...existingInvoice, ...quotePayload, _id: editDocId };
+                    setPostActionSms({
+                        isOpen: true,
+                        docId: editDocId,
+                        docType: effectiveDocType,
+                        doc: updatedQuote,
+                        actionTitle: `${docLabel} Updated`,
+                        defaultPhone: customerPhone || customerWhatsapp || selectedCustomer?.primaryContact?.phone || '',
+                        onFinish: () => navigate(`/invoices?tab=${effectiveDocType === 'estimate' ? 'estimates' : 'quotations'}`)
+                    });
                 } else {
-                    await api.post('/crm/quotations', quotePayload);
+                    const { data: res } = await api.post('/crm/quotations', quotePayload);
                     toast.success(`${docLabel} created successfully!`);
-                    navigate(`/invoices?tab=${effectiveDocType === 'estimate' ? 'estimates' : 'quotations'}`);
+                    const createdQuote = res?.data;
+                    setPostActionSms({
+                        isOpen: true,
+                        docId: createdQuote?._id,
+                        docType: effectiveDocType,
+                        doc: createdQuote,
+                        actionTitle: `${docLabel} Created`,
+                        defaultPhone: customerPhone || customerWhatsapp || selectedCustomer?.primaryContact?.phone || '',
+                        onFinish: () => navigate(`/invoices?tab=${effectiveDocType === 'estimate' ? 'estimates' : 'quotations'}`)
+                    });
                 }
             }
         } catch (err) {
@@ -3431,6 +3478,24 @@ export default function InvoiceFormPage({ defaultDocType }) {
                 }}
                 onClose={() => setIsConfirmTermsModalOpen(false)}
             />
+
+            {/* Post-Save SMS Prompt Modal (Invoice, Quotation, Estimate) */}
+            {postActionSms.isOpen && (
+                <ShareDocumentSmsModal
+                    isOpen={postActionSms.isOpen}
+                    onClose={() => {
+                        const cb = postActionSms.onFinish;
+                        setPostActionSms({ isOpen: false, docId: null, docType: 'invoice', doc: null, actionTitle: '', defaultPhone: '', onFinish: null });
+                        if (typeof cb === 'function') cb();
+                    }}
+                    documentId={postActionSms.docId}
+                    documentType={postActionSms.docType}
+                    document={postActionSms.doc}
+                    defaultPhone={postActionSms.defaultPhone}
+                    isPostAction={true}
+                    actionTitle={postActionSms.actionTitle}
+                />
+            )}
         </div>
     );
 }

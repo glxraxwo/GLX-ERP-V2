@@ -327,14 +327,6 @@ export const NAVIGATION_CATEGORIES = [
                 category: 'admin'
             },
             {
-                title: 'SMS Delivery Logs',
-                path: '/audit-logs/sms',
-                icon: Mail,
-                description: 'Automated SMS delivery logs for invoices, receipts and payslips',
-                permission: 'view_audit_logs',
-                category: 'admin'
-            },
-            {
                 title: 'User Profile & Security',
                 path: '/profile',
                 icon: UserCheck,

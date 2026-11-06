@@ -42,8 +42,9 @@ export default function AttendancePage() {
     const [bulkDefaultIn, setBulkDefaultIn] = useState('08:00');
     const [bulkDefaultOut, setBulkDefaultOut] = useState('17:00');
 
+    const [empStatusFilter, setEmpStatusFilter] = useState('active'); // 'active' | 'inactive' | 'all'
     const { data: attData, refetch: refetchAttendance } = useAttendance({ date: selectedDate, departmentId: departmentId || undefined, limit: 300 });
-    const { data: empData } = useEmployees({ departmentId: departmentId || undefined, status: 'active', limit: 500 });
+    const { data: empData } = useEmployees({ departmentId: departmentId || undefined, status: empStatusFilter === 'all' ? undefined : empStatusFilter, limit: 500 });
     const { data: deptsData } = useDepartments();
     const bulkMark = useBulkMarkAttendance();
 
@@ -605,6 +606,42 @@ export default function AttendancePage() {
                         <div className="w-full sm:w-52">
                             <Select placeholder="All Departments" options={deptOptions}
                                 value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} />
+                        </div>
+                        {/* Active / Inactive / All Staff Filter Pills */}
+                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                            <button
+                                type="button"
+                                onClick={() => setEmpStatusFilter('active')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                    empStatusFilter === 'active'
+                                        ? 'bg-emerald-600 text-white shadow-xs'
+                                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                            >
+                                Active Staff (සක්‍රීය)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setEmpStatusFilter('inactive')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                    empStatusFilter === 'inactive'
+                                        ? 'bg-rose-600 text-white shadow-xs'
+                                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                            >
+                                Inactive Staff (අක්‍රීය)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setEmpStatusFilter('all')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                                    empStatusFilter === 'all'
+                                        ? 'bg-indigo-600 text-white shadow-xs'
+                                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                            >
+                                All Staff (සියල්ල)
+                            </button>
                         </div>
                         {/* Employee Search input on main page */}
                         <div className="w-full sm:w-56 relative">

@@ -29,6 +29,7 @@ export default function MonthlySalaryPayslipsPage() {
     const [includeEpfEtf, setIncludeEpfEtf] = useState(false);
     const [epfRate, setEpfRate] = useState(8);
     const [customAdvances, setCustomAdvances] = useState({});
+    const [empStatusFilter, setEmpStatusFilter] = useState('active'); // 'active' | 'inactive' | 'all'
 
     // Modal States
     const [activePayslipEmp, setActivePayslipEmp] = useState(null);
@@ -55,18 +56,37 @@ export default function MonthlySalaryPayslipsPage() {
     // Fetch Employees
     const { data: employeesData, isLoading: isEmpLoading, refetch: refetchEmployees } = useQuery({
         queryKey: ['monthly-employees-list'],
-        queryFn: () => employeesApi.list({ limit: 500, status: 'active' }),
+        queryFn: () => employeesApi.list({ limit: 500 }),
     });
 
     const allEmployees = useMemo(() => employeesData?.data || [], [employeesData]);
 
-    // Filter to only Monthly Salary employees (or employees with monthlySalary > 0)
+    // Status counts for monthly employees
+    const statusCounts = useMemo(() => {
+        let active = 0;
+        let inactive = 0;
+        allEmployees.forEach(e => {
+            const isMonthly = e.paymentType === 'monthly' || Number(e.monthlySalary) > 0 || (e.paymentType !== 'per_hour' && e.paymentType !== 'daily' && Number(e.basicSalary) > 10000);
+            if (isMonthly) {
+                const isEmpActive = e.status === 'active' || e.isActive === true;
+                if (isEmpActive) active++;
+                else inactive++;
+            }
+        });
+        return { active, inactive, all: active + inactive };
+    }, [allEmployees]);
+
+    // Filter to only Monthly Salary employees (or employees with monthlySalary > 0) matching selected status
     const monthlyEmployees = useMemo(() => {
         return allEmployees.filter(e => {
             const isMonthly = e.paymentType === 'monthly' || Number(e.monthlySalary) > 0 || (e.paymentType !== 'per_hour' && e.paymentType !== 'daily' && Number(e.basicSalary) > 10000);
-            return isMonthly;
+            if (!isMonthly) return false;
+            const isEmpActive = e.status === 'active' || e.isActive === true;
+            if (empStatusFilter === 'active') return isEmpActive;
+            if (empStatusFilter === 'inactive') return !isEmpActive;
+            return true;
         });
-    }, [allEmployees]);
+    }, [allEmployees, empStatusFilter]);
 
     // Unique Departments
     const departments = useMemo(() => {
@@ -485,6 +505,52 @@ Thank you for your hard work!`;
             {/* 3. Search & Filter Bar */}
             <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[260px]">
+                    {/* Active / Inactive / All Staff Filter Pills */}
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                        <button
+                            type="button"
+                            onClick={() => setEmpStatusFilter('active')}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                                empStatusFilter === 'active'
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                        >
+                            <span>Active Staff (සක්‍රීය)</span>
+                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${empStatusFilter === 'active' ? 'bg-emerald-700/60 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}`}>
+                                {statusCounts.active}
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEmpStatusFilter('inactive')}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                                empStatusFilter === 'inactive'
+                                    ? 'bg-rose-600 text-white shadow-xs'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                        >
+                            <span>Inactive Staff (අක්‍රීය)</span>
+                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${empStatusFilter === 'inactive' ? 'bg-rose-700/60 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}`}>
+                                {statusCounts.inactive}
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEmpStatusFilter('all')}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                                empStatusFilter === 'all'
+                                    ? 'bg-indigo-600 text-white shadow-xs'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                        >
+                            <span>All Staff (සියල්ල)</span>
+                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${empStatusFilter === 'all' ? 'bg-indigo-700/60 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}`}>
+                                {statusCounts.all}
+                            </span>
+                        </button>
+                    </div>
+
                     <div className="relative flex-1 min-w-[200px]">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input

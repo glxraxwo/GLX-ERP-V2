@@ -205,6 +205,18 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     const [convertingType, setConvertingType] = useState('commercial');
     const [converting, setConverting] = useState(false);
 
+    // Post-Action SMS Confirmation State (Create, Edit, Convert)
+    const [postActionSms, setPostActionSms] = useState({
+        isOpen: false,
+        docId: null,
+        docType: 'quotation',
+        doc: null,
+        actionTitle: '',
+        defaultPhone: '',
+        initialCustomMessage: '',
+        onFinish: null
+    });
+
     // Cancel Quotation / Project Modal State
     const [cancelModalOpen, setCancelModalOpen] = useState(false);
     const [cancelModalType, setCancelModalType] = useState('quotation'); // 'quotation' | 'project'
@@ -744,19 +756,32 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 remarks: payload.remarks,
             }, payload.documentType);
 
+            let savedDoc = null;
             if (editing) {
-                await api.put(`/crm/quotations/${editing._id}`, payload);
+                const res = await api.put(`/crm/quotations/${editing._id}`, { ...payload, sendSms: false });
+                savedDoc = res.data?.data || editing;
                 toast.success(`${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} updated`);
             } else {
-                await api.post('/crm/quotations', payload);
-                if (payload.customerPhone && payload.sendSms === true) {
-                    toast.success(`${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} created & SMS dispatched to ${payload.recipientPhone || payload.customerPhone}!`);
-                } else {
-                    toast.success(`${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} created`);
-                }
+                const res = await api.post('/crm/quotations', { ...payload, sendSms: false });
+                savedDoc = res.data?.data;
+                toast.success(`${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} created`);
             }
             setIsFormOpen(false);
             fetchQuotations();
+
+            // Prompt SMS review & confirmation modal with prefilled phone and message
+            if (savedDoc) {
+                const targetPhone = (formData.smsPhone || formData.customerPhone || '').trim();
+                setPostActionSms({
+                    isOpen: true,
+                    docId: savedDoc._id,
+                    docType: formData.documentType || 'quotation',
+                    doc: savedDoc,
+                    actionTitle: `${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} ${editing ? 'Updated' : 'Created'}`,
+                    defaultPhone: targetPhone,
+                    initialCustomMessage: formData.customMessage || ''
+                });
+            }
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to save');
         } finally {
@@ -776,11 +801,21 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
             const { data } = await api.post(`/crm/quotations/${convertingQuote._id}/convert-to-invoice`, payload);
             toast.success(`Successfully converted to ${convertingType === 'proforma' ? 'Proforma' : 'Commercial'} Invoice!`);
+            const targetQuote = convertingQuote;
             setConvertingQuote(null);
             setIsPreviewOpen(false);
             fetchQuotations();
-            if (data.data?._id) {
-                navigate(`/invoices/${data.data._id}`);
+
+            const newInvoice = data.data;
+            if (newInvoice?._id) {
+                setPostActionSms({
+                    isOpen: true,
+                    docId: newInvoice._id,
+                    docType: 'invoice',
+                    doc: newInvoice,
+                    actionTitle: `Converted to ${convertingType === 'proforma' ? 'Proforma' : 'Commercial'} Invoice`,
+                    onFinish: () => navigate(`/invoices/${newInvoice._id}`)
+                });
             }
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to convert to invoice');
@@ -1709,38 +1744,64 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     placeholder="e.g. 0714193455"
                                     onChange={(e) => handleFormChange('customerPhone', e.target.value)}
                                 />
-                                {formData.customerPhone && (
-                                    <div className="space-y-2 mt-2">
-                                        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-blue-700 font-semibold select-none bg-blue-50/70 p-2 rounded-lg border border-blue-100">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={formData.sendSms === true}
-                                                onChange={(e) => handleFormChange('sendSms', e.target.checked)}
-                                                className="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
-                                            />
-                                            <span>Send SMS link with {formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} PDF to customer</span>
-                                        </label>
+                                <div className="space-y-2 mt-2">
+                                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-blue-700 font-semibold select-none bg-blue-50/70 p-2 rounded-lg border border-blue-100">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={formData.sendSms === true}
+                                            onChange={(e) => handleFormChange('sendSms', e.target.checked)}
+                                            className="rounded text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                                        />
+                                        <span>Send SMS link with {formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} PDF to customer</span>
+                                    </label>
 
-                                        {formData.sendSms === true && (
-                                            <div className="p-3 bg-slate-50 border border-blue-200 rounded-lg space-y-2 text-xs">
+                                    {formData.sendSms === true && (
+                                        <div className="p-3 bg-slate-50 border border-blue-200 rounded-lg space-y-2 text-xs">
+                                            <div className="flex justify-between items-center text-gray-700">
+                                                <span className="font-bold text-[11px] uppercase">SMS Recipient Phone / අංකය</span>
+                                                <span className="text-[11px] text-gray-500">{formData.customerName || 'Customer'}</span>
+                                            </div>
+                                            <input
+                                                type="tel"
+                                                value={formData.smsPhone ?? formData.customerPhone ?? ''}
+                                                onChange={(e) => {
+                                                    handleFormChange('smsPhone', e.target.value);
+                                                    if (!formData.customerPhone) {
+                                                        handleFormChange('customerPhone', e.target.value);
+                                                    }
+                                                }}
+                                                placeholder="e.g. 0771234567 or +94771234567"
+                                                className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-xs bg-white font-mono font-bold"
+                                            />
+                                            {formData.whatsappNum && formData.whatsappNum !== formData.customerPhone && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleFormChange('smsPhone', formData.whatsappNum)}
+                                                    className="text-[10px] text-emerald-700 font-semibold hover:underline block"
+                                                >
+                                                    Use WhatsApp Number: {formData.whatsappNum}
+                                                </button>
+                                            )}
+                                            <div className="space-y-1 pt-1 border-t border-slate-200">
                                                 <div className="flex justify-between items-center text-gray-700">
-                                                    <span className="font-bold text-[11px] uppercase">SMS Recipient Phone</span>
-                                                    <span className="text-[11px] text-gray-500">{formData.customerName || 'Customer'}</span>
+                                                    <span className="font-bold text-[11px] uppercase">Message Content to Send (Editable / පණිවිඩය):</span>
+                                                    <span className="text-[10px] text-blue-600 font-bold">Edit if needed</span>
                                                 </div>
-                                                <input
-                                                    type="tel"
-                                                    value={formData.smsPhone ?? formData.customerPhone}
-                                                    onChange={(e) => handleFormChange('smsPhone', e.target.value)}
-                                                    placeholder="e.g. +94771234567"
-                                                    className="w-full px-2.5 py-1.5 border border-gray-300 rounded text-xs bg-white"
+                                                <textarea
+                                                    rows={3}
+                                                    value={formData.customMessage !== undefined ? formData.customMessage : `Dear ${formData.customerName || 'Customer'}, here is the link to view your GLX Industries ${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'}: [link will be attached]`}
+                                                    onChange={(e) => handleFormChange('customMessage', e.target.value)}
+                                                    placeholder="Type or customize SMS message content..."
+                                                    className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-xs leading-relaxed focus:ring-2 focus:ring-blue-500 font-sans"
                                                 />
-                                                <div className="text-[11px] text-gray-500 font-medium">
-                                                    SMS Preview: <em>"Dear {formData.customerName || 'Customer'}, here is the link to view your GLX Industries {formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'}..."</em>
+                                                <div className="flex justify-between text-[10px] text-gray-500">
+                                                    <span>Review &amp; confirm dialog will appear upon saving</span>
+                                                    <span>{(formData.customMessage || '').length} characters</span>
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -2397,6 +2458,25 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     documentType={previewQuote.documentType || 'quotation'}
                     defaultPhone={previewQuote.customerPhone || ''}
                     document={previewQuote}
+                />
+            )}
+
+            {/* Post-Action SMS Modal for Create, Edit, or Convert */}
+            {postActionSms.isOpen && (
+                <ShareDocumentSmsModal
+                    isOpen={postActionSms.isOpen}
+                    onClose={() => {
+                        const cb = postActionSms.onFinish;
+                        setPostActionSms({ isOpen: false, docId: null, docType: 'quotation', doc: null, actionTitle: '', defaultPhone: '', initialCustomMessage: '', onFinish: null });
+                        if (typeof cb === 'function') cb();
+                    }}
+                    documentId={postActionSms.docId}
+                    documentType={postActionSms.docType}
+                    document={postActionSms.doc}
+                    defaultPhone={postActionSms.defaultPhone}
+                    initialCustomMessage={postActionSms.initialCustomMessage}
+                    isPostAction={true}
+                    actionTitle={postActionSms.actionTitle}
                 />
             )}
             {/* A4 Print & QR Preview Modal */}

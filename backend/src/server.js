@@ -283,10 +283,19 @@ app.use('/api/sms', smsRoutes);
 
 
 
-// Unified sharing endpoint
+// Unified sharing endpoint (Supports Customer, Manager, or Both recipients)
 app.post('/api/documents/:id/share-sms', protect, asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { phone, documentType, customMessage } = req.body;
+    const { 
+        phone, 
+        documentType, 
+        customMessage,
+        sendToCustomer = true,
+        customerPhone,
+        sendToManager = false,
+        managerPhone,
+        saveToCustomer
+    } = req.body;
     
     let doc;
     if (documentType === 'invoice') {
@@ -317,10 +326,105 @@ app.post('/api/documents/:id/share-sms', protect, asyncHandler(async (req, res) 
     } else if (process.env.FRONTEND_URL) {
         hostOrigin = process.env.FRONTEND_URL.split(',')[0].trim();
     }
-    
-    await sendPublicDocumentSms(doc, phone, documentType || (doc.documentType || 'quotation'), hostOrigin, customMessage);
-    
-    res.json({ success: true, message: 'Document shared via SMS successfully' });
+
+    const actualCustomerPhone = (customerPhone || phone || '').trim();
+    let customerDispatched = false;
+    let managerDispatched = false;
+
+    // 1. Send to Customer if selected
+    if (sendToCustomer && actualCustomerPhone) {
+        await sendPublicDocumentSms(
+            doc, 
+            actualCustomerPhone, 
+            documentType || (doc.documentType || 'quotation'), 
+            hostOrigin, 
+            customMessage,
+            { skipManagerDuplicate: true }
+        );
+        customerDispatched = true;
+
+        if (saveToCustomer === true) {
+            try {
+                if (doc.customerId) {
+                    const Customer = (await import('./models/Customer.js')).default;
+                    await Customer.findByIdAndUpdate(doc.customerId, {
+                        $set: { 'primaryContact.phone': actualCustomerPhone, phone: actualCustomerPhone }
+                    });
+                }
+                doc.customerPhone = actualCustomerPhone;
+                await doc.save();
+            } catch (e) {
+                console.error('[Save Phone to Customer Error]:', e.message);
+            }
+        }
+    }
+
+    // 2. Send to Manager if selected
+    if (sendToManager) {
+        const Settings = (await import('./models/Settings.js')).default;
+        const settings = await Settings.findOne();
+        const actualManagerPhone = (managerPhone || settings?.managerSmsPhone || '').trim();
+
+        if (actualManagerPhone) {
+            const token = doc.publicToken;
+            const link = ${hostOrigin}/public/documents/;
+            const docCode = doc.quoteNumber || doc.quotationCode || doc.invoiceNumber || doc._id.toString();
+            const clientName = doc.customerName || doc.vehicleOwner || 'Valued Customer';
+            const docTypeTitle = (documentType === 'estimate' ? 'Estimate' : (documentType === 'invoice' ? 'Invoice' : 'Quotation'));
+
+            const managerMsg = customMessage
+                ? [Manager Copy -  ] 
+                : [Manager Copy]  () sent for : ;
+
+            const { SMS_USER_ID, SMS_API_KEY, SMS_SENDER_ID, SMS_GATEWAY_URL } = process.env;
+            const { formatSmsContact } = await import('./services/smsService.js');
+            const formattedManager = formatSmsContact(actualManagerPhone);
+            let status = 'sent';
+
+            if (SMS_USER_ID && SMS_API_KEY && SMS_SENDER_ID && SMS_GATEWAY_URL && formattedManager) {
+                try {
+                    const response = await fetch(SMS_GATEWAY_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: SMS_USER_ID,
+                            api_key: SMS_API_KEY,
+                            sender_id: SMS_SENDER_ID,
+                            contact: formattedManager,
+                            message: managerMsg
+                        })
+                    });
+                    const data = await response.json();
+                    if (response.status !== 200 || !data.success) {
+                        status = 'failed';
+                    }
+                } catch (err) {
+                    status = 'failed';
+                }
+            } else {
+                console.log([SMS Gateway Simulated Manager Direct] To:  | Msg: );
+            }
+
+            const SmsLog = (await import('./models/SmsLog.js')).default;
+            await SmsLog.create({
+                supplierName: Manager ( ),
+                supplierPhone: actualManagerPhone,
+                message: managerMsg,
+                status: status
+            });
+            managerDispatched = true;
+        }
+    }
+
+    const messages = [];
+    if (customerDispatched) messages.push(Customer ());
+    if (managerDispatched) messages.push(Manager);
+
+    if (messages.length > 0) {
+        res.json({ success: true, message: SMS dispatched successfully to ! });
+    } else {
+        res.json({ success: true, message: 'No SMS sent (Recipients unselected or skipped)' });
+    }
 }));
 
 // Authenticated PDF document download endpoint
