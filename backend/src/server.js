@@ -367,14 +367,14 @@ app.post('/api/documents/:id/share-sms', protect, asyncHandler(async (req, res) 
 
         if (actualManagerPhone) {
             const token = doc.publicToken;
-            const link = ${hostOrigin}/public/documents/;
+            const link = `${hostOrigin}/public/documents/${token}`;
             const docCode = doc.quoteNumber || doc.quotationCode || doc.invoiceNumber || doc._id.toString();
             const clientName = doc.customerName || doc.vehicleOwner || 'Valued Customer';
             const docTypeTitle = (documentType === 'estimate' ? 'Estimate' : (documentType === 'invoice' ? 'Invoice' : 'Quotation'));
 
             const managerMsg = customMessage
-                ? [Manager Copy -  ] 
-                : [Manager Copy]  () sent for : ;
+                ? `[Manager Copy - ${docTypeTitle}] ${customMessage}`
+                : `[Manager Copy] ${docTypeTitle} ${docCode} (${clientName}) sent for Review: ${link}`;
 
             const { SMS_USER_ID, SMS_API_KEY, SMS_SENDER_ID, SMS_GATEWAY_URL } = process.env;
             const { formatSmsContact } = await import('./services/smsService.js');
@@ -402,12 +402,12 @@ app.post('/api/documents/:id/share-sms', protect, asyncHandler(async (req, res) 
                     status = 'failed';
                 }
             } else {
-                console.log([SMS Gateway Simulated Manager Direct] To:  | Msg: );
+                console.log(`[SMS Gateway Simulated Manager Direct] To: ${formattedManager || actualManagerPhone} | Msg: ${managerMsg}`);
             }
 
             const SmsLog = (await import('./models/SmsLog.js')).default;
             await SmsLog.create({
-                supplierName: Manager ( ),
+                supplierName: `Manager (${docTypeTitle})`,
                 supplierPhone: actualManagerPhone,
                 message: managerMsg,
                 status: status
@@ -417,11 +417,11 @@ app.post('/api/documents/:id/share-sms', protect, asyncHandler(async (req, res) 
     }
 
     const messages = [];
-    if (customerDispatched) messages.push(Customer ());
-    if (managerDispatched) messages.push(Manager);
+    if (customerDispatched) messages.push(`Customer (${actualCustomerPhone})`);
+    if (managerDispatched) messages.push('Manager');
 
     if (messages.length > 0) {
-        res.json({ success: true, message: SMS dispatched successfully to ! });
+        res.json({ success: true, message: `SMS dispatched successfully to ${messages.join(' & ')}!` });
     } else {
         res.json({ success: true, message: 'No SMS sent (Recipients unselected or skipped)' });
     }
