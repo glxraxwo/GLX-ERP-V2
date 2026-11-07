@@ -1399,8 +1399,8 @@ export default function ActiveEmployeeDayInOutPage() {
                 )}
 
                 {/* Bottom Card Footer Action Bar */}
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 text-[11px]">
+                <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex flex-wrap items-center gap-3 text-slate-500 dark:text-slate-400 text-[11px]">
                         <span className="flex items-center gap-1.5 font-medium">
                             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
                             Clock In (Emerald)
@@ -1413,18 +1413,6 @@ export default function ActiveEmployeeDayInOutPage() {
                             <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block"></span>
                             Auto-Policy Evaluated
                         </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={handleSave}
-                            disabled={saveMutation.isPending}
-                            className="px-6 py-2 rounded-xl text-xs font-black uppercase tracking-wide text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/20 transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                        >
-                            <Save size={15} className={saveMutation.isPending ? 'animate-spin' : ''} />
-                            {saveMutation.isPending ? 'Saving Records...' : 'Save All Attendance'}
-                        </button>
                     </div>
                 </div>
             </div>
