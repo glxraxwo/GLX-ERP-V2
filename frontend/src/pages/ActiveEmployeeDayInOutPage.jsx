@@ -1394,28 +1394,6 @@ export default function ActiveEmployeeDayInOutPage() {
                                     );
                                 })}
                             </tbody>
-
-
-                            {/* Executive Summary Footer Bar */}
-                            <tfoot>
-                                <tr className="bg-slate-50 dark:bg-slate-900/90 border-t-2 border-slate-200 dark:border-slate-700 text-[14px] font-bold text-slate-900 dark:text-white">
-                                    <td colSpan={4} className="py-3 px-3 text-right uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                        Summary ({totals.presentCount} Staff Present):
-                                    </td>
-                                    <td className="py-3 px-3 text-center font-mono text-indigo-700 dark:text-indigo-300 font-black text-[16px]">
-                                        {totals.totalHours.toFixed(2)}h
-                                    </td>
-                                    <td className="py-3 px-3 text-right font-mono text-emerald-700 dark:text-emerald-300 font-black text-[16px]">
-                                        Rs. {Math.round(totals.totalSalary).toLocaleString()}
-                                    </td>
-                                    <td className="py-3 px-3 text-right font-mono text-amber-700 dark:text-amber-300 font-black text-[16px]">
-                                        Rs. {Math.round(totals.totalAdvance).toLocaleString()}
-                                    </td>
-                                    <td className="py-3 px-3 text-right font-mono text-rose-700 dark:text-rose-300 font-black text-[16px]">
-                                        -Rs. {Math.round(totals.totalDeductions).toLocaleString()}
-                                    </td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
                 )}

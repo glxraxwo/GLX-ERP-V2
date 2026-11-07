@@ -20,7 +20,10 @@ import {
     saveDetailedEmployeePaymentRecordSheet,
     getNormalEmployeePayslip,
     getManualAttendancePolicies,
-    saveManualAttendancePolicies
+    saveManualAttendancePolicies,
+    payEmployeeSalary,
+    getEmployeeSalaryPayments,
+    getSalaryPaymentVoucher
 } from '../controllers/manualAttendanceController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { requirePermission, requireAnyPermission } from '../middleware/permissionMiddleware.js';
@@ -257,5 +260,9 @@ router.get('/manual-attendance/normal-payslip', requirePermission('hr.employees.
 router.route('/manual-attendance/policies')
     .get(requirePermission('hr.employees.view'), getManualAttendancePolicies)
     .post(requirePermission('hr.attendance.manage'), saveManualAttendancePolicies);
+
+router.post('/manual-attendance/pay-salary', requirePermission('hr.payroll.manage'), payEmployeeSalary);
+router.get('/manual-attendance/salary-payments/:employeeId', requirePermission('hr.employees.view'), getEmployeeSalaryPayments);
+router.get('/manual-attendance/salary-payment/:id', requirePermission('hr.employees.view'), getSalaryPaymentVoucher);
 
 export default router;

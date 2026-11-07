@@ -14,7 +14,8 @@ import { useSettings } from '../features/settings/useSettings';
 import NormalPayslipModal from '../components/NormalPayslipModal';
 import SalaryPoliciesModal from '../components/SalaryPoliciesModal';
 import RecordAdvanceModal from '../components/RecordAdvanceModal';
-import { Plus } from 'lucide-react';
+import PaySalaryModal from '../components/PaySalaryModal';
+import { Plus, Wallet, CheckCircle2 } from 'lucide-react';
 
 // Helper: Format Date to YYYY-MM-DD
 const formatDateStr = (d) => {
@@ -645,6 +646,8 @@ export default function EmployeePaymentRecordSheetPage() {
     const [isPoliciesModalOpen, setIsPoliciesModalOpen] = useState(false);
     const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
     const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
+    const [isPaySalaryModalOpen, setIsPaySalaryModalOpen] = useState(false);
+    const [paidPaymentIdForPayslip, setPaidPaymentIdForPayslip] = useState(null);
     const [hideHeaderForLetterhead, setHideHeaderForLetterhead] = useState(false);
     const sheetPrintRef = useRef(null);
     const officialPrintRef = useRef(null);
@@ -716,15 +719,8 @@ export default function EmployeePaymentRecordSheetPage() {
 
     const employees = useMemo(() => employeesData?.data || [], [employeesData]);
 
-    // Auto-select first active employee on initial page load if none specified in URL
-    useEffect(() => {
-        if (!selectedEmployeeId && employees.length > 0) {
-            const firstActive = employees.find(e => (e.status === 'active' || e.isActive === true)) || employees[0];
-            if (firstActive?._id) {
-                setSelectedEmployeeId(firstActive._id);
-            }
-        }
-    }, [employees, selectedEmployeeId]);
+    // By user requirement: Default NO employee selected on page load (manual paysheet form ekata yaddi default kisima employee kenek select wela inna ba)
+    // Only select an employee if provided via URL searchParams or chosen by the user in the combobox
 
     // Generate initial blank calendar rows (always unticked by default)
     useEffect(() => {
@@ -945,16 +941,17 @@ export default function EmployeePaymentRecordSheetPage() {
     const focusGridCell = (rowIndex, colIndex, preferredDirection = 'next') => {
         let r = Math.max(0, Math.min(rowIndex, rows.length - 1));
         let c = colIndex;
-        // Col 3 (hours) and Col 4 (daySalary) are locked
-        if (c === 3 || c === 4) {
-            c = (preferredDirection === 'next' || preferredDirection === 'down') ? 5 : 2;
+
+        // If target row is NOT ticked, it is locked! Only Col 0 (Checkbox) can be focused.
+        if (!rows[r]?.isTicked) {
+            c = 0;
+        } else {
+            // Col 3 (hours) and Col 4 (daySalary) are locked
+            if (c === 3 || c === 4) {
+                c = (preferredDirection === 'next' || preferredDirection === 'down') ? 5 : 2;
+            }
         }
         c = Math.max(0, Math.min(c, 7));
-
-        // If target row is not ticked and user is focusing IN or OUT via keyboard navigation, auto-tick the row
-        if ((c === 1 || c === 2) && !rows[r]?.isTicked) {
-            handleRowChange(r, 'isTicked', true);
-        }
 
         setTimeout(() => {
             let target = document.querySelector(`[data-grid-cell="true"][data-row="${r}"][data-col="${c}"]`);
@@ -964,18 +961,18 @@ export default function EmployeePaymentRecordSheetPage() {
                     for (let nextC = c + 1; nextC <= 7; nextC++) {
                         if (nextC === 3 || nextC === 4) continue;
                         target = document.querySelector(`[data-grid-cell="true"][data-row="${r}"][data-col="${nextC}"]`);
-                        if (target) break;
+                        if (target && !target.disabled) break;
                     }
                 } else {
                     for (let prevC = c - 1; prevC >= 0; prevC--) {
                         if (prevC === 3 || prevC === 4) continue;
                         target = document.querySelector(`[data-grid-cell="true"][data-row="${r}"][data-col="${prevC}"]`);
-                        if (target) break;
+                        if (target && !target.disabled) break;
                     }
                 }
             }
 
-            if (target) {
+            if (target && !target.disabled) {
                 target.focus();
                 try {
                     if (target.type !== 'checkbox') {
@@ -1003,7 +1000,7 @@ export default function EmployeePaymentRecordSheetPage() {
             }
         }
 
-        // Enter -> Alternate between IN and OUT ONLY!
+        // Enter -> Alternate between IN and OUT ONLY (respecting row locking)
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             if (colIndex === 1) {
@@ -1016,25 +1013,28 @@ export default function EmployeePaymentRecordSheetPage() {
                 // In OUT -> normalize and commit current value first
                 const formatted = normalizeTimeString(e.target.value, offTime);
                 handleRowChange(rowIndex, 'outTime', formatted);
-                // From OUT -> go to IN on next row
+                // From OUT -> go to next row
                 if (rowIndex < rows.length - 1) {
-                    if (!rows[rowIndex + 1]?.isTicked) {
-                        handleRowChange(rowIndex + 1, 'isTicked', true);
+                    if (rows[rowIndex + 1]?.isTicked) {
+                        focusGridCell(rowIndex + 1, 1, 'next');
+                    } else {
+                        // Next row is locked -> focus its Checkbox (Col 0)
+                        focusGridCell(rowIndex + 1, 0, 'next');
                     }
-                    focusGridCell(rowIndex + 1, 1, 'next');
                 }
             } else if (colIndex === 0) {
-                // From Checkbox -> go to IN on same row
-                focusGridCell(rowIndex, 1, 'next');
-            } else if (colIndex === 5 || colIndex === 6) {
-                // From Advance (5) or Deduction (6) -> go down in same column
-                if (rowIndex < rows.length - 1) {
-                    focusGridCell(rowIndex + 1, colIndex, 'down');
+                // From Checkbox -> if ticked, go to IN on same row
+                if (rows[rowIndex]?.isTicked) {
+                    focusGridCell(rowIndex, 1, 'next');
                 }
-            } else {
-                // From reason -> wrap to IN on next row
+            } else if (colIndex === 5 || colIndex === 6 || colIndex === 7) {
+                // From Advance, Deduction, or Reason -> go down
                 if (rowIndex < rows.length - 1) {
-                    focusGridCell(rowIndex + 1, 1, 'next');
+                    if (rows[rowIndex + 1]?.isTicked) {
+                        focusGridCell(rowIndex + 1, colIndex, 'down');
+                    } else {
+                        focusGridCell(rowIndex + 1, 0, 'down');
+                    }
                 }
             }
             return;
@@ -1189,36 +1189,46 @@ export default function EmployeePaymentRecordSheetPage() {
                 if (row.isTicked) {
                     if (!row.inTime) row.inTime = onTime;
                     if (!row.outTime) row.outTime = offTime;
+                } else {
+                    // Row is UNTICKED -> LOCK ROW AND RESET DATA
+                    row.inTime = '';
+                    row.outTime = '';
+                    row.in = '';
+                    row.out = '';
+                    row.hours = 0;
+                    row.daySalary = 0;
+                    row.advance = 0;
+                    row.deduction = 0;
+                    row.reason = '';
                 }
                 row = evaluateRowPolicy(row, onTime, offTime, effectiveHourlyRate, salaryPolicies, selectedEmployeeId, isMonthlyEmployee);
             } else if (field === 'inTime' || field === 'outTime') {
+                if (!row.isTicked) return prevRows; // Locked row: cannot edit
                 row[field] = value;
-                row.isTicked = true;
-                if (!row.inTime) row.inTime = onTime;
-                if (!row.outTime) row.outTime = offTime;
                 row = evaluateRowPolicy(row, onTime, offTime, effectiveHourlyRate, salaryPolicies, selectedEmployeeId, isMonthlyEmployee);
             } else if (field === 'hours') {
+                if (!row.isTicked) return prevRows; // Locked row: cannot edit
                 const val = String(value).trim();
                 const hrs = val === '' ? 0 : Number(val);
                 row.hours = isNaN(hrs) ? row.hours : hrs;
                 if (row.hours > 0) {
-                    row.isTicked = true;
                     row.daySalary = Number((row.hours * effectiveHourlyRate).toFixed(2));
                 } else {
                     row.daySalary = 0;
                 }
             } else if (field === 'daySalary') {
+                if (!row.isTicked) return prevRows; // Locked row: cannot edit
                 const val = String(value).trim();
                 const num = val === '' ? 0 : Number(val);
                 row.daySalary = isNaN(num) ? row.daySalary : num;
-                if (row.daySalary > 0) row.isTicked = true;
             } else if (field === 'advance') {
+                if (!row.isTicked) return prevRows; // Locked row: cannot edit
                 const val = String(value).trim();
                 const num = val === '' ? 0 : Number(val);
                 row.advance = isNaN(num) ? row.advance : num;
                 setCustomTotalAdvance(null);
             } else if (field === 'deduction') {
-                // Allow user to freely type '-', '-100', '100', ''
+                if (!row.isTicked) return prevRows; // Locked row: cannot edit
                 if (value === '' || value === '-') {
                     row.deduction = value;
                     if (row.reason && (row.reason.startsWith('Late') || row.reason.startsWith('Early'))) {
@@ -1232,6 +1242,7 @@ export default function EmployeePaymentRecordSheetPage() {
                     }
                 }
             } else if (field === 'reason') {
+                if (!row.isTicked) return prevRows; // Locked row: cannot edit
                 row.reason = value;
             }
 
@@ -2048,6 +2059,15 @@ export default function EmployeePaymentRecordSheetPage() {
                         </button>
 
                         <button
+                            onClick={() => setIsPaySalaryModalOpen(true)}
+                            className="px-3.5 py-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+                            title="Pay salary to employee and settle current pay cycle"
+                        >
+                            <Wallet size={13} className="text-white" />
+                            Pay Salary (වැටුප් ගෙවීම)
+                        </button>
+
+                        <button
                             onClick={() => setIsAdvanceModalOpen(true)}
                             className="px-3 py-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer"
                             title="Record salary advance for this employee"
@@ -2112,6 +2132,41 @@ export default function EmployeePaymentRecordSheetPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Last Settlement & Reset Banner */}
+            {sheetData?.lastSalarySettlementDateString && (
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-4 py-2.5 mb-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-900 dark:text-emerald-200 shadow-2xs">
+                    <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 animate-pulse"></span>
+                        <span>
+                            <strong>Last Paid Date (පසුගිය වැටුප් ගෙවූ දිනය):</strong> {sheetData.lastSalarySettlementDateString}
+                        </span>
+                        <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">•</span>
+                        <span className="text-emerald-700 dark:text-emerald-300 font-medium">
+                            ඊළඟ දින සිට නව චක්‍රය 0 සිට ආරම්භ වී ඇත (Current cycle calculates from 0)
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {sheetData.unsettledTotals && (
+                            <div className="flex items-center gap-2 font-mono">
+                                <span className="text-slate-500 dark:text-slate-400 text-[11px]">Unsettled Net Salary:</span>
+                                <span className="text-emerald-700 dark:text-emerald-300 font-bold text-sm">
+                                    Rs. {Math.round(sheetData.unsettledTotals.netSalary).toLocaleString()}
+                                </span>
+                            </div>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setIsPaySalaryModalOpen(true)}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                        >
+                            <Wallet size={12} />
+                            Pay Ongoing Salary
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* SPREADSHEET PAGE CANVAS (Interactive on-screen spreadsheet - Fills Full Screen Width) */}
             <div ref={sheetPrintRef} className="sheet-print-container w-full bg-white border border-slate-200/90 rounded-xl p-3 sm:p-4 shadow-xs print:hidden">
@@ -2218,8 +2273,12 @@ export default function EmployeePaymentRecordSheetPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                        <span className="text-[9px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.2 rounded-full">
-                                            Active Employee Record
+                                        <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.2 rounded-full ${
+                                            selectedEmployeeId 
+                                                ? 'text-indigo-700 bg-indigo-50 border border-indigo-200/80' 
+                                                : 'text-amber-700 bg-amber-50 border border-amber-200/80'
+                                        }`}>
+                                            {selectedEmployeeId ? 'Active Employee Record' : 'Select Employee'}
                                         </span>
                                         {currentEmployee.payrollNumber && (
                                             <span className="text-[9px] font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.2 rounded-full border border-slate-200">
@@ -2258,10 +2317,11 @@ export default function EmployeePaymentRecordSheetPage() {
                                         <input
                                             type="text"
                                             inputMode="numeric"
+                                            disabled={!selectedEmployeeId}
                                             value={effectiveHourlyRate}
                                             onChange={(e) => handleHourlyRateChange(e.target.value)}
                                             onFocus={handleCellSelectAll}
-                                            className="bg-transparent text-slate-900 font-bold font-mono text-sm w-12 text-center outline-none focus:bg-white rounded border border-transparent focus:border-slate-300"
+                                            className="bg-transparent text-slate-900 font-bold font-mono text-sm w-12 text-center outline-none focus:bg-white rounded border border-transparent focus:border-slate-300 disabled:opacity-40"
                                         />
                                     </div>
                                 </div>
@@ -2269,8 +2329,8 @@ export default function EmployeePaymentRecordSheetPage() {
                                 <button
                                     type="button"
                                     onClick={handleSave}
-                                    disabled={saveMutation.isPending}
-                                    className="px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                    disabled={saveMutation.isPending || !selectedEmployeeId}
+                                    className="px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     <Save size={14} className={saveMutation.isPending ? 'animate-spin' : ''} />
                                     {saveMutation.isPending ? 'Saving...' : 'Save Sheet'}
@@ -2279,6 +2339,23 @@ export default function EmployeePaymentRecordSheetPage() {
                         </div>
                     </div>
 
+                    {!selectedEmployeeId ? (
+                        <div className="bg-white border border-slate-200/90 rounded-2xl p-8 sm:p-12 text-center shadow-2xs my-3">
+                            <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3 border border-indigo-200/80">
+                                <Users size={28} />
+                            </div>
+                            <h3 className="text-base font-bold text-slate-800 mb-1">
+                                කරුණාකර සේවකයෙකු තෝරන්න (Please Select an Employee)
+                            </h3>
+                            <p className="text-xs text-slate-500 max-w-md mx-auto mb-4">
+                                මැනුවල් පේ ෂීට් එක බැලීමට හෝ පැය සටහන් කිරීමට ඉහත ඇති Search කොටුවෙන් සේවකයෙකු තෝරන්න.
+                            </p>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-full text-xs font-semibold">
+                                💡 සේවකයෙකු තෝරාගත් පසු දින 31 ක පැමිණීමේ සටහන් පත්‍රිකාව විවෘත වේ.
+                            </span>
+                        </div>
+                    ) : (
+                        <>
                     {/* 2. Shift & Date Range Control Deck (Clean 3-tile grid) */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         {/* Tile A: Shift Hours */}
@@ -2494,7 +2571,12 @@ export default function EmployeePaymentRecordSheetPage() {
                             <span className="text-[8.5px] text-emerald-700/80 font-bold block">Take home</span>
                         </div>
                     </div>
+                    </>
+                    )}
                 </div>
+
+                {selectedEmployeeId && (
+                <>
 
                 {/* 3. Detailed Table Grid (Colors Matching Screenshot Exactly) */}
                 {isLoading ? (
@@ -2558,7 +2640,14 @@ export default function EmployeePaymentRecordSheetPage() {
                                         <td className={`border-r border-slate-200 dark:border-slate-800 print:border-black px-1.5 py-1 text-center font-bold font-mono text-[16px] print:text-xs ${
                                             row.day === 'SUNDAY' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 print:bg-[#FCE8E6] print:text-[#C00000]' : 'bg-slate-50/70 dark:bg-slate-800/40 text-slate-800 dark:text-slate-200 print:bg-[#E2EFDA] print:text-black font-bold'
                                         }`}>
-                                            {row.date ? row.date.substring(5) : ''}
+                                            <div className="flex items-center justify-center gap-1">
+                                                <span>{row.date ? row.date.substring(5) : ''}</span>
+                                                {row.isSettled && (
+                                                    <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-600 text-white font-sans font-bold leading-none shrink-0" title="Salary already settled up to this date">
+                                                        PAID
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
 
                                         {/* 3. DAY */}
@@ -2786,6 +2875,8 @@ export default function EmployeePaymentRecordSheetPage() {
                         </div>
                     </div>
                 </div>
+                </>
+                )}
             </div>
 
             {/* DEDICATED OFFICIAL PRINT CONTAINER (Matching GLX Physical Paysheet - Rendered on physical print & used for iframe print) */}
@@ -3060,14 +3151,46 @@ export default function EmployeePaymentRecordSheetPage() {
             {/* Normal Payslip Modal */}
             <NormalPayslipModal
                 isOpen={isPayslipModalOpen}
-                onClose={() => setIsPayslipModalOpen(false)}
+                onClose={() => {
+                    setIsPayslipModalOpen(false);
+                    setPaidPaymentIdForPayslip(null);
+                }}
                 employeeId={selectedEmployeeId}
                 startDate={startDate}
                 endDate={endDate}
                 includeEpfEtf={includeEpfEtf}
-                dynamicTotals={dynamicTotals}
+                dynamicTotals={paidPaymentIdForPayslip ? null : dynamicTotals}
                 employee={currentEmployee}
                 hourlyRate={effectiveHourlyRate}
+                paymentId={paidPaymentIdForPayslip}
+                onPayClick={() => {
+                    setIsPayslipModalOpen(false);
+                    setIsPaySalaryModalOpen(true);
+                }}
+            />
+
+            {/* Pay Salary & Settle Cycle Modal */}
+            <PaySalaryModal
+                isOpen={isPaySalaryModalOpen}
+                onClose={() => setIsPaySalaryModalOpen(false)}
+                employee={currentEmployee}
+                startDate={sheetData?.lastSalarySettlementDateString ? (() => {
+                    const nextDay = new Date(sheetData.lastSalarySettlementDateString + 'T00:00:00.000Z');
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    const nextDayStr = formatDateStr(nextDay);
+                    return nextDayStr <= endDate ? nextDayStr : startDate;
+                })() : startDate}
+                endDate={endDate}
+                dynamicTotals={sheetData?.unsettledTotals ? {
+                    ...dynamicTotals,
+                    ...sheetData.unsettledTotals
+                } : dynamicTotals}
+                includeEpfEtf={includeEpfEtf}
+                onPaymentSuccess={(salaryPayment) => {
+                    setPaidPaymentIdForPayslip(salaryPayment._id);
+                    setIsPayslipModalOpen(true);
+                    refetch();
+                }}
             />
 
             {/* Record Advance Modal */}

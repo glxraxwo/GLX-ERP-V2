@@ -102,4 +102,7 @@ export const manualAttendanceApi = {
     getNormalPayslip: async (params) => (await api.get('/hr/manual-attendance/normal-payslip', { params })).data,
     getPolicies: async () => (await api.get('/hr/manual-attendance/policies')).data,
     savePolicies: async (data) => (await api.post('/hr/manual-attendance/policies', data)).data,
+    paySalary: async (data) => (await api.post('/hr/manual-attendance/pay-salary', data)).data,
+    getSalaryPayments: async (employeeId) => (await api.get(`/hr/manual-attendance/salary-payments/${employeeId}`)).data,
+    getSalaryPaymentVoucher: async (id) => (await api.get(`/hr/manual-attendance/salary-payment/${id}`)).data,
 };

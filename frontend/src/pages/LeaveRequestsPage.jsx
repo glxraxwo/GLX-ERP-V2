@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, CheckCircle, XCircle, Ban, Plane, DollarSign, AlertTriangle, Percent, UserCheck, CreditCard, MinusCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import Button from '../components/ui/Button';
 import Table from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
 import Select from '../components/ui/Select';
+import SearchableSelect from '../components/ui/SearchableSelect';
 import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
 import Modal from '../components/ui/Modal';
@@ -83,10 +84,33 @@ export default function LeaveRequestsPage() {
     const advances = advancesData?.data || [];
     const empList = empData?.data || [];
 
-    const empOptions = empList.map((e) => ({ value: e._id, label: `${e.firstName} ${e.lastName} (${e.employeeCode})` }));
+    // Filter strictly for active employees only
+    const activeEmpList = useMemo(() => {
+        return empList.filter((e) => {
+            const status = (e.status || 'active').toLowerCase().trim();
+            const isActive = e.isActive !== false;
+            return status === 'active' && isActive;
+        });
+    }, [empList]);
+
+    const empOptions = useMemo(() => {
+        return activeEmpList.map((e) => {
+            const fullName = `${e.firstName || ''} ${e.lastName || ''}`.trim();
+            const code = e.employeeCode ? `(${e.employeeCode})` : '';
+            const dept = e.departmentId?.name || '';
+            const desig = e.designationId?.name || '';
+            const subtext = [desig, dept].filter(Boolean).join(' • ') || e.phone || '';
+            return {
+                value: e._id,
+                label: `${fullName} ${code}`.trim(),
+                subtext,
+                code: e.employeeCode || '',
+            };
+        });
+    }, [activeEmpList]);
 
     // Selected Employee details for advance calculation
-    const selectedEmpForAdvance = empList.find(e => e._id === advanceForm.employeeId);
+    const selectedEmpForAdvance = activeEmpList.find(e => e._id === advanceForm.employeeId) || empList.find(e => e._id === advanceForm.employeeId);
     const calculatedAdvancePreview = () => {
         if (!selectedEmpForAdvance) return 0;
         const base = selectedEmpForAdvance.basicSalary || (selectedEmpForAdvance.labourRate ? (selectedEmpForAdvance.paymentType === 'per_day' ? selectedEmpForAdvance.labourRate * 26 : selectedEmpForAdvance.labourRate * 200) : 0);
@@ -382,7 +406,7 @@ export default function LeaveRequestsPage() {
             {/* Leave Request Modal */}
             <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title="New Leave Application (නිවාඩු ඉල්ලුම්පත්‍රය)" size="md">
                 <div className="p-6 space-y-4">
-                    <Select label="Employee" required placeholder="Select employee..."
+                    <SearchableSelect label="Employee" required placeholder="Select employee (or type to search)..."
                         options={empOptions} value={leaveForm.employeeId}
                         onChange={(e) => setLeaveForm((f) => ({ ...f, employeeId: e.target.value }))} />
                     <div className="grid grid-cols-2 gap-4">
@@ -433,7 +457,7 @@ export default function LeaveRequestsPage() {
             {/* Advance Request Modal */}
             <Modal isOpen={isAdvanceFormOpen} onClose={() => setIsAdvanceFormOpen(false)} title="Salary Advance Request (අත්පිට මුදල් ඉල්ලුම්පත්‍රය)" size="md">
                 <div className="p-6 space-y-4">
-                    <Select label="Employee" required placeholder="Select employee..."
+                    <SearchableSelect label="Employee" required placeholder="Select employee (or type to search)..."
                         options={empOptions} value={advanceForm.employeeId}
                         onChange={(e) => setAdvanceForm((f) => ({ ...f, employeeId: e.target.value }))} />
 

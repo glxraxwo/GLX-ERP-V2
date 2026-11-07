@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
     Printer, Download, Users, Calendar, Search, Building2,
     DollarSign, ArrowLeft, RefreshCw, Eye, MessageSquare, Plus,
-    CheckCircle2, Sparkles, Filter, ChevronLeft, ChevronRight, FileText
+    CheckCircle2, Sparkles, Filter, ChevronLeft, ChevronRight, FileText, Wallet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -13,6 +13,7 @@ import { employeesApi, advancesApi } from '../features/hr/hrApi';
 import { useSettings } from '../features/settings/useSettings';
 import NormalPayslipModal from '../components/NormalPayslipModal';
 import RecordAdvanceModal from '../components/RecordAdvanceModal';
+import PaySalaryModal from '../components/PaySalaryModal';
 
 const MONTH_NAMES = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -35,6 +36,9 @@ export default function MonthlySalaryPayslipsPage() {
     const [activePayslipEmp, setActivePayslipEmp] = useState(null);
     const [isPayslipModalOpen, setIsPayslipModalOpen] = useState(false);
     const [advanceModalEmp, setAdvanceModalEmp] = useState(null);
+    const [paySalaryEmp, setPaySalaryEmp] = useState(null);
+    const [isPaySalaryModalOpen, setIsPaySalaryModalOpen] = useState(false);
+    const [paidPaymentIdForPayslip, setPaidPaymentIdForPayslip] = useState(null);
 
     const { data: settingsData } = useSettings();
     const settings = settingsData?.data || {};
@@ -707,6 +711,18 @@ Thank you for your hard work!`;
                                                 </button>
                                                 <button
                                                     type="button"
+                                                    onClick={() => {
+                                                        setPaySalaryEmp(row);
+                                                        setIsPaySalaryModalOpen(true);
+                                                    }}
+                                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                                                    title="Pay Salary & Settle Cycle"
+                                                >
+                                                    <Wallet size={13} />
+                                                    Pay
+                                                </button>
+                                                <button
+                                                    type="button"
                                                     onClick={() => handleDownloadPdf(row)}
                                                     className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer"
                                                     title="Quick PDF Download"
@@ -738,13 +754,49 @@ Thank you for your hard work!`;
                     onClose={() => {
                         setIsPayslipModalOpen(false);
                         setActivePayslipEmp(null);
+                        setPaidPaymentIdForPayslip(null);
                     }}
                     employeeId={activePayslipEmp.empId}
                     employee={activePayslipEmp.emp}
                     startDate={startDate}
                     endDate={endDate}
                     includeEpfEtf={includeEpfEtf}
-                    dynamicTotals={modalDynamicTotals}
+                    dynamicTotals={paidPaymentIdForPayslip ? null : modalDynamicTotals}
+                    paymentId={paidPaymentIdForPayslip}
+                    onPayClick={() => {
+                        setIsPayslipModalOpen(false);
+                        setPaySalaryEmp(activePayslipEmp);
+                        setIsPaySalaryModalOpen(true);
+                    }}
+                />
+            )}
+
+            {/* Pay Salary & Settle Cycle Modal */}
+            {paySalaryEmp && (
+                <PaySalaryModal
+                    isOpen={isPaySalaryModalOpen}
+                    onClose={() => {
+                        setIsPaySalaryModalOpen(false);
+                        setPaySalaryEmp(null);
+                    }}
+                    employee={paySalaryEmp.emp || { _id: paySalaryEmp.empId, id: paySalaryEmp.empId, name: paySalaryEmp.name, employeeCode: paySalaryEmp.payrollNumber }}
+                    startDate={startDate}
+                    endDate={endDate}
+                    dynamicTotals={{
+                        totalDays: 26,
+                        totalHours: 208,
+                        totalSalary: paySalaryEmp.monthlySalary,
+                        totalAdvance: paySalaryEmp.advance,
+                        totalDeduction: 0,
+                        epfEmployeeDeduction: paySalaryEmp.epfDeduction,
+                        netSalary: paySalaryEmp.netPayable
+                    }}
+                    includeEpfEtf={includeEpfEtf}
+                    onPaymentSuccess={(salaryPayment) => {
+                        setPaidPaymentIdForPayslip(salaryPayment._id);
+                        setActivePayslipEmp(paySalaryEmp);
+                        setIsPayslipModalOpen(true);
+                    }}
                 />
             )}
         </div>

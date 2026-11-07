@@ -198,6 +198,22 @@ const SearchableSelect = forwardRef(({
                 e.preventDefault();
                 setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : filteredOptions.length - 1));
                 return;
+            } else if (e.key === 'PageDown') {
+                e.preventDefault();
+                setHighlightedIndex((prev) => Math.min(filteredOptions.length - 1, prev + 5));
+                return;
+            } else if (e.key === 'PageUp') {
+                e.preventDefault();
+                setHighlightedIndex((prev) => Math.max(0, prev - 5));
+                return;
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                setHighlightedIndex(0);
+                return;
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                setHighlightedIndex(Math.max(0, filteredOptions.length - 1));
+                return;
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 if (filteredOptions.length > 0 && highlightedIndex >= 0 && highlightedIndex < filteredOptions.length) {
@@ -218,7 +234,7 @@ const SearchableSelect = forwardRef(({
             }
         } else {
             // Dropdown is closed
-            if (e.key === 'ArrowDown') {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                 e.preventDefault();
                 setIsOpen(true);
                 setIsTyping(false);
@@ -345,7 +361,7 @@ const SearchableSelect = forwardRef(({
                             >
                                 {filteredOptions.length === 0 ? (
                                     <div className="py-6 px-4 text-center text-xs text-gray-400 dark:text-slate-500 space-y-1">
-                                        <Package size={20} className="mx-auto text-gray-300 dark:text-slate-600 mb-1" />
+                                        <Search size={20} className="mx-auto text-gray-300 dark:text-slate-600 mb-1" />
                                         <p className="font-semibold text-gray-600 dark:text-slate-300">No matching items found</p>
                                         <p className="text-[11px] text-gray-400 dark:text-slate-500">Try typing a different name, code or keyword</p>
                                     </div>

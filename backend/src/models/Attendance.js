@@ -63,6 +63,12 @@ const attendanceSchema = new mongoose.Schema({
     defaultOffTime: { type: String, default: '17:00' },
     isOvernight: { type: Boolean, default: false },
 
+    // Settlement Tracking (Salary Paid)
+    isSettled: { type: Boolean, default: false },
+    settledDate: Date,
+    settledDateString: String,
+    settledPaymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'SalaryPayment' },
+
     markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });

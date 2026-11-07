@@ -3,6 +3,7 @@ import Employee from '../models/Employee.js';
 import Attendance from '../models/Attendance.js';
 import SalaryAdvance from '../models/SalaryAdvance.js';
 import Settings from '../models/Settings.js';
+import SalaryPayment from '../models/SalaryPayment.js';
 
 // Helper: Format Date to YYYY-MM-DD
 const formatDateStr = (d) => {
@@ -403,6 +404,7 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
     const existingAdvances = await SalaryAdvance.find({
         employeeId: employee._id,
         status: { $ne: 'rejected' },
+        ...(employee.lastSalarySettlementDateString && !startDate ? { isDeducted: { $ne: true } } : {}),
         $or: [
             { date: { $gte: advQueryStart, $lte: advQueryEnd } },
             { createdAt: { $gte: advQueryStart, $lte: advQueryEnd } }
@@ -489,7 +491,11 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
                 advance,
                 deduction,
                 reason,
-                attendanceId: att._id
+                attendanceId: att._id,
+                isSettled: Boolean(att.isSettled),
+                settledDate: att.settledDate || null,
+                settledDateString: att.settledDateString || null,
+                settledPaymentId: att.settledPaymentId || null
             };
         } else {
             // Default row for date without record
@@ -507,7 +513,11 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
                 advance: advance,
                 deduction: 0,
                 reason: '',
-                attendanceId: null
+                attendanceId: null,
+                isSettled: false,
+                settledDate: null,
+                settledDateString: null,
+                settledPaymentId: null
             };
         }
 
@@ -555,6 +565,33 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
 
     const effectiveNetSalary = Math.max(0, effectiveTotalSalary - totalAdvance + totalDeduction);
 
+    // Calculate unsettled totals starting from day after last salary settlement date
+    const lastSettledDateStr = employee.lastSalarySettlementDateString || null;
+    let unsettledDays = 0;
+    let unsettledHours = 0;
+    let unsettledSalary = 0;
+    let unsettledAdvance = 0;
+    let unsettledDeduction = 0;
+
+    rows.forEach(r => {
+        const isAlreadySettled = r.isSettled || (lastSettledDateStr && r.date <= lastSettledDateStr);
+        if (!isAlreadySettled) {
+            if (r.isTicked) {
+                unsettledDays += 1;
+                unsettledHours += Number(r.hours) || 0;
+                unsettledSalary += Number(r.daySalary) || 0;
+                unsettledDeduction += Number(r.deduction) || 0;
+            }
+            unsettledAdvance += Number(r.advance) || 0;
+        }
+    });
+
+    let effectiveUnsettledSalary = unsettledSalary;
+    if (isMonthly && monthlySalary > 0) {
+        effectiveUnsettledSalary = monthlySalary;
+    }
+    const unsettledNetSalary = Math.max(0, effectiveUnsettledSalary - unsettledAdvance + (isMonthly ? 0 : unsettledDeduction));
+
     res.json({
         success: true,
         employee: {
@@ -585,6 +622,21 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
             netSalary: Number(effectiveNetSalary.toFixed(2))
         },
         salaryPolicies: activePolicies,
+        lastSalarySettlementDateString: lastSettledDateStr,
+        lastSalarySettlementDate: employee.lastSalarySettlementDate || null,
+        lastSalaryPaymentId: employee.lastSalaryPaymentId || null,
+        unsettledTotals: {
+            totalLeave: rows.filter(r => !r.isTicked && (!lastSettledDateStr || r.date > lastSettledDateStr)).length,
+            totalDays: unsettledDays,
+            totalHours: Number(unsettledHours.toFixed(2)),
+            totalSalary: Number(effectiveUnsettledSalary.toFixed(2)),
+            basicSalary: Number(basicSalary.toFixed(2)),
+            otCommission: Number(otCommission.toFixed(2)),
+            minimumSalary: minSalary,
+            totalAdvance: Number(unsettledAdvance.toFixed(2)),
+            totalDeduction: Number(unsettledDeduction.toFixed(2)),
+            netSalary: Number(unsettledNetSalary.toFixed(2))
+        },
         epfEmployeeRate: settings?.epfEmployeeRate !== undefined ? settings.epfEmployeeRate : 8,
         epfEmployerRate: settings?.epfEmployerRate !== undefined ? settings.epfEmployerRate : 12,
         etfEmployerRate: settings?.etfEmployerRate !== undefined ? settings.etfEmployerRate : 3,
@@ -737,7 +789,7 @@ export const saveDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, r
  * @access  Private (hr.employees.view)
  */
 export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
-    const { employeeId, startDate, endDate, includeEpfEtf } = req.query;
+    const { employeeId, startDate, endDate, includeEpfEtf, paymentId } = req.query;
 
     const employee = await Employee.findById(employeeId);
     if (!employee) {
@@ -747,18 +799,98 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
 
     const settings = await Settings.findOne() || {};
 
+    // 1. If requesting a specific settled payment voucher:
+    if (paymentId) {
+        const payment = await SalaryPayment.findById(paymentId).populate('bankAccountId');
+        if (payment) {
+            const isMonthlyP = employee.paymentType === 'monthly';
+            const monthlySalaryP = isMonthlyP ? Number(employee.monthlySalary || employee.basicSalary || 0) : 0;
+            const minSalaryP = Number(employee.minimumSalary || employee.basicSalary || 0);
+
+            return res.json({
+                success: true,
+                isPaid: true,
+                paymentStatus: 'paid',
+                voucherNumber: payment.voucherNumber,
+                paymentDate: payment.paymentDate,
+                paymentDateString: payment.paymentDateString,
+                paymentMethod: payment.paymentMethod,
+                bankAccount: payment.bankAccountId ? `${payment.bankAccountId.bankName} - ${payment.bankAccountId.accountNumber}` : '',
+                reference: payment.reference,
+                notes: payment.notes,
+                company: {
+                    name: settings.companyName || 'GLX INDUSTRIES',
+                    address: settings.companyAddress || '',
+                    phone: settings.companyPhone || '',
+                    logo: settings.companyLogo || '',
+                    bossSignature: settings.bossSignature || '',
+                    bossTitle: settings.bossTitle || 'MANAGING DIRECTOR',
+                    companySeal: settings.companySeal || ''
+                },
+                employee: {
+                    id: employee._id,
+                    name: payment.employeeName,
+                    payrollNumber: payment.employeeCode,
+                    designation: employee.designationId?.title || '',
+                    department: employee.departmentId?.name || '',
+                    paymentType: employee.paymentType || (isMonthlyP ? 'monthly' : 'hourly'),
+                    monthlySalary: monthlySalaryP,
+                    hourlyRate: payment.hourlyRateApplied || getEmployeeRegisteredRate(employee, 260),
+                    minimumSalary: minSalaryP,
+                    epfNumber: employee.epfNumber || '',
+                    accountNumber: employee.bankDetails?.accountNumber || ''
+                },
+                period: {
+                    startDate: payment.periodStartDate,
+                    endDate: payment.periodEndDate,
+                    totalDays: payment.workingDays,
+                    totalHours: payment.totalHours
+                },
+                earnings: {
+                    basicSalary: payment.basicSalary,
+                    totalHours: payment.totalHours,
+                    overtimePayment: payment.otCommission,
+                    commission: 0,
+                    otherAllowances: 0,
+                    grossEarnings: payment.grossSalary
+                },
+                deductions: {
+                    epfEmployee: payment.epfEmployeeDeduction,
+                    advances: payment.totalAdvance,
+                    otherDeductions: payment.totalDeductions,
+                    totalDeductions: Number((payment.epfEmployeeDeduction + payment.totalAdvance + payment.totalDeductions).toFixed(2))
+                },
+                employerContributions: {
+                    epfEmployer: payment.epfEmployerContribution,
+                    etfEmployer: payment.etfEmployerContribution,
+                    totalContributions: Number((payment.epfEmployerContribution + payment.etfEmployerContribution).toFixed(2))
+                },
+                netSalary: payment.netSalary
+            });
+        }
+    }
+
     const today = new Date();
     const defaultStart = new Date();
     defaultStart.setDate(today.getDate() - 30);
 
-    const startStr = startDate || formatDateStr(defaultStart);
+    // If no startDate provided and last settlement date exists, start from next day after settlement
+    let effectiveStartStr = startDate;
+    if (!effectiveStartStr && employee.lastSalarySettlementDateString) {
+        const nextDay = new Date(employee.lastSalarySettlementDateString + 'T00:00:00.000Z');
+        nextDay.setDate(nextDay.getDate() + 1);
+        effectiveStartStr = formatDateStr(nextDay);
+    }
+
+    const startStr = effectiveStartStr || formatDateStr(defaultStart);
     const endStr = endDate || formatDateStr(today);
 
     // Get attendance records in date range: strictly count explicitly ticked records
     const attendances = await Attendance.find({
         employeeId: employee._id,
         dateString: { $gte: startStr, $lte: endStr },
-        isTicked: true
+        isTicked: true,
+        ...(employee.lastSalarySettlementDateString && !startDate ? { isSettled: { $ne: true } } : {})
     });
 
     const hourlyRate = getEmployeeRegisteredRate(employee, 260);
@@ -1060,5 +1192,288 @@ export const saveManualAttendancePolicies = asyncHandler(async (req, res) => {
         epfEmployerRate: settings.epfEmployerRate,
         etfEmployerRate: settings.etfEmployerRate,
         salaryPolicies: settings.salaryPolicies
+    });
+});
+
+
+/**
+ * @desc    Pay Employee Salary / Mark Salary as Paid (Settle pay cycle)
+ * @route   POST /api/hr/manual-attendance/pay-salary
+ * @access  Private (hr.payroll.manage)
+ */
+export const payEmployeeSalary = asyncHandler(async (req, res) => {
+    const {
+        employeeId,
+        periodStartDate,
+        periodEndDate,
+        paymentDate,
+        paymentMethod = 'cash',
+        bankAccountId,
+        reference,
+        notes,
+        includeEpfEtf = false,
+        overrideNetSalary,
+        customTotalAdvance
+    } = req.body;
+
+    if (!employeeId) {
+        res.status(400);
+        throw new Error('Employee ID is required');
+    }
+    if (!periodStartDate || !periodEndDate) {
+        res.status(400);
+        throw new Error('Period start date and end date are required');
+    }
+
+    const [employee, settings] = await Promise.all([
+        Employee.findById(employeeId),
+        Settings.findOne()
+    ]);
+    if (!employee) {
+        res.status(404);
+        throw new Error('Employee not found');
+    }
+
+    const payDate = paymentDate ? new Date(paymentDate) : new Date();
+    const payDateStr = formatDateStr(payDate);
+
+    // 1. Fetch attendances in period
+    const attendances = await Attendance.find({
+        employeeId: employee._id,
+        dateString: { $gte: periodStartDate, $lte: periodEndDate },
+        isTicked: true
+    });
+
+    const hourlyRate = getEmployeeRegisteredRate(employee, settings?.defaultHourlyRate || 260);
+
+    let workingDays = 0;
+    let totalHours = 0;
+    let totalEarnedSalary = 0;
+    let totalAdvanceFromAtt = 0;
+    let totalDeductions = 0;
+
+    attendances.forEach(att => {
+        workingDays += 1;
+        const hrs = att.payableHours || 0;
+        totalHours += hrs;
+        const effectiveRate = (att.isManualSheetSaved && att.hourlyRateApplied && Math.abs(att.hourlyRateApplied - hourlyRate) < 0.01)
+            ? att.hourlyRateApplied
+            : hourlyRate;
+        const dSal = (att.isManualSheetSaved && att.daySalary !== undefined && att.daySalary > 0 && Math.abs(att.hourlyRateApplied - hourlyRate) < 0.01)
+            ? att.daySalary
+            : Number((hrs * effectiveRate).toFixed(2));
+        totalEarnedSalary += dSal;
+        totalAdvanceFromAtt += Number(att.dailyAdvance) || 0;
+        if (att.dailyDeduction < 0) {
+            totalDeductions += Math.abs(att.dailyDeduction);
+        }
+    });
+
+    // 2. Fetch advances in period
+    const [sY, sM, sD] = periodStartDate.split('-').map(Number);
+    const [eY, eM, eD] = periodEndDate.split('-').map(Number);
+    const advQueryStart = new Date(Date.UTC(sY, sM - 1, sD, 0, 0, 0));
+    advQueryStart.setDate(advQueryStart.getDate() - 2);
+    const advQueryEnd = new Date(Date.UTC(eY, eM - 1, eD, 23, 59, 59, 999));
+    advQueryEnd.setDate(advQueryEnd.getDate() + 2);
+
+    const activeAdvances = await SalaryAdvance.find({
+        employeeId: employee._id,
+        status: { $ne: 'rejected' },
+        isDeducted: { $ne: true },
+        $or: [
+            { date: { $gte: advQueryStart, $lte: advQueryEnd } },
+            { createdAt: { $gte: advQueryStart, $lte: advQueryEnd } }
+        ]
+    });
+
+    let advanceFromCollection = 0;
+    const advanceIds = [];
+    activeAdvances.forEach(adv => {
+        const d = adv.date || adv.createdAt;
+        const dateKey = formatDateStr(d);
+        if (dateKey >= periodStartDate && dateKey <= periodEndDate) {
+            advanceFromCollection += (adv.amount || 0);
+            advanceIds.push(adv._id);
+        }
+    });
+
+    const finalAdvance = customTotalAdvance !== null && customTotalAdvance !== undefined
+        ? Number(customTotalAdvance)
+        : Math.max(totalAdvanceFromAtt, advanceFromCollection);
+
+    // 3. Earnings & Statutory
+    const isMonthly = employee.paymentType === 'monthly';
+    const monthlySalary = isMonthly ? Number(employee.monthlySalary || employee.basicSalary || 0) : 0;
+    const minSalary = Number(employee.minimumSalary || employee.basicSalary || 0);
+
+    let grossSalary = 0;
+    let basicSalary = 0;
+    let otCommission = 0;
+
+    if (isMonthly && monthlySalary > 0) {
+        grossSalary = monthlySalary;
+        if (minSalary > 0) {
+            basicSalary = Math.min(minSalary, monthlySalary);
+            otCommission = Number((monthlySalary - basicSalary).toFixed(2));
+        } else {
+            basicSalary = monthlySalary;
+            otCommission = 0;
+        }
+    } else {
+        grossSalary = Number(totalEarnedSalary.toFixed(2));
+        if (minSalary > 0) {
+            if (grossSalary > minSalary) {
+                basicSalary = minSalary;
+                otCommission = Number((grossSalary - minSalary).toFixed(2));
+            } else {
+                basicSalary = grossSalary;
+                otCommission = 0;
+            }
+        } else {
+            basicSalary = grossSalary;
+            otCommission = 0;
+        }
+    }
+
+    const shouldIncludeEpf = Boolean(includeEpfEtf);
+    const epfEmployeeRate = shouldIncludeEpf ? (employee.epfRate || settings?.epfEmployeeRate || 8) : 0;
+    const epfEmployerRate = shouldIncludeEpf ? (settings?.epfEmployerRate || 12) : 0;
+    const etfEmployerRate = shouldIncludeEpf ? (settings?.etfEmployerRate || 3) : 0;
+
+    const epfEmployee = shouldIncludeEpf ? Number(((basicSalary * epfEmployeeRate) / 100).toFixed(2)) : 0;
+    const epfEmployer = shouldIncludeEpf ? Number(((basicSalary * epfEmployerRate) / 100).toFixed(2)) : 0;
+    const etfEmployer = shouldIncludeEpf ? Number(((basicSalary * etfEmployerRate) / 100).toFixed(2)) : 0;
+
+    const calculatedNet = Math.max(0, grossSalary - finalAdvance - (isMonthly ? 0 : totalDeductions) - epfEmployee);
+    const finalNet = (overrideNetSalary !== undefined && overrideNetSalary !== null)
+        ? Number(overrideNetSalary)
+        : calculatedNet;
+
+    // 4. Create and save SalaryPayment
+    const salaryPayment = new SalaryPayment({
+        employeeId: employee._id,
+        employeeCode: employee.employeeCode || 'EMP',
+        employeeName: employee.fullName || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.displayName || 'Employee',
+        periodStartDate,
+        periodEndDate,
+        paymentDate: payDate,
+        paymentDateString: payDateStr,
+        workingDays,
+        totalHours: Number(totalHours.toFixed(2)),
+        hourlyRateApplied: hourlyRate,
+        basicSalary,
+        otCommission,
+        grossSalary,
+        totalAdvance: finalAdvance,
+        totalDeductions: isMonthly ? 0 : totalDeductions,
+        epfEmployeeDeduction: epfEmployee,
+        epfEmployerContribution: epfEmployer,
+        etfEmployerContribution: etfEmployer,
+        includeEpfEtf: shouldIncludeEpf,
+        netSalary: finalNet,
+        paymentMethod,
+        bankAccountId: bankAccountId || undefined,
+        reference: reference || '',
+        notes: notes || '',
+        attendanceIds: attendances.map(a => a._id),
+        advanceIds,
+        status: 'paid',
+        paidBy: req.user?._id
+    });
+
+    await salaryPayment.save();
+
+    // 5. Mark attendances up to periodEndDate as settled
+    await Attendance.updateMany(
+        {
+            employeeId: employee._id,
+            dateString: { $gte: periodStartDate, $lte: periodEndDate }
+        },
+        {
+            $set: {
+                isSettled: true,
+                settledDate: payDate,
+                settledDateString: payDateStr,
+                settledPaymentId: salaryPayment._id
+            }
+        }
+    );
+
+    // 6. Mark advances as deducted
+    if (advanceIds.length > 0) {
+        await SalaryAdvance.updateMany(
+            { _id: { $in: advanceIds } },
+            {
+                $set: {
+                    isDeducted: true,
+                    deductedSalaryPaymentId: salaryPayment._id,
+                    status: 'approved'
+                }
+            }
+        );
+    }
+
+    // 7. Update Employee settlement tracker
+    employee.lastSalarySettlementDate = payDate;
+    employee.lastSalarySettlementDateString = periodEndDate;
+    employee.lastSalaryPaymentId = salaryPayment._id;
+    await employee.save();
+
+    res.status(201).json({
+        success: true,
+        message: `Salary payment of Rs. ${finalNet.toLocaleString()} for ${employee.firstName} ${employee.lastName || ''} marked as paid successfully!`,
+        salaryPayment
+    });
+});
+
+/**
+ * @desc    Get Salary Payment History for an employee
+ * @route   GET /api/hr/manual-attendance/salary-payments/:employeeId
+ * @access  Private (hr.employees.view)
+ */
+export const getEmployeeSalaryPayments = asyncHandler(async (req, res) => {
+    const { employeeId } = req.params;
+    const payments = await SalaryPayment.find({ employeeId, deletedAt: null })
+        .sort({ paymentDate: -1, createdAt: -1 })
+        .populate('bankAccountId', 'bankName accountNumber')
+        .populate('paidBy', 'name firstName lastName');
+
+    res.json({
+        success: true,
+        data: payments
+    });
+});
+
+/**
+ * @desc    Get Single Salary Payment Voucher details
+ * @route   GET /api/hr/manual-attendance/salary-payment/:id
+ * @access  Private (hr.employees.view)
+ */
+export const getSalaryPaymentVoucher = asyncHandler(async (req, res) => {
+    const payment = await SalaryPayment.findById(req.params.id)
+        .populate('employeeId')
+        .populate('bankAccountId')
+        .populate('paidBy', 'name firstName lastName');
+
+    if (!payment) {
+        res.status(404);
+        throw new Error('Salary payment record not found');
+    }
+
+    const settings = await Settings.findOne() || {};
+
+    res.json({
+        success: true,
+        data: payment,
+        company: {
+            name: settings.companyName || 'GLX INDUSTRIES',
+            address: settings.companyAddress || '',
+            phone: settings.companyPhone || '',
+            logo: settings.companyLogo || '',
+            bossSignature: settings.bossSignature || '',
+            bossTitle: settings.bossTitle || 'MANAGING DIRECTOR',
+            companySeal: settings.companySeal || ''
+        }
     });
 });

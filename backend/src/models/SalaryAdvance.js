@@ -17,6 +17,7 @@ const salaryAdvanceSchema = new mongoose.Schema({
     rejectedReason: String,
     isDeducted: { type: Boolean, default: false },
     deductedPayrollId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payroll' },
+    deductedSalaryPaymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'SalaryPayment' },
     paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
     paidAt: Date,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

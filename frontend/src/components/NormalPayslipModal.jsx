@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Printer, Download, MessageSquare, RefreshCw, Sparkles, MapPin, Flame } from 'lucide-react';
+import { X, Printer, Download, MessageSquare, RefreshCw, Sparkles, MapPin, Flame, Wallet, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -17,15 +17,17 @@ export default function NormalPayslipModal({
     includeEpfEtf = false,
     dynamicTotals = null,
     employee = null,
-    hourlyRate = null
+    hourlyRate = null,
+    paymentId = null,
+    onPayClick = null
 }) {
     const printRef = useRef(null);
     const { data: settingsData } = useSettings();
     const systemSettings = settingsData?.data || {};
 
     const { data: payslipData, isLoading } = useQuery({
-        queryKey: ['normal-payslip', employeeId, startDate, endDate, includeEpfEtf],
-        queryFn: () => manualAttendanceApi.getNormalPayslip({ employeeId, startDate, endDate, includeEpfEtf }),
+        queryKey: ['normal-payslip', employeeId, startDate, endDate, includeEpfEtf, paymentId],
+        queryFn: () => manualAttendanceApi.getNormalPayslip({ employeeId, startDate, endDate, includeEpfEtf, paymentId }),
         enabled: Boolean(isOpen && employeeId),
     });
 
@@ -454,6 +456,22 @@ export default function NormalPayslipModal({
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {payslip.isPaid || payslip.paymentStatus === 'paid' ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold text-xs flex items-center gap-1 font-mono">
+                                <CheckCircle size={13} className="text-emerald-400" />
+                                PAID {payslip.voucherNumber ? `(${payslip.voucherNumber})` : ''}
+                            </span>
+                        ) : onPayClick ? (
+                            <button
+                                onClick={onPayClick}
+                                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                                title="Pay and settle this salary"
+                            >
+                                <Wallet size={14} />
+                                Pay / Settle (ගෙවන්න)
+                            </button>
+                        ) : null}
+
                         <button
                             onClick={handleDownloadPdf}
                             className="px-3 py-1 bg-red-700 hover:bg-red-800 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition cursor-pointer"

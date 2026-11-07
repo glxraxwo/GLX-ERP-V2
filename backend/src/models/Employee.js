@@ -54,6 +54,11 @@ const employeeSchema = new mongoose.Schema({
         type: Number,
         default: 0, // rate per day or per hour
     },
+    // Salary Settlement Tracking (Last Paid Date)
+    lastSalarySettlementDate: Date,
+    lastSalarySettlementDateString: String,
+    lastSalaryPaymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'SalaryPayment'
+    },
 
     // Mandatory Document Tracking (Grama Niladhari, Education, Police Report)
     gsCertificate: {
