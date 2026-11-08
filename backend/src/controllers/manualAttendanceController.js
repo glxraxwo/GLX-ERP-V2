@@ -127,6 +127,29 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
         const hourlyRate = getEmployeeRegisteredRate(emp);
         const recordedAdvance = advanceMap.get(empIdStr) || 0;
         const employeeStatus = emp.status || 'active';
+        const isEmpActive = (employeeStatus === 'active') && (emp.isActive !== false);
+
+        // Strict Inactive Employee Policy: If employee is inactive, lock completely and force all calculations to 0
+        if (!isEmpActive) {
+            return {
+                employeeId: emp._id,
+                payrollNumber: emp.payrollNumber || emp.employeeCode || '',
+                name: emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.displayName || 'Employee',
+                hourlyRate: hourlyRate,
+                employeeStatus: employeeStatus,
+                isTicked: false,
+                inTime: defaultOnTime,
+                outTime: defaultOffTime,
+                hours: 0,
+                daySalary: 0,
+                advance: 0,
+                deduction: 0,
+                reason: 'INACTIVE_LOCKED',
+                isSaved: existing ? true : false,
+                isLocked: true,
+                isInactive: true
+            };
+        }
 
         if (existing) {
             const isTicked = existing.isTicked !== undefined
@@ -158,11 +181,12 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
                 advance: existing.dailyAdvance !== undefined ? existing.dailyAdvance : recordedAdvance,
                 deduction: deduction,
                 reason: reason,
-                isSaved: true
+                isSaved: true,
+                isLocked: false,
+                isInactive: false
             };
         } else {
             // New record for this date (auto-tick only active employees)
-            const isEmpActive = employeeStatus === 'active';
             const isTicked = isEmpActive;
             const hours = isTicked ? calculateWorkingHours(defaultOnTime, defaultOffTime) : 0;
             const daySalary = isTicked ? Number((hours * hourlyRate).toFixed(2)) : 0;
@@ -181,7 +205,9 @@ export const getDailyManualAttendance = asyncHandler(async (req, res) => {
                 advance: recordedAdvance,
                 deduction: 0,
                 reason: '',
-                isSaved: false
+                isSaved: false,
+                isLocked: false,
+                isInactive: false
             };
         }
     });
@@ -229,18 +255,31 @@ export const saveDailyManualAttendance = asyncHandler(async (req, res) => {
     const bulkOperations = [];
     const advancesToUpsert = [];
 
+    // Query active status of employees being saved to strictly lock inactive staff at 0
+    const employeeIds = rows.map(r => r.employeeId).filter(Boolean);
+    const existingEmployees = await Employee.find({ _id: { $in: employeeIds } }).select('_id status isActive');
+    const employeeStatusMap = new Map();
+    existingEmployees.forEach(e => {
+        const isAct = (e.status === 'active') && (e.isActive !== false);
+        employeeStatusMap.set(e._id.toString(), isAct);
+    });
+
     for (const row of rows) {
         if (!row.employeeId) continue;
 
-        const isTicked = Boolean(row.isTicked);
+        const empIdStr = row.employeeId.toString();
+        const isEmpActive = employeeStatusMap.get(empIdStr) !== false && (row.employeeStatus !== 'inactive');
+
+        // For inactive employees: strictly enforce locked 0 values and do not allow ticking
+        const isTicked = isEmpActive ? Boolean(row.isTicked) : false;
         const inTimeStr = row.inTime || defaultOnTime;
         const outTimeStr = row.outTime || defaultOffTime;
-        const hours = isTicked ? (Number(row.hours) || calculateWorkingHours(inTimeStr, outTimeStr)) : 0;
+        const hours = (isEmpActive && isTicked) ? (Number(row.hours) || calculateWorkingHours(inTimeStr, outTimeStr)) : 0;
         const hourlyRate = Number(row.hourlyRate) || 260;
-        const daySalary = isTicked ? (Number(row.daySalary) || Number((hours * hourlyRate).toFixed(2))) : 0;
-        const advance = Number(row.advance) || 0;
-        const deduction = Number(row.deduction) || 0;
-        const reason = deduction !== 0 ? (row.reason || '') : '';
+        const daySalary = (isEmpActive && isTicked) ? (Number(row.daySalary) || Number((hours * hourlyRate).toFixed(2))) : 0;
+        const advance = isEmpActive ? (Number(row.advance) || 0) : 0;
+        const deduction = isEmpActive ? (Number(row.deduction) || 0) : 0;
+        const reason = (isEmpActive && deduction !== 0) ? (row.reason || '') : (isEmpActive ? '' : 'INACTIVE_LOCKED');
 
         // Construct checkInTime & checkOutTime timestamps for integration
         const [inH, inM] = inTimeStr.split(':').map(Number);
@@ -435,6 +474,7 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
     });
 
     const hourlyRate = getEmployeeRegisteredRate(employee, settings?.defaultHourlyRate || 260);
+    const isEmpActive = (employee.status === 'active') && (employee.isActive !== false);
 
     // Generate date sequence
     const rows = [];
@@ -456,7 +496,29 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
         const att = attendanceMap.get(dateStr);
 
         let row;
-        if (att) {
+        if (!isEmpActive) {
+            // Strictly lock inactive employee rows at 0
+            totalLeave += 1;
+            row = {
+                date: dateStr,
+                day: dayName,
+                isTicked: false,
+                inTime: defaultShiftOn,
+                outTime: defaultShiftOff,
+                hours: 0,
+                daySalary: 0,
+                advance: 0,
+                deduction: 0,
+                reason: 'INACTIVE_LOCKED',
+                attendanceId: att?._id || null,
+                isSettled: false,
+                settledDate: null,
+                settledDateString: null,
+                settledPaymentId: null,
+                isLocked: true,
+                isInactive: true
+            };
+        } else if (att) {
             // Do NOT auto-tick rows on employee selection unless explicitly saved in this manual payment sheet
             const isTicked = att.isManualSheetSaved ? Boolean(att.isTicked) : false;
             const inTime = att.manualInTime || defaultShiftOn;
@@ -495,7 +557,9 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
                 isSettled: Boolean(att.isSettled),
                 settledDate: att.settledDate || null,
                 settledDateString: att.settledDateString || null,
-                settledPaymentId: att.settledPaymentId || null
+                settledPaymentId: att.settledPaymentId || null,
+                isLocked: false,
+                isInactive: false
             };
         } else {
             // Default row for date without record
@@ -517,7 +581,9 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
                 isSettled: false,
                 settledDate: null,
                 settledDateString: null,
-                settledPaymentId: null
+                settledPaymentId: null,
+                isLocked: false,
+                isInactive: false
             };
         }
 
@@ -563,7 +629,7 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
         }
     }
 
-    const effectiveNetSalary = Math.max(0, effectiveTotalSalary - totalAdvance + totalDeduction);
+    let effectiveNetSalary = Math.max(0, effectiveTotalSalary - totalAdvance + totalDeduction);
 
     // Calculate unsettled totals starting from day after last salary settlement date
     const lastSettledDateStr = employee.lastSalarySettlementDateString || null;
@@ -590,7 +656,25 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
     if (isMonthly && monthlySalary > 0) {
         effectiveUnsettledSalary = monthlySalary;
     }
-    const unsettledNetSalary = Math.max(0, effectiveUnsettledSalary - unsettledAdvance + (isMonthly ? 0 : unsettledDeduction));
+    let unsettledNetSalary = Math.max(0, effectiveUnsettledSalary - unsettledAdvance + (isMonthly ? 0 : unsettledDeduction));
+
+    // Strictly enforce 0 totals if employee is inactive
+    if (!isEmpActive) {
+        effectiveTotalSalary = 0;
+        basicSalary = 0;
+        otCommission = 0;
+        totalAdvance = 0;
+        totalDeduction = 0;
+        effectiveNetSalary = 0;
+        totalDays = 0;
+        totalHours = 0;
+        effectiveUnsettledSalary = 0;
+        unsettledAdvance = 0;
+        unsettledDeduction = 0;
+        unsettledNetSalary = 0;
+        unsettledDays = 0;
+        unsettledHours = 0;
+    }
 
     res.json({
         success: true,
@@ -598,12 +682,15 @@ export const getDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, re
             id: employee._id,
             name: employee.fullName || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.displayName,
             payrollNumber: employee.payrollNumber || employee.employeeCode || '000-00-0293',
+            status: employee.status || 'active',
+            isLocked: !isEmpActive,
+            isInactive: !isEmpActive,
             paymentType: employee.paymentType || (isMonthly ? 'monthly' : 'hourly'),
-            monthlySalary,
-            hourlyRate: hourlyRate,
+            monthlySalary: isEmpActive ? monthlySalary : 0,
+            hourlyRate: isEmpActive ? hourlyRate : 0,
             department: employee.departmentId?.name || '',
             designation: employee.designationId?.title || '',
-            minimumSalary: minSalary
+            minimumSalary: isEmpActive ? minSalary : 0
         },
         startDate: startStr,
         endDate: endStr,
@@ -665,6 +752,12 @@ export const saveDetailedEmployeePaymentRecordSheet = asyncHandler(async (req, r
     if (!employee) {
         res.status(404);
         throw new Error('Employee not found');
+    }
+
+    const isEmpActive = (employee.status === 'active') && (employee.isActive !== false);
+    if (!isEmpActive) {
+        res.status(400);
+        throw new Error('Cannot edit or save payment sheet for an inactive employee. Inactive accounts are fully locked.');
     }
 
     // Persist default rate and shift times for this employee
@@ -795,6 +888,65 @@ export const getNormalEmployeePayslip = asyncHandler(async (req, res) => {
     if (!employee) {
         res.status(404);
         throw new Error('Employee not found');
+    }
+
+    const isEmpActive = (employee.status === 'active') && (employee.isActive !== false);
+    if (!paymentId && !isEmpActive) {
+        const isMonthlyP = employee.paymentType === 'monthly';
+        const settings = await Settings.findOne() || {};
+        return res.json({
+            success: true,
+            isPaid: false,
+            paymentStatus: 'locked',
+            isLocked: true,
+            isInactive: true,
+            company: {
+                name: settings.companyName || 'GLX INDUSTRIES',
+                address: settings.companyAddress || '',
+                phone: settings.companyPhone || '',
+                logo: settings.companyLogo || ''
+            },
+            employee: {
+                id: employee._id,
+                name: employee.fullName || `${employee.firstName || ''} ${employee.lastName || ''}`.trim() || employee.displayName,
+                payrollNumber: employee.payrollNumber || employee.employeeCode || '000-00-0293',
+                designation: employee.designationId?.title || '',
+                department: employee.departmentId?.name || '',
+                paymentType: employee.paymentType || (isMonthlyP ? 'monthly' : 'hourly'),
+                monthlySalary: 0,
+                hourlyRate: 0,
+                minimumSalary: 0,
+                epfNumber: employee.epfNumber || '',
+                isLocked: true,
+                isInactive: true
+            },
+            period: {
+                startDate: startDate || formatDateStr(new Date()),
+                endDate: endDate || formatDateStr(new Date()),
+                totalDays: 0,
+                totalHours: 0
+            },
+            earnings: {
+                basicSalary: 0,
+                totalHours: 0,
+                overtimePayment: 0,
+                commission: 0,
+                otherAllowances: 0,
+                grossEarnings: 0
+            },
+            deductions: {
+                epfEmployee: 0,
+                advances: 0,
+                otherDeductions: 0,
+                totalDeductions: 0
+            },
+            employerContributions: {
+                epfEmployer: 0,
+                etfEmployer: 0,
+                totalContributions: 0
+            },
+            netSalary: 0
+        });
     }
 
     const settings = await Settings.findOne() || {};
@@ -1232,6 +1384,12 @@ export const payEmployeeSalary = asyncHandler(async (req, res) => {
     if (!employee) {
         res.status(404);
         throw new Error('Employee not found');
+    }
+
+    const isEmpActive = (employee.status === 'active') && (employee.isActive !== false);
+    if (!isEmpActive) {
+        res.status(400);
+        throw new Error('Cannot process salary payment for an inactive employee. Inactive accounts are fully locked.');
     }
 
     const payDate = paymentDate ? new Date(paymentDate) : new Date();

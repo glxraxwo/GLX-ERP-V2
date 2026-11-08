@@ -825,6 +825,13 @@ export default function EmployeePaymentRecordSheetPage() {
         return currentEmployee?.paymentType === 'monthly';
     }, [currentEmployee]);
 
+    // Inactive Employee Check: Inactive employees are fully locked and forced to 0
+    const isEmployeeActive = useMemo(() => {
+        if (!selectedEmployeeId) return true;
+        const status = currentEmployee?.status || currentEmployee?.employeeStatus;
+        return (status === 'active' || !status) && currentEmployee?.isActive !== false && !currentEmployee?.isInactive && !currentEmployee?.isLocked;
+    }, [currentEmployee, selectedEmployeeId]);
+
     const employeeFullName = useMemo(() => {
         if (!selectedEmployeeId) return '';
         return currentEmployee.name || currentEmployee.fullName || `${currentEmployee.firstName || ''} ${currentEmployee.lastName || ''}`.trim() || currentEmployee.displayName || '';
@@ -1180,6 +1187,11 @@ export default function EmployeePaymentRecordSheetPage() {
     }, [rows, isAdvanceModalOpen, isPayslipModalOpen, isPoliciesModalOpen]);
 
     const handleRowChange = (index, field, value) => {
+        if (!isEmployeeActive) {
+            toast.error('This employee is inactive and locked. No modifications allowed.');
+            return;
+        }
+
         setRows(prevRows => {
             const updated = [...prevRows];
             let row = { ...updated[index] };
@@ -1290,6 +1302,10 @@ export default function EmployeePaymentRecordSheetPage() {
 
     // Quick Fill All Days with Default Shift
     const handleFillAllDays = () => {
+        if (!isEmployeeActive) {
+            toast.error('Cannot fill hours for an inactive employee. Inactive accounts are locked.');
+            return;
+        }
         const hrs = calculateHoursFromTimes(onTime, offTime) || 9;
         setRows(prevRows => prevRows.map(r => {
             const raw = {
@@ -1306,6 +1322,25 @@ export default function EmployeePaymentRecordSheetPage() {
 
     // Calculate Summary Totals dynamically with EPF/ETF Support
     const dynamicTotals = useMemo(() => {
+        // Strict Inactive Employee Policy: Inactive employees must be strictly 0 across all calculations
+        if (!isEmployeeActive) {
+            return {
+                totalLeave: rows.length,
+                totalDays: 0,
+                totalHours: '0.00',
+                totalSalary: 0,
+                totalAdvance: 0,
+                totalDeduction: 0,
+                basicSalary: 0,
+                otCommission: 0,
+                minimumSalary: 0,
+                epfEmployeeDeduction: 0,
+                epfEmployerContribution: 0,
+                etfEmployerContribution: 0,
+                netSalary: 0
+            };
+        }
+
         let totalLeave = 0;
         let totalDays = 0;
         let totalHours = 0;
@@ -1389,6 +1424,10 @@ export default function EmployeePaymentRecordSheetPage() {
     const handleSave = () => {
         if (!selectedEmployeeId) {
             toast.error('Please select an employee');
+            return;
+        }
+        if (!isEmployeeActive) {
+            toast.error('Cannot save payment sheet for an inactive employee. Inactive accounts are fully locked.');
             return;
         }
         saveMutation.mutate({
@@ -2042,7 +2081,8 @@ export default function EmployeePaymentRecordSheetPage() {
 
                         <button
                             onClick={handleFillAllDays}
-                            className="px-2.5 py-1 text-xs font-semibold bg-white border border-slate-300 text-slate-800 rounded-lg shadow-xs hover:bg-slate-50 hover:border-slate-400 flex items-center gap-1.5 transition cursor-pointer"
+                            disabled={!selectedEmployeeId || !isEmployeeActive}
+                            className="px-2.5 py-1 text-xs font-semibold bg-white border border-slate-300 text-slate-800 rounded-lg shadow-xs hover:bg-slate-50 hover:border-slate-400 flex items-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                             title="Auto-tick all days with default shift hours & apply policies"
                         >
                             <CheckCheck size={13} className="text-slate-600" />
@@ -2060,8 +2100,9 @@ export default function EmployeePaymentRecordSheetPage() {
 
                         <button
                             onClick={() => setIsPaySalaryModalOpen(true)}
-                            className="px-3.5 py-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer"
-                            title="Pay salary to employee and settle current pay cycle"
+                            disabled={!selectedEmployeeId || !isEmployeeActive}
+                            className="px-3.5 py-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={isEmployeeActive ? "Pay salary to employee and settle current pay cycle" : "Employee is inactive - Salary payment locked"}
                         >
                             <Wallet size={13} className="text-white" />
                             Pay Salary (වැටුප් ගෙවීම)
@@ -2069,8 +2110,9 @@ export default function EmployeePaymentRecordSheetPage() {
 
                         <button
                             onClick={() => setIsAdvanceModalOpen(true)}
-                            className="px-3 py-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer"
-                            title="Record salary advance for this employee"
+                            disabled={!selectedEmployeeId || !isEmployeeActive}
+                            className="px-3 py-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={isEmployeeActive ? "Record salary advance for this employee" : "Employee is inactive - Advances locked"}
                         >
                             <Plus size={13} className="text-white" />
                             Record Advance
@@ -2329,7 +2371,7 @@ export default function EmployeePaymentRecordSheetPage() {
                                 <button
                                     type="button"
                                     onClick={handleSave}
-                                    disabled={saveMutation.isPending || !selectedEmployeeId}
+                                    disabled={saveMutation.isPending || !selectedEmployeeId || !isEmployeeActive}
                                     className="px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider text-white bg-emerald-600 hover:bg-emerald-700 active:scale-98 shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     <Save size={14} className={saveMutation.isPending ? 'animate-spin' : ''} />
@@ -2356,6 +2398,31 @@ export default function EmployeePaymentRecordSheetPage() {
                         </div>
                     ) : (
                         <>
+                    {/* Inactive Employee Warning Banner */}
+                    {!isEmployeeActive && (
+                        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 rounded-2xl p-4 mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 flex items-center justify-center shrink-0">
+                                    <ShieldAlert size={22} />
+                                </div>
+                                <div>
+                                    <h4 className="font-black text-rose-900 dark:text-rose-200 text-sm">
+                                        INACTIVE EMPLOYEE — ACCOUNT FULLY LOCKED (අක්‍රිය සේවකයෙකි - ගිණුම සම්පූර්ණයෙන් අක්‍රියයි)
+                                    </h4>
+                                    <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
+                                        මෙම සේවකයා අක්‍රිය (Inactive) කර ඇති බැවින් සියලුම දින, පැය, වැටුප් සහ අත්තිකාරම් ගණනය කිරීම් 0 ලෙස අගුලුලා ඇත. කිසිදු සංස්කරණයක් සිදු කළ නොහැක.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={(e) => handleToggleEmployeeStatus(currentEmployee.id || selectedEmployeeId, 'inactive', e)}
+                                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-xs shrink-0 cursor-pointer"
+                            >
+                                Activate Employee (සක්‍රීය කරන්න)
+                            </button>
+                        </div>
+                    )}
                     {/* 2. Shift & Date Range Control Deck (Clean 3-tile grid) */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                         {/* Tile A: Shift Hours */}
@@ -2616,23 +2683,32 @@ export default function EmployeePaymentRecordSheetPage() {
                                     <tr 
                                         key={row.date || idx} 
                                         className={`border-b border-slate-100 dark:border-slate-800/80 print:border-black transition-colors ${
-                                            !row.isTicked ? 'opacity-80' : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/30'
+                                            !isEmployeeActive 
+                                                ? 'bg-slate-100/60 dark:bg-slate-900/60 opacity-60 cursor-not-allowed select-none' 
+                                                : !row.isTicked 
+                                                    ? 'opacity-80' 
+                                                    : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/30'
                                         }`}
                                     >
                                         {/* 1. TICK (Checkbox) */}
                                         <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-amber-50/40 dark:bg-amber-950/20 print:bg-[#FFF2CC] text-center p-1">
                                             <input
                                                 type="checkbox"
-                                                checked={Boolean(row.isTicked)}
-                                                onChange={(e) => handleRowChange(idx, 'isTicked', e.target.checked)}
+                                                disabled={!isEmployeeActive}
+                                                checked={isEmployeeActive && Boolean(row.isTicked)}
+                                                onChange={(e) => isEmployeeActive && handleRowChange(idx, 'isTicked', e.target.checked)}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={0}
-                                                onKeyDown={(e) => handleCellKeyDown(e, idx, 0)}
-                                                className="w-4 h-4 cursor-pointer accent-emerald-600 print-hide-input focus:ring-2 focus:ring-emerald-500 rounded transition"
+                                                onKeyDown={(e) => isEmployeeActive && handleCellKeyDown(e, idx, 0)}
+                                                className={`w-4 h-4 rounded transition print-hide-input ${
+                                                    isEmployeeActive 
+                                                        ? 'cursor-pointer accent-emerald-600 focus:ring-2 focus:ring-emerald-500' 
+                                                        : 'cursor-not-allowed bg-slate-200 text-slate-400'
+                                                }`}
                                             />
                                             <span className="hidden print:inline font-bold text-black text-xs">
-                                                {row.isTicked ? '✓' : ''}
+                                                {isEmployeeActive && row.isTicked ? '✓' : ''}
                                             </span>
                                         </td>
 
@@ -2642,7 +2718,7 @@ export default function EmployeePaymentRecordSheetPage() {
                                         }`}>
                                             <div className="flex items-center justify-center gap-1">
                                                 <span>{row.date ? row.date.substring(5) : ''}</span>
-                                                {row.isSettled && (
+                                                {isEmployeeActive && row.isSettled && (
                                                     <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-600 text-white font-sans font-bold leading-none shrink-0" title="Salary already settled up to this date">
                                                         PAID
                                                     </span>
@@ -2662,19 +2738,22 @@ export default function EmployeePaymentRecordSheetPage() {
                                             <input
                                                 type="text"
                                                 inputMode="numeric"
-                                                value={row.isTicked ? (row.inTime || onTime) : ''}
-                                                placeholder={onTime || '08:00'}
+                                                disabled={!isEmployeeActive || !row.isTicked}
+                                                value={isEmployeeActive && row.isTicked ? (row.inTime || onTime) : ''}
+                                                placeholder={isEmployeeActive ? (onTime || '08:00') : '—'}
                                                 maxLength={5}
                                                 onChange={(e) => {
+                                                    if (!isEmployeeActive) return;
                                                     const formatted = formatTimeAsYouType(e.target.value);
                                                     handleRowChange(idx, 'inTime', formatted);
                                                 }}
                                                 onBlur={(e) => {
-                                                    if (!row.isTicked) return;
+                                                    if (!isEmployeeActive || !row.isTicked) return;
                                                     const formatted = normalizeTimeString(e.target.value, onTime);
                                                     handleRowChange(idx, 'inTime', formatted);
                                                 }}
                                                 onFocus={(e) => {
+                                                    if (!isEmployeeActive) return;
                                                     if (!row.isTicked) {
                                                         handleRowChange(idx, 'isTicked', true);
                                                     }
@@ -2685,11 +2764,11 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={1}
-                                                onKeyDown={(e) => handleCellKeyDown(e, idx, 1)}
-                                                className={`w-full bg-transparent text-center focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-emerald-500 focus:outline-none px-1 py-0.5 rounded text-[16px] font-mono font-bold ${row.isTicked ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'} print:text-black print:text-xs print-hide-input cursor-text`}
+                                                onKeyDown={(e) => isEmployeeActive && handleCellKeyDown(e, idx, 1)}
+                                                className={`w-full bg-transparent text-center focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-emerald-500 focus:outline-none px-1 py-0.5 rounded text-[16px] font-mono font-bold ${!isEmployeeActive ? 'text-slate-400 cursor-not-allowed' : row.isTicked ? 'text-slate-900 dark:text-white cursor-text' : 'text-slate-400 dark:text-slate-500'} print:text-black print:text-xs print-hide-input`}
                                             />
                                             <span className="hidden print:inline font-mono font-semibold text-black">
-                                                {row.isTicked ? (row.inTime || onTime) : ''}
+                                                {isEmployeeActive && row.isTicked ? (row.inTime || onTime) : ''}
                                             </span>
                                         </td>
 
@@ -2698,19 +2777,22 @@ export default function EmployeePaymentRecordSheetPage() {
                                             <input
                                                 type="text"
                                                 inputMode="numeric"
-                                                value={row.isTicked ? (row.outTime || offTime) : ''}
-                                                placeholder={offTime || '18:00'}
+                                                disabled={!isEmployeeActive || !row.isTicked}
+                                                value={isEmployeeActive && row.isTicked ? (row.outTime || offTime) : ''}
+                                                placeholder={isEmployeeActive ? (offTime || '18:00') : '—'}
                                                 maxLength={5}
                                                 onChange={(e) => {
+                                                    if (!isEmployeeActive) return;
                                                     const formatted = formatTimeAsYouType(e.target.value);
                                                     handleRowChange(idx, 'outTime', formatted);
                                                 }}
                                                 onBlur={(e) => {
-                                                    if (!row.isTicked) return;
+                                                    if (!isEmployeeActive || !row.isTicked) return;
                                                     const formatted = normalizeTimeString(e.target.value, offTime);
                                                     handleRowChange(idx, 'outTime', formatted);
                                                 }}
                                                 onFocus={(e) => {
+                                                    if (!isEmployeeActive) return;
                                                     if (!row.isTicked) {
                                                         handleRowChange(idx, 'isTicked', true);
                                                     }
@@ -2721,24 +2803,26 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={2}
-                                                onKeyDown={(e) => handleCellKeyDown(e, idx, 2)}
-                                                className={`w-full bg-transparent text-center focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none px-1 py-0.5 rounded text-[16px] font-mono font-bold ${row.isTicked ? 'text-slate-900 dark:text-white' : 'text-slate-400 dark:text-slate-500'} print:text-black print:text-xs print-hide-input cursor-text`}
+                                                onKeyDown={(e) => isEmployeeActive && handleCellKeyDown(e, idx, 2)}
+                                                className={`w-full bg-transparent text-center focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none px-1 py-0.5 rounded text-[16px] font-mono font-bold ${!isEmployeeActive ? 'text-slate-400 cursor-not-allowed' : row.isTicked ? 'text-slate-900 dark:text-white cursor-text' : 'text-slate-400 dark:text-slate-500'} print:text-black print:text-xs print-hide-input`}
                                             />
                                             <span className="hidden print:inline font-mono font-semibold text-black">
-                                                {row.isTicked ? (row.outTime || offTime) : ''}
+                                                {isEmployeeActive && row.isTicked ? (row.outTime || offTime) : ''}
                                             </span>
                                         </td>
 
                                         {/* 6. HOURS (Locked / Read-Only Calculated) */}
                                         <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-slate-50/50 dark:bg-slate-900/40 print:bg-[#E2EFDA] p-1 text-center font-mono select-none cursor-not-allowed" title="Hours are auto-calculated from IN and OUT times">
                                             <span className="block py-0.5 text-[16px] font-mono font-semibold text-slate-900 dark:text-white print:text-black print:text-xs">
-                                                {row.isTicked && row.hours > 0 ? row.hours : ''}
+                                                {isEmployeeActive && row.isTicked && row.hours > 0 ? row.hours : ''}
                                             </span>
                                         </td>
 
                                         {/* 7. DAY SALARY (Locked / Read-Only Calculated) */}
                                         <td className="border-r border-slate-200 dark:border-slate-800 print:border-black bg-slate-50/50 dark:bg-slate-900/40 print:bg-[#E2EFDA] p-1 text-right font-mono select-none cursor-not-allowed" title="Day Salary is auto-calculated from Hours × Wage Rate">
-                                            <span className="block py-0.5 px-1 text-[16px] font-mono font-bold text-emerald-700 dark:text-emerald-400 print:text-black print:text-xs">{row.isTicked && row.daySalary > 0 ? Number(row.daySalary).toLocaleString() : ''}</span>
+                                            <span className="block py-0.5 px-1 text-[16px] font-mono font-bold text-emerald-700 dark:text-emerald-400 print:text-black print:text-xs">
+                                                {isEmployeeActive && row.isTicked && row.daySalary > 0 ? Number(row.daySalary).toLocaleString() : ''}
+                                            </span>
                                         </td>
 
                                         {/* 8. ADVANCE */}
@@ -2746,40 +2830,43 @@ export default function EmployeePaymentRecordSheetPage() {
                                             <input
                                                 type="text"
                                                 inputMode="numeric"
-                                                value={row.advance > 0 ? row.advance : ''}
+                                                disabled={!isEmployeeActive}
+                                                value={isEmployeeActive && row.advance > 0 ? row.advance : ''}
                                                 placeholder=""
-                                                onChange={(e) => handleRowChange(idx, 'advance', e.target.value)}
+                                                onChange={(e) => isEmployeeActive && handleRowChange(idx, 'advance', e.target.value)}
                                                 onFocus={handleCellSelectAll}
                                                 onMouseUp={handleCellSelectAll}
                                                 onClick={handleCellSelectAll}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={5}
-                                                onKeyDown={(e) => handleCellKeyDown(e, idx, 5)}
-                                                className="w-full bg-transparent text-right focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none p-0 text-[16px] font-mono font-bold text-amber-700 dark:text-amber-400 print:text-black print:text-xs print-hide-input"
-                                                title="Type advance for this date"
+                                                onKeyDown={(e) => isEmployeeActive && handleCellKeyDown(e, idx, 5)}
+                                                className={`w-full bg-transparent text-right focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-amber-500 focus:outline-none p-0 text-[16px] font-mono font-bold print-hide-input ${!isEmployeeActive ? 'text-slate-400 cursor-not-allowed' : 'text-amber-700 dark:text-amber-400'}`}
+                                                title={isEmployeeActive ? "Type advance for this date" : "Locked for inactive employee"}
                                             />
                                             <span className="hidden print:inline font-mono font-bold text-black">
-                                                {row.advance > 0 ? Number(row.advance).toLocaleString() : ''}
+                                                {isEmployeeActive && row.advance > 0 ? Number(row.advance).toLocaleString() : ''}
                                             </span>
                                         </td>
 
                                         {/* 9. DEDUCTION */}
                                         <td className={`border-r border-slate-200 dark:border-slate-800 print:border-black print:bg-[#E2EFDA] p-1 text-right font-mono font-bold ${
-                                            Number(row.deduction) < 0 || String(row.deduction).startsWith('-')
+                                            isEmployeeActive && (Number(row.deduction) < 0 || String(row.deduction).startsWith('-'))
                                                 ? 'bg-rose-50/60 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300'
                                                 : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 print:text-black'
                                         }`}>
                                             <input
                                                 type="text"
                                                 inputMode="text"
-                                                value={row.deduction !== undefined && row.deduction !== null && row.deduction !== 0 ? row.deduction : ''}
+                                                disabled={!isEmployeeActive}
+                                                value={isEmployeeActive && row.deduction !== undefined && row.deduction !== null && row.deduction !== 0 ? row.deduction : ''}
                                                 placeholder=""
-                                                onChange={(e) => handleRowChange(idx, 'deduction', e.target.value)}
+                                                onChange={(e) => isEmployeeActive && handleRowChange(idx, 'deduction', e.target.value)}
                                                 onFocus={handleCellSelectAll}
                                                 onMouseUp={handleCellSelectAll}
                                                 onClick={handleCellSelectAll}
                                                 onBlur={(e) => {
+                                                    if (!isEmployeeActive) return;
                                                     let val = String(e.target.value).trim();
                                                     if (val === '' || val === '-' || val === '0') {
                                                         handleRowChange(idx, 'deduction', 0);
@@ -2796,15 +2883,17 @@ export default function EmployeePaymentRecordSheetPage() {
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={6}
-                                                onKeyDown={(e) => handleCellKeyDown(e, idx, 6)}
+                                                onKeyDown={(e) => isEmployeeActive && handleCellKeyDown(e, idx, 6)}
                                                 className={`w-full bg-transparent text-right focus:bg-white dark:focus:bg-slate-900 focus:ring-1 focus:ring-rose-500 focus:outline-none p-0 text-[16px] font-mono font-bold print-hide-input print:text-xs ${
-                                                    Number(row.deduction) < 0 || String(row.deduction).startsWith('-')
-                                                        ? 'text-rose-700 dark:text-rose-300'
-                                                        : 'text-slate-800 dark:text-slate-200 print:text-black'
+                                                    !isEmployeeActive
+                                                        ? 'text-slate-400 cursor-not-allowed'
+                                                        : Number(row.deduction) < 0 || String(row.deduction).startsWith('-')
+                                                            ? 'text-rose-700 dark:text-rose-300'
+                                                            : 'text-slate-800 dark:text-slate-200 print:text-black'
                                                 }`}
                                             />
                                             <span className={`hidden print:inline font-mono font-bold ${row.deduction < 0 ? 'text-black' : 'text-black'}`}>
-                                                {row.deduction !== 0 ? row.deduction : ''}
+                                                {isEmployeeActive && row.deduction !== 0 ? row.deduction : ''}
                                             </span>
                                         </td>
 
@@ -2812,20 +2901,23 @@ export default function EmployeePaymentRecordSheetPage() {
                                         <td className="bg-white dark:bg-slate-900 print:bg-[#E2EFDA] p-1">
                                             <input
                                                 type="text"
-                                                value={row.reason || ''}
+                                                disabled={!isEmployeeActive}
+                                                value={isEmployeeActive ? (row.reason || '') : 'LOCKED'}
                                                 placeholder=""
-                                                onChange={(e) => handleRowChange(idx, 'reason', e.target.value)}
+                                                onChange={(e) => isEmployeeActive && handleRowChange(idx, 'reason', e.target.value)}
                                                 onFocus={handleCellSelectAll}
                                                 onMouseUp={handleCellSelectAll}
                                                 onClick={handleCellSelectAll}
                                                 data-grid-cell="true"
                                                 data-row={idx}
                                                 data-col={7}
-                                                onKeyDown={(e) => handleCellKeyDown(e, idx, 7)}
-                                                className="w-full bg-transparent px-1.5 focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-[15px] font-medium text-slate-800 dark:text-slate-200 print:text-black print:text-xs print-hide-input"
+                                                onKeyDown={(e) => isEmployeeActive && handleCellKeyDown(e, idx, 7)}
+                                                className={`w-full bg-transparent px-1.5 focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-[15px] font-medium print:text-black print:text-xs print-hide-input ${
+                                                    !isEmployeeActive ? 'text-slate-400 cursor-not-allowed font-mono' : 'text-slate-800 dark:text-slate-200'
+                                                }`}
                                             />
                                             <span className="hidden print:inline font-semibold text-black px-1">
-                                                {row.reason || ''}
+                                                {isEmployeeActive ? (row.reason || '') : ''}
                                             </span>
                                         </td>
                                     </tr>

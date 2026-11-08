@@ -127,6 +127,28 @@ export default function MonthlySalaryPayslipsPage() {
     const calculatedRows = useMemo(() => {
         return monthlyEmployees.map(emp => {
             const empId = String(emp._id);
+            const isEmpActive = (emp.status === 'active' || !emp.status) && emp.isActive !== false;
+
+            // Inactive Employee Policy: Fully lock and force all calculations to 0
+            if (!isEmpActive) {
+                return {
+                    emp,
+                    empId,
+                    name: emp.fullName || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || emp.displayName,
+                    payrollNumber: emp.payrollNumber || emp.employeeCode || 'EMP',
+                    department: emp.departmentId?.name || emp.department || 'Operations',
+                    designation: emp.designationId?.title || emp.designation || 'Staff',
+                    monthlySalary: 0,
+                    basicSalary: 0,
+                    otCommission: 0,
+                    advance: 0,
+                    epfDeduction: 0,
+                    netPayable: 0,
+                    isEmpActive: false,
+                    isLocked: true
+                };
+            }
+
             const mSalary = Number(emp.monthlySalary || emp.basicSalary || 0);
             const minSal = Number(emp.minimumSalary || 0);
 
@@ -158,7 +180,9 @@ export default function MonthlySalaryPayslipsPage() {
                 otCommission,
                 advance,
                 epfDeduction,
-                netPayable
+                netPayable,
+                isEmpActive: true,
+                isLocked: false
             };
         });
     }, [monthlyEmployees, recordedAdvancesMap, customAdvances, includeEpfEtf, epfRate]);
@@ -178,7 +202,7 @@ export default function MonthlySalaryPayslipsPage() {
 
     // Summary Totals
     const summaryTotals = useMemo(() => {
-        let totalStaff = filteredRows.length;
+        let totalStaff = 0;
         let totalMonthly = 0;
         let totalBasic = 0;
         let totalOtComm = 0;
@@ -187,6 +211,10 @@ export default function MonthlySalaryPayslipsPage() {
         let totalNet = 0;
 
         filteredRows.forEach(r => {
+            // Strictly exclude inactive employees from payroll totals so they are 0 and do not inflate company totals
+            if (!r.isEmpActive) return;
+
+            totalStaff += 1;
             totalMonthly += r.monthlySalary;
             totalBasic += r.basicSalary;
             totalOtComm += r.otCommission;
@@ -620,17 +648,32 @@ Thank you for your hard work!`;
                                 {filteredRows.map((row) => (
                                     <tr
                                         key={row.empId}
-                                        className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                                        className={`transition-colors ${
+                                            !row.isEmpActive 
+                                                ? 'bg-slate-100/70 dark:bg-slate-900/60 opacity-60 cursor-not-allowed select-none' 
+                                                : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
+                                        }`}
                                     >
                                         {/* 1. Employee Info */}
                                         <td className="py-3 px-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center font-black text-xs uppercase shrink-0">
+                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs uppercase shrink-0 ${
+                                                    !row.isEmpActive
+                                                        ? 'bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700'
+                                                        : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                                                }`}>
                                                     {row.name ? row.name.slice(0, 2) : 'EM'}
                                                 </div>
                                                 <div>
-                                                    <div className="font-bold text-slate-900 dark:text-white text-sm">
-                                                        {row.name}
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="font-bold text-slate-900 dark:text-white text-sm">
+                                                            {row.name}
+                                                        </span>
+                                                        {!row.isEmpActive && (
+                                                            <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700 shrink-0">
+                                                                🔒 LOCKED - INACTIVE
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div className="text-[11px] font-mono font-semibold text-slate-400">
                                                         {row.payrollNumber}
@@ -651,17 +694,17 @@ Thank you for your hard work!`;
 
                                         {/* 3. Monthly Salary (Total) */}
                                         <td className="py-3 px-3 text-right font-mono font-bold text-[15px] text-slate-900 dark:text-white">
-                                            Rs. {row.monthlySalary.toLocaleString()}
+                                            Rs. {row.isEmpActive ? row.monthlySalary.toLocaleString() : '0'}
                                         </td>
 
                                         {/* 4. Basic Salary (Minimum) */}
                                         <td className="py-3 px-3 text-right font-mono font-semibold text-[14px] text-slate-700 dark:text-slate-300">
-                                            Rs. {row.basicSalary.toLocaleString()}
+                                            Rs. {row.isEmpActive ? row.basicSalary.toLocaleString() : '0'}
                                         </td>
 
                                         {/* 5. OT / Commission (Excess) */}
                                         <td className="py-3 px-3 text-right font-mono font-semibold text-[14px] text-indigo-600 dark:text-indigo-400">
-                                            Rs. {row.otCommission.toLocaleString()}
+                                            Rs. {row.isEmpActive ? row.otCommission.toLocaleString() : '0'}
                                         </td>
 
                                         {/* 6. Advance Taken (Editable) */}
@@ -669,16 +712,22 @@ Thank you for your hard work!`;
                                             <div className="inline-flex items-center gap-1 justify-end">
                                                 <input
                                                     type="number"
-                                                    value={row.advance === 0 ? '' : row.advance}
+                                                    disabled={!row.isEmpActive}
+                                                    value={row.isEmpActive && row.advance !== 0 ? row.advance : ''}
                                                     placeholder="0"
                                                     onChange={(e) => {
+                                                        if (!row.isEmpActive) return;
                                                         const val = Number(e.target.value);
                                                         setCustomAdvances(prev => ({
                                                             ...prev,
                                                             [row.empId]: val
                                                         }));
                                                     }}
-                                                    className="w-20 px-2 py-1 text-right font-mono font-bold text-[14px] text-amber-700 dark:text-amber-400 bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg outline-none focus:ring-1 focus:ring-amber-500"
+                                                    className={`w-20 px-2 py-1 text-right font-mono font-bold text-[14px] rounded-lg outline-none ${
+                                                        !row.isEmpActive
+                                                            ? 'bg-slate-100 dark:bg-slate-800/40 border border-slate-200 text-slate-400 cursor-not-allowed'
+                                                            : 'text-amber-700 dark:text-amber-400 bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 focus:ring-1 focus:ring-amber-500'
+                                                    }`}
                                                 />
                                             </div>
                                         </td>
@@ -686,14 +735,18 @@ Thank you for your hard work!`;
                                         {/* 7. EPF Deduction (Optional) */}
                                         {includeEpfEtf && (
                                             <td className="py-3 px-3 text-right font-mono font-bold text-[14px] text-rose-600">
-                                                -Rs. {row.epfDeduction.toLocaleString()}
+                                                {row.isEmpActive && row.epfDeduction > 0 ? `-Rs. ${row.epfDeduction.toLocaleString()}` : 'Rs. 0'}
                                             </td>
                                         )}
 
                                         {/* 8. Net Take-Home Pay */}
                                         <td className="py-3 px-3 text-right">
-                                            <span className="font-mono font-black text-[15px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-xl inline-block">
-                                                Rs. {row.netPayable.toLocaleString()}
+                                            <span className={`font-mono font-black text-[15px] px-2.5 py-1 rounded-xl inline-block ${
+                                                row.isEmpActive
+                                                    ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800'
+                                                    : 'text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
+                                            }`}>
+                                                Rs. {row.isEmpActive ? row.netPayable.toLocaleString() : '0'}
                                             </span>
                                         </td>
 
@@ -711,12 +764,18 @@ Thank you for your hard work!`;
                                                 </button>
                                                 <button
                                                     type="button"
+                                                    disabled={!row.isEmpActive}
                                                     onClick={() => {
+                                                        if (!row.isEmpActive) return;
                                                         setPaySalaryEmp(row);
                                                         setIsPaySalaryModalOpen(true);
                                                     }}
-                                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer"
-                                                    title="Pay Salary & Settle Cycle"
+                                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs ${
+                                                        row.isEmpActive
+                                                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                                                            : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                                                    }`}
+                                                    title={row.isEmpActive ? "Pay Salary & Settle Cycle" : "Employee is inactive - Locked"}
                                                 >
                                                     <Wallet size={13} />
                                                     Pay

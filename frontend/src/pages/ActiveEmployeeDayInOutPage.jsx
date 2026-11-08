@@ -454,6 +454,13 @@ export default function ActiveEmployeeDayInOutPage() {
         setRows(prevRows => {
             const updated = [...prevRows];
             let row = { ...updated[index] };
+            if (!row) return prevRows;
+
+            const isEmpActive = (row.employeeStatus || 'active') === 'active' && !row.isInactive;
+            // Strict Inactive Policy: Inactive employees cannot be edited or modified
+            if (!isEmpActive) {
+                return prevRows;
+            }
 
             if (field === 'isTicked') {
                 row.isTicked = Boolean(value);
@@ -513,7 +520,8 @@ export default function ActiveEmployeeDayInOutPage() {
         setApplyOutTime(normOut);
 
         setRows(prevRows => prevRows.map(row => {
-            if (!row.isTicked) return row;
+            const isEmpActive = (row.employeeStatus || 'active') === 'active' && !row.isInactive;
+            if (!row.isTicked || !isEmpActive) return row;
             const updated = {
                 ...row,
                 inTime: normIn,
@@ -576,12 +584,15 @@ export default function ActiveEmployeeDayInOutPage() {
         let totalDeductions = 0;
 
         rows.forEach(r => {
-            const isEmpActive = (r.employeeStatus || 'active') === 'active';
+            const isEmpActive = (r.employeeStatus || 'active') === 'active' && !r.isInactive;
             if (isEmpActive) {
                 activeStaffCount++;
             } else {
                 inactiveStaffCount++;
             }
+
+            // Inactive employees are strictly locked at 0 and do NOT contribute to any totals or calculations
+            if (!isEmpActive) return;
 
             if (r.isTicked) {
                 presentCount++;
@@ -614,6 +625,10 @@ export default function ActiveEmployeeDayInOutPage() {
         const r = Math.max(0, Math.min(rowIdx, filteredRows.length - 1));
         const targetRow = filteredRows[r];
         if (!targetRow) return;
+
+        const isTargetActive = (targetRow.employeeStatus || 'active') === 'active' && !targetRow.isInactive;
+        // Inactive employee rows cannot be focused or auto-ticked
+        if (!isTargetActive) return;
 
         // If target row is unticked / absent and user navigates into it, auto-tick it
         if (!targetRow.isTicked && (colType === 'in' || colType === 'out')) {
@@ -1170,32 +1185,40 @@ export default function ActiveEmployeeDayInOutPage() {
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                                 {filteredRows.map((row, idx) => {
                                     const realIdx = rows.findIndex(r => r.employeeId === row.employeeId);
-                                    const isPresent = Boolean(row.isTicked);
-                                    const hasDeduction = Number(row.deduction) < 0 || String(row.deduction).startsWith('-');
+                                    const isEmpActive = (row.employeeStatus || 'active') === 'active' && !row.isInactive;
+                                    const isPresent = isEmpActive && Boolean(row.isTicked);
+                                    const hasDeduction = isEmpActive && (Number(row.deduction) < 0 || String(row.deduction).startsWith('-'));
 
                                     return (
                                         <tr
                                             key={row.employeeId || idx}
                                             className={`transition-colors group ${
-                                                isPresent
-                                                    ? 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40 bg-white dark:bg-[#111F33]'
-                                                    : 'bg-rose-50/20 dark:bg-rose-950/10 hover:bg-rose-50/40 opacity-85'
+                                                !isEmpActive
+                                                    ? 'bg-slate-100/70 dark:bg-slate-900/60 opacity-60 cursor-not-allowed select-none'
+                                                    : isPresent
+                                                        ? 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40 bg-white dark:bg-[#111F33]'
+                                                        : 'bg-rose-50/20 dark:bg-rose-950/10 hover:bg-rose-50/40 opacity-85'
                                             }`}
                                         >
                                             {/* 1. TICK (Checkbox) */}
                                             <td className="py-2.5 px-3 text-center">
-                                                <label className="inline-flex items-center justify-center cursor-pointer">
+                                                <label className={`inline-flex items-center justify-center ${isEmpActive ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                                                     <input
                                                         type="checkbox"
+                                                        disabled={!isEmpActive}
                                                         checked={isPresent}
-                                                        onChange={(e) => handleRowChange(realIdx, 'isTicked', e.target.checked)}
+                                                        onChange={(e) => isEmpActive && handleRowChange(realIdx, 'isTicked', e.target.checked)}
                                                         onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') {
+                                                            if (e.key === 'Enter' && isEmpActive) {
                                                                 e.preventDefault();
                                                                 focusDailyCell(idx, 'in');
                                                             }
                                                         }}
-                                                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 dark:bg-slate-900 border-slate-300 dark:border-slate-700 cursor-pointer accent-emerald-600 transition"
+                                                        className={`w-4 h-4 rounded transition ${
+                                                            isEmpActive
+                                                                ? 'text-emerald-600 focus:ring-emerald-500 dark:bg-slate-900 border-slate-300 dark:border-slate-700 cursor-pointer accent-emerald-600'
+                                                                : 'text-slate-400 bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 cursor-not-allowed'
+                                                        }`}
                                                     />
                                                 </label>
                                             </td>
@@ -1204,9 +1227,11 @@ export default function ActiveEmployeeDayInOutPage() {
                                             <td className="py-2.5 px-3 font-medium">
                                                 <div className="flex items-center gap-2.5">
                                                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs uppercase shrink-0 ${
-                                                        isPresent
-                                                            ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60'
-                                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                                                        !isEmpActive
+                                                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700'
+                                                            : isPresent
+                                                                ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60'
+                                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                                                     }`}>
                                                         {row.name ? row.name.slice(0, 2) : 'EM'}
                                                     </div>
@@ -1215,14 +1240,16 @@ export default function ActiveEmployeeDayInOutPage() {
                                                             <p className="font-bold text-slate-900 dark:text-white truncate text-xs sm:text-[13px]">
                                                                 {row.name}
                                                             </p>
-                                                            <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${
-                                                                (row.employeeStatus || 'active') === 'active'
-                                                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60'
-                                                                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300/60'
-                                                            }`}>
-                                                                {(row.employeeStatus || 'active') === 'active' ? 'Active' : 'Inactive'}
-                                                            </span>
-                                                            {!isPresent && (
+                                                            {isEmpActive ? (
+                                                                <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60">
+                                                                    Active
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700 flex items-center gap-1">
+                                                                    🔒 LOCKED - INACTIVE
+                                                                </span>
+                                                            )}
+                                                            {isEmpActive && !isPresent && (
                                                                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 shrink-0">
                                                                     Absent
                                                                 </span>
@@ -1230,7 +1257,7 @@ export default function ActiveEmployeeDayInOutPage() {
                                                         </div>
                                                         <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
                                                             <span>{row.payrollNumber || 'EMP'}</span>
-                                                            {row.hourlyRate && (
+                                                            {isEmpActive && row.hourlyRate && (
                                                                 <>
                                                                     <span>•</span>
                                                                     <span>Rs. {row.hourlyRate}/hr</span>
@@ -1255,27 +1282,30 @@ export default function ActiveEmployeeDayInOutPage() {
                                                     <input
                                                         type="text"
                                                         inputMode="numeric"
-                                                        disabled={!isPresent}
-                                                        value={isPresent ? (row.inTime || shiftOnTime) : ''}
-                                                        placeholder={shiftOnTime || '08:00'}
+                                                        disabled={!isEmpActive || !isPresent}
+                                                        value={isEmpActive && isPresent ? (row.inTime || shiftOnTime) : ''}
+                                                        placeholder={isEmpActive ? (shiftOnTime || '08:00') : '—'}
                                                         maxLength={5}
                                                         onChange={(e) => {
+                                                            if (!isEmpActive) return;
                                                             const formatted = formatTimeAsYouType(e.target.value);
                                                             handleRowChange(realIdx, 'inTime', formatted);
                                                         }}
                                                         onBlur={(e) => {
-                                                             if (!isPresent) return;
+                                                             if (!isEmpActive || !isPresent) return;
                                                              const norm = normalizeTimeString(e.target.value, shiftOnTime);
                                                              handleRowChange(realIdx, 'inTime', norm);
                                                         }}
                                                         onFocus={handleCellSelectAll}
                                                         data-daily-row={idx}
                                                         data-daily-col="in"
-                                                        onKeyDown={(e) => handleDailyKeyDown(e, idx, 'in')}
+                                                        onKeyDown={(e) => isEmpActive && handleDailyKeyDown(e, idx, 'in')}
                                                         className={`w-full text-center font-mono text-[16px] font-bold px-2 py-1.5 rounded-xl border transition ${
-                                                            isPresent
-                                                                ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500'
-                                                                : 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+                                                            !isEmpActive
+                                                                ? 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+                                                                : isPresent
+                                                                    ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500'
+                                                                    : 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
                                                         }`}
                                                     />
                                                 </div>
@@ -1287,27 +1317,30 @@ export default function ActiveEmployeeDayInOutPage() {
                                                     <input
                                                         type="text"
                                                         inputMode="numeric"
-                                                        disabled={!isPresent}
-                                                        value={isPresent ? (row.outTime || shiftOffTime) : ''}
-                                                        placeholder={shiftOffTime || '18:00'}
+                                                        disabled={!isEmpActive || !isPresent}
+                                                        value={isEmpActive && isPresent ? (row.outTime || shiftOffTime) : ''}
+                                                        placeholder={isEmpActive ? (shiftOffTime || '18:00') : '—'}
                                                         maxLength={5}
                                                         onChange={(e) => {
+                                                            if (!isEmpActive) return;
                                                             const formatted = formatTimeAsYouType(e.target.value);
                                                             handleRowChange(realIdx, 'outTime', formatted);
                                                         }}
                                                         onBlur={(e) => {
-                                                             if (!isPresent) return;
+                                                             if (!isEmpActive || !isPresent) return;
                                                              const norm = normalizeTimeString(e.target.value, shiftOffTime);
                                                              handleRowChange(realIdx, 'outTime', norm);
                                                         }}
                                                         onFocus={handleCellSelectAll}
                                                         data-daily-row={idx}
                                                         data-daily-col="out"
-                                                        onKeyDown={(e) => handleDailyKeyDown(e, idx, 'out')}
+                                                        onKeyDown={(e) => isEmpActive && handleDailyKeyDown(e, idx, 'out')}
                                                         className={`w-full text-center font-mono text-[16px] font-bold px-2 py-1.5 rounded-xl border transition ${
-                                                            isPresent
-                                                                ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-amber-500'
-                                                                : 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+                                                            !isEmpActive
+                                                                ? 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
+                                                                : isPresent
+                                                                    ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-amber-500'
+                                                                    : 'bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 cursor-not-allowed'
                                                         }`}
                                                     />
                                                 </div>
@@ -1315,7 +1348,7 @@ export default function ActiveEmployeeDayInOutPage() {
 
                                             {/* 5. Hours Worked */}
                                             <td className="py-2.5 px-3 text-center">
-                                                {isPresent && row.hours > 0 ? (
+                                                {isEmpActive && isPresent && row.hours > 0 ? (
                                                     <span className="font-mono text-[16px] font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60 px-2 py-1 rounded-xl inline-block">
                                                         {Number(row.hours).toFixed(2)} hrs
                                                     </span>
@@ -1326,7 +1359,7 @@ export default function ActiveEmployeeDayInOutPage() {
 
                                             {/* 6. Day Salary */}
                                             <td className="py-2.5 px-3 text-right">
-                                                {isPresent && row.daySalary > 0 ? (
+                                                {isEmpActive && isPresent && row.daySalary > 0 ? (
                                                     <span className="font-mono text-[16px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 px-2 py-1 rounded-xl inline-block">
                                                         Rs. {Math.round(row.daySalary).toLocaleString()}
                                                     </span>
@@ -1341,14 +1374,19 @@ export default function ActiveEmployeeDayInOutPage() {
                                                     <input
                                                         type="text"
                                                         inputMode="numeric"
-                                                        value={row.advance === 0 ? '' : row.advance}
+                                                        disabled={!isEmpActive}
+                                                        value={isEmpActive && row.advance !== 0 ? row.advance : ''}
                                                         placeholder="0"
-                                                        onChange={(e) => handleRowChange(realIdx, 'advance', e.target.value)}
+                                                        onChange={(e) => isEmpActive && handleRowChange(realIdx, 'advance', e.target.value)}
                                                         onFocus={handleCellSelectAll}
                                                         data-daily-row={idx}
                                                         data-daily-col="advance"
-                                                        onKeyDown={(e) => handleDailyKeyDown(e, idx, 'advance')}
-                                                        className="w-full text-right font-mono text-[16px] font-bold px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                        onKeyDown={(e) => isEmpActive && handleDailyKeyDown(e, idx, 'advance')}
+                                                        className={`w-full text-right font-mono text-[16px] font-bold px-2 py-1.5 rounded-xl border ${
+                                                            !isEmpActive
+                                                                ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/40 text-slate-400 cursor-not-allowed'
+                                                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none'
+                                                        }`}
                                                     />
                                                 </div>
                                             </td>
@@ -1359,14 +1397,16 @@ export default function ActiveEmployeeDayInOutPage() {
                                                     <input
                                                         type="text"
                                                         inputMode="text"
-                                                        value={row.deduction !== undefined && row.deduction !== null && row.deduction !== 0 ? row.deduction : ''}
+                                                        disabled={!isEmpActive}
+                                                        value={isEmpActive && row.deduction !== undefined && row.deduction !== null && row.deduction !== 0 ? row.deduction : ''}
                                                         placeholder="0"
-                                                        onChange={(e) => handleRowChange(realIdx, 'deduction', e.target.value)}
+                                                        onChange={(e) => isEmpActive && handleRowChange(realIdx, 'deduction', e.target.value)}
                                                         onFocus={handleCellSelectAll}
                                                         data-daily-row={idx}
                                                         data-daily-col="deduction"
-                                                        onKeyDown={(e) => handleDailyKeyDown(e, idx, 'deduction')}
+                                                        onKeyDown={(e) => isEmpActive && handleDailyKeyDown(e, idx, 'deduction')}
                                                         onBlur={(e) => {
+                                                            if (!isEmpActive) return;
                                                             let val = String(e.target.value).trim();
                                                             if (val === '' || val === '-' || val === '0') {
                                                                 handleRowChange(realIdx, 'deduction', 0);
@@ -1378,9 +1418,11 @@ export default function ActiveEmployeeDayInOutPage() {
                                                             }
                                                         }}
                                                         className={`w-full text-right font-mono text-[16px] font-bold px-2 py-1.5 rounded-xl border outline-none transition ${
-                                                            hasDeduction
-                                                                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 focus:ring-2 focus:ring-rose-500'
-                                                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500'
+                                                            !isEmpActive
+                                                                ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/40 text-slate-400 cursor-not-allowed'
+                                                                : hasDeduction
+                                                                    ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 focus:ring-2 focus:ring-rose-500'
+                                                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500'
                                                         }`}
                                                     />
                                                     {row.reason && row.reason !== 'FILL' && hasDeduction && (

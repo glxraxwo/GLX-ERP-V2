@@ -1270,6 +1270,12 @@ export const createSalaryAdvance = asyncHandler(async (req, res) => {
         throw new Error('Employee not found');
     }
 
+    const isEmpActive = (emp.status === 'active') && (emp.isActive !== false);
+    if (!isEmpActive) {
+        res.status(400);
+        throw new Error('Cannot issue advance for an inactive employee. Inactive accounts are fully locked.');
+    }
+
     let finalAmount = Number(amount) || 0;
     let calcAmount = 0;
     if (advanceType === 'percentage' && requestedPercentage) {
@@ -1571,13 +1577,16 @@ export const getAdvanceManagementOverview = asyncHandler(async (req, res) => {
         const empPeriodAdvs = advMap.get(empIdStr) || [];
         const empAllAdvs = allAdvMap.get(empIdStr) || [];
 
+        const isEmpActive = (emp.status === 'active') && (emp.isActive !== false);
+
         // Count worked days and hours
         let daysWorked = 0;
         let hoursWorked = 0;
         let accruedDaySalaryTotal = 0;
         let totalDeductions = 0;
 
-        empAtts.forEach(att => {
+        if (isEmpActive) {
+            empAtts.forEach(att => {
             const isPresent = att.isTicked !== undefined ? att.isTicked : (att.status === 'present');
             if (isPresent) {
                 daysWorked++;
@@ -1590,6 +1599,7 @@ export const getAdvanceManagementOverview = asyncHandler(async (req, res) => {
                 totalDeductions += Math.abs(att.dailyDeduction);
             }
         });
+        }
 
         // Determine rates & accrued gross earnings
         const hourlyRate = emp.hourlyRate || emp.labourRate || 260;
@@ -1597,34 +1607,38 @@ export const getAdvanceManagementOverview = asyncHandler(async (req, res) => {
         const monthlySalary = Number(emp.monthlySalary || emp.basicSalary || 0);
 
         let accruedGross = 0;
-        if (isMonthly && monthlySalary > 0) {
-            const dailyRate = monthlySalary / lastDayNum;
-            accruedGross = Number((dailyRate * daysWorked).toFixed(2));
-        } else {
-            if (accruedDaySalaryTotal > 0) {
-                accruedGross = Number(accruedDaySalaryTotal.toFixed(2));
+        if (isEmpActive) {
+            if (isMonthly && monthlySalary > 0) {
+                const dailyRate = monthlySalary / lastDayNum;
+                accruedGross = Number((dailyRate * daysWorked).toFixed(2));
             } else {
-                accruedGross = Number((hoursWorked * hourlyRate).toFixed(2));
+                if (accruedDaySalaryTotal > 0) {
+                    accruedGross = Number(accruedDaySalaryTotal.toFixed(2));
+                } else {
+                    accruedGross = Number((hoursWorked * hourlyRate).toFixed(2));
+                }
             }
         }
 
-        const netAccrued = Math.max(0, Number((accruedGross - totalDeductions).toFixed(2)));
+        const netAccrued = isEmpActive ? Math.max(0, Number((accruedGross - totalDeductions).toFixed(2))) : 0;
 
         // Advances taken in this period
-        const periodAdvancesTotal = empPeriodAdvs.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+        const periodAdvancesTotal = isEmpActive ? empPeriodAdvs.reduce((sum, a) => sum + (Number(a.amount) || 0), 0) : 0;
         
         // Available advance to give (remaining unwithdrawn earned wage)
-        const availableAdvance = Math.max(0, Number((netAccrued - periodAdvancesTotal).toFixed(2)));
+        const availableAdvance = isEmpActive ? Math.max(0, Number((netAccrued - periodAdvancesTotal).toFixed(2))) : 0;
 
         // All-time advances metrics
         const allTimeTotal = empAllAdvs.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
         const allTimeRemaining = empAllAdvs.reduce((sum, a) => sum + (Number(a.remainingBalance !== undefined ? a.remainingBalance : (a.isDeducted ? 0 : a.amount)) || 0), 0);
 
-        overallDaysWorked += daysWorked;
-        overallHoursWorked += hoursWorked;
-        overallAccruedEarnings += netAccrued;
-        overallAdvancesIssued += periodAdvancesTotal;
-        overallAvailableAdvance += availableAdvance;
+        if (isEmpActive) {
+            overallDaysWorked += daysWorked;
+            overallHoursWorked += hoursWorked;
+            overallAccruedEarnings += netAccrued;
+            overallAdvancesIssued += periodAdvancesTotal;
+            overallAvailableAdvance += availableAdvance;
+        }
 
         return {
             employee: {
@@ -1762,10 +1776,11 @@ export const getEmployeeAdvanceSummary = asyncHandler(async (req, res) => {
     const totalAllAdvancesTaken = history.filter(a => a.status === 'approved').reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
     const pendingAdvanceAmount = history.filter(a => a.status === 'pending').reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
 
+    const isEmpActive = (employee.status === 'active') && (employee.isActive !== false);
     // Limit is 60% of monthly base salary
-    const maxAdvanceLimit = +(baseMonthlySalary * 0.60).toFixed(2);
-    const advancePercentage = baseMonthlySalary > 0 ? +((totalRemainingBalance / baseMonthlySalary) * 100).toFixed(1) : 0;
-    const availableAdvance = Math.max(0, +(maxAdvanceLimit - totalRemainingBalance).toFixed(2));
+    const maxAdvanceLimit = isEmpActive ? +(baseMonthlySalary * 0.60).toFixed(2) : 0;
+    const advancePercentage = (isEmpActive && baseMonthlySalary > 0) ? +((totalRemainingBalance / baseMonthlySalary) * 100).toFixed(1) : 0;
+    const availableAdvance = isEmpActive ? Math.max(0, +(maxAdvanceLimit - totalRemainingBalance).toFixed(2)) : 0;
 
     res.json({
         success: true,

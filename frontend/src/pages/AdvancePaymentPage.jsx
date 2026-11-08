@@ -490,13 +490,15 @@ export default function AdvancePaymentPage() {
                                     const work = row.work;
                                     const earnings = row.earnings;
                                     const advances = row.advances;
-                                    const isEmpActive = emp.status === 'active';
+                                    const isEmpActive = (emp.status === 'active' || !emp.status) && emp.isActive !== false;
 
                                     return (
                                         <tr
                                             key={emp._id}
-                                            className={`transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40 ${
-                                                !isEmpActive ? 'opacity-70 bg-slate-50/20' : ''
+                                            className={`transition-colors ${
+                                                !isEmpActive
+                                                    ? 'bg-slate-100/70 dark:bg-slate-900/60 opacity-60 cursor-not-allowed select-none'
+                                                    : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
                                             }`}
                                         >
                                             {/* 1. Employee Name & Department */}
@@ -511,13 +513,13 @@ export default function AdvancePaymentPage() {
                                                         {emp.lastName ? emp.lastName.slice(0, 1) : ''}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <div className="flex items-center gap-1.5">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
                                                             <p className="font-bold text-slate-900 dark:text-white truncate">
                                                                 {emp.fullName}
                                                             </p>
                                                             {!isEmpActive && (
-                                                                <span className="text-[9px] px-1 py-0.2 rounded bg-rose-100 text-rose-700 font-bold uppercase">
-                                                                    Inactive
+                                                                <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700 font-bold uppercase tracking-wider">
+                                                                    🔒 LOCKED - INACTIVE
                                                                 </span>
                                                             )}
                                                         </div>
@@ -540,9 +542,11 @@ export default function AdvancePaymentPage() {
                                                     {emp.paymentType === 'monthly' ? 'Monthly' : 'Hourly Rate'}
                                                 </span>
                                                 <p className="text-[11px] font-mono font-bold text-slate-800 dark:text-slate-200 mt-1">
-                                                    {emp.paymentType === 'monthly'
-                                                        ? `Rs. ${Number(emp.monthlySalary).toLocaleString()}/mo`
-                                                        : `Rs. ${Number(emp.hourlyRate).toFixed(0)}/hr`}
+                                                    {isEmpActive
+                                                        ? (emp.paymentType === 'monthly'
+                                                            ? `Rs. ${Number(emp.monthlySalary).toLocaleString()}/mo`
+                                                            : `Rs. ${Number(emp.hourlyRate).toFixed(0)}/hr`)
+                                                        : 'Rs. 0'}
                                                 </p>
                                             </td>
 
@@ -550,17 +554,17 @@ export default function AdvancePaymentPage() {
                                             <td className="py-3 px-3 font-mono">
                                                 <div className="flex items-center gap-1.5">
                                                     <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                                                        work.daysWorked > 0
+                                                        isEmpActive && work.daysWorked > 0
                                                             ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300'
                                                             : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
                                                     }`}>
-                                                        {work.daysWorked} Days
+                                                        {isEmpActive ? work.daysWorked : 0} Days
                                                     </span>
                                                     <span className="text-slate-600 dark:text-slate-400 font-medium text-[11px]">
-                                                        ({work.hoursWorked} hrs)
+                                                        ({isEmpActive ? work.hoursWorked : 0} hrs)
                                                     </span>
                                                 </div>
-                                                {work.totalDeductions > 0 && (
+                                                {isEmpActive && work.totalDeductions > 0 && (
                                                     <p className="text-[10px] text-rose-600 font-medium mt-0.5">
                                                         -Rs. {work.totalDeductions} late deductions
                                                     </p>
@@ -569,8 +573,10 @@ export default function AdvancePaymentPage() {
 
                                             {/* 4. Earned Wages So Far (Accrued) */}
                                             <td className="py-3 px-3 text-right font-mono">
-                                                <span className="text-xs sm:text-[13px] font-black text-emerald-700 dark:text-emerald-400">
-                                                    Rs. {Number(earnings.netAccrued).toLocaleString()}
+                                                <span className={`text-xs sm:text-[13px] font-black ${
+                                                    isEmpActive ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'
+                                                }`}>
+                                                    Rs. {isEmpActive ? Number(earnings.netAccrued).toLocaleString() : 0}
                                                 </span>
                                                 <p className="text-[9.5px] text-slate-400 dark:text-slate-500 font-sans mt-0.5">
                                                     Accrued to date
@@ -579,7 +585,7 @@ export default function AdvancePaymentPage() {
 
                                             {/* 5. Already Taken Advances in Period */}
                                             <td className="py-3 px-3 text-right font-mono">
-                                                {advances.periodAdvancesTotal > 0 ? (
+                                                {isEmpActive && advances.periodAdvancesTotal > 0 ? (
                                                     <div>
                                                         <span className="text-xs sm:text-[13px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-200/80">
                                                             -Rs. {Number(advances.periodAdvancesTotal).toLocaleString()}
@@ -596,11 +602,11 @@ export default function AdvancePaymentPage() {
                                             {/* 6. Max Eligible Advance Allowed */}
                                             <td className="py-3 px-3 text-right font-mono">
                                                 <span className={`text-xs sm:text-[13px] font-black px-2 py-0.5 rounded-lg border ${
-                                                    advances.availableAdvance > 0
+                                                    isEmpActive && advances.availableAdvance > 0
                                                         ? 'bg-emerald-500 text-white border-emerald-600 shadow-2xs'
                                                         : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:border-slate-700'
                                                 }`}>
-                                                    Rs. {Number(advances.availableAdvance).toLocaleString()}
+                                                    Rs. {isEmpActive ? Number(advances.availableAdvance).toLocaleString() : 0}
                                                 </span>
                                                 <p className="text-[9.5px] text-slate-400 font-sans mt-0.5">
                                                     Max advance limit
@@ -609,8 +615,10 @@ export default function AdvancePaymentPage() {
 
                                             {/* 7. Take-Home Balance */}
                                             <td className="py-3 px-3 text-right font-mono">
-                                                <span className="text-xs font-bold text-slate-900 dark:text-white">
-                                                    Rs. {Number(advances.availableAdvance).toLocaleString()}
+                                                <span className={`text-xs font-bold ${
+                                                    isEmpActive ? 'text-slate-900 dark:text-white' : 'text-slate-400'
+                                                }`}>
+                                                    Rs. {isEmpActive ? Number(advances.availableAdvance).toLocaleString() : 0}
                                                 </span>
                                                 <p className="text-[9.5px] text-slate-400 font-sans mt-0.5">
                                                     Net remaining
@@ -623,9 +631,14 @@ export default function AdvancePaymentPage() {
                                                     {/* Disburse Advance Button */}
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleOpenDisburseModal(row)}
-                                                        className="px-2.5 py-1 text-[11px] font-black uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-2xs flex items-center gap-1 cursor-pointer"
-                                                        title="Issue Salary Advance"
+                                                        disabled={!isEmpActive}
+                                                        onClick={() => isEmpActive && handleOpenDisburseModal(row)}
+                                                        className={`px-2.5 py-1 text-[11px] font-black uppercase tracking-wider rounded-lg transition shadow-2xs flex items-center gap-1 ${
+                                                            isEmpActive
+                                                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                                                                : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                                                        }`}
+                                                        title={isEmpActive ? "Issue Salary Advance" : "Employee is inactive - Advances locked"}
                                                     >
                                                         <Plus size={12} /> Advance
                                                     </button>
