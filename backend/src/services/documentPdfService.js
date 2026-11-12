@@ -273,7 +273,14 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
 
             const renderDocSummaryAndFooter = () => {
                 pdfDoc.moveDown(0.5);
-                const summaryY = Math.max(pdfDoc.y + 10, 420);
+                // If not enough vertical space remains on the current page for summary, terms, and signatures, advance to next page
+                const neededHeight = 220;
+                if (pdfDoc.y + neededHeight > pdfDoc.page.height - 40) {
+                    pdfDoc.addPage();
+                    drawOfficialHeader(pdfDoc, settings);
+                    pdfDoc.y = 115;
+                }
+                const summaryY = Math.max(pdfDoc.y + 10, pdfDoc.y < 150 ? 115 : 420);
                 const summaryWidth = 220;
                 const summaryX = pdfDoc.page.width - 36 - summaryWidth;
 

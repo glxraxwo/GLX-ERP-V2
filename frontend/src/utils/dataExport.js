@@ -726,17 +726,41 @@ export const generateElementPDF = async (element) => {
             let imgWidth = maxPageWidth;
             let imgHeight = (canvas.height * maxPageWidth) / canvas.width;
 
-            if (imgHeight > maxPageHeight) {
-                const scale = maxPageHeight / imgHeight;
-                imgWidth = imgWidth * scale;
-                imgHeight = maxPageHeight;
+            if (imgHeight <= maxPageHeight * 1.04) {
+                // Fits cleanly on this A4 page without shrinking width or font size
+                const renderH = Math.min(imgHeight, maxPageHeight);
+                if (i > 0) pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', marginX, marginTop, maxPageWidth, renderH);
+            } else {
+                // Taller than one A4 page - slice cleanly across multiple A4 pages at 100% full width
+                const canvasPageHeight = (canvas.width * maxPageHeight) / maxPageWidth;
+                let yOffsetInCanvas = 0;
+                let sliceIndex = 0;
+
+                while (yOffsetInCanvas < canvas.height - 2) {
+                    if (i > 0 || sliceIndex > 0) pdf.addPage();
+                    const sliceHeight = Math.min(canvasPageHeight, canvas.height - yOffsetInCanvas);
+
+                    const sliceCanvas = document.createElement('canvas');
+                    sliceCanvas.width = canvas.width;
+                    sliceCanvas.height = sliceHeight;
+                    const ctx = sliceCanvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+                    ctx.drawImage(
+                        canvas,
+                        0, yOffsetInCanvas, canvas.width, sliceHeight,
+                        0, 0, canvas.width, sliceHeight
+                    );
+
+                    const sliceImgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+                    const slicePdfHeight = (sliceHeight * maxPageWidth) / canvas.width;
+                    pdf.addImage(sliceImgData, 'JPEG', marginX, marginTop, maxPageWidth, slicePdfHeight);
+
+                    yOffsetInCanvas += sliceHeight;
+                    sliceIndex++;
+                }
             }
-
-            const xOffset = marginX + (maxPageWidth - imgWidth) / 2;
-            const yOffset = marginTop;
-
-            if (i > 0) pdf.addPage();
-            pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
         }
     } else {
         await waitForImages(element);
