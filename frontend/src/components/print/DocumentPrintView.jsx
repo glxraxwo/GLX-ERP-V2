@@ -251,37 +251,34 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
         if (descExtra) {
             const rawLines = String(descExtra).split('\n');
             for (const l of rawLines) {
-                lines += Math.max(1, Math.ceil((l.length || 1) / 60));
+                lines += Math.max(1, Math.ceil((l.length || 1) / 65));
             }
         }
-        let h = lines * 18 + 14;
+        let h = lines * 16.5 + 8; // realistic line-height (11.5px * 1.45 = 16.6px) + 8px row padding
 
-        const rate = Number(item.unitPrice || item.rate || 0);
         const discRate = Number(item.discount || 0);
         const discAmt = Number(item.discountAmount || item.lineDiscount || 0);
         if (discRate > 0 || discAmt > 0) {
-            h += 24;
+            h += 18;
         }
         return h;
     };
 
-    const headerHeight = showLetterheadHeader ? 140 : 110;
-    const metaHeight = 135 + (latestEdit ? 24 : 0);
-    const tableHeaderHeight = 32;
+    const headerHeight = showLetterheadHeader ? 115 : 95;
+    const metaHeight = latestEdit ? 115 : 95;
+    const tableHeaderHeight = 28;
 
-    const remarksHeight = remarksText ? 40 : 25;
-    const totalsHeight = 110 + (advancePaid > 0 ? 35 : 0);
-    const subtotalRemarksBlockHeight = Math.max(remarksHeight, totalsHeight);
-
+    const totalsHeight = (advancePaid > 0 ? 80 : 55) + (totalDiscount > 0 ? 18 : 0);
     let termsLines = isInvoice ? 1 : 4;
     if (conditionOfPayments) termsLines += Math.max(0, conditionOfPayments.split('\n').length - 1);
     if (warrantyCondition) termsLines += Math.max(0, warrantyCondition.split('\n').length - 1);
-    const termsHeight = isInvoice ? Math.max(60, termsLines * 20) : Math.max(115, termsLines * 19);
+    const termsHeight = isInvoice ? Math.max(45, termsLines * 16) : Math.max(85, termsLines * 16);
 
-    const signatureBlockHeight = 180;
-    const bottomSectionHeight = subtotalRemarksBlockHeight + termsHeight + signatureBlockHeight + 20;
+    const signatureBlockHeight = 135;
+    const bottomSectionHeight = totalsHeight + termsHeight + signatureBlockHeight + 15;
 
-    const PAGE_HEIGHT_LIMIT = 980; // Safe height threshold for A4 page inside padding
+    // A4 printable height at 96 DPI: 297mm - 0.5in = ~1074px minus padding 26px = ~1048px
+    const PAGE_HEIGHT_LIMIT = 1040;
 
     const availableP1Single = PAGE_HEIGHT_LIMIT - (headerHeight + metaHeight + tableHeaderHeight + bottomSectionHeight);
 
@@ -291,12 +288,12 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
         height: estimateItemHeight(it)
     }));
 
-    const totalItemsHeight = itemsWithHeights.reduce((sum, it) => sum + it.height, 0) + (laborCost > 0 ? 28 : 0);
+    const totalItemsHeight = itemsWithHeights.reduce((sum, it) => sum + it.height, 0) + (laborCost > 0 ? 25 : 0);
 
     const pages = [];
 
     if (totalItemsHeight <= availableP1Single) {
-        // Fits entirely on a single page
+        // Fits entirely on a single page!
         pages.push({
             pageIndex: 0,
             isFirstPage: true,
@@ -307,7 +304,12 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
         });
     } else {
         // Multi-page document needed!
+        // Page 1 capacity for items (with continuation footer):
         const availableP1Multi = PAGE_HEIGHT_LIMIT - (headerHeight + metaHeight + tableHeaderHeight + 35);
+        // Subsequent page capacity for items (with continuation header):
+        const availableSubsequent = PAGE_HEIGHT_LIMIT - 90 - 35;
+        // Capacity on the final page when it holds the bottom section:
+        const availableFinalWithBottom = PAGE_HEIGHT_LIMIT - (80 + tableHeaderHeight + bottomSectionHeight + 20);
 
         let curPageIndex = 0;
         let curItems = [];
@@ -316,7 +318,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
 
         for (let i = 0; i < itemsWithHeights.length; i++) {
             const itObj = itemsWithHeights[i];
-            const maxForPage = isFirst ? availableP1Multi : (PAGE_HEIGHT_LIMIT - 90 - 35);
+            const maxForPage = isFirst ? availableP1Multi : availableSubsequent;
 
             if (curItems.length > 0 && curHeight + itObj.height > maxForPage) {
                 pages.push({
@@ -337,11 +339,13 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
             }
         }
 
-        // Check if the remaining items + bottom section fit on this page
-        const continuationTop = isFirst ? (headerHeight + metaHeight) : 80;
-        const remainingSpace = PAGE_HEIGHT_LIMIT - (continuationTop + tableHeaderHeight + curHeight + (laborCost > 0 ? 28 : 0));
+        // Now we have the last batch of items in curItems.
+        // Check if curItems + laborCost fits on this page along with the bottom section:
+        const topOverhead = isFirst ? (headerHeight + metaHeight) : 80;
+        const totalNeededOnPage = topOverhead + tableHeaderHeight + curHeight + (laborCost > 0 ? 25 : 0) + bottomSectionHeight;
 
-        if (remainingSpace >= bottomSectionHeight) {
+        if (totalNeededOnPage <= PAGE_HEIGHT_LIMIT) {
+            // All remaining items and the bottom section fit on this page!
             pages.push({
                 pageIndex: curPageIndex,
                 isFirstPage: isFirst,
@@ -351,22 +355,55 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                 hasBottomSection: true
             });
         } else {
-            pages.push({
-                pageIndex: curPageIndex,
-                isFirstPage: isFirst,
-                isLastDocPage: false,
-                items: curItems,
-                includeLabor: laborCost > 0,
-                hasBottomSection: false
-            });
-            pages.push({
-                pageIndex: curPageIndex + 1,
-                isFirstPage: false,
-                isLastDocPage: true,
-                items: [],
-                includeLabor: false,
-                hasBottomSection: true
-            });
+            // If curItems has more than 1 item, split so that the next page has items AND the bottom section!
+            if (curItems.length > 1) {
+                let itemsForNext = [];
+                let nextHeight = 0;
+                while (curItems.length > 1) {
+                    const lastItem = curItems[curItems.length - 1];
+                    if (nextHeight + lastItem.height <= availableFinalWithBottom) {
+                        itemsForNext.unshift(curItems.pop());
+                        nextHeight += lastItem.height;
+                        curHeight -= lastItem.height;
+                    } else {
+                        break;
+                    }
+                }
+                pages.push({
+                    pageIndex: curPageIndex,
+                    isFirstPage: isFirst,
+                    isLastDocPage: false,
+                    items: curItems,
+                    includeLabor: false,
+                    hasBottomSection: false
+                });
+                pages.push({
+                    pageIndex: curPageIndex + 1,
+                    isFirstPage: false,
+                    isLastDocPage: true,
+                    items: itemsForNext,
+                    includeLabor: laborCost > 0,
+                    hasBottomSection: true
+                });
+            } else {
+                // If curItems only had 1 huge item, put it on this page and bottom section on next
+                pages.push({
+                    pageIndex: curPageIndex,
+                    isFirstPage: isFirst,
+                    isLastDocPage: false,
+                    items: curItems,
+                    includeLabor: laborCost > 0,
+                    hasBottomSection: false
+                });
+                pages.push({
+                    pageIndex: curPageIndex + 1,
+                    isFirstPage: false,
+                    isLastDocPage: true,
+                    items: [],
+                    includeLabor: false,
+                    hasBottomSection: true
+                });
+            }
         }
     }
 
