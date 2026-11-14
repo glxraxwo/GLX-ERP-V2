@@ -173,39 +173,24 @@ export default function SendGrnSmsModal({ isOpen, onClose, grn, supplier = null 
                     </div>
                 </div>
 
-                {/* 2. SMS Message Preview & Editable Area */}
+                {/* 2. SMS Message Preview (Standard Template) */}
                 <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                         <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
                             <MessageSquare size={14} className="text-gray-500" />
-                            SMS Message Preview (Editable)
+                            SMS Message Preview
                         </label>
-                        {isCustomized && (
-                            <button
-                                type="button"
-                                onClick={() => setIsCustomized(false)}
-                                className="text-[11px] text-blue-600 hover:underline flex items-center gap-1"
-                            >
-                                <Sparkles size={11} /> Reset template
-                            </button>
-                        )}
+                        <span className="text-[10px] bg-blue-100 text-blue-900 font-bold px-2 py-0.5 rounded">
+                            Standard Template
+                        </span>
                     </div>
 
-                    <textarea
-                        className="w-full p-2.5 bg-slate-50 border border-gray-300 rounded-lg text-xs leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                        rows={4}
-                        value={smsMessage}
-                        onChange={(e) => {
-                            setSmsMessage(e.target.value);
-                            setIsCustomized(true);
-                        }}
-                        placeholder="Type custom SMS message here..."
-                        maxLength={1000}
-                        disabled={sendSmsMutation.isPending}
-                    />
+                    <div className="w-full p-2.5 bg-slate-50 border border-gray-200 rounded-lg text-xs leading-relaxed text-slate-800 font-medium select-text break-words">
+                        {smsMessage}
+                    </div>
 
                     <div className="flex justify-between items-center text-[11px] text-gray-500">
-                        <span>{isCustomized ? '✍️ Custom message' : '✨ Generated template'}</span>
+                        <span>GSM SMS standard (160 chars / page)</span>
                         <span>{smsMessage.length} characters • approx {Math.max(1, Math.ceil(smsMessage.length / 160))} SMS</span>
                     </div>
                 </div>

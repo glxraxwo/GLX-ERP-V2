@@ -113,7 +113,13 @@ router.get('/documents/:token/download', asyncHandler(async (req, res) => {
     }
     
     const docCode = doc.paymentNumber || doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || doc._id.toString();
-    const filename = `${docType}_${String(docCode).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
+    const custRaw = doc.customerSnapshot?.name || doc.customerName || doc.vehicleOwner || doc.customer?.companyName || doc.customerId?.companyName || '';
+    let custPart = '';
+    if (custRaw && typeof custRaw === 'string') {
+        const words = custRaw.replace(/[^\w\s-]/g, ' ').trim().split(/\s+/).filter(Boolean).slice(0, 4).join('_');
+        if (words) custPart = `_${words}`;
+    }
+    const filename = `${docType}_${String(docCode).replace(/[\\/:*?"<>|]/g, '_')}${custPart}.pdf`;
     
     let pdfBuffer;
     if (docType === 'payment_receipt') {

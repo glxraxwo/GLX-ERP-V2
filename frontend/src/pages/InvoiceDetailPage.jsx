@@ -18,7 +18,7 @@ import { useAuthStore } from '../store/authStore';
 import { useRef } from 'react';
 import PrintableInvoice from '../components/print/PrintableInvoice';
 import ShareDocumentSmsModal from '../components/ShareDocumentSmsModal';
-import { exportDocumentToPDF, exportElementToPDF, printElementAsPDF } from '../utils/dataExport';
+import { exportDocumentToPDF, exportElementToPDF, printElementAsPDF, buildDocumentFileName } from '../utils/dataExport';
 import { getApiUrl } from '../api/config';
 import { useQuery } from '@tanstack/react-query';
 import { paymentsApi } from '../features/payments/paymentsApi';
@@ -340,13 +340,15 @@ export default function InvoiceDetailPage() {
                         >
                             <Printer size={14} className="sm:mr-1" /> <span className="hidden sm:inline">Print</span>
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => setShareModalOpen(true)} title="Send via SMS">
-                            <Send size={14} className="sm:mr-1" /> <span className="hidden sm:inline">SMS</span>
-                        </Button>
                         <Button 
                             variant="outline" 
                             size="sm" 
-                            onClick={() => exportElementToPDF(printRef.current, `${isProforma ? 'proforma_invoice' : 'invoice'}_${(inv.invoiceNumber || 'document').replace(/[\/\\:]/g, '_')}${!includeHeader ? '_no_header' : ''}.pdf`)}
+                            onClick={() => {
+                                const custName = inv.customerSnapshot?.name || inv.customer?.companyName || inv.customerId?.companyName || inv.customerName || '';
+                                const docType = isProforma ? 'proforma_invoice' : 'invoice';
+                                const suffix = !includeHeader ? 'no_header' : '';
+                                exportElementToPDF(printRef.current, buildDocumentFileName(docType, inv.invoiceNumber, custName, suffix));
+                            }}
                             className={!includeHeader ? 'border-amber-300 bg-amber-50/50 text-amber-900' : ''}
                             title={includeHeader ? 'Download PDF with Header' : 'Download PDF without Header'}
                         >
@@ -703,7 +705,12 @@ export default function InvoiceDetailPage() {
                             <Button 
                                 variant="outline" 
                                 size="sm" 
-                                onClick={() => exportElementToPDF(printRef.current, `invoice_${(inv.invoiceNumber || 'document').replace(/[\/\\:]/g, '_')}${!includeHeader ? '_no_header' : ''}.pdf`)}
+                                onClick={() => {
+                                    const custName = inv.customerSnapshot?.name || inv.customer?.companyName || inv.customerId?.companyName || inv.customerName || '';
+                                    const docType = isProforma ? 'proforma_invoice' : 'invoice';
+                                    const suffix = !includeHeader ? 'no_header' : '';
+                                    exportElementToPDF(printRef.current, buildDocumentFileName(docType, inv.invoiceNumber, custName, suffix));
+                                }}
                             >
                                 <Download size={14} className="mr-1" /> PDF
                             </Button>

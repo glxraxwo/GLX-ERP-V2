@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import DocumentPrintView from '../components/print/DocumentPrintView';
 import PaymentReceiptPrintView from '../components/print/PaymentReceiptPrintView';
-import { exportElementToPDF } from '../utils/dataExport';
+import { exportElementToPDF, buildDocumentFileName } from '../utils/dataExport';
 import { getApiUrl } from '../api/config';
 import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
 import { 
@@ -67,7 +67,8 @@ export default function PublicDocumentViewPage() {
                 const isVoucher = docType === 'payment_receipt' && (doc.direction === 'paid' || !!doc.voucherType);
                 const prefix = docType === 'payment_receipt' ? (isVoucher ? 'voucher' : 'receipt') : docType;
                 const docNum = doc.paymentNumber || doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'document';
-                const fileName = `${prefix}_${String(docNum).replace(/[\/\\:]/g, '_')}.pdf`;
+                const custName = doc.customerSnapshot?.name || doc.customerName || doc.vehicleOwner || doc.customer?.companyName || doc.customerId?.companyName || '';
+                const fileName = buildDocumentFileName(prefix, docNum, custName);
                 await exportElementToPDF(printRef.current, fileName);
                 setDownloading(false);
                 return;
@@ -84,7 +85,8 @@ export default function PublicDocumentViewPage() {
         link.href = directUrl;
         const prefix = docType === 'payment_receipt' ? ((doc.direction === 'paid' || !!doc.voucherType) ? 'voucher' : 'receipt') : docType;
         const docNum = doc.paymentNumber || doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || 'document';
-        link.download = `${prefix}_${String(docNum).replace(/[\/\\:]/g, '_')}.pdf`;
+        const custName = doc.customerSnapshot?.name || doc.customerName || doc.vehicleOwner || doc.customer?.companyName || doc.customerId?.companyName || '';
+        link.download = buildDocumentFileName(prefix, docNum, custName);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

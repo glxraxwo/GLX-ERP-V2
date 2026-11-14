@@ -31,8 +31,6 @@ export default function ShareDocumentSmsModal({
     const [sendToManager, setSendToManager] = useState(false);
     const [managerPhoneInput, setManagerPhoneInput] = useState('');
 
-    const [customMessage, setCustomMessage] = useState('');
-    const [isCustomized, setIsCustomized] = useState(false);
     const [sending, setSending] = useState(false);
     const [loadingDoc, setLoadingDoc] = useState(false);
 
@@ -135,18 +133,6 @@ export default function ShareDocumentSmsModal({
             setSendToManager(false);
             setManagerPhoneInput(defaultManagerPhone);
 
-            if (initialCustomMessage && initialCustomMessage.trim()) {
-                let msg = initialCustomMessage.trim();
-                if (!msg.includes('/public/documents/') && publicLink && !publicLink.includes('...')) {
-                    msg = `${msg} ${publicLink}`;
-                }
-                setCustomMessage(msg);
-                setIsCustomized(true);
-            } else {
-                setIsCustomized(false);
-                setCustomMessage(defaultMessage);
-            }
-
             if (defaultPhone) {
                 setRecipientMode('saved');
                 setSelectedPhone(defaultPhone);
@@ -157,14 +143,7 @@ export default function ShareDocumentSmsModal({
                 setRecipientMode('custom');
             }
         }
-    }, [isOpen, availablePhones, defaultPhone, initialCustomMessage, defaultMessage, publicLink, defaultManagerPhone]);
-
-    // Keep message in sync with template if user hasn't typed a custom one
-    useEffect(() => {
-        if (!isCustomized && !initialCustomMessage) {
-            setCustomMessage(defaultMessage);
-        }
-    }, [defaultMessage, isCustomized, initialCustomMessage]);
+    }, [isOpen, availablePhones, defaultPhone, defaultManagerPhone]);
 
     const finalCustomerPhone = recipientMode === 'saved' ? selectedPhone : customPhone;
 
@@ -178,7 +157,7 @@ export default function ShareDocumentSmsModal({
 
         const trimmedCustomerPhone = (finalCustomerPhone || '').trim();
         const trimmedManagerPhone = (managerPhoneInput || '').trim();
-        const trimmedMsg = (customMessage || '').trim();
+        const trimmedMsg = (defaultMessage || '').trim();
 
         if (sendToCustomer && !trimmedCustomerPhone) {
             toast.error('Please select or enter a valid customer phone number');
@@ -457,27 +436,16 @@ export default function ShareDocumentSmsModal({
                     </div>
                 </div>
 
-                {/* 3. SMS Message Preview & Editable Area */}
+                {/* 3. Official Standard SMS Preview (Read-Only) */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                         <label className="text-xs font-bold text-gray-800 uppercase tracking-wide flex items-center gap-1.5">
                             <MessageSquare size={15} className="text-blue-600" />
-                            2. Message Content to Send / යැවෙන පණිවිඩය (Editable):
+                            2. Message Content to Send / යැවෙන පණිවිඩය:
                         </label>
-                        <div className="flex items-center gap-2">
-                            {isCustomized && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setIsCustomized(false);
-                                        setCustomMessage(defaultMessage);
-                                    }}
-                                    className="text-[11px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 hover:underline cursor-pointer"
-                                >
-                                    <Sparkles size={11} /> Reset to Template
-                                </button>
-                            )}
-                        </div>
+                        <span className="bg-blue-100 text-blue-900 px-2 py-0.5 rounded font-bold text-[10px]">
+                            Standard Template
+                        </span>
                     </div>
 
                     {/* Styled Phone Preview Bubble */}
@@ -501,76 +469,18 @@ export default function ShareDocumentSmsModal({
                                     </span>
                                 )}
                             </div>
-                            <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-bold text-[10px]">
-                                {isCustomized ? '✏️ Custom Edited' : 'Standard Template'}
-                            </span>
                         </div>
 
-                        <textarea
-                            rows={4}
-                            className="w-full p-2.5 bg-slate-50/60 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-lg text-xs leading-relaxed text-slate-900 font-medium outline-none focus:ring-2 focus:ring-blue-500 transition resize-y"
-                            value={customMessage}
-                            onChange={(e) => {
-                                setCustomMessage(e.target.value);
-                                setIsCustomized(true);
-                            }}
-                            placeholder="Type or edit SMS message here before dispatching..."
-                            maxLength={1000}
-                            disabled={sending}
-                        />
-
-                        {/* Quick Insert Helpers */}
-                        <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-100">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase mr-1">Insert Helper:</span>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setCustomMessage(prev => prev + ` ${clientName}`);
-                                    setIsCustomized(true);
-                                }}
-                                className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-semibold transition cursor-pointer"
-                            >
-                                + Client Name
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setCustomMessage(prev => prev + ` (${docCode})`);
-                                    setIsCustomized(true);
-                                }}
-                                className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-semibold transition cursor-pointer"
-                            >
-                                + Doc Code
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (!customMessage.includes(publicLink) && !publicLink.includes('...')) {
-                                        setCustomMessage(prev => prev + ` ${publicLink}`);
-                                        setIsCustomized(true);
-                                    }
-                                }}
-                                className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-[10px] font-semibold transition cursor-pointer"
-                            >
-                                + Public Link
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setCustomMessage(prev => prev + ' Thank you for your business!');
-                                    setIsCustomized(true);
-                                }}
-                                className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-semibold transition cursor-pointer"
-                            >
-                                + "Thank You"
-                            </button>
+                        {/* Read-only standard message box */}
+                        <div className="p-3 bg-slate-50/80 border border-slate-200 rounded-lg text-xs leading-relaxed text-slate-800 font-medium select-text break-words">
+                            {defaultMessage}
                         </div>
                     </div>
 
                     <div className="flex justify-between items-center text-[11px] text-gray-500 px-1">
                         <span>GSM SMS standard (160 chars / page)</span>
                         <span className="font-mono font-bold text-slate-700">
-                            {customMessage.length} characters • approx {Math.max(1, Math.ceil(customMessage.length / 160))} SMS
+                            {defaultMessage.length} characters • approx {Math.max(1, Math.ceil(defaultMessage.length / 160))} SMS
                         </span>
                     </div>
                 </div>
@@ -593,7 +503,7 @@ export default function ShareDocumentSmsModal({
                         variant="primary" 
                         size="sm" 
                         loading={sending} 
-                        disabled={(!sendToCustomer && !sendToManager) || !customMessage?.trim()}
+                        disabled={(!sendToCustomer && !sendToManager) || !defaultMessage?.trim()}
                         className="bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs px-4 cursor-pointer"
                     >
                         <Send size={14} className="mr-1.5" /> 

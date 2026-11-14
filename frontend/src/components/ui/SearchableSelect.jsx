@@ -59,36 +59,62 @@ const SearchableSelect = forwardRef(({
         setSearchTerm('');
     }, [value]);
 
-    // Filter options based on multi-word search query (searches label, sinhala name, code, sku, subtext, description, value anywhere in name)
+    // Filter and prioritize options based on search query
+    // High Priority: Items with the query in the Item Name appear first, followed by Sinhala name, Code, and Description.
     const filteredOptions = useMemo(() => {
         if (!searchTerm.trim()) return options;
         const q = searchTerm.toLowerCase().trim();
         const tokens = q.split(/\s+/).filter(Boolean);
+        const escapeRegex = (s) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
 
-        const nameMatches = [];
-        const otherMatches = [];
+        const scored = [];
 
         for (const opt of options) {
-            const labelStr = String(opt.label || '').toLowerCase();
-            const sinhalaStr = String(opt.sinhalaName || '').toLowerCase();
-            const subtextStr = String(opt.subtext || '').toLowerCase();
-            const codeStr = String(opt.productCode || opt.code || '').toLowerCase();
-            const skuStr = String(opt.sku || '').toLowerCase();
+            const rawName = String(opt.productName || opt.name || opt.label || '').toLowerCase().trim();
+            const sinhalaStr = String(opt.sinhalaName || '').toLowerCase().trim();
+            const codeStr = String(opt.productCode || opt.code || opt.sku || '').toLowerCase().trim();
+            const descStr = String(opt.description || '').toLowerCase().trim();
+            const subtextStr = String(opt.subtext || '').toLowerCase().trim();
 
-            const nameCombined = `${labelStr} ${sinhalaStr} ${subtextStr}`;
-            const isNameMatch = tokens.every((token) => nameCombined.includes(token));
+            const combinedAll = `${rawName} ${sinhalaStr} ${codeStr} ${descStr} ${subtextStr}`;
+            const matchesAllTokens = tokens.every((token) => combinedAll.includes(token));
 
-            if (isNameMatch) {
-                nameMatches.push(opt);
-            } else {
-                const idCombined = `${nameCombined} ${codeStr} ${skuStr}`;
-                if (tokens.every((token) => idCombined.includes(token))) {
-                    otherMatches.push(opt);
-                }
+            if (!matchesAllTokens) continue;
+
+            // Priority Scoring:
+            // 1 = Item Name starts directly with search query (Top Priority)
+            // 2 = Item Name has a word starting with search query
+            // 3 = Item Name contains all search tokens
+            // 4 = Sinhala Name matches all search tokens
+            // 5 = Product Code / SKU matches
+            // 6 = Description / subtext match
+            let score = 6;
+            const isNameExactStart = rawName.startsWith(q);
+            const isNameWordStart = new RegExp(`(^|\\s)${escapeRegex(q)}`).test(rawName);
+            const isNameMatch = tokens.every((token) => rawName.includes(token));
+
+            if (isNameExactStart) {
+                score = 1;
+            } else if (isNameWordStart) {
+                score = 2;
+            } else if (isNameMatch) {
+                score = 3;
+            } else if (tokens.every((t) => sinhalaStr.includes(t))) {
+                score = 4;
+            } else if (tokens.every((t) => codeStr.includes(t))) {
+                score = 5;
             }
+
+            scored.push({ opt, score, nameLen: rawName.length });
         }
 
-        return [...nameMatches, ...otherMatches];
+        // Sort: Item Name matches come first (scores 1, 2, 3), followed by others (scores 4, 5, 6)
+        scored.sort((a, b) => {
+            if (a.score !== b.score) return a.score - b.score;
+            return a.nameLen - b.nameLen;
+        });
+
+        return scored.map((s) => s.opt);
     }, [options, searchTerm]);
 
     const highlightedOption = filteredOptions[highlightedIndex] || null;

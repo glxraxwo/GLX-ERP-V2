@@ -31,6 +31,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
+import { saveFormDraft, getFormDraft, clearFormDraft, formatDraftTime } from '../utils/draftStorageUtils';
 
 const defaultItemState = {
     productId: '',
@@ -403,6 +404,221 @@ export default function InvoiceFormPage({ defaultDocType }) {
     const [showAdvance, setShowAdvance] = useState(false);
     const [advancePercentage, setAdvancePercentage] = useState(0);
     const [advanceAmount, setAdvanceAmount] = useState(0);
+
+    // ── Form Draft Persistence (Safe across page switches & refresh) ──
+    const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
+    const [draftSavedTime, setDraftSavedTime] = useState(null);
+    const isRestoringDraftRef = useRef(false);
+
+    const draftKey = editDocId ? `${docType}_edit_${editDocId}` : `${docType}_new`;
+
+    // 1. Auto-restore draft on mount / type switch for new documents
+    useEffect(() => {
+        if (editDocId) return;
+
+        const draftObj = getFormDraft(draftKey);
+        if (draftObj && draftObj.data) {
+            const d = draftObj.data;
+            const hasData = Boolean(
+                (Array.isArray(d.items) && d.items.length > 0) ||
+                (d.customerSearch && d.customerSearch.trim()) ||
+                (d.customerPhone && d.customerPhone.trim()) ||
+                (d.vehicleNo && d.vehicleNo.trim()) ||
+                (d.jobCaption && d.jobCaption.trim()) ||
+                (d.notes && d.notes.trim())
+            );
+
+            if (hasData) {
+                isRestoringDraftRef.current = true;
+                if (d.invoiceDate) setInvoiceDate(d.invoiceDate);
+                if (d.dueDate) setDueDate(d.dueDate);
+                if (d.invoiceType) setInvoiceType(d.invoiceType);
+                if (d.quoteNumber) setQuoteNumber(d.quoteNumber);
+
+                if (d.customerId) setCustomerId(d.customerId);
+                if (d.selectedCustomer) setSelectedCustomer(d.selectedCustomer);
+                if (d.customerSearch) setCustomerSearch(d.customerSearch);
+                if (d.customerPhone) setCustomerPhone(d.customerPhone);
+                if (d.customerEmail) setCustomerEmail(d.customerEmail);
+                if (d.customerAddress) setCustomerAddress(d.customerAddress);
+                if (d.customerWhatsapp) setCustomerWhatsapp(d.customerWhatsapp);
+                if (d.customerVatNumber) setCustomerVatNumber(d.customerVatNumber);
+                if (d.customerBrNumber) setCustomerBrNumber(d.customerBrNumber);
+                if (d.customerIdNumber) setCustomerIdNumber(d.customerIdNumber);
+                if (d.customerSalesRep) setCustomerSalesRep(d.customerSalesRep);
+
+                if (Array.isArray(d.items) && d.items.length > 0) setItems(d.items);
+
+                if (d.includeVehicleDetails !== undefined) setIncludeVehicleDetails(d.includeVehicleDetails);
+                if (d.vehicleNo) setVehicleNo(d.vehicleNo);
+                if (d.vehicleModel) setVehicleModel(d.vehicleModel);
+                if (d.insuranceCompany) setInsuranceCompany(d.insuranceCompany);
+                if (d.jobCaption) setJobCaption(d.jobCaption);
+                if (d.introducer) setIntroducer(d.introducer);
+                if (d.introducerName) setIntroducerName(d.introducerName);
+                if (d.biller) setBiller(d.biller);
+                if (d.billerName) setBillerName(d.billerName);
+                if (d.numberPlateImage) setNumberPlateImage(d.numberPlateImage);
+                if (d.lorryBodyImage) setLorryBodyImage(d.lorryBodyImage);
+                if (Array.isArray(d.photos)) setPhotos(d.photos);
+
+                if (d.remarks !== undefined) setRemarks(d.remarks);
+                if (d.conditionOfPayments !== undefined) setConditionOfPayments(d.conditionOfPayments);
+                if (d.completionOfWork !== undefined) setCompletionOfWork(d.completionOfWork);
+                if (d.validityQuotation !== undefined) setValidityQuotation(d.validityQuotation);
+                if (d.warrantyCondition !== undefined) setWarrantyCondition(d.warrantyCondition);
+                if (d.laborCost !== undefined) setLaborCost(d.laborCost);
+                if (d.shippingCost !== undefined) setShippingCost(d.shippingCost);
+                if (d.notes !== undefined) setNotes(d.notes);
+                if (d.paymentInstructions !== undefined) setPaymentInstructions(d.paymentInstructions);
+                if (d.showAdvance !== undefined) setShowAdvance(d.showAdvance);
+                if (d.advancePercentage !== undefined) setAdvancePercentage(d.advancePercentage);
+                if (d.advanceAmount !== undefined) setAdvanceAmount(d.advanceAmount);
+
+                setHasRestoredDraft(true);
+                setDraftSavedTime(draftObj.savedAt);
+                setTimeout(() => { isRestoringDraftRef.current = false; }, 300);
+            }
+        }
+    }, [draftKey, editDocId]);
+
+    // 2. Debounced auto-save draft to localStorage whenever form data changes
+    useEffect(() => {
+        if (isRestoringDraftRef.current) return;
+
+        const hasData = Boolean(
+            (items && items.length > 0) ||
+            (customerSearch && customerSearch.trim()) ||
+            (customerPhone && customerPhone.trim()) ||
+            (vehicleNo && vehicleNo.trim()) ||
+            (jobCaption && jobCaption.trim()) ||
+            (notes && notes.trim())
+        );
+
+        if (!hasData) return;
+
+        const timer = setTimeout(() => {
+            saveFormDraft(draftKey, {
+                docType,
+                invoiceType,
+                invoiceDate,
+                dueDate,
+                quoteNumber,
+                customerId,
+                selectedCustomer,
+                customerSearch,
+                customerPhone,
+                customerEmail,
+                customerAddress,
+                customerWhatsapp,
+                customerVatNumber,
+                customerBrNumber,
+                customerIdNumber,
+                customerSalesRep,
+                items,
+                includeVehicleDetails,
+                vehicleNo,
+                vehicleModel,
+                insuranceCompany,
+                jobCaption,
+                introducer,
+                introducerName,
+                biller,
+                billerName,
+                numberPlateImage,
+                lorryBodyImage,
+                photos,
+                remarks,
+                conditionOfPayments,
+                completionOfWork,
+                validityQuotation,
+                warrantyCondition,
+                laborCost,
+                shippingCost,
+                notes,
+                paymentInstructions,
+                showAdvance,
+                advancePercentage,
+                advanceAmount
+            });
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [
+        draftKey, docType, invoiceType, invoiceDate, dueDate, quoteNumber,
+        customerId, selectedCustomer, customerSearch, customerPhone, customerEmail, customerAddress, customerWhatsapp, customerVatNumber, customerBrNumber, customerIdNumber, customerSalesRep,
+        items, includeVehicleDetails, vehicleNo, vehicleModel, insuranceCompany, jobCaption,
+        introducer, introducerName, biller, billerName, numberPlateImage, lorryBodyImage, photos,
+        remarks, conditionOfPayments, completionOfWork, validityQuotation, warrantyCondition,
+        laborCost, shippingCost, notes, paymentInstructions, showAdvance, advancePercentage, advanceAmount
+    ]);
+
+    // 3. Discard draft and reset form to pristine state
+    const handleDiscardDraft = () => {
+        clearFormDraft(draftKey);
+        setHasRestoredDraft(false);
+        setDraftSavedTime(null);
+        if (editDocId) {
+            window.location.reload();
+            return;
+        }
+        setCustomerId('');
+        setSelectedCustomer(null);
+        setCustomerSearch('');
+        setCustomerPhone('');
+        setCustomerEmail('');
+        setCustomerAddress('');
+        setCustomerWhatsapp('');
+        setCustomerVatNumber('');
+        setCustomerBrNumber('');
+        setCustomerIdNumber('');
+        setItems([]);
+        setIncludeVehicleDetails(false);
+        setVehicleNo('');
+        setVehicleModel('');
+        setInsuranceCompany('');
+        setJobCaption('');
+        setIntroducer('');
+        setIntroducerName('');
+        setBiller('');
+        setBillerName('');
+        setNumberPlateImage('');
+        setLorryBodyImage('');
+        setPhotos([]);
+        const defaultTerms = getSavedTerms(docType);
+        setRemarks(defaultTerms.remarks);
+        setConditionOfPayments(defaultTerms.conditionOfPayments);
+        setCompletionOfWork(defaultTerms.completionOfWork);
+        setValidityQuotation(defaultTerms.validityQuotation);
+        setWarrantyCondition(defaultTerms.warrantyCondition);
+        setLaborCost(0);
+        setShippingCost(0);
+        setNotes('');
+        setPaymentInstructions('');
+        setShowAdvance(false);
+        setAdvancePercentage(0);
+        setAdvanceAmount(0);
+        toast.success('Draft cleared! Form reset to fresh state.');
+    };
+
+    // 4. Warn before accidental window close or full page reload
+    useEffect(() => {
+        const hasUnsavedContent = Boolean(
+            (items && items.length > 0) ||
+            (customerSearch && customerSearch.trim()) ||
+            (vehicleNo && vehicleNo.trim())
+        );
+
+        const handleBeforeUnload = (e) => {
+            if (hasUnsavedContent && !isSubmittingDoc) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [items, customerSearch, vehicleNo, isSubmittingDoc]);
 
     // Global keyboard shortcut: F2 or Insert to open Add Item modal
     useEffect(() => {
@@ -972,6 +1188,8 @@ export default function InvoiceFormPage({ defaultDocType }) {
             label: p.sinhalaName 
                 ? `${p.name} (${p.sinhalaName})`
                 : p.name,
+            productName: p.name || '',
+            name: p.name || '',
             productCode: p.productCode,
             sinhalaName: p.sinhalaName,
             subtext: `Code: ${p.productCode} • Price: LKR ${p.basePrice || 0}`,
@@ -1117,6 +1335,8 @@ export default function InvoiceFormPage({ defaultDocType }) {
                     await queryClient.invalidateQueries({ queryKey: ['invoice'] });
                     await queryClient.invalidateQueries({ queryKey: ['invoices'] });
                     await queryClient.invalidateQueries({ queryKey: ['invoicesAging'] });
+                    clearFormDraft(draftKey);
+                    setHasRestoredDraft(false);
                     toast.success(`Invoice ${existingInvoice?.invoiceNumber || ''} updated successfully!`);
                     const updatedInvoice = res?.data || existingInvoice;
                     setPostActionSms({
@@ -1130,6 +1350,8 @@ export default function InvoiceFormPage({ defaultDocType }) {
                     });
                 } else {
                     const result = await createMutation.mutateAsync(invoicePayload);
+                    clearFormDraft(draftKey);
+                    setHasRestoredDraft(false);
                     toast.success('Invoice created successfully!');
                     const createdInvoice = result.data;
                     setPostActionSms({
@@ -1222,6 +1444,8 @@ export default function InvoiceFormPage({ defaultDocType }) {
                     const { data: res } = await api.put(`/crm/quotations/${editDocId}`, quotePayload);
                     await queryClient.invalidateQueries({ queryKey: ['quotations'] });
                     await queryClient.invalidateQueries({ queryKey: ['quotation', editDocId] });
+                    clearFormDraft(draftKey);
+                    setHasRestoredDraft(false);
                     toast.success(`${docLabel} ${paddedQuoteNumber || existingInvoice?.quoteNumber || ''} updated successfully!`);
                     const updatedQuote = res?.data || { ...existingInvoice, ...quotePayload, _id: editDocId };
                     setPostActionSms({
@@ -1235,6 +1459,8 @@ export default function InvoiceFormPage({ defaultDocType }) {
                     });
                 } else {
                     const { data: res } = await api.post('/crm/quotations', quotePayload);
+                    clearFormDraft(draftKey);
+                    setHasRestoredDraft(false);
                     toast.success(`${docLabel} created successfully!`);
                     const createdQuote = res?.data;
                     setPostActionSms({
@@ -1451,14 +1677,56 @@ export default function InvoiceFormPage({ defaultDocType }) {
                             : 'Create an invoice directly (services, custom sales, or walk-in customers)')
                 }
                 actions={
-                    <Button
-                        variant="outline"
-                        onClick={() => navigate(docType === 'invoice' ? '/invoices' : `/invoices?tab=${docType === 'estimate' ? 'estimates' : 'quotations'}`)}
-                    >
-                        <ArrowLeft size={16} className="mr-1.5" /> Back
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {(hasRestoredDraft || items.length > 0 || customerSearch || vehicleNo) && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleDiscardDraft}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 border-red-200 dark:border-red-900/50"
+                                title="Discard unsaved changes and start fresh"
+                            >
+                                <Trash2 size={15} className="mr-1" /> Clear Draft
+                            </Button>
+                        )}
+                        <Button
+                            variant="outline"
+                            onClick={() => navigate(docType === 'invoice' ? '/invoices' : `/invoices?tab=${docType === 'estimate' ? 'estimates' : 'quotations'}`)}
+                        >
+                            <ArrowLeft size={16} className="mr-1.5" /> Back
+                        </Button>
+                    </div>
                 }
             />
+
+            {/* Auto-recovered draft notification banner */}
+            {hasRestoredDraft && (
+                <div className="mb-4 p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300/80 dark:border-amber-700/60 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 shadow-xs animate-fade-in">
+                    <div className="flex items-center gap-2.5">
+                        <span className="text-base">📝</span>
+                        <div>
+                            <span className="font-bold">Unsaved Draft Recovered:</span> Your previously typed details (from {formatDraftTime(draftSavedTime)}) have been restored automatically so you don't lose any work.
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleDiscardDraft}
+                            className="px-3 py-1 bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 font-bold transition shadow-2xs"
+                        >
+                            Discard &amp; Start Blank
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setHasRestoredDraft(false)}
+                            className="p-1 text-amber-700 hover:text-amber-900 dark:text-amber-300 rounded"
+                            title="Dismiss notification"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Document Type Switcher Banner & Inline Date/Type Controls */}
             <div className="bg-white dark:bg-[#111F33] p-3.5 sm:p-4 rounded-2xl border border-gray-200/90 dark:border-slate-700/80 shadow-xs mb-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
@@ -2671,7 +2939,7 @@ export default function InvoiceFormPage({ defaultDocType }) {
                 <div
                     className="space-y-4"
                     onKeyDown={(e) => {
-                        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                        if ((e.ctrlKey || e.metaKey || e.altKey) && e.key === 'Enter') {
                             e.preventDefault();
                             handleAddItemFromModal(editingIndex === null);
                         }
@@ -2695,14 +2963,20 @@ export default function InvoiceFormPage({ defaultDocType }) {
                             options={productOptions}
                             value={modalItem.productId || ''}
                             onChange={(e) => updateModalItem('productId', e.target.value)}
-                            onSelect={() => {
-                                setTimeout(() => {
-                                    quantityInputRef.current?.focus();
-                                    quantityInputRef.current?.select();
-                                }, 60);
+                            onSelect={(opt) => {
+                                if (opt) {
+                                    focusAndSelect(quantityInputRef.current);
+                                }
                             }}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (modalItem.productId || modalItem.productName) {
+                                        focusAndSelect(quantityInputRef.current);
+                                    } else {
+                                        focusAndSelect(productNameInputRef.current);
+                                    }
+                                } else if (e.key === 'ArrowDown') {
                                     e.preventDefault();
                                     focusAndSelect(quantityInputRef.current);
                                 }
@@ -3090,6 +3364,7 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                                     <Button
                                         type="button"
+                                        tabIndex={-1}
                                         variant="outline"
                                         onClick={() => {
                                             setIsAddItemModalOpen(false);
@@ -3105,11 +3380,13 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                             <Button
                                                 ref={addAnotherBtnRef}
                                                 type="button"
+                                                tabIndex={0}
                                                 variant="outline"
                                                 onClick={() => handleAddItemFromModal(true)}
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter' || e.key === ' ') {
                                                         e.preventDefault();
+                                                        e.stopPropagation();
                                                         handleAddItemFromModal(true);
                                                     } else if (e.key === 'ArrowRight' && addItemBtnRef.current) {
                                                         e.preventDefault();
@@ -3131,11 +3408,13 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                             <Button
                                                 ref={addItemBtnRef}
                                                 type="button"
+                                                tabIndex={0}
                                                 variant="primary"
                                                 onClick={() => handleAddItemFromModal(false)}
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter' || e.key === ' ') {
                                                         e.preventDefault();
+                                                        e.stopPropagation();
                                                         handleAddItemFromModal(false);
                                                     } else if (e.key === 'ArrowLeft' && addAnotherBtnRef.current) {
                                                         e.preventDefault();
@@ -3156,11 +3435,13 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                         <Button
                                             ref={addItemBtnRef}
                                             type="button"
+                                            tabIndex={0}
                                             variant="primary"
                                             onClick={() => handleAddItemFromModal(false)}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' || e.key === ' ') {
                                                     e.preventDefault();
+                                                    e.stopPropagation();
                                                     handleAddItemFromModal(false);
                                                 } else if (e.key === 'ArrowUp') {
                                                     e.preventDefault();
@@ -3168,10 +3449,10 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                                     focusAndSelect(isNeg ? unitPriceInputRef.current : (modalItem.taxable ? taxRateInputRef.current : discountInputRef.current));
                                                 }
                                             }}
-                                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs py-2 focus:ring-2 focus:ring-emerald-400"
+                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs px-3 py-2 whitespace-nowrap focus:ring-2 focus:ring-blue-400"
                                         >
                                             <CheckCircle2 size={14} className="mr-1.5" />
-                                            Update Item #{editingIndex + 1}
+                                            <span>Update Item #{editingIndex + 1}</span>
                                         </Button>
                                     )}
                                 </div>

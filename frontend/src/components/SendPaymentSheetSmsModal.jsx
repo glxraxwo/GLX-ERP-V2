@@ -61,7 +61,7 @@ export default function SendPaymentSheetSmsModal({
     const handleShare = async (e) => {
         if (e) e.preventDefault();
         const trimmedPhone = (finalPhone || '').trim();
-        const trimmedMsg = (customMessage || '').trim();
+        const trimmedMsg = (defaultTemplateMessage || '').trim();
 
         if (!trimmedPhone) {
             toast.error('Please select or enter a valid phone number');
@@ -175,43 +175,25 @@ export default function SendPaymentSheetSmsModal({
                     </div>
                 </div>
 
-                {/* 2. SMS Message Preview & Editable Area */}
+                {/* 2. SMS Message Preview (Standard Template) */}
                 <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                         <label className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
                             <MessageSquare size={14} className="text-gray-500" />
-                            SMS Message Preview (Editable)
+                            SMS Message Preview
                         </label>
-                        {isCustomized && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setIsCustomized(false);
-                                    setCustomMessage(defaultTemplateMessage);
-                                }}
-                                className="text-[11px] text-blue-600 hover:underline flex items-center gap-1"
-                            >
-                                <Sparkles size={11} /> Reset template
-                            </button>
-                        )}
+                        <span className="text-[10px] bg-blue-100 text-blue-900 font-bold px-2 py-0.5 rounded">
+                            Standard Template
+                        </span>
                     </div>
 
-                    <textarea
-                        rows={3}
-                        className="w-full p-2.5 bg-slate-50 border border-gray-300 rounded-lg text-xs leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                        value={customMessage}
-                        onChange={(e) => {
-                            setCustomMessage(e.target.value);
-                            setIsCustomized(true);
-                        }}
-                        placeholder="Type SMS message..."
-                        maxLength={1000}
-                        disabled={sending}
-                    />
+                    <div className="w-full p-2.5 bg-slate-50 border border-gray-200 rounded-lg text-xs leading-relaxed text-slate-800 font-medium select-text break-words">
+                        {defaultTemplateMessage}
+                    </div>
 
                     <div className="flex justify-between items-center text-[11px] text-gray-500">
-                        <span>{isCustomized ? '✍️ Custom message' : '✨ Generated template'}</span>
-                        <span>{customMessage.length} characters • approx {Math.max(1, Math.ceil(customMessage.length / 160))} SMS</span>
+                        <span>GSM SMS standard (160 chars / page)</span>
+                        <span>{defaultTemplateMessage.length} characters • approx {Math.max(1, Math.ceil(defaultTemplateMessage.length / 160))} SMS</span>
                     </div>
                 </div>
 
@@ -220,7 +202,7 @@ export default function SendPaymentSheetSmsModal({
                     <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={sending}>
                         Cancel
                     </Button>
-                    <Button type="submit" variant="primary" size="sm" loading={sending} disabled={!finalPhone?.trim() || !customMessage?.trim()}>
+                    <Button type="submit" variant="primary" size="sm" loading={sending} disabled={!finalPhone?.trim() || !defaultTemplateMessage?.trim()}>
                         <Send size={14} className="mr-1.5" /> Confirm & Send SMS
                     </Button>
                 </div>

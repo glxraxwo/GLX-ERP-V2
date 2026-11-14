@@ -517,7 +517,7 @@ export const exportDocumentToPDF = async (docData, documentType = 'invoice') => 
         }
     }
     
-    doc.save(`${title.toLowerCase()}_${docCode.replace(/[\\/:*?"<>|]/g, '_')}.pdf`);
+    doc.save(buildDocumentFileName(title.toLowerCase(), docCode, customerName));
 };
 
 /**
@@ -713,7 +713,16 @@ export const generateElementPDF = async (element) => {
                 allowTaint: false,
                 logging: false,
                 backgroundColor: '#ffffff',
-                ignoreElements: (el) => el.classList?.contains('no-print') || el.tagName === 'BUTTON'
+                ignoreElements: (el) => el.classList?.contains('no-print') || el.tagName === 'BUTTON',
+                onclone: (clonedDoc) => {
+                    const inputs = clonedDoc.querySelectorAll('input, textarea');
+                    inputs.forEach(inp => {
+                        inp.style.border = 'none';
+                        inp.style.background = 'transparent';
+                        inp.style.boxShadow = 'none';
+                        inp.style.outline = 'none';
+                    });
+                }
             });
 
             const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -770,7 +779,16 @@ export const generateElementPDF = async (element) => {
             allowTaint: false,
             logging: false,
             backgroundColor: '#ffffff',
-            ignoreElements: (el) => el.classList?.contains('no-print') || el.tagName === 'BUTTON'
+            ignoreElements: (el) => el.classList?.contains('no-print') || el.tagName === 'BUTTON',
+            onclone: (clonedDoc) => {
+                const inputs = clonedDoc.querySelectorAll('input, textarea');
+                inputs.forEach(inp => {
+                    inp.style.border = 'none';
+                    inp.style.background = 'transparent';
+                    inp.style.boxShadow = 'none';
+                    inp.style.outline = 'none';
+                });
+            }
         });
 
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -796,6 +814,32 @@ export const generateElementPDF = async (element) => {
     }
 
     return pdf;
+};
+
+/**
+ * Generate a clean, descriptive, and OS-safe filename for document downloads (Invoice, Quotation, Estimate).
+ * Includes the document type, document number, and a sanitized snippet of the customer name.
+ * Example: quotation_JA_QT_00930_Ceylon_Mud_Crab.pdf
+ */
+export const buildDocumentFileName = (docType, docNumber, customerName, suffix = '') => {
+    const cleanType = String(docType || 'document').toLowerCase().replace(/[\/\\:]/g, '_');
+    const cleanNum = String(docNumber || 'document').replace(/[\\/:*?"<>|]/g, '_');
+    
+    let custPart = '';
+    if (customerName && typeof customerName === 'string') {
+        const words = customerName
+            .replace(/[^\w\s-]/g, ' ')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 4)
+            .join('_');
+        if (words) {
+            custPart = '_' + words;
+        }
+    }
+    const cleanSuffix = suffix ? ('_' + suffix.replace(/^_+/, '')) : '';
+    return `${cleanType}_${cleanNum}${custPart}${cleanSuffix}.pdf`;
 };
 
 /**

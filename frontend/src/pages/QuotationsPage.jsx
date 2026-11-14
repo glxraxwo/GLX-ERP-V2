@@ -22,13 +22,14 @@ import { getSavedTerms, saveDefaultTerms } from '../utils/termsService';
 import { useSettings } from '../features/settings/useSettings';
 import DocumentPrintView from '../components/print/DocumentPrintView';
 import ShareDocumentSmsModal from '../components/ShareDocumentSmsModal';
-import { exportDocumentToPDF, exportElementToPDF, printDocumentAsPDF, printElementAsPDF } from '../utils/dataExport';
+import { exportDocumentToPDF, exportElementToPDF, printDocumentAsPDF, printElementAsPDF, buildDocumentFileName } from '../utils/dataExport';
 import { getApiUrl } from '../api/config';
 import { translateText, detectLanguage } from '../utils/translationService';
 import { usePermission } from '../hooks/usePermission';
 import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
 import DocumentEditLogModal from '../components/common/DocumentEditLogModal';
 import { useAuthStore } from '../store/authStore';
+import { saveFormDraft, getFormDraft, clearFormDraft, formatDraftTime } from '../utils/draftStorageUtils';
 
 const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
 
@@ -117,7 +118,8 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     if (directExportRef.current) {
                         const docNumber = quote.quoteNumber || quote.quotationCode || 'document';
                         const docType = quote.documentType || 'quotation';
-                        const fileName = `${docType}_${docNumber.replace(/[\/\\:]/g, '_')}.pdf`;
+                        const custName = quote.customerName || quote.vehicleOwner || quote.customerId?.companyName || '';
+                        const fileName = buildDocumentFileName(docType, docNumber, custName);
                         await exportElementToPDF(directExportRef.current, fileName);
                         toast.success('PDF downloaded successfully!', { id: 'pdf-direct-download' });
                     } else {
@@ -176,6 +178,64 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         expiryDate: '', 
         notes: ''
     });
+
+    // ── Form Draft Persistence for QuotationsPage Modal ──
+    const [hasRestoredModalDraft, setHasRestoredModalDraft] = useState(false);
+    const [modalDraftSavedTime, setModalDraftSavedTime] = useState(null);
+    const isRestoringModalDraftRef = useRef(false);
+
+    const modalDraftKey = useMemo(() => {
+        const dType = formData?.documentType || 'quotation';
+        return editing ? `quotepage_${dType}_edit_${editing._id}` : `quotepage_${dType}_new`;
+    }, [formData?.documentType, editing]);
+
+    // Auto-save modal draft whenever formData changes while modal is open
+    useEffect(() => {
+        if (!isFormOpen || isRestoringModalDraftRef.current) return;
+
+        const hasData = Boolean(
+            (formData.customerName && formData.customerName.trim()) ||
+            (formData.customerPhone && formData.customerPhone.trim()) ||
+            (formData.vehicleNo && formData.vehicleNo.trim()) ||
+            (formData.items && formData.items.some(it => (it.productName && it.productName.trim()) || (it.description && it.description.trim()) || it.unitPrice > 0)) ||
+            (formData.notes && formData.notes.trim())
+        );
+
+        if (!hasData) return;
+
+        const timer = setTimeout(() => {
+            saveFormDraft(modalDraftKey, formData);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [isFormOpen, modalDraftKey, formData]);
+
+    // Warn before closing tab or refresh while modal has unsaved content
+    useEffect(() => {
+        const hasUnsavedContent = isFormOpen && Boolean(
+            (formData.customerName && formData.customerName.trim()) ||
+            (formData.vehicleNo && formData.vehicleNo.trim()) ||
+            (formData.items && formData.items.some(it => it.productName || it.unitPrice > 0))
+        );
+
+        const handleBeforeUnload = (e) => {
+            if (hasUnsavedContent && !saving) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isFormOpen, formData, saving]);
+
+    const handleDiscardModalDraft = () => {
+        clearFormDraft(modalDraftKey);
+        setHasRestoredModalDraft(false);
+        setModalDraftSavedTime(null);
+        openForm(null, formData.documentType || 'quotation');
+        toast.success('Draft cleared! Form reset to blank.');
+    };
 
     // Revert Conversion State
     const [isRevertModalOpen, setIsRevertModalOpen] = useState(false);
@@ -604,52 +664,82 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 expiryDate: quote.expiryDate ? new Date(quote.expiryDate).toISOString().split('T')[0] : '',
                 notes: quote.notes || ''
             });
+
+            // Check if there is an unsaved edit draft for this quote
+            const editDraft = getFormDraft(`quotepage_${quote.documentType || 'quotation'}_edit_${quote._id}`);
+            if (editDraft && editDraft.data) {
+                isRestoringModalDraftRef.current = true;
+                setFormData(editDraft.data);
+                if (editDraft.data.customerName) setCustomerSearch(editDraft.data.customerName);
+                setHasRestoredModalDraft(true);
+                setModalDraftSavedTime(editDraft.savedAt);
+                setTimeout(() => { isRestoringModalDraftRef.current = false; }, 300);
+            } else {
+                setHasRestoredModalDraft(false);
+                setModalDraftSavedTime(null);
+            }
         } else {
             setEditing(null);
-            setCustomerSearch('');
-            setFormData({
-                documentType: defaultType,
-                quoteNumber: '', 
-                customerId: '', 
-                customerName: '',
-                customerEmail: '',
-                customerPhone: '',
-                sendSms: false,
-                customerAddress: '',
-                insuranceCompany: '',
-                vehicleOwner: '',
-                vehicleNo: '',
-                vehicleModel: '',
-                jobCaption: defaultType === 'estimate' ? 'Accident Repair' : 'Truck Body Manufacture',
-                salesRep: currentSalesPerson,
-                introducer: '',
-                introducerName: '',
-                biller: '',
-                billerName: '',
-                branch: 'JA-ELA',
-                numberPlateImage: '',
-                lorryBodyImage: '',
-                photos: [],
-                bodyDimensions: { length: '8 Feet 5 Inch', width: '67 Inch', height: '5 Feet 6 Inch' },
-                specifications: ['Non Rivet White Color Body', 'Japan Model Original Corner Set Bar', 'Rear 2 Doors (Waterproof Board)', 'Rear Gutter & Footboard'],
-                warrantyInfo: '10 Years For Body Structure, 10 Years Full Body Waterproofing, 03 Years For All Doors.',
-                conditionOfPayments: savedTerms.conditionOfPayments,
-                completionOfWork: savedTerms.completionOfWork,
-                validityQuotation: savedTerms.validityQuotation,
-                warrantyCondition: savedTerms.warrantyCondition,
-                remarks: savedTerms.remarks,
-                status: 'draft',
-                items: [{ product: '', productName: '', productTranslation: '', description: '', quantity: 1, unitPrice: 0, discount: 0, subtotal: 0 }],
-                totalAmount: 0, 
-                laborCost: 0,
-                advanceAmount: 0,
-                balanceAmount: 0,
-                discount: 0,
-                tax: 0,
-                grandTotal: 0,
-                expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                notes: ''
-            });
+            const savedDraft = getFormDraft(`quotepage_${defaultType}_new`);
+            if (savedDraft && savedDraft.data && (
+                (savedDraft.data.customerName && savedDraft.data.customerName.trim()) ||
+                (savedDraft.data.vehicleNo && savedDraft.data.vehicleNo.trim()) ||
+                (savedDraft.data.items && savedDraft.data.items.some(it => it.productName || it.unitPrice > 0))
+            )) {
+                isRestoringModalDraftRef.current = true;
+                setFormData(savedDraft.data);
+                setCustomerSearch(savedDraft.data.customerName || '');
+                setHasRestoredModalDraft(true);
+                setModalDraftSavedTime(savedDraft.savedAt);
+                setTimeout(() => { isRestoringModalDraftRef.current = false; }, 300);
+            } else {
+                setCustomerSearch('');
+                setHasRestoredModalDraft(false);
+                setModalDraftSavedTime(null);
+                setFormData({
+                    documentType: defaultType,
+                    quoteNumber: '', 
+                    customerId: '', 
+                    customerName: '',
+                    customerEmail: '',
+                    customerPhone: '',
+                    sendSms: false,
+                    customerAddress: '',
+                    insuranceCompany: '',
+                    vehicleOwner: '',
+                    vehicleNo: '',
+                    vehicleModel: '',
+                    jobCaption: defaultType === 'estimate' ? 'Accident Repair' : 'Truck Body Manufacture',
+                    salesRep: currentSalesPerson,
+                    introducer: '',
+                    introducerName: '',
+                    biller: '',
+                    billerName: '',
+                    branch: 'JA-ELA',
+                    numberPlateImage: '',
+                    lorryBodyImage: '',
+                    photos: [],
+                    bodyDimensions: { length: '8 Feet 5 Inch', width: '67 Inch', height: '5 Feet 6 Inch' },
+                    specifications: ['Non Rivet White Color Body', 'Japan Model Original Corner Set Bar', 'Rear 2 Doors (Waterproof Board)', 'Rear Gutter & Footboard'],
+                    warrantyInfo: '10 Years For Body Structure, 10 Years Full Body Waterproofing, 03 Years For All Doors.',
+                    conditionOfPayments: savedTerms.conditionOfPayments,
+                    completionOfWork: savedTerms.completionOfWork,
+                    validityQuotation: savedTerms.validityQuotation,
+                    warrantyCondition: savedTerms.warrantyCondition,
+                    remarks: savedTerms.remarks,
+                    status: 'draft',
+                    items: [{ product: '', productName: '', productTranslation: '', description: '', quantity: 1, unitPrice: 0, discount: 0, subtotal: 0 }],
+                    totalAmount: 0, 
+                    laborCost: 0,
+                    advanceAmount: 0,
+                    balanceAmount: 0,
+                    discount: 0,
+                    tax: 0,
+                    grandTotal: 0,
+                    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    notes: ''
+                });
+            }
         }
 
         setInitialQuoteTerms({
@@ -766,6 +856,8 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                 savedDoc = res.data?.data;
                 toast.success(`${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'} created`);
             }
+            clearFormDraft(modalDraftKey);
+            setHasRestoredModalDraft(false);
             setIsFormOpen(false);
             fetchQuotations();
 
@@ -1616,6 +1708,23 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
             <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title={editing ? `Edit ${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'}` : `New ${formData.documentType === 'estimate' ? 'Estimate (JA/EST)' : 'Quotation (JA/QT)'}`} size="xl">
                 <form onSubmit={handleSubmit} className="p-3 sm:p-6 space-y-6 max-h-[85vh] overflow-y-auto">
                     
+                    {/* Auto-recovered draft notification banner */}
+                    {hasRestoredModalDraft && (
+                        <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs text-amber-900 dark:text-amber-200 animate-fade-in shadow-2xs">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm">📝</span>
+                                <span><strong>Unsaved Draft Recovered:</strong> Restored previously typed details from {formatDraftTime(modalDraftSavedTime)}.</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleDiscardModalDraft}
+                                className="px-2.5 py-1 bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 font-bold transition"
+                            >
+                                Discard Draft &amp; Reset
+                            </button>
+                        </div>
+                    )}
+                    
                     {/* Document Type Selector & Ref */}
                     <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-xl flex flex-wrap items-center justify-between gap-4">
                         <div className="flex flex-wrap gap-2">
@@ -2039,20 +2148,40 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                                             const search = (item.productName || '').toLowerCase().trim();
                                                             if (!search) return true;
                                                             const tokens = search.split(/\s+/).filter(Boolean);
-                                                            const nameCombined = `${p.name || p.productName || p.title || ''} ${p.sinhalaName || ''} ${p.productCode || p.code || p.sku || ''}`.toLowerCase();
+                                                            const nameCombined = `${p.name || p.productName || p.title || ''} ${p.sinhalaName || ''} ${p.productCode || p.code || p.sku || ''} ${p.description || ''}`.toLowerCase();
                                                             return tokens.every(t => nameCombined.includes(t));
                                                         })
                                                         .sort((a, b) => {
                                                             const search = (item.productName || '').toLowerCase().trim();
                                                             if (!search) return 0;
                                                             const tokens = search.split(/\s+/).filter(Boolean);
-                                                            const aName = `${a.name || a.productName || ''} ${a.sinhalaName || ''}`.toLowerCase();
-                                                            const bName = `${b.name || b.productName || ''} ${b.sinhalaName || ''}`.toLowerCase();
-                                                            const aMatch = tokens.every(t => aName.includes(t)) ? 1 : 0;
-                                                            const bMatch = tokens.every(t => bName.includes(t)) ? 1 : 0;
-                                                            return bMatch - aMatch;
+                                                            const escapeRegex = (s) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+
+                                                            const getScore = (p) => {
+                                                                const rawName = String(p.name || p.productName || p.title || '').toLowerCase().trim();
+                                                                const sinhala = String(p.sinhalaName || '').toLowerCase().trim();
+                                                                const code = String(p.productCode || p.code || p.sku || '').toLowerCase().trim();
+
+                                                                const isNameExactStart = rawName.startsWith(search);
+                                                                const isNameWordStart = new RegExp(`(^|\\s)${escapeRegex(search)}`).test(rawName);
+                                                                const isNameMatch = tokens.every(t => rawName.includes(t));
+
+                                                                if (isNameExactStart) return 1;
+                                                                if (isNameWordStart) return 2;
+                                                                if (isNameMatch) return 3;
+                                                                if (tokens.every(t => sinhala.includes(t))) return 4;
+                                                                if (tokens.every(t => code.includes(t))) return 5;
+                                                                return 6;
+                                                            };
+
+                                                            const scoreA = getScore(a);
+                                                            const scoreB = getScore(b);
+                                                            if (scoreA !== scoreB) {
+                                                                return scoreA - scoreB;
+                                                            }
+                                                            return (a.name || '').length - (b.name || '').length;
                                                         })
-                                                        .slice(0, 10)
+                                                        .slice(0, 12)
                                                         .map(p => {
                                                             const pName = p.name || p.productName || 'Item';
                                                             const pSinhalaName = p.sinhalaName || '';
@@ -2443,9 +2572,24 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap justify-end gap-3 pt-4 border-t">
-                        <Button variant="outline" type="button" onClick={() => setIsFormOpen(false)}>Cancel</Button>
-                        <Button variant="primary" type="submit" loading={saving}>{editing ? 'Save Changes' : `Create ${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'}`}</Button>
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t">
+                        <div>
+                            {(hasRestoredModalDraft || formData.customerName || formData.vehicleNo || (formData.items && formData.items.length > 0 && formData.items[0].productName)) && (
+                                <Button
+                                    variant="outline"
+                                    type="button"
+                                    size="sm"
+                                    onClick={handleDiscardModalDraft}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 border-red-200 dark:border-red-900/50"
+                                >
+                                    <Trash2 size={14} className="mr-1" /> Clear Draft
+                                </Button>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" type="button" onClick={() => setIsFormOpen(false)}>Cancel</Button>
+                            <Button variant="primary" type="submit" loading={saving}>{editing ? 'Save Changes' : `Create ${formData.documentType === 'estimate' ? 'Estimate' : 'Quotation'}`}</Button>
+                        </div>
                     </div>
                 </form>
             </Modal>
@@ -2551,16 +2695,13 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     </button>
                                     <div className="w-px h-5 bg-gray-200" />
                                     <button
-                                        onClick={() => setShareModalOpen(true)}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 rounded-lg hover:bg-white hover:shadow-sm hover:text-gray-900 transition-all duration-150"
-                                        title="Share via SMS"
-                                    >
-                                        <Send size={14} />
-                                        Share SMS
-                                    </button>
-                                    <div className="w-px h-5 bg-gray-200" />
-                                    <button
-                                        onClick={() => exportElementToPDF(printRef.current, `${previewQuote.documentType || 'quotation'}_${(previewQuote.quoteNumber || previewQuote.quotationCode || 'document').replace(/[\/\\:]/g, '_')}${!previewIncludeHeader ? '_no_header' : ''}.pdf`)}
+                                        onClick={() => {
+                                            const custName = previewQuote.customerName || previewQuote.vehicleOwner || previewQuote.customerId?.companyName || '';
+                                            const docType = previewQuote.documentType || 'quotation';
+                                            const docNum = previewQuote.quoteNumber || previewQuote.quotationCode || 'document';
+                                            const suffix = !previewIncludeHeader ? 'no_header' : '';
+                                            exportElementToPDF(printRef.current, buildDocumentFileName(docType, docNum, custName, suffix));
+                                        }}
                                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg hover:shadow-sm transition-all duration-150 ${!previewIncludeHeader ? 'bg-amber-50 text-amber-800 border border-amber-200 font-bold' : 'text-emerald-700 hover:bg-emerald-50'}`}
                                         title={previewIncludeHeader ? 'Download PDF with Header' : 'Download PDF without Header'}
                                     >

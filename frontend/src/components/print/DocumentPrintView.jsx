@@ -149,7 +149,28 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     const customerAddress = doc.customerAddress || doc.billingAddress?.line1 || '';
     const customerPhone   = doc.customerPhone || doc.customerSnapshot?.contactName || '';
     const vehicleNo       = doc.vehicleNo || '';
-    const salesRep        = doc.salesRep  || 'Asanka';
+    let resolvedSalesRep = doc.salesRep || 'Asanka';
+    if (typeof resolvedSalesRep === 'object' && resolvedSalesRep !== null) {
+        resolvedSalesRep = resolvedSalesRep.fullName || resolvedSalesRep.name || `${resolvedSalesRep.firstName || ''} ${resolvedSalesRep.lastName || ''}`.trim() || 'Asanka';
+    }
+    if (typeof resolvedSalesRep === 'string' && /^[0-9a-fA-F]{24}$/.test(resolvedSalesRep.trim())) {
+        const hexId = resolvedSalesRep.trim();
+        if (currentUser && (String(currentUser._id) === hexId || String(currentUser.id) === hexId)) {
+            resolvedSalesRep = currentUser.fullName || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Asanka';
+        } else if (doc.createdBy && typeof doc.createdBy === 'object' && (String(doc.createdBy._id) === hexId || String(doc.createdBy.id) === hexId)) {
+            resolvedSalesRep = doc.createdBy.fullName || `${doc.createdBy.firstName || ''} ${doc.createdBy.lastName || ''}`.trim() || 'Asanka';
+        } else if (Array.isArray(doc.editHistory)) {
+            const matchEdit = doc.editHistory.find(e => String(e.editedBy) === hexId && e.editedByName);
+            if (matchEdit) {
+                resolvedSalesRep = matchEdit.editedByName;
+            } else {
+                resolvedSalesRep = 'Asanka';
+            }
+        } else {
+            resolvedSalesRep = 'Asanka';
+        }
+    }
+    const salesRep        = resolvedSalesRep;
     const branch          = doc.branch    || 'JA-ELA';
     const docDate         = doc.date || doc.invoiceDate || doc.createdAt || new Date();
     const printTimestamp  = fmtPrintTs(new Date());
@@ -729,10 +750,11 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                         <div>
                             {isQuickEdit ? (
                                 <textarea
-                                    rows={2}
+                                    rows={Math.max(2, String(conditionOfPayments || '').split('\n').length)}
                                     value={conditionOfPayments}
                                     onChange={(e) => setEditedValues(prev => ({ ...prev, conditionOfPayments: e.target.value }))}
-                                    className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
+                                    className="w-full text-xs p-1.5 border border-blue-300 rounded bg-blue-50/40"
+                                    style={{ resize: 'vertical', minHeight: 46, lineHeight: 1.5 }}
                                 />
                             ) : (
                                 <div style={{ whiteSpace: 'pre-line', fontWeight: 400, color: '#1e293b' }}>{conditionOfPayments}</div>
@@ -779,10 +801,11 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                 <div>
                     {isQuickEdit ? (
                         <textarea
-                            rows={2}
+                            rows={Math.max(2, String(warrantyCondition || '').split('\n').length)}
                             value={warrantyCondition}
                             onChange={(e) => setEditedValues(prev => ({ ...prev, warrantyCondition: e.target.value }))}
-                            className="w-full text-xs p-1 border border-blue-300 rounded bg-blue-50/40"
+                            className="w-full text-xs p-1.5 border border-blue-300 rounded bg-blue-50/40"
+                            style={{ resize: 'vertical', minHeight: 46, lineHeight: 1.5 }}
                         />
                     ) : (
                         <div style={{ whiteSpace: 'pre-line', fontWeight: 400, color: '#1e293b' }}>{warrantyCondition}</div>
@@ -793,7 +816,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
     );
 
     const renderFooterSignaturesAndQR = (pageNumber, totalPagesCount) => (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, marginTop: 'auto', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, marginTop: 14, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
             {/* Signature block */}
             <div>
                 <div style={{ fontSize: 11.5, fontWeight: 400, marginBottom: 2, color: '#475569' }}>
@@ -1206,7 +1229,7 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                             margin: pageIdx > 0 ? "24px auto 0 auto" : "0 auto",
                             display: "flex",
                             flexDirection: "column",
-                            justifyContent: "space-between",
+                            justifyContent: "flex-start",
                             position: "relative"
                         }}
                     >
@@ -1253,19 +1276,18 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                                 </table>
                             )}
 
-                            {/* 4. Bottom Section (Totals + Terms) on the last document page */}
+                            {/* 4. Bottom Section (Totals + Terms + Signatures & Seal immediately following details) */}
                             {p.hasBottomSection && (
                                 <>
                                     {renderSubtotalsAndRemarks()}
                                     {renderTermsAndConditions()}
+                                    {renderFooterSignaturesAndQR(pageIdx + 1, totalPrintedPages)}
                                 </>
                             )}
                         </div>
 
-                        {/* Bottom element: either signatures & QR or clean continuation banner */}
-                        {p.hasBottomSection ? (
-                            renderFooterSignaturesAndQR(pageIdx + 1, totalPrintedPages)
-                        ) : (
+                        {/* Continuation footer only for intermediate pages */}
+                        {!p.hasBottomSection && (
                             <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 6, marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10.5, color: "#64748b" }}>
                                 <span style={{ fontStyle: "italic", fontWeight: 500 }}>
                                     {lang === "si" ? "ඊළඟ පිටුවේ අඛණ්ඩව..." : lang === "ta" ? "அடுத்த பக்கத்தில் தொடர்கிறது..." : "Continued on next page..."}
