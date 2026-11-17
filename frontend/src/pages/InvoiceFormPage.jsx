@@ -1206,6 +1206,10 @@ export default function InvoiceFormPage({ defaultDocType }) {
             await productsApi.update(modalItem.productId, {
                 description: modalItem.description || '',
             });
+            setModalItem((prev) => ({
+                ...prev,
+                initialCatalogDescription: prev.description || '',
+            }));
             await queryClient.invalidateQueries({ queryKey: ['products'] });
             toast.success(`Catalog description updated for "${selectedCatalogProduct?.name || 'Product'}"!`);
             setIsSaveDescConfirmOpen(false);
@@ -3061,16 +3065,15 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                 </span>
                             ) : null}
                             {modalItem.productId ? (
-                                <Button
+                                <button
                                     type="button"
-                                    variant="outline"
                                     onClick={() => handleOpenMasterProductModal(modalItem)}
-                                    className="h-10 px-3 text-xs bg-white dark:bg-slate-800 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 shadow-2xs cursor-pointer font-semibold shrink-0"
+                                    className="h-10 px-3 text-xs bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-lg shadow-2xs cursor-pointer font-semibold shrink-0 inline-flex items-center gap-1.5 transition"
                                     title="Edit this master product in catalog"
                                 >
-                                    <Package size={14} className="mr-1.5 text-indigo-600 dark:text-indigo-400" />
+                                    <Package size={14} className="text-indigo-600 dark:text-indigo-400" />
                                     <span>Edit Master Product</span>
-                                </Button>
+                                </button>
                             ) : null}
                         </div>
                     </div>
@@ -3190,36 +3193,34 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                     {modalItem.productId ? (
                                         <>
                                             {isDescriptionModified ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs">
-                                                    <Edit3 size={11} className="text-amber-600 dark:text-amber-400" />
-                                                    Modified
+                                                <>
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs">
+                                                        <Edit3 size={12} className="text-amber-700 dark:text-amber-400" />
+                                                        Modified
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsSaveDescConfirmOpen(true)}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white border border-amber-600 shadow-xs transition cursor-pointer"
+                                                        title="Save current description to original master product in catalog"
+                                                    >
+                                                        <Save size={13} className="text-white" />
+                                                        <span>Save to Original Product</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateModalItem('description', catalogOriginalDescription)}
+                                                        className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 underline font-semibold cursor-pointer px-1"
+                                                        title="Reset to catalog original description"
+                                                    >
+                                                        Reset
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <span className="text-[11px] text-blue-600/80 dark:text-blue-400 font-medium">
+                                                    (15 lines visible)
                                                 </span>
-                                            ) : null}
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => setIsSaveDescConfirmOpen(true)}
-                                                className={`text-xs h-7 px-2.5 font-bold shadow-2xs cursor-pointer transition ${
-                                                    isDescriptionModified
-                                                        ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-amber-500/20'
-                                                        : 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/50'
-                                                }`}
-                                                title="Save current description to original master product in catalog"
-                                            >
-                                                <Save size={12} className="mr-1" />
-                                                Save to Original Product
-                                            </Button>
-                                            {isDescriptionModified ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => updateModalItem('description', catalogOriginalDescription)}
-                                                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 underline font-semibold cursor-pointer"
-                                                    title="Reset to catalog original description"
-                                                >
-                                                    Reset
-                                                </button>
-                                            ) : null}
+                                            )}
                                         </>
                                     ) : (
                                         <span className="text-[11px] text-blue-600/80 dark:text-blue-400 font-medium">
