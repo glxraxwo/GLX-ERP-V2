@@ -2199,6 +2199,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                                                         const disc = pPrice < 0 ? 0 : Number(newItems[index].discount || 0);
                                                                         newItems[index].product = p._id;
                                                                         newItems[index].productName = pName;
+                                                                        newItems[index].productCode = p.productCode || p.code || '';
                                                                         if (pSinhalaName) {
                                                                             newItems[index].productTranslation = pSinhalaName;
                                                                         }
@@ -2295,7 +2296,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                             }`}
                                             title="Make this a trade-in / exchange item with negative price"
                                         >
-                                            ± Trade-in (-)
+                                            Trade-in (-)
                                         </button>
                                     </div>
                                     <input 

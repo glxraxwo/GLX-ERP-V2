@@ -3,10 +3,10 @@ import { useNavigate, useSearchParams, useParams, useLocation } from 'react-rout
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
-    Plus, Trash2, ArrowLeft, Save, X, Edit2, CheckCircle2, Search,
-    User, Phone, Mail, MapPin, CreditCard, UserPlus, PackagePlus,
+    Plus, Trash2, ArrowLeft, Save, X, Edit2, Edit3, CheckCircle2, Search,
+    User, Phone, Mail, MapPin, CreditCard, UserPlus, PackagePlus, Package,
     FileText, ClipboardList, Receipt, Building, Truck, Image as ImageIcon,
-    Sparkles, Calculator, Layers, ChevronDown, ChevronUp
+    Sparkles, Calculator, Layers, ChevronDown, ChevronUp, Barcode, Lock
 } from 'lucide-react';
 
 import PageHeader from '../components/ui/PageHeader';
@@ -28,6 +28,7 @@ import { useCreateInvoice } from '../features/invoices/useInvoices';
 import ShareDocumentSmsModal from '../components/ShareDocumentSmsModal';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import ProductFormModal from '../features/products/ProductFormModal';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
@@ -343,6 +344,11 @@ export default function InvoiceFormPage({ defaultDocType }) {
     const [tempCustIdNumber, setTempCustIdNumber] = useState('');
     const [tempCustSalesRep, setTempCustSalesRep] = useState('');
     const [modalItem, setModalItem] = useState(defaultItemState);
+
+    // Master Product edit modal state & description sync confirmation
+    const [editingMasterProduct, setEditingMasterProduct] = useState(null);
+    const [isSaveDescConfirmOpen, setIsSaveDescConfirmOpen] = useState(false);
+    const [isUpdatingCatalogProduct, setIsUpdatingCatalogProduct] = useState(false);
 
     // Keyboard navigation refs for Add Item modal (C# fast desktop style)
     const catalogSelectTriggerRef = useRef(null);
@@ -1055,12 +1061,13 @@ export default function InvoiceFormPage({ defaultDocType }) {
             const next = { ...prev, [field]: value };
             if (field === 'productId') {
                 if (value) {
-                    const p = productsData?.data?.find((x) => x._id === value);
+                    const p = productsData?.data?.find((x) => String(x._id) === String(value));
                     if (p) {
                         next.productName = p.name || '';
                         next.productTranslation = p.sinhalaName || '';
                         next.productCode = p.productCode || '';
                         next.description = p.description || '';
+                        next.initialCatalogDescription = p.description || '';
                         next.unitPrice = p.basePrice || p.costs?.lastPurchaseCost || p.costs?.averageCost || 0;
                         next.taxRate = p.tax?.taxRate ?? 18;
                         next.taxable = false; // Default tax is OFF; tick/check the box to apply
@@ -1068,6 +1075,7 @@ export default function InvoiceFormPage({ defaultDocType }) {
                     }
                 } else {
                     next.productId = '';
+                    next.initialCatalogDescription = '';
                 }
             } else if (field === 'unitPrice') {
                 if (+value < 0) {
@@ -1176,6 +1184,55 @@ export default function InvoiceFormPage({ defaultDocType }) {
             setEditingIndex(editingIndex - 1);
         }
         toast.success(`Item #${idx + 1} removed`);
+    };
+
+    const isItemChosen = Boolean(modalItem.productId);
+
+    const selectedCatalogProduct = useMemo(() => {
+        if (!modalItem.productId || !productsData?.data) return null;
+        return productsData.data.find((p) => String(p._id) === String(modalItem.productId)) || null;
+    }, [modalItem.productId, productsData?.data]);
+
+    const catalogOriginalDescription = modalItem.initialCatalogDescription ?? selectedCatalogProduct?.description ?? '';
+    const isDescriptionModified = Boolean(
+        modalItem.productId &&
+        (modalItem.description || '').trim() !== (catalogOriginalDescription || '').trim()
+    );
+
+    const handleSaveDescToOriginalProduct = async () => {
+        if (!modalItem.productId) return;
+        try {
+            setIsUpdatingCatalogProduct(true);
+            await productsApi.update(modalItem.productId, {
+                description: modalItem.description || '',
+            });
+            await queryClient.invalidateQueries({ queryKey: ['products'] });
+            toast.success(`Catalog description updated for "${selectedCatalogProduct?.name || 'Product'}"!`);
+            setIsSaveDescConfirmOpen(false);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to update catalog product description');
+        } finally {
+            setIsUpdatingCatalogProduct(false);
+        }
+    };
+
+    const handleOpenMasterProductModal = (productOrItem) => {
+        const prodId = productOrItem?._id || productOrItem?.productId || productOrItem?.product;
+        if (!prodId) {
+            toast.error('No linked catalog product found for this item');
+            return;
+        }
+        const fullProd = productsData?.data?.find((p) => p._id === prodId);
+        if (fullProd) {
+            setEditingMasterProduct(fullProd);
+        } else {
+            setEditingMasterProduct({ _id: prodId, name: productOrItem.productName || productOrItem.name });
+        }
+    };
+
+    const handleCloseProductFormModal = () => {
+        setEditingMasterProduct(null);
+        queryClient.invalidateQueries({ queryKey: ['products'] });
     };
 
     const customerOptions = (customersData?.data || []).map((c) => ({
@@ -1568,8 +1625,9 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                                     </span>
                                                 )}
                                                 {item.productCode && (
-                                                    <span className="text-[11px] font-mono text-gray-400 dark:text-slate-500">
-                                                        ({item.productCode})
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shadow-2xs">
+                                                        <Barcode size={12} className="text-indigo-600 dark:text-indigo-400" />
+                                                        {item.productCode}
                                                     </span>
                                                 )}
                                             </div>
@@ -1614,6 +1672,17 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-1">
+                                            {(item.productId || item.product) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenMasterProductModal(item)}
+                                                    className="p-1.5 text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded text-xs flex items-center gap-1 font-medium transition cursor-pointer"
+                                                    title="Edit master product in catalog"
+                                                >
+                                                    <Package size={14} />
+                                                    <span className="hidden sm:inline">Edit Product</span>
+                                                </button>
+                                            )}
                                             <button
                                                 type="button"
                                                 onClick={() => handleEditItem(idx)}
@@ -2953,62 +3022,72 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                 Select Product from Catalog
                             </span>
                             <span className="text-[11px] text-blue-600/80 dark:text-blue-400 font-medium hidden sm:inline">
-                                Auto-fills details, description &amp; standard pricing (Press <kbd className="bg-white/80 dark:bg-slate-800 border border-blue-300 dark:border-blue-700 text-slate-800 dark:text-slate-200 px-1 py-0.2 rounded font-mono text-[10px]">↵ Enter</kbd> to search)
+                                Auto-fills details, description &amp; standard pricing
                             </span>
                         </div>
-                        <SearchableSelect
-                            triggerRef={catalogSelectTriggerRef}
-                            triggerClassName="bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-300 dark:border-blue-700 hover:bg-blue-50 focus-within:bg-white dark:focus-within:bg-slate-900 shadow-2xs"
-                            placeholder="Type to search catalog product..."
-                            options={productOptions}
-                            value={modalItem.productId || ''}
-                            onChange={(e) => updateModalItem('productId', e.target.value)}
-                            onSelect={(opt) => {
-                                if (opt) {
-                                    focusAndSelect(quantityInputRef.current);
-                                }
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    if (modalItem.productId || modalItem.productName) {
-                                        focusAndSelect(quantityInputRef.current);
-                                    } else {
-                                        focusAndSelect(productNameInputRef.current);
-                                    }
-                                } else if (e.key === 'ArrowDown') {
-                                    e.preventDefault();
-                                    focusAndSelect(quantityInputRef.current);
-                                }
-                            }}
-                        />
-
-                        {/* Item Description Side Popup Preview */}
-                        {modalItem.description ? (
-                            <div className="mt-2.5 p-2.5 bg-white/90 dark:bg-slate-900/90 border border-blue-200 dark:border-blue-800 rounded-lg shadow-xs flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1">
-                                <FileText size={15} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-[11px] font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wide">
-                                            Item Description / Scope Preview
-                                        </span>
-                                        <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-100/70 dark:bg-blue-900/50 px-1.5 py-0.5 rounded">
-                                            Populated from Catalog
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-gray-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed font-sans max-h-32 overflow-y-auto bg-slate-50 dark:bg-slate-800/60 p-2 rounded border border-slate-100 dark:border-slate-800">
-                                        {modalItem.description}
-                                    </p>
-                                </div>
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                                <SearchableSelect
+                                    triggerRef={catalogSelectTriggerRef}
+                                    triggerClassName="bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-300 dark:border-blue-700 hover:bg-blue-50 focus-within:bg-white dark:focus-within:bg-slate-900 shadow-2xs"
+                                    placeholder="Type to search catalog product..."
+                                    options={productOptions}
+                                    value={modalItem.productId || ''}
+                                    onChange={(e) => updateModalItem('productId', e.target.value)}
+                                    onSelect={(opt) => {
+                                        if (opt) {
+                                            focusAndSelect(quantityInputRef.current);
+                                        }
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            if (modalItem.productId) {
+                                                focusAndSelect(quantityInputRef.current);
+                                            }
+                                        } else if (e.key === 'ArrowDown') {
+                                            e.preventDefault();
+                                            if (modalItem.productId) {
+                                                focusAndSelect(quantityInputRef.current);
+                                            }
+                                        }
+                                    }}
+                                />
                             </div>
-                        ) : null}
+                            {modalItem.productCode ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-mono text-xs font-bold shadow-2xs shrink-0">
+                                    <Barcode size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                    Item Code: {modalItem.productCode}
+                                </span>
+                            ) : null}
+                            {modalItem.productId ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => handleOpenMasterProductModal(modalItem)}
+                                    className="h-10 px-3 text-xs bg-white dark:bg-slate-800 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 shadow-2xs cursor-pointer font-semibold shrink-0"
+                                    title="Edit this master product in catalog"
+                                >
+                                    <Package size={14} className="mr-1.5 text-indigo-600 dark:text-indigo-400" />
+                                    <span>Edit Master Product</span>
+                                </Button>
+                            ) : null}
+                        </div>
                     </div>
 
                     {/* Item Name & Translation Grid - Distinct Light Blue Card */}
                     <div className="bg-blue-50/70 dark:bg-blue-950/35 border-2 border-blue-200/90 dark:border-blue-800/80 rounded-xl p-3.5 sm:p-4 shadow-xs space-y-3">
-                        <div className="text-[11px] font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
-                            <Layers size={13} className="text-blue-600 dark:text-blue-400" />
-                            Item Name &amp; Multilingual Details
+                        <div className="text-[11px] font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                                <Layers size={13} className="text-blue-600 dark:text-blue-400" />
+                                Item Name &amp; Multilingual Details
+                            </span>
+                            {modalItem.productCode ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 shadow-2xs">
+                                    <Barcode size={12} className="text-indigo-600 dark:text-indigo-400" />
+                                    Code: {modalItem.productCode}
+                                </span>
+                            ) : null}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                             <div>
@@ -3019,20 +3098,27 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                     ref={productNameInputRef}
                                     type="text"
                                     tabIndex={-1}
+                                    disabled={!isItemChosen}
                                     required
-                                    placeholder="e.g. Repair Works / Lorry Door Reconstruction"
+                                    placeholder={!isItemChosen ? "Locked until catalog product is selected" : "e.g. Repair Works / Lorry Door Reconstruction"}
                                     value={modalItem.productName}
                                     onChange={(e) => updateModalItem('productName', e.target.value)}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' || e.key === 'ArrowDown') {
                                             e.preventDefault();
-                                            focusAndSelect(quantityInputRef.current);
+                                            if (isItemChosen) {
+                                                focusAndSelect(quantityInputRef.current);
+                                            }
                                         } else if (e.key === 'ArrowUp') {
                                             e.preventDefault();
                                             catalogSelectTriggerRef.current?.focus();
                                         }
                                     }}
-                                    className="w-full h-10 px-3 border-2 border-blue-300/90 dark:border-blue-700 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all placeholder:text-blue-900/40 dark:placeholder:text-blue-300/40 shadow-2xs"
+                                    className={`w-full h-10 px-3 border-2 rounded-lg text-sm transition-all shadow-2xs ${
+                                        !isItemChosen
+                                            ? 'border-gray-200 dark:border-slate-800 bg-gray-100/70 dark:bg-slate-800/50 text-gray-400 dark:text-slate-500 cursor-not-allowed'
+                                            : 'border-blue-300/90 dark:border-blue-700 bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 font-medium text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-blue-900/40 dark:placeholder:text-blue-300/40'
+                                    }`}
                                 />
                             </div>
 
@@ -3044,8 +3130,13 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                     <button
                                         type="button"
                                         tabIndex={-1}
+                                        disabled={!isItemChosen}
                                         onClick={handleTranslateModalItem}
-                                        className="inline-flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-bold bg-blue-100/70 dark:bg-blue-900/60 hover:bg-blue-200/70 dark:hover:bg-blue-800/60 px-2 py-0.5 rounded transition cursor-pointer"
+                                        className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded transition ${
+                                            !isItemChosen
+                                                ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500'
+                                                : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 bg-blue-100/70 dark:bg-blue-900/60 hover:bg-blue-200/70 dark:hover:bg-blue-800/60 cursor-pointer'
+                                        }`}
                                     >
                                         <Sparkles size={11} className="text-blue-500 dark:text-blue-400" />
                                         Translate
@@ -3055,20 +3146,27 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                     ref={productTranslationInputRef}
                                     type="text"
                                     tabIndex={-1}
-                                    placeholder="සිංහල / தமிழ் නම"
+                                    disabled={!isItemChosen}
+                                    placeholder={!isItemChosen ? "Locked until catalog product is selected" : "සිංහල / தமிழ் නම"}
                                     value={modalItem.productTranslation || ''}
                                     onChange={(e) => updateModalItem('productTranslation', e.target.value)}
                                     onFocus={(e) => e.target.select()}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' || e.key === 'ArrowDown') {
                                             e.preventDefault();
-                                            focusAndSelect(quantityInputRef.current);
+                                            if (isItemChosen) {
+                                                focusAndSelect(quantityInputRef.current);
+                                            }
                                         } else if (e.key === 'ArrowUp') {
                                             e.preventDefault();
                                             catalogSelectTriggerRef.current?.focus();
                                         }
                                     }}
-                                    className="w-full h-10 px-3 border-2 border-blue-300/90 dark:border-blue-700 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all placeholder:text-blue-900/40 dark:placeholder:text-blue-300/40 font-sans shadow-2xs"
+                                    className={`w-full h-10 px-3 border-2 rounded-lg text-sm transition-all font-sans shadow-2xs ${
+                                        !isItemChosen
+                                            ? 'border-gray-200 dark:border-slate-800 bg-gray-100/70 dark:bg-slate-800/50 text-gray-400 dark:text-slate-500 cursor-not-allowed'
+                                            : 'border-blue-300/90 dark:border-blue-700 bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-blue-900/40 dark:placeholder:text-blue-300/40'
+                                    }`}
                                 />
                             </div>
                         </div>
@@ -3077,35 +3175,89 @@ export default function InvoiceFormPage({ defaultDocType }) {
                     {/* Side-by-side Grid: Description (Left) & Pricing Panel (Right) */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
                         {/* Left Column: Detailed Specifications / Multiline Description - Light Blue Card */}
-                        <div className="lg:col-span-7 bg-blue-50/50 dark:bg-blue-950/25 border-2 border-blue-200/90 dark:border-blue-800/70 rounded-xl p-3.5 sm:p-4 flex flex-col shadow-xs">
-                            <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-xs font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <div className={`lg:col-span-7 border-2 rounded-xl p-3.5 sm:p-4 flex flex-col shadow-xs transition-all ${
+                            !isItemChosen
+                                ? 'bg-gray-50/70 dark:bg-slate-900/40 border-gray-200 dark:border-slate-800 opacity-70'
+                                : 'bg-blue-50/50 dark:bg-blue-950/25 border-blue-200/90 dark:border-blue-800/70'
+                        }`}>
+                            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                                <label className="text-xs font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
                                     <FileText size={13} className="text-blue-600 dark:text-blue-400" />
                                     Detailed Description / Specifications
                                 </label>
-                                <span className="text-[11px] text-blue-600/80 dark:text-blue-400 font-medium">
-                                    (15 lines visible)
-                                </span>
+                                
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {modalItem.productId ? (
+                                        <>
+                                            {isDescriptionModified ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs">
+                                                    <Edit3 size={11} className="text-amber-600 dark:text-amber-400" />
+                                                    Modified
+                                                </span>
+                                            ) : null}
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => setIsSaveDescConfirmOpen(true)}
+                                                className={`text-xs h-7 px-2.5 font-bold shadow-2xs cursor-pointer transition ${
+                                                    isDescriptionModified
+                                                        ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-amber-500/20'
+                                                        : 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/50'
+                                                }`}
+                                                title="Save current description to original master product in catalog"
+                                            >
+                                                <Save size={12} className="mr-1" />
+                                                Save to Original Product
+                                            </Button>
+                                            {isDescriptionModified ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateModalItem('description', catalogOriginalDescription)}
+                                                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 underline font-semibold cursor-pointer"
+                                                    title="Reset to catalog original description"
+                                                >
+                                                    Reset
+                                                </button>
+                                            ) : null}
+                                        </>
+                                    ) : (
+                                        <span className="text-[11px] text-blue-600/80 dark:text-blue-400 font-medium">
+                                            (15 lines visible)
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                             <textarea
                                 ref={descriptionInputRef}
                                 tabIndex={-1}
                                 rows={15}
-                                className="w-full p-3.5 border-2 border-blue-300 dark:border-blue-700 rounded-xl text-xs leading-relaxed bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-sans placeholder:text-blue-900/40 dark:placeholder:text-blue-300/40 min-h-[280px] resize-y shadow-2xs"
-                                placeholder="Specifications or repair scope (e.g.&#10;01. Side shutter replacement&#10;02. Waterproof rubber bead fitting&#10;03. Aluminium corrugated sheet fitting&#10;04. Subframe reinforcement...)"
+                                disabled={!isItemChosen}
+                                className={`w-full p-3.5 border-2 rounded-xl text-xs leading-relaxed font-sans min-h-[280px] resize-y shadow-2xs transition-all ${
+                                    !isItemChosen
+                                        ? 'border-gray-200 dark:border-slate-800 bg-gray-100/70 dark:bg-slate-800/40 text-gray-400 dark:text-slate-500 cursor-not-allowed'
+                                        : 'border-blue-300 dark:border-blue-700 bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 placeholder:text-blue-900/40 dark:placeholder:text-blue-300/40'
+                                }`}
+                                placeholder={!isItemChosen ? "Locked until catalog product is selected." : "Specifications or repair scope (e.g.\n01. Side shutter replacement\n02. Waterproof rubber bead fitting\n03. Aluminium corrugated sheet fitting\n04. Subframe reinforcement...)"}
                                 value={modalItem.description || ''}
                                 onChange={(e) => updateModalItem('description', e.target.value)}
                                 onKeyDown={(e) => {
                                     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                                         e.preventDefault();
-                                        handleAddItemFromModal(editingIndex === null);
+                                        if (isItemChosen) {
+                                            handleAddItemFromModal(editingIndex === null);
+                                        }
                                     }
                                 }}
                             />
                         </div>
 
                         {/* Right Column: Pricing, Quantity & Calculations Card - Light Blue Shade */}
-                        <div className="lg:col-span-5 bg-gradient-to-b from-blue-50/90 via-sky-50/60 to-blue-50/80 dark:from-blue-950/50 dark:via-sky-950/30 dark:to-blue-950/40 border-2 border-blue-200 dark:border-blue-800/80 rounded-xl p-3.5 sm:p-4 space-y-3 shadow-xs">
+                        <div className={`lg:col-span-5 border-2 rounded-xl p-3.5 sm:p-4 space-y-3 shadow-xs transition-all ${
+                            !isItemChosen
+                                ? 'bg-gray-50/70 dark:bg-slate-900/40 border-gray-200 dark:border-slate-800 opacity-70'
+                                : 'bg-gradient-to-b from-blue-50/90 via-sky-50/60 to-blue-50/80 dark:from-blue-950/50 dark:via-sky-950/30 dark:to-blue-950/40 border-blue-200 dark:border-blue-800/80'
+                        }`}>
                             <div className="text-[11px] font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
                                 <Calculator size={13} className="text-blue-600 dark:text-blue-400" />
                                 Pricing &amp; Calculations
@@ -3122,19 +3274,26 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                         type="number"
                                         step="any"
                                         min="0.01"
+                                        disabled={!isItemChosen}
                                         value={modalItem.quantity}
                                         onChange={(e) => updateModalItem('quantity', e.target.value)}
                                         onFocus={(e) => e.target.select()}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' || e.key === 'ArrowDown') {
                                                 e.preventDefault();
-                                                focusAndSelect(unitPriceInputRef.current);
+                                                if (isItemChosen) {
+                                                    focusAndSelect(unitPriceInputRef.current);
+                                                }
                                             } else if (e.key === 'ArrowUp') {
                                                 e.preventDefault();
                                                 catalogSelectTriggerRef.current?.focus();
                                             }
                                         }}
-                                        className="w-full h-10 px-3 border-2 border-blue-300/90 dark:border-blue-700 rounded-lg text-sm bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 font-mono font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all shadow-2xs"
+                                        className={`w-full h-10 px-3 border-2 rounded-lg text-sm font-mono font-bold transition-all shadow-2xs ${
+                                            !isItemChosen
+                                                ? 'border-gray-200 dark:border-slate-800 bg-gray-100/70 dark:bg-slate-800/50 text-gray-400 dark:text-slate-500 cursor-not-allowed'
+                                                : 'border-blue-300/90 dark:border-blue-700 bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500'
+                                        }`}
                                     />
                                 </div>
 
@@ -3146,20 +3305,27 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                         <button
                                             type="button"
                                             tabIndex={-1}
+                                            disabled={!isItemChosen}
                                             onClick={() => {
+                                                if (!isItemChosen) return;
                                                 const cur = +modalItem.unitPrice || 0;
                                                 updateModalItem('unitPrice', cur !== 0 ? -cur : '-');
                                             }}
-                                            className="text-[10px] font-bold text-rose-600 hover:text-rose-700 underline cursor-pointer"
+                                            className={`text-[10px] font-bold underline ${
+                                                !isItemChosen
+                                                    ? 'opacity-50 cursor-not-allowed text-gray-400'
+                                                    : 'text-rose-600 hover:text-rose-700 cursor-pointer'
+                                            }`}
                                             title="Toggle negative price for exchange / trade-in deduction"
                                         >
-                                            {+modalItem.unitPrice < 0 ? '✓ Trade-in (-)' : '± Make Trade-in (-)'}
+                                            {+modalItem.unitPrice < 0 ? 'Trade-in (-)' : 'Make Trade-in (-)'}
                                         </button>
                                     </div>
                                     <input
                                         ref={unitPriceInputRef}
                                         type="number"
                                         step="any"
+                                        disabled={!isItemChosen}
                                         placeholder="0.00 or -50000"
                                         value={modalItem.unitPrice}
                                         onChange={(e) => updateModalItem('unitPrice', e.target.value)}
@@ -3183,14 +3349,16 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                             }
                                         }}
                                         className={`w-full h-10 px-3 border-2 rounded-lg text-sm font-mono font-bold transition-all shadow-2xs ${
-                                            (+modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-'))
+                                            !isItemChosen
+                                                ? 'border-gray-200 dark:border-slate-800 bg-gray-100/70 dark:bg-slate-800/50 text-gray-400 dark:text-slate-500 cursor-not-allowed'
+                                                : (+modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-'))
                                                 ? 'border-rose-400 bg-rose-50/80 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 focus:bg-white dark:focus:bg-slate-900 focus:ring-rose-500/20 focus:border-rose-500'
                                                 : 'border-blue-300/90 dark:border-blue-700 bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-gray-900 dark:text-white focus:ring-blue-500/30 focus:border-blue-500'
                                         }`}
                                     />
                                     {(+modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-')) && (
                                         <div className="text-[10.5px] font-semibold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1">
-                                            <span>▼ Trade-in / Exchange deduction (reduces invoice total)</span>
+                                            <span>Trade-in / Exchange deduction (reduces invoice total)</span>
                                         </div>
                                     )}
                                 </div>
@@ -3204,11 +3372,11 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                         type="number"
                                         step="0.01"
                                         min="0"
-                                        disabled={+modalItem.unitPrice < 0}
+                                        disabled={!isItemChosen || +modalItem.unitPrice < 0}
                                         placeholder={+modalItem.unitPrice < 0 ? 'N/A' : '0.00'}
                                         value={+modalItem.unitPrice < 0 ? '' : (modalItem.discount || '')}
                                         onChange={(e) => {
-                                            if (+modalItem.unitPrice < 0) return;
+                                            if (!isItemChosen || +modalItem.unitPrice < 0) return;
                                             const val = e.target.value;
                                             updateModalItem('discount', val === '' ? '' : Math.max(0, +val || 0));
                                         }}
@@ -3236,7 +3404,7 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                             }
                                         }}
                                         className={`w-full h-10 px-3 border-2 rounded-lg text-sm font-mono font-semibold transition-all shadow-2xs ${
-                                            (+modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-'))
+                                            (!isItemChosen || +modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-'))
                                                 ? 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 border-gray-200 dark:border-slate-700 cursor-not-allowed'
                                                 : 'border-blue-300/90 dark:border-blue-700 bg-blue-50/80 dark:bg-blue-950/50 hover:bg-blue-50 dark:hover:bg-blue-950/70 focus:bg-white dark:focus:bg-slate-900 text-rose-600 dark:text-rose-400 placeholder:text-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400'
                                         }`}
@@ -3252,19 +3420,19 @@ export default function InvoiceFormPage({ defaultDocType }) {
                             {/* Tax Switch */}
                             <div
                                 className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border transition-all ${
-                                    (+modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-'))
+                                    (!isItemChosen || +modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-'))
                                         ? 'bg-slate-100/60 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800 opacity-50 cursor-not-allowed'
                                         : modalItem.taxable
                                             ? 'bg-blue-50/80 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 shadow-xs'
                                             : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 hover:bg-slate-100/70 dark:hover:bg-slate-800/70'
                                 }`}
                             >
-                                <label className={`flex items-center gap-2.5 select-none ${(+modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-')) ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                                <label className={`flex items-center gap-2.5 select-none ${(!isItemChosen || +modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-')) ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                                     <input
                                         ref={taxableInputRef}
                                         type="checkbox"
-                                        disabled={+modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-')}
-                                        checked={modalItem.taxable && !(+modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-'))}
+                                        disabled={!isItemChosen || +modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-')}
+                                        checked={modalItem.taxable && isItemChosen && !(+modalItem.unitPrice < 0 || String(modalItem.unitPrice).trim().startsWith('-'))}
                                         onChange={(e) => updateModalItem('taxable', e.target.checked)}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
@@ -3307,6 +3475,7 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                             type="number"
                                             step="0.01"
                                             min="0"
+                                            disabled={!isItemChosen}
                                             value={modalItem.taxRate}
                                             onChange={(e) => updateModalItem('taxRate', e.target.value)}
                                             onFocus={(e) => e.target.select()}
@@ -3381,6 +3550,7 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                                 ref={addAnotherBtnRef}
                                                 type="button"
                                                 tabIndex={0}
+                                                disabled={!isItemChosen}
                                                 variant="outline"
                                                 onClick={() => handleAddItemFromModal(true)}
                                                 onKeyDown={(e) => {
@@ -3397,7 +3567,11 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                                         focusAndSelect(isNeg ? unitPriceInputRef.current : (modalItem.taxable ? taxRateInputRef.current : discountInputRef.current));
                                                     }
                                                 }}
-                                                className="flex-1 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 font-semibold text-xs whitespace-nowrap px-2.5 py-2 focus:ring-2 focus:ring-emerald-400"
+                                                className={`flex-1 font-semibold text-xs whitespace-nowrap px-2.5 py-2 focus:ring-2 focus:ring-emerald-400 ${
+                                                    !isItemChosen
+                                                        ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200 dark:bg-slate-800 dark:border-slate-700'
+                                                        : 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300'
+                                                }`}
                                             >
                                                 <Plus size={14} className="mr-1" />
                                                 <span>Add &amp; Add Another</span>
@@ -3409,6 +3583,7 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                                 ref={addItemBtnRef}
                                                 type="button"
                                                 tabIndex={0}
+                                                disabled={!isItemChosen}
                                                 variant="primary"
                                                 onClick={() => handleAddItemFromModal(false)}
                                                 onKeyDown={(e) => {
@@ -3425,7 +3600,11 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                                         focusAndSelect(isNeg ? unitPriceInputRef.current : (modalItem.taxable ? taxRateInputRef.current : discountInputRef.current));
                                                     }
                                                 }}
-                                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs px-3 py-2 whitespace-nowrap focus:ring-2 focus:ring-emerald-400"
+                                                className={`flex-1 font-semibold text-xs shadow-xs px-3 py-2 whitespace-nowrap focus:ring-2 focus:ring-emerald-400 ${
+                                                    !isItemChosen
+                                                        ? 'opacity-50 cursor-not-allowed bg-gray-300 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-500'
+                                                        : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                                }`}
                                             >
                                                 <CheckCircle2 size={14} className="mr-1.5" />
                                                 <span>Add to {docTypeLabel}</span>
@@ -3436,6 +3615,7 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                             ref={addItemBtnRef}
                                             type="button"
                                             tabIndex={0}
+                                            disabled={!isItemChosen}
                                             variant="primary"
                                             onClick={() => handleAddItemFromModal(false)}
                                             onKeyDown={(e) => {
@@ -3449,7 +3629,11 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                                     focusAndSelect(isNeg ? unitPriceInputRef.current : (modalItem.taxable ? taxRateInputRef.current : discountInputRef.current));
                                                 }
                                             }}
-                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs px-3 py-2 whitespace-nowrap focus:ring-2 focus:ring-blue-400"
+                                            className={`flex-1 font-semibold text-xs shadow-xs px-3 py-2 whitespace-nowrap focus:ring-2 focus:ring-blue-400 ${
+                                                !isItemChosen
+                                                    ? 'opacity-50 cursor-not-allowed bg-gray-300 text-gray-500 border-gray-300 dark:bg-slate-800 dark:text-slate-500'
+                                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                            }`}
                                         >
                                             <CheckCircle2 size={14} className="mr-1.5" />
                                             <span>Update Item #{editingIndex + 1}</span>
@@ -3464,6 +3648,27 @@ export default function InvoiceFormPage({ defaultDocType }) {
                     </div>
                 </div>
             </Modal>
+
+            {/* Confirm Dialog: Save Description to Master Product Catalog */}
+            <ConfirmDialog
+                isOpen={isSaveDescConfirmOpen}
+                onClose={() => setIsSaveDescConfirmOpen(false)}
+                onConfirm={handleSaveDescToOriginalProduct}
+                title="Update Master Product Description?"
+                message={`Are you sure you want to permanently update the catalog description for "${selectedCatalogProduct?.name || 'this product'}"? Future quotations, estimates, and invoices will use this updated description.`}
+                confirmLabel="Yes, Update Original Product"
+                confirmVariant="primary"
+                loading={isUpdatingCatalogProduct}
+            />
+
+            {/* Modal: Edit Master Product in Catalog */}
+            {Boolean(editingMasterProduct) && (
+                <ProductFormModal
+                    isOpen={Boolean(editingMasterProduct)}
+                    onClose={handleCloseProductFormModal}
+                    product={editingMasterProduct}
+                />
+            )}
 
             {/* Modal: Vehicle & Photo Information */}
             <Modal
