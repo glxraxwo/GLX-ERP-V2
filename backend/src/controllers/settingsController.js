@@ -9,6 +9,9 @@ export const getSettings = asyncHandler(async (req, res) => {
     if (!settings) {
         settings = await Settings.create({ companyName: 'GLX INDUSTRIES' });
     }
+    if (!settings.appHubPinnedPaths) {
+        settings.appHubPinnedPaths = ['/invoices', '/customers', '/pos'];
+    }
     res.json({ success: true, data: settings });
 });
 

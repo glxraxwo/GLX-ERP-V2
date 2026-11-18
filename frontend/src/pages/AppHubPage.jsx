@@ -10,6 +10,7 @@ import { usePermission } from '../hooks/usePermission';
 import { useAuthStore } from '../store/authStore';
 import { useTabStore } from '../store/tabStore';
 import { useThemeStore, THEME_MODES } from '../store/themeStore';
+import { useSettings, useUpdateSettings } from '../features/settings/useSettings';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 const PINNED_ICON_PALETTES = [
@@ -248,6 +249,9 @@ export default function AppHubPage() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
     const { hasPermission, hasAnyPermission, isAdmin } = usePermission();
+    const { data: settingsData } = useSettings();
+    const updateSettingsMutation = useUpdateSettings();
+
     const { 
         openTab, 
         hubCategory, 
@@ -276,7 +280,7 @@ export default function AppHubPage() {
     // Default pinned modules for fast 1-click access
     const DEFAULT_PINNED_PATHS = ['/invoices', '/customers', '/pos'];
 
-    // Pinned shortcuts persisted in localStorage
+    // Pinned shortcuts persisted in localStorage & synchronized from backend settings
     const [pinnedPaths, setPinnedPaths] = useState(() => {
         try {
             const saved = localStorage.getItem('glx_apphub_pinned_paths');
@@ -289,6 +293,33 @@ export default function AppHubPage() {
         }
         return DEFAULT_PINNED_PATHS;
     });
+
+    // Synchronize pinned shortcuts from database settings across all devices & users
+    useEffect(() => {
+        const serverPaths = settingsData?.data?.appHubPinnedPaths;
+        if (serverPaths && Array.isArray(serverPaths)) {
+            setPinnedPaths(serverPaths);
+            try {
+                localStorage.setItem('glx_apphub_pinned_paths', JSON.stringify(serverPaths));
+            } catch (e) {
+                // Ignore localStorage errors
+            }
+        }
+    }, [settingsData?.data?.appHubPinnedPaths]);
+
+    // Save pinned paths locally and persist to database for all devices if user is Admin
+    const persistPinnedPaths = (nextPaths) => {
+        setPinnedPaths(nextPaths);
+        try {
+            localStorage.setItem('glx_apphub_pinned_paths', JSON.stringify(nextPaths));
+        } catch (err) {
+            console.error('Failed to save pinned paths', err);
+        }
+
+        if (isAdmin) {
+            updateSettingsMutation.mutate({ appHubPinnedPaths: nextPaths });
+        }
+    };
 
     // Item queued for unpin confirmation
     const [itemToUnpin, setItemToUnpin] = useState(null);
@@ -304,15 +335,8 @@ export default function AppHubPage() {
     const handleConfirmUnpin = () => {
         if (!itemToUnpin) return;
         const targetPath = itemToUnpin.path;
-        setPinnedPaths(prev => {
-            const next = prev.filter(p => p !== targetPath);
-            try {
-                localStorage.setItem('glx_apphub_pinned_paths', JSON.stringify(next));
-            } catch (err) {
-                console.error('Failed to save pinned paths', err);
-            }
-            return next;
-        });
+        const next = pinnedPaths.filter(p => p !== targetPath);
+        persistPinnedPaths(next);
         setItemToUnpin(null);
     };
 
@@ -324,15 +348,8 @@ export default function AppHubPage() {
         if (pinnedPaths.includes(item.path)) {
             setItemToUnpin(item);
         } else {
-            setPinnedPaths(prev => {
-                const next = [...prev, item.path];
-                try {
-                    localStorage.setItem('glx_apphub_pinned_paths', JSON.stringify(next));
-                } catch (err) {
-                    console.error('Failed to save pinned paths', err);
-                }
-                return next;
-            });
+            const next = [...pinnedPaths, item.path];
+            persistPinnedPaths(next);
         }
     };
 
@@ -341,24 +358,12 @@ export default function AppHubPage() {
             e.stopPropagation();
             e.preventDefault();
         }
-        setPinnedPaths(prev => {
-            const next = prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path];
-            try {
-                localStorage.setItem('glx_apphub_pinned_paths', JSON.stringify(next));
-            } catch (err) {
-                console.error('Failed to save pinned paths', err);
-            }
-            return next;
-        });
+        const next = pinnedPaths.includes(path) ? pinnedPaths.filter(p => p !== path) : [...pinnedPaths, path];
+        persistPinnedPaths(next);
     };
 
     const handleResetPinned = () => {
-        setPinnedPaths(DEFAULT_PINNED_PATHS);
-        try {
-            localStorage.setItem('glx_apphub_pinned_paths', JSON.stringify(DEFAULT_PINNED_PATHS));
-        } catch (err) {
-            console.error('Failed to reset pinned paths', err);
-        }
+        persistPinnedPaths(DEFAULT_PINNED_PATHS);
     };
 
     const toggleWrap = () => {
@@ -739,21 +744,23 @@ export default function AppHubPage() {
                                             </div>
                                         </div>
 
-                                        {/* Unpin button */}
+                                        {/* Actions: Unpin button (Admin only) + Open in tab */}
                                         <div className="flex items-center gap-1 flex-shrink-0">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => handleRequestUnpin(item, e)}
-                                                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                                                    isDark 
-                                                        ? 'text-slate-400 hover:text-red-400 hover:bg-slate-800/80' 
-                                                        : 'text-slate-400 hover:text-red-600 hover:bg-black/5'
-                                                }`}
-                                                title="Remove from Quick Access"
-                                                aria-label="Remove pin"
-                                            >
-                                                <X size={14} />
-                                            </button>
+                                            {isAdmin && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleRequestUnpin(item, e)}
+                                                    className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                                        isDark 
+                                                            ? 'text-slate-400 hover:text-red-400 hover:bg-slate-800/80' 
+                                                            : 'text-slate-400 hover:text-red-600 hover:bg-black/5'
+                                                    }`}
+                                                    title="Remove from Quick Access"
+                                                    aria-label="Remove pin"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            )}
                                             <div className={`p-1 rounded-md opacity-60 group-hover:opacity-100 transition-opacity ${colorStyle.arrow}`}>
                                                 <ArrowUpRight size={13} />
                                             </div>
@@ -1019,21 +1026,23 @@ export default function AppHubPage() {
                                                         <IconComponent size={22} />
                                                     </div>
 
-                                                    {/* Actions: Pin/Top-up button + Open in tab indicator */}
+                                                    {/* Actions: Pin/Top-up button (Admin only) + Open in tab indicator */}
                                                     <div className="flex items-center gap-1">
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => handleCardPinClick(item, e)}
-                                                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                                                                pinnedPaths.includes(item.path)
-                                                                    ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30 shadow-2xs hover:bg-amber-500/25'
-                                                                    : 'opacity-0 group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-700/80 text-slate-400 hover:text-amber-500'
-                                                            }`}
-                                                            title={pinnedPaths.includes(item.path) ? "Pinned in Quick Access Bar (Click to unpin)" : "Top-up to Quick Access Bar (Pin)"}
-                                                            aria-label="Toggle pin"
-                                                        >
-                                                            <Pin size={14} className={pinnedPaths.includes(item.path) ? "fill-amber-500 rotate-45" : ""} />
-                                                        </button>
+                                                        {isAdmin && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => handleCardPinClick(item, e)}
+                                                                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                                                                    pinnedPaths.includes(item.path)
+                                                                        ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30 shadow-2xs hover:bg-amber-500/25'
+                                                                        : 'opacity-0 group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-700/80 text-slate-400 hover:text-amber-500'
+                                                                }`}
+                                                                title={pinnedPaths.includes(item.path) ? "Pinned in Quick Access Bar (Click to unpin)" : "Top-up to Quick Access Bar (Pin)"}
+                                                                aria-label="Toggle pin"
+                                                            >
+                                                                <Pin size={14} className={pinnedPaths.includes(item.path) ? "fill-amber-500 rotate-45" : ""} />
+                                                            </button>
+                                                        )}
                                                         <div className={`opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg ${
                                                             isDark ? 'bg-slate-700/80 text-sky-300' : 'bg-slate-100 text-slate-500'
                                                         }`}>

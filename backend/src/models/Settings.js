@@ -47,6 +47,10 @@ const settingsSchema = new mongoose.Schema({
         type: Number,
         default: 10
     },
+    appHubPinnedPaths: {
+        type: [String],
+        default: ['/invoices', '/customers', '/pos']
+    },
     // Custom Print Templates
     invoiceCustomTemplateUrl: String,
     quotationCustomTemplateUrl: String,
