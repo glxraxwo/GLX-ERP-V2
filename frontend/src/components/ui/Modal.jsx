@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
-export default function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+export default function Modal({ isOpen, onClose, title, children, size = 'md', zIndex = 'z-50' }) {
     const dialogRef = useRef(null);
 
     useEffect(() => {
@@ -32,7 +32,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
 
     return (
         <div 
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-xs select-none sm:select-auto"
+            className={`fixed inset-0 ${zIndex} flex items-end sm:items-center justify-center p-2 sm:p-4 bg-slate-950/60 backdrop-blur-xs select-none sm:select-auto`}
             // Backdrop clicks intentionally DO NOT close modals — only explicit Close or 'X' buttons close the modal
         >
             <div

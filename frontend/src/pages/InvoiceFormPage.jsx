@@ -345,8 +345,9 @@ export default function InvoiceFormPage({ defaultDocType }) {
     const [tempCustSalesRep, setTempCustSalesRep] = useState('');
     const [modalItem, setModalItem] = useState(defaultItemState);
 
-    // Master Product edit modal state & description sync confirmation
+    // Master Product edit/create modal state & description sync confirmation
     const [editingMasterProduct, setEditingMasterProduct] = useState(null);
+    const [isCreateProductModalOpen, setIsCreateProductModalOpen] = useState(false);
     const [isSaveDescConfirmOpen, setIsSaveDescConfirmOpen] = useState(false);
     const [isUpdatingCatalogProduct, setIsUpdatingCatalogProduct] = useState(false);
 
@@ -1237,6 +1238,42 @@ export default function InvoiceFormPage({ defaultDocType }) {
     const handleCloseProductFormModal = () => {
         setEditingMasterProduct(null);
         queryClient.invalidateQueries({ queryKey: ['products'] });
+    };
+
+    const handleOpenCreateProductModal = () => {
+        setIsCreateProductModalOpen(true);
+    };
+
+    const handleCloseCreateProductModal = () => {
+        setIsCreateProductModalOpen(false);
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+    };
+
+    const handleProductCreated = (createdProduct) => {
+        if (!createdProduct) return;
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+
+        // Auto-select and populate the new product details into the Add Item modal
+        setModalItem((prev) => ({
+            ...prev,
+            productId: createdProduct._id || '',
+            productName: createdProduct.name || '',
+            productTranslation: createdProduct.sinhalaName || '',
+            productCode: createdProduct.productCode || '',
+            description: createdProduct.description || '',
+            initialCatalogDescription: createdProduct.description || '',
+            unitPrice: createdProduct.basePrice || createdProduct.costs?.lastPurchaseCost || createdProduct.costs?.averageCost || 0,
+            taxRate: createdProduct.tax?.taxRate ?? 18,
+            taxable: false,
+            unitOfMeasure: createdProduct.unitOfMeasure || 'pcs',
+        }));
+
+        setIsCreateProductModalOpen(false);
+        toast.success(`Product "${createdProduct.name}" added to catalog & selected!`);
+
+        setTimeout(() => {
+            focusAndSelect(quantityInputRef.current);
+        }, 150);
     };
 
     const customerOptions = (customersData?.data || []).map((c) => ({
@@ -3029,8 +3066,8 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                 Auto-fills details, description &amp; standard pricing
                             </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                            <div className="flex-1 min-w-[220px]">
                                 <SearchableSelect
                                     triggerRef={catalogSelectTriggerRef}
                                     triggerClassName="bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-300 dark:border-blue-700 hover:bg-blue-50 focus-within:bg-white dark:focus-within:bg-slate-900 shadow-2xs"
@@ -3058,6 +3095,17 @@ export default function InvoiceFormPage({ defaultDocType }) {
                                     }}
                                 />
                             </div>
+
+                            <button
+                                type="button"
+                                onClick={handleOpenCreateProductModal}
+                                className="h-10 px-3 text-xs bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-500 rounded-lg shadow-2xs cursor-pointer font-bold shrink-0 inline-flex items-center gap-1.5 transition active:scale-95"
+                                title="Create a new master product in catalog"
+                            >
+                                <Plus size={14} className="stroke-[2.5]" />
+                                <span>Add Product</span>
+                            </button>
+
                             {modalItem.productCode ? (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 font-mono text-xs font-bold shadow-2xs shrink-0">
                                     <Barcode size={14} className="text-indigo-600 dark:text-indigo-400" />
@@ -3662,12 +3710,40 @@ export default function InvoiceFormPage({ defaultDocType }) {
                 loading={isUpdatingCatalogProduct}
             />
 
+            {/* Modal: Create New Master Product directly from Add Item Form */}
+            {isCreateProductModalOpen && (
+                <ProductFormModal
+                    isOpen={isCreateProductModalOpen}
+                    onClose={handleCloseCreateProductModal}
+                    onSuccess={handleProductCreated}
+                    product={null}
+                    defaultProductType="finished_good"
+                    zIndex="z-[60]"
+                />
+            )}
+
             {/* Modal: Edit Master Product in Catalog */}
             {Boolean(editingMasterProduct) && (
                 <ProductFormModal
                     isOpen={Boolean(editingMasterProduct)}
                     onClose={handleCloseProductFormModal}
+                    onSuccess={(updatedProduct) => {
+                        handleCloseProductFormModal();
+                        if (updatedProduct?._id && modalItem.productId === updatedProduct._id) {
+                            setModalItem((prev) => ({
+                                ...prev,
+                                productName: updatedProduct.name || prev.productName,
+                                productTranslation: updatedProduct.sinhalaName || prev.productTranslation,
+                                productCode: updatedProduct.productCode || prev.productCode,
+                                description: updatedProduct.description !== undefined ? updatedProduct.description : prev.description,
+                                initialCatalogDescription: updatedProduct.description !== undefined ? updatedProduct.description : prev.initialCatalogDescription,
+                                unitPrice: updatedProduct.basePrice ?? prev.unitPrice,
+                            }));
+                        }
+                    }}
                     product={editingMasterProduct}
+                    defaultProductType="finished_good"
+                    zIndex="z-[60]"
                 />
             )}
 
