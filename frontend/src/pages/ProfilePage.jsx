@@ -13,7 +13,6 @@ import { useAuthStore } from '../store/authStore';
 import { useUpdateUser } from '../features/users/useUsers';
 import { getRoleConfig } from '../features/users/roleConfig';
 import api from '../api/axios';
-import EmployeeEarningsView from '../components/hr/EmployeeEarningsView';
 
 export default function ProfilePage() {
     const { user, setUser } = useAuthStore();
@@ -238,9 +237,6 @@ export default function ProfilePage() {
                             </p>
                         )}
                     </Card>
-
-                    {/* Protected Employee Earnings Statement View */}
-                    <EmployeeEarningsView />
 
                     {/* Salary Advance Section for Employees */}
                     {user?.role === 'employee' && (
