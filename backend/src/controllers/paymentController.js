@@ -136,6 +136,32 @@ export const createPayment = asyncHandler(async (req, res) => {
                     inv.amountPaid = +(Number(inv.amountPaid || 0) + Number(alloc.amount)).toFixed(2);
                     inv.lastPaymentDate = payment.paymentDate;
                     await inv.save();
+
+                    // Synchronize with source Quotation / Estimate if this invoice originated from one
+                    try {
+                        const Quotation = (await import('../models/Quotation.js')).default;
+                        let quote = null;
+                        if (inv.sourceDocumentId && (inv.sourceDocumentType === 'quotation' || inv.sourceDocumentType === 'estimate')) {
+                            quote = await Quotation.findById(inv.sourceDocumentId);
+                        }
+                        if (!quote) {
+                            quote = await Quotation.findOne({ convertedInvoiceId: inv._id });
+                        }
+                        if (!quote && inv.sourceDocumentCode) {
+                            quote = await Quotation.findOne({ quoteNumber: inv.sourceDocumentCode });
+                        }
+                        if (!quote && inv.projectId) {
+                            quote = await Quotation.findOne({ convertedProjectId: inv.projectId });
+                        }
+
+                        if (quote) {
+                            quote.advanceAmount = Number(inv.amountPaid || 0);
+                            quote.balanceAmount = Math.max(0, +(Number(quote.grandTotal || inv.grandTotal || 0) - Number(inv.amountPaid || 0)).toFixed(2));
+                            await quote.save();
+                        }
+                    } catch (syncErr) {
+                        console.error('[Quotation-Invoice Sync Error]:', syncErr.message);
+                    }
                 }
             } else if (alloc.documentType === 'bill') {
                 const bill = await Bill.findById(alloc.documentId);
@@ -152,6 +178,27 @@ export const createPayment = asyncHandler(async (req, res) => {
                     quote.advanceAmount = newAdvance;
                     quote.balanceAmount = Math.max(0, +(Number(quote.grandTotal || 0) - newAdvance).toFixed(2));
                     await quote.save();
+
+                    // Synchronize with converted invoice if one exists
+                    if (quote.convertedInvoiceId) {
+                        try {
+                            const inv = await Invoice.findById(quote.convertedInvoiceId);
+                            if (inv) {
+                                inv.amountPaid = newAdvance;
+                                inv.balanceDue = Math.max(0, +(Number(inv.grandTotal || 0) - newAdvance).toFixed(2));
+                                if (inv.balanceDue === 0 && inv.grandTotal > 0) {
+                                    inv.paymentStatus = 'paid';
+                                    inv.fullyPaidAt = new Date();
+                                } else if (inv.amountPaid > 0) {
+                                    inv.paymentStatus = 'partially_paid';
+                                }
+                                inv.lastPaymentDate = payment.paymentDate;
+                                await inv.save();
+                            }
+                        } catch (invSyncErr) {
+                            console.error('[Invoice-Quotation Sync Error]:', invSyncErr.message);
+                        }
+                    }
                 }
             }
         }

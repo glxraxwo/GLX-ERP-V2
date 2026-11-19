@@ -155,6 +155,36 @@ export const getQuotations = asyncHandler(async (req, res) => {
         Quotation.countDocuments(filter)
     ]);
 
+    // Live-sync advanceAmount and balanceAmount from converted/source invoices
+    try {
+        const quoteIds = quotations.map(q => q._id);
+        const convertedInvIds = quotations.map(q => q.convertedInvoiceId).filter(Boolean);
+        const Invoice = (await import('../models/Invoice.js')).default;
+        const linkedInvoices = await Invoice.find({
+            $or: [
+                { sourceDocumentId: { $in: quoteIds } },
+                { _id: { $in: convertedInvIds } }
+            ]
+        }).select('_id sourceDocumentId invoiceNumber amountPaid balanceDue grandTotal').lean();
+
+        const invByQuoteId = {};
+        const invById = {};
+        linkedInvoices.forEach(inv => {
+            if (inv.sourceDocumentId) invByQuoteId[inv.sourceDocumentId.toString()] = inv;
+            invById[inv._id.toString()] = inv;
+        });
+
+        quotations.forEach(q => {
+            const linkedInv = (q.convertedInvoiceId && invById[q.convertedInvoiceId.toString()]) || invByQuoteId[q._id.toString()];
+            if (linkedInv && linkedInv.amountPaid !== undefined) {
+                q.advanceAmount = Number(linkedInv.amountPaid || 0);
+                q.balanceAmount = Number(linkedInv.balanceDue !== undefined ? linkedInv.balanceDue : Math.max(0, Number(q.grandTotal || 0) - q.advanceAmount));
+            }
+        });
+    } catch (err) {
+        console.error('[GetQuotations live-sync error]:', err.message);
+    }
+
     res.json({
         success: true,
         data: quotations,
@@ -183,6 +213,27 @@ export const getQuotationById = asyncHandler(async (req, res) => {
     if (!quotation) {
         res.status(404);
         throw new Error('Quotation not found');
+    }
+
+    // Live-sync advanceAmount and balanceAmount with linked invoice
+    try {
+        const Invoice = (await import('../models/Invoice.js')).default;
+        let linkedInv = null;
+        if (quotation.convertedInvoiceId) {
+            linkedInv = await Invoice.findById(quotation.convertedInvoiceId).lean();
+        }
+        if (!linkedInv) {
+            linkedInv = await Invoice.findOne({ sourceDocumentId: quotation._id }).lean();
+        }
+        if (!linkedInv && quotation.quoteNumber) {
+            linkedInv = await Invoice.findOne({ sourceDocumentCode: quotation.quoteNumber }).lean();
+        }
+        if (linkedInv && linkedInv.amountPaid !== undefined) {
+            quotation.advanceAmount = Number(linkedInv.amountPaid || 0);
+            quotation.balanceAmount = Number(linkedInv.balanceDue !== undefined ? linkedInv.balanceDue : Math.max(0, Number(quotation.grandTotal || 0) - quotation.advanceAmount));
+        }
+    } catch (err) {
+        console.error('[GetQuotationById live-sync error]:', err.message);
     }
 
     if (!quotation.publicToken) {
