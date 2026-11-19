@@ -17,6 +17,8 @@ export default function ReceiptFormModal({ isOpen, onClose, onSuccess }) {
     const [bankName, setBankName] = useState('');
     const [notes, setNotes] = useState('');
     const [signatureNote, setSignatureNote] = useState('');
+    const [sendSms, setSendSms] = useState(true);
+    const [customerPhone, setCustomerPhone] = useState('');
 
     const [linkableDocs, setLinkableDocs] = useState([]);
     const [selectedDocId, setSelectedDocId] = useState('');
@@ -86,6 +88,8 @@ export default function ReceiptFormModal({ isOpen, onClose, onSuccess }) {
             const payload = {
                 direction: 'received',
                 customerId,
+                customerPhone: customerPhone || undefined,
+                sendSms,
                 amount: numAmt,
                 method,
                 bankAccountId: method !== 'cash' ? bankAccountId : undefined,
@@ -273,6 +277,31 @@ export default function ReceiptFormModal({ isOpen, onClose, onSuccess }) {
                                 className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
                             />
                         </div>
+                    </div>
+
+                    {/* SMS Receipt notification options */}
+                    <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800 space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-900 dark:text-blue-200">
+                            <input
+                                type="checkbox"
+                                checked={sendSms}
+                                onChange={(e) => setSendSms(e.target.checked)}
+                                className="rounded border-blue-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                            />
+                            <span>Send SMS Payment Receipt to Customer</span>
+                        </label>
+                        {sendSms && (
+                            <div className="space-y-1 pt-1">
+                                <label className="text-[11px] font-semibold text-blue-800 dark:text-blue-300">Customer Mobile (leave blank to auto-use customer profile phone)</label>
+                                <input
+                                    type="tel"
+                                    value={customerPhone}
+                                    onChange={(e) => setCustomerPhone(e.target.value)}
+                                    placeholder="e.g. 0771234567"
+                                    className="w-full px-2.5 py-1.5 border border-blue-300 dark:border-blue-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                                />
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">

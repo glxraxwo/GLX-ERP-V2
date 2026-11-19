@@ -12,7 +12,7 @@ const BACKUPS_PDF_DIR = path.join(__dirname, '../../backups/pdfs');
 
 export const formatSmsContact = (phone) => {
     if (!phone || phone === 'N/A') return null;
-    let clean = phone.replace(/[^0-9]/g, ''); // keep only numbers
+    let clean = String(phone).replace(/[^0-9]/g, ''); // keep only numbers
     if (clean.startsWith('0')) {
         clean = '94' + clean.slice(1);
     }
@@ -21,6 +21,9 @@ export const formatSmsContact = (phone) => {
     }
     if (clean.startsWith('94') && clean.length === 11) {
         return '+' + clean;
+    }
+    if (clean.length < 9) {
+        return null;
     }
     return '+' + clean;
 };
@@ -580,7 +583,7 @@ export const sendProjectDeliveredSms = async (project, clientPhone) => {
 /**
  * Dispatch SMS helper with gateway call, database logging, and manager duplicate copy
  */
-export const dispatchSmsNotification = async ({ contactPhone, recipientName, message }) => {
+export const dispatchSmsNotification = async ({ contactPhone, recipientName, message, options = {} }) => {
     let formattedContact = formatSmsContact(contactPhone);
     let status = 'sent';
     const { SMS_USER_ID, SMS_API_KEY, SMS_SENDER_ID, SMS_GATEWAY_URL } = process.env;
@@ -600,7 +603,10 @@ export const dispatchSmsNotification = async ({ contactPhone, recipientName, mes
                 })
             });
             const data = await response.json();
-            if (response.status !== 200 || !data.success) {
+            if (response.status === 200 && (data.success || data.status === 'success')) {
+                console.log(`[SMS Gateway] Sent successfully to ${formattedContact}:`, data);
+            } else {
+                console.error(`[SMS Gateway] Failed response for ${formattedContact}:`, data);
                 status = 'failed';
             }
         } catch (err) {
@@ -608,8 +614,8 @@ export const dispatchSmsNotification = async ({ contactPhone, recipientName, mes
             status = 'failed';
         }
     } else {
-        console.log(`[SMS Gateway Simulated] To: ${contactPhone || 'N/A'} | Msg: ${message}`);
-        if (!contactPhone) status = 'failed';
+        console.log(`[SMS Gateway Simulated] To: ${contactPhone || 'N/A'} (formatted: ${formattedContact || 'null'}) | Msg: ${message}`);
+        if (!contactPhone || !formattedContact) status = 'failed';
     }
 
     try {
@@ -627,7 +633,7 @@ export const dispatchSmsNotification = async ({ contactPhone, recipientName, mes
     try {
         const Settings = mongoose.model('Settings');
         const settings = await Settings.findOne();
-        if (!options.skipManagerDuplicate && settings && settings.managerSmsPhone) {
+        if (!options?.skipManagerDuplicate && settings && settings.managerSmsPhone) {
             let managerContact = formatSmsContact(settings.managerSmsPhone);
             const managerMsg = `[Manager Copy] Alert sent to ${contactPhone || 'client'} (${recipientName}): ${message}`;
             if (SMS_USER_ID && SMS_API_KEY && SMS_SENDER_ID && SMS_GATEWAY_URL && managerContact) {
@@ -699,71 +705,114 @@ export const sendInvoiceCreationSms = async (invoice, hostOrigin = '') => {
 export const sendPaymentReceiptSms = async (payment, hostOrigin = '') => {
     try {
         if (!payment) return;
-        let clientPhone = payment.customerPhone || payment.contactNumber;
-        let clientName = payment.partyName || 'Valued Customer';
+        let clientPhone = payment.customerPhone || payment.contactNumber || '';
+        let clientName = payment.partyName || '';
 
-        if (!clientPhone && payment.customerId) {
-            const Customer = mongoose.model('Customer');
-            const cust = await Customer.findById(payment.customerId);
-            if (cust) {
-                clientPhone = cust.primaryContact?.mobile || cust.primaryContact?.phone;
-                clientName = cust.displayName || cust.companyName || clientName;
-            }
-        }
-
-        if (!clientPhone && payment.allocations && payment.allocations.length > 0) {
-            for (const alloc of payment.allocations) {
-                if (alloc.documentType === 'quotation' || alloc.documentType === 'estimate') {
-                    const Quotation = mongoose.model('Quotation');
-                    const quote = await Quotation.findById(alloc.documentId);
-                    if (quote) {
-                        clientPhone = quote.customerPhone || quote.whatsappNum;
-                        if (!clientName || clientName === 'Valued Customer') {
-                            clientName = quote.vehicleOwner || quote.customerName || clientName;
-                        }
-                        if (clientPhone) break;
+        // 1. Resolve phone and name from customerId if needed
+        if (payment.customerId) {
+            if (typeof payment.customerId === 'object' && payment.customerId !== null) {
+                if (!clientPhone) {
+                    clientPhone = payment.customerId.primaryContact?.mobile || payment.customerId.primaryContact?.phone || payment.customerId.phone || '';
+                }
+                if (!clientName || clientName === 'Valued Customer') {
+                    clientName = payment.customerId.displayName || payment.customerId.companyName || clientName;
+                }
+            } else {
+                const Customer = mongoose.model('Customer');
+                const cust = await Customer.findById(payment.customerId).lean();
+                if (cust) {
+                    if (!clientPhone) {
+                        clientPhone = cust.primaryContact?.mobile || cust.primaryContact?.phone || cust.phone || '';
                     }
-                } else if (alloc.documentType === 'invoice') {
-                    const Invoice = mongoose.model('Invoice');
-                    const inv = await Invoice.findById(alloc.documentId);
-                    if (inv) {
-                        clientPhone = inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.contactName;
-                        if (!clientName || clientName === 'Valued Customer') {
-                            clientName = inv.vehicleOwner || inv.customerSnapshot?.name || clientName;
-                        }
-                        if (clientPhone) break;
+                    if (!clientName || clientName === 'Valued Customer') {
+                        clientName = cust.displayName || cust.companyName || clientName;
                     }
                 }
             }
         }
 
+        // 2. Resolve from allocations (Quotation / Estimate / Invoice)
+        let isAdvancePayment = false;
+        let docRefString = '';
+
+        if (payment.allocations && payment.allocations.length > 0) {
+            for (const alloc of payment.allocations) {
+                if (alloc.documentNumber) {
+                    docRefString = (docRefString ? docRefString + ', ' : '') + alloc.documentNumber;
+                }
+                if (alloc.documentType === 'quotation' || alloc.documentType === 'estimate') {
+                    isAdvancePayment = true;
+                    const Quotation = mongoose.model('Quotation');
+                    const quote = await Quotation.findById(alloc.documentId).lean();
+                    if (quote) {
+                        if (!clientPhone) {
+                            clientPhone = quote.customerPhone || quote.whatsappNum || quote.contactPerson?.mobile || quote.contactPerson?.phone || '';
+                        }
+                        if (!clientName || clientName === 'Valued Customer') {
+                            clientName = quote.vehicleOwner || quote.customerName || clientName;
+                        }
+                    }
+                } else if (alloc.documentType === 'invoice') {
+                    const Invoice = mongoose.model('Invoice');
+                    const inv = await Invoice.findById(alloc.documentId).lean();
+                    if (inv) {
+                        if (!clientPhone) {
+                            clientPhone = inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.mobile || inv.customerSnapshot?.phone || inv.customerSnapshot?.whatsappNum || '';
+                        }
+                        if (!clientName || clientName === 'Valued Customer') {
+                            clientName = inv.vehicleOwner || inv.customerSnapshot?.name || clientName;
+                        }
+                        if (inv.balanceDue > 0 && Number(alloc.amount) < inv.grandTotal) {
+                            isAdvancePayment = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!clientName) clientName = 'Valued Customer';
+
+        // Check if notes indicate advance
+        if (payment.notes && /advance/i.test(payment.notes)) {
+            isAdvancePayment = true;
+        }
+
         if (!clientPhone) {
-            console.log('[SMS Service] No phone number available for payment receipt SMS:', payment.paymentNumber);
+            console.warn('[SMS Service] No phone number available for payment receipt SMS:', payment.paymentNumber || payment._id);
             return;
         }
 
-        const origin = hostOrigin || process.env.FRONTEND_URL || 'http://localhost:5173';
+        // Clean hostOrigin & handle comma-separated FRONTEND_URL in .env
+        let origin = hostOrigin || '';
+        if (!origin || origin.includes('localhost:5000') || origin.includes(':5000')) {
+            origin = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',')[0].trim() : 'https://manage.glxgroup.lk';
+        }
+        if (origin.includes(',')) {
+            origin = origin.split(',')[0].trim();
+        }
+        origin = origin.replace(/\/+$/, '');
+
         const link = payment.publicToken ? `${origin}/public/documents/${payment.publicToken}` : '';
-        const amount = (payment.amount || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 });
+        const amount = Number(payment.amount || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 });
 
         let methodText = 'Cash';
         if (payment.method === 'cheque') {
-            const chqDate = payment.chequeDate ? ` dated ${new Date(payment.chequeDate).toLocaleDateString('en-GB')}` : '';
+            const chqDate = payment.chequeDate ? ` dt ${new Date(payment.chequeDate).toLocaleDateString('en-GB')}` : '';
             methodText = `Cheque (#${payment.chequeNumber || 'N/A'}${chqDate})`;
         } else if (payment.method === 'bank_transfer') {
             const refText = payment.transactionReference ? ` (Ref: ${payment.transactionReference})` : '';
             methodText = `Bank Transfer${refText}`;
+        } else if (payment.method === 'card') {
+            methodText = 'Card';
         } else if (payment.method === 'online') {
-            methodText = 'Online Transfer';
+            methodText = 'Online';
         }
 
-        const allocDocs = (payment.allocations || [])
-            .map(a => a.documentNumber)
-            .filter(Boolean)
-            .join(', ');
-        const allocText = allocDocs ? ` (Applied to ${allocDocs})` : '';
+        const allocText = docRefString ? ` for ${docRefString}` : '';
+        const paymentTypeLabel = isAdvancePayment ? 'Advance Payment' : 'Payment';
 
-        const message = `Dear ${clientName}, payment of Rs. ${amount} received via ${methodText}. Receipt: ${payment.paymentNumber}.${allocText}${link ? ' View official receipt: ' + link : ''} Thank you for your business!`;
+        // Compact, clean professional SMS message
+        const message = `Dear ${clientName}, ${paymentTypeLabel} of Rs. ${amount} received via ${methodText}${allocText}. Receipt: ${payment.paymentNumber || 'N/A'}.${link ? ' View receipt: ' + link : ''} Thank you!`;
 
         await dispatchSmsNotification({
             contactPhone: clientPhone,

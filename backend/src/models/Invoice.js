@@ -289,7 +289,10 @@ invoiceSchema.pre('save', async function () {
         + (this.shippingCost || 0) + (this.otherCharges || 0)
     ).toFixed(2));
 
-    this.balanceDue = +(this.grandTotal - (this.amountPaid || 0)).toFixed(2);
+    if (this.advanceAmount > 0 && (!this.amountPaid || this.amountPaid === 0)) {
+        this.amountPaid = Number(this.advanceAmount) || 0;
+    }
+    this.balanceDue = Math.max(0, +(this.grandTotal - (this.amountPaid || 0)).toFixed(2));
 
     // Auto payment status
     if (this.amountPaid >= this.grandTotal && this.grandTotal > 0) {

@@ -45,8 +45,8 @@ export const createPayment = asyncHandler(async (req, res) => {
                 if (!partyName && (inv.vehicleOwner || inv.customerSnapshot?.name)) {
                     partyName = inv.vehicleOwner || inv.customerSnapshot?.name;
                 }
-                if (!customerPhone && (inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.contactName)) {
-                    customerPhone = inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.contactName;
+                if (!customerPhone) {
+                    customerPhone = inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.mobile || inv.customerSnapshot?.phone || inv.customerSnapshot?.whatsappNum || '';
                 }
             } else if (alloc.documentType === 'bill') {
                 const bill = await Bill.findById(alloc.documentId);
@@ -68,17 +68,20 @@ export const createPayment = asyncHandler(async (req, res) => {
                 if (!partyName) {
                     partyName = quote.vehicleOwner || quote.customerName || 'Valued Customer';
                 }
-                if (!customerPhone && (quote.customerPhone || quote.whatsappNum)) {
-                    customerPhone = quote.customerPhone || quote.whatsappNum;
+                if (!customerPhone) {
+                    customerPhone = quote.customerPhone || quote.whatsappNum || quote.contactPerson?.mobile || quote.contactPerson?.phone || '';
                 }
             }
         }
 
-        // Get party name from Customer or Supplier if not resolved
+        // Get party name and phone from Customer master if still missing
         if (direction === 'received') {
             if (customerId) {
-                const c = await Customer.findById(customerId);
-                if (c?.displayName) partyName = c.displayName;
+                const Customer = (await import('../models/Customer.js')).default;
+                const c = await Customer.findById(customerId).lean();
+                if (c?.displayName && (!partyName || partyName === 'Valued Customer')) {
+                    partyName = c.displayName;
+                }
                 if (!customerPhone && (c?.primaryContact?.mobile || c?.primaryContact?.phone)) {
                     customerPhone = c.primaryContact.mobile || c.primaryContact.phone;
                 }
@@ -181,14 +184,20 @@ export const createPayment = asyncHandler(async (req, res) => {
             .populate('receivedBy', 'firstName lastName fullName signature')
             .populate('createdBy', 'firstName lastName fullName signature');
 
-        // Dispatch payment receipt SMS with public view link to customer only if explicitly requested
-        if (direction === 'received' && req.body.sendSms === true) {
-            const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+        // Dispatch payment receipt SMS with public view link to customer (defaults to true for received payments)
+        const shouldSendSms = req.body.sendSms !== false && req.body.sendSms !== 'false';
+        if (direction === 'received' && shouldSendSms) {
+            let hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+            if (!hostOrigin || hostOrigin.includes('localhost:5000') || hostOrigin.includes(':5000')) {
+                hostOrigin = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',')[0].trim() : 'https://manage.glxgroup.lk';
+            }
+            if (hostOrigin.includes(',')) hostOrigin = hostOrigin.split(',')[0].trim();
+
             import('../services/smsService.js').then(({ sendPaymentReceiptSms }) => {
                 sendPaymentReceiptSms(populated || payment, hostOrigin).catch((err) =>
                     console.error('[Payment Receipt SMS Trigger Error]:', err.message)
                 );
-            }).catch(() => {});
+            }).catch((err) => console.error('[SMS Service import error]:', err.message));
         }
 
         res.status(201).json({ success: true, data: populated });
@@ -904,7 +913,12 @@ export const sendPaymentSms = asyncHandler(async (req, res) => {
     if (!payment) {
         res.status(404); throw new Error('Payment not found');
     }
-    const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+    let hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+    if (!hostOrigin || hostOrigin.includes('localhost:5000') || hostOrigin.includes(':5000')) {
+        hostOrigin = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',')[0].trim() : 'https://manage.glxgroup.lk';
+    }
+    if (hostOrigin.includes(',')) hostOrigin = hostOrigin.split(',')[0].trim();
+
     const { sendPaymentReceiptSms } = await import('../services/smsService.js');
     if (req.body.phone) {
         payment.customerPhone = req.body.phone;

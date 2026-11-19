@@ -545,6 +545,7 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
             method: req.body.paymentMethod || 'cash',
             paymentDate: new Date(),
             partyName: quotation.vehicleOwner || quotation.customerName || 'Valued Customer',
+            customerPhone: quotation.customerPhone || quotation.whatsappNum || (quotation.contactPerson?.mobile || quotation.contactPerson?.phone) || '',
             vehicleNo: quotation.vehicleNo || '',
             allocations: [{
                 documentType: 'invoice',
@@ -566,6 +567,16 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
                 await bankAccount.save();
             }
         }
+
+        // Dispatch Advance Payment Receipt SMS
+        let hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+        if (!hostOrigin || hostOrigin.includes('localhost:5000') || hostOrigin.includes(':5000')) {
+            hostOrigin = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',')[0].trim() : 'https://manage.glxgroup.lk';
+        }
+        if (hostOrigin.includes(',')) hostOrigin = hostOrigin.split(',')[0].trim();
+        import('../services/smsService.js').then(({ sendPaymentReceiptSms }) => {
+            sendPaymentReceiptSms(payment, hostOrigin).catch(() => {});
+        }).catch(() => {});
     }
 
     if (invoice.invoiceType !== 'proforma') {
@@ -688,6 +699,7 @@ export const convertQuotationToProject = asyncHandler(async (req, res) => {
             method: req.body.paymentMethod || 'cash',
             paymentDate: new Date(),
             partyName: quotation.customerName || 'Walk-in Customer',
+            customerPhone: quotation.customerPhone || quotation.whatsappNum || (quotation.contactPerson?.mobile || quotation.contactPerson?.phone) || '',
             allocations: [{
                 documentType: 'invoice',
                 documentId: invoice._id,
@@ -708,6 +720,16 @@ export const convertQuotationToProject = asyncHandler(async (req, res) => {
                 await bankAccount.save();
             }
         }
+
+        // Dispatch Advance Payment Receipt SMS
+        let hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+        if (!hostOrigin || hostOrigin.includes('localhost:5000') || hostOrigin.includes(':5000')) {
+            hostOrigin = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',')[0].trim() : 'https://manage.glxgroup.lk';
+        }
+        if (hostOrigin.includes(',')) hostOrigin = hostOrigin.split(',')[0].trim();
+        import('../services/smsService.js').then(({ sendPaymentReceiptSms }) => {
+            sendPaymentReceiptSms(payment, hostOrigin).catch(() => {});
+        }).catch(() => {});
     }
 
     await Quotation.updateOne(

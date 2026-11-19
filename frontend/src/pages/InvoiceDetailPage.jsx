@@ -65,6 +65,8 @@ export default function InvoiceDetailPage() {
     const [quickPayBankAccountId, setQuickPayBankAccountId] = useState('');
     const [quickPayReference, setQuickPayReference] = useState('');
     const [quickPayNotes, setQuickPayNotes] = useState('');
+    const [quickPayCustomerPhone, setQuickPayCustomerPhone] = useState('');
+    const [sendQuickPaySms, setSendQuickPaySms] = useState(true);
     const [isSavingPayment, setIsSavingPayment] = useState(false);
 
     // Revert Modal State
@@ -153,21 +155,28 @@ export default function InvoiceDetailPage() {
             const payload = {
                 direction: 'received',
                 customerId: inv.customerId?._id || inv.customerId,
+                partyName: inv.vehicleOwner || inv.customerSnapshot?.name || 'Valued Customer',
+                customerPhone: quickPayCustomerPhone || undefined,
+                vehicleNo: inv.vehicleNo || undefined,
                 amount: payVal,
                 method: quickPayMethod,
                 bankAccountId: (quickPayMethod === 'cheque' || quickPayMethod === 'bank_transfer') ? quickPayBankAccountId : undefined,
                 paymentDate: new Date().toISOString().split('T')[0],
+                sendSms: sendQuickPaySms,
                 allocations: [{
                     documentType: 'invoice',
                     documentId: inv._id,
-                    amount: payVal
+                    documentNumber: inv.invoiceNumber,
+                    amount: payVal,
+                    docTotal: inv.grandTotal,
+                    balanceDue: Math.max(0, (inv.balanceDue || 0) - payVal)
                 }],
                 notes: quickPayNotes || `Payment for Invoice ${inv.invoiceNumber}`,
                 transactionReference: quickPayReference || undefined
             };
 
             await api.post('/payments', payload);
-            toast.success(payVal >= inv.balanceDue ? 'Payment recorded and Invoice marked as Paid!' : `Partial Payment of LKR ${payVal.toLocaleString()} recorded!`);
+            toast.success(payVal >= inv.balanceDue ? `Payment recorded and Invoice marked as Paid!${sendQuickPaySms ? ' (SMS receipt sent)' : ''}` : `Partial Payment of LKR ${payVal.toLocaleString()} recorded!${sendQuickPaySms ? ' (SMS receipt sent)' : ''}`);
             setIsQuickPayOpen(false);
             window.location.reload();
         } catch (err) {
@@ -361,6 +370,9 @@ export default function InvoiceDetailPage() {
                                 setQuickPayBankAccountId('');
                                 setQuickPayReference('');
                                 setQuickPayNotes('');
+                                const phone = inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.mobile || inv.customerSnapshot?.phone || inv.customerId?.primaryContact?.mobile || inv.customerId?.primaryContact?.phone || '';
+                                setQuickPayCustomerPhone(phone);
+                                setSendQuickPaySms(true);
                                 setIsQuickPayOpen(true);
                             }} title="Record Payment">
                                 <CheckCircle size={14} className="sm:mr-1" /> <span className="hidden sm:inline">Pay / Record Payment</span>
@@ -808,6 +820,31 @@ export default function InvoiceDetailPage() {
                                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-[#132238] text-gray-900 dark:text-white"
                                     placeholder="e.g. Txn Ref, Cheque No, etc."
                                 />
+                            </div>
+
+                            {/* SMS Receipt notification options */}
+                            <div className="p-3 bg-blue-50/60 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-900 dark:text-blue-200">
+                                    <input
+                                        type="checkbox"
+                                        checked={sendQuickPaySms}
+                                        onChange={(e) => setSendQuickPaySms(e.target.checked)}
+                                        className="rounded border-blue-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                    />
+                                    <span>Send SMS Payment Receipt to Customer</span>
+                                </label>
+                                {sendQuickPaySms && (
+                                    <div className="space-y-1 pt-1">
+                                        <label className="text-[11px] font-semibold text-blue-800 dark:text-blue-300">Customer Mobile Number</label>
+                                        <input
+                                            type="tel"
+                                            value={quickPayCustomerPhone}
+                                            onChange={(e) => setQuickPayCustomerPhone(e.target.value)}
+                                            placeholder="e.g. 0771234567"
+                                            className="w-full px-2.5 py-1.5 border border-blue-300 dark:border-blue-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex justify-end gap-2 pt-4 border-t">

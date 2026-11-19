@@ -234,6 +234,70 @@ export const createInvoice = asyncHandler(async (req, res) => {
         await updateCustomerBalance(customer._id);
     }
 
+    // If an advance payment was recorded on invoice creation
+    const advAmount = Number(invoice.advanceAmount || req.body.advanceAmount || 0);
+    if (advAmount > 0) {
+        invoice.amountPaid = advAmount;
+        invoice.balanceDue = Math.max(0, +(invoice.grandTotal - advAmount).toFixed(2));
+        if (invoice.balanceDue === 0 && invoice.grandTotal > 0) {
+            invoice.paymentStatus = 'paid';
+            invoice.fullyPaidAt = new Date();
+        } else {
+            invoice.paymentStatus = 'partially_paid';
+        }
+        invoice.lastPaymentDate = new Date();
+        await invoice.save();
+
+        const Payment = (await import('../models/Payment.js')).default;
+        const advPayment = new Payment({
+            direction: 'received',
+            customerId: invoice.customerId || undefined,
+            amount: advAmount,
+            method: req.body.paymentMethod || 'cash',
+            paymentDate: new Date(),
+            partyName: invoice.vehicleOwner || invoice.customerSnapshot?.name || 'Customer',
+            customerPhone: req.body.recipientPhone || invoice.customerPhone || invoice.whatsappNum || invoice.customerSnapshot?.mobile || invoice.customerSnapshot?.phone || '',
+            vehicleNo: invoice.vehicleNo || '',
+            allocations: [{
+                documentType: 'invoice',
+                documentId: invoice._id,
+                documentNumber: invoice.invoiceNumber,
+                amount: advAmount,
+                docTotal: invoice.grandTotal,
+                balanceDue: invoice.balanceDue
+            }],
+            notes: `Advance payment for Invoice ${invoice.invoiceNumber}`,
+            receivedBy: req.user._id,
+            createdBy: req.user._id
+        });
+        await advPayment.save();
+
+        if (req.body.bankAccountId && req.body.paymentMethod !== 'cash') {
+            const BankAccount = (await import('../models/BankAccount.js')).default;
+            const bankAccount = await BankAccount.findById(req.body.bankAccountId);
+            if (bankAccount) {
+                bankAccount.balance = +(bankAccount.balance + advAmount).toFixed(2);
+                await bankAccount.save();
+            }
+        }
+
+        // Dispatch Payment Receipt SMS
+        const shouldSendPaySms = req.body.sendSms !== false && req.body.sendSms !== 'false';
+        if (shouldSendPaySms) {
+            let hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+            if (!hostOrigin || hostOrigin.includes('localhost:5000') || hostOrigin.includes(':5000')) {
+                hostOrigin = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',')[0].trim() : 'https://manage.glxgroup.lk';
+            }
+            if (hostOrigin.includes(',')) hostOrigin = hostOrigin.split(',')[0].trim();
+
+            import('../services/smsService.js').then(({ sendPaymentReceiptSms }) => {
+                sendPaymentReceiptSms(advPayment, hostOrigin).catch((err) =>
+                    console.error('[Invoice Advance Payment Receipt SMS Error]:', err.message)
+                );
+            }).catch(() => {});
+        }
+    }
+
     if (req.body.sendSms === true && (req.body.recipientPhone || invoice.customerPhone)) {
         let hostOrigin = 'http://localhost:5173';
         if (req.headers.origin) {

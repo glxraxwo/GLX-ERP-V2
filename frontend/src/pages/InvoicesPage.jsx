@@ -59,6 +59,8 @@ export default function InvoicesPage() {
     const [payMethod, setPayMethod] = useState('cash');
     const [payBankAccountId, setPayBankAccountId] = useState('');
     const [payReference, setPayReference] = useState('');
+    const [payCustomerPhone, setPayCustomerPhone] = useState('');
+    const [sendPaySms, setSendPaySms] = useState(true);
     const [isSubmittingPay, setIsSubmittingPay] = useState(false);
 
     // Revert Modal State
@@ -115,21 +117,28 @@ export default function InvoicesPage() {
             const payload = {
                 direction: 'received',
                 customerId: selectedPayInvoice.customerId?._id || selectedPayInvoice.customerId,
+                partyName: selectedPayInvoice.vehicleOwner || selectedPayInvoice.customerSnapshot?.name || selectedPayInvoice.customerName || 'Valued Customer',
+                customerPhone: payCustomerPhone || undefined,
+                vehicleNo: selectedPayInvoice.vehicleNo || undefined,
                 amount: pVal,
                 method: payMethod,
                 bankAccountId: payMethod !== 'cash' ? (payBankAccountId || undefined) : undefined,
                 paymentDate: new Date().toISOString().split('T')[0],
+                sendSms: sendPaySms,
                 allocations: [{
                     documentType: 'invoice',
                     documentId: selectedPayInvoice._id,
-                    amount: pVal
+                    documentNumber: selectedPayInvoice.invoiceNumber,
+                    amount: pVal,
+                    docTotal: selectedPayInvoice.grandTotal,
+                    balanceDue: Math.max(0, (selectedPayInvoice.balanceDue || 0) - pVal)
                 }],
-                notes: `Payment for Invoice ${selectedPayInvoice.invoiceNumber}`,
+                notes: payReference || `Payment for Invoice ${selectedPayInvoice.invoiceNumber}`,
                 transactionReference: payReference || undefined
             };
 
             await api.post('/payments', payload);
-            toast.success(pVal >= selectedPayInvoice.balanceDue ? `Invoice ${selectedPayInvoice.invoiceNumber} marked as Paid!` : `Partial Payment of LKR ${pVal.toLocaleString()} recorded!`);
+            toast.success(pVal >= selectedPayInvoice.balanceDue ? `Invoice ${selectedPayInvoice.invoiceNumber} marked as Paid!${sendPaySms ? ' (SMS receipt sent)' : ''}` : `Partial Payment of LKR ${pVal.toLocaleString()} recorded!${sendPaySms ? ' (SMS receipt sent)' : ''}`);
             setSelectedPayInvoice(null);
             queryClient.invalidateQueries({ queryKey: ['invoices'] });
             queryClient.invalidateQueries({ queryKey: ['invoice'] });
@@ -354,6 +363,9 @@ export default function InvoicesPage() {
                                 setPayMethod('cash');
                                 setPayBankAccountId('');
                                 setPayReference('');
+                                const phone = r.customerPhone || r.whatsappNum || r.customerSnapshot?.mobile || r.customerSnapshot?.phone || r.customerId?.primaryContact?.mobile || r.customerId?.primaryContact?.phone || '';
+                                setPayCustomerPhone(phone);
+                                setSendPaySms(true);
                             }}
                             className="px-2 py-1 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition flex items-center gap-1 shadow-xs"
                             title="Record Payment / Mark Paid"
@@ -882,6 +894,31 @@ export default function InvoicesPage() {
                                     placeholder="Txn ID, Cheque No, or Notes"
                                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                                 />
+                            </div>
+
+                            {/* SMS Receipt notification options */}
+                            <div className="p-3 bg-blue-50/60 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-900 dark:text-blue-200">
+                                    <input
+                                        type="checkbox"
+                                        checked={sendPaySms}
+                                        onChange={(e) => setSendPaySms(e.target.checked)}
+                                        className="rounded border-blue-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                    />
+                                    <span>Send SMS Payment Receipt to Customer</span>
+                                </label>
+                                {sendPaySms && (
+                                    <div className="space-y-1 pt-1">
+                                        <label className="text-[11px] font-semibold text-blue-800 dark:text-blue-300">Customer Mobile Number</label>
+                                        <input
+                                            type="tel"
+                                            value={payCustomerPhone}
+                                            onChange={(e) => setPayCustomerPhone(e.target.value)}
+                                            placeholder="e.g. 0771234567"
+                                            className="w-full px-2.5 py-1.5 border border-blue-300 dark:border-blue-700 rounded-lg text-xs bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-mono"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex justify-end gap-2 pt-4 border-t border-gray-100 dark:border-slate-700">

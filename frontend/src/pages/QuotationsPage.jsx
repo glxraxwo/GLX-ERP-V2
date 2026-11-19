@@ -1047,7 +1047,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         setPayMethod('cash');
         setPayBankAccountId(bankAccounts[0]?._id || '');
         setPayReference('');
-        setPayCustomerPhone(quote.customerPhone || quote.whatsappNum || quote.customerId?.primaryContact?.phone || quote.customerId?.primaryContact?.mobile || '');
+        setPayCustomerPhone(quote.customerPhone || quote.whatsappNum || quote.contactPerson?.mobile || quote.contactPerson?.phone || quote.customerId?.primaryContact?.phone || quote.customerId?.primaryContact?.mobile || '');
         setSendPaySms(true);
     };
 
