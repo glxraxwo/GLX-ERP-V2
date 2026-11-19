@@ -723,8 +723,8 @@ const DocumentPrintView = forwardRef(({ document: doc, companyInfo, useSinhalaLa
                     <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 13.5 }}>{fmt(grandTotal)}</span>
                 </div>
 
-                {/* Optional Advance Paid & Balance Due */}
-                {(advancePaid > 0 && (doc.showAdvanceOnInvoice || isInvoice)) && (
+                {/* Advance Paid & Balance Due */}
+                {advancePaid > 0 && (
                     <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, marginTop: 4, color: '#166534', fontSize: 12 }}>
                             <span>ADVANCE PAID</span>

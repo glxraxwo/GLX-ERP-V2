@@ -2658,52 +2658,26 @@ export default function InvoiceFormPage({ defaultDocType }) {
 
                                     {showAdvance && (
                                         <div className="space-y-2 pt-0.5">
-                                            <div className="space-y-1.5 p-2 bg-emerald-50/60 dark:bg-emerald-950/40 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
-                                                <div className="flex justify-between items-center text-xs text-gray-700 dark:text-slate-300">
-                                                    <span className="flex items-center gap-1 text-[11px]">
-                                                        Advance (%) <span className="text-[10px] text-gray-400 dark:text-slate-500 font-normal">Auto-calc</span>
-                                                    </span>
-                                                    <div className="flex items-center gap-1">
-                                                        <input
-                                                            type="number"
-                                                            min="0"
-                                                            max="100"
-                                                            step="any"
-                                                            placeholder="0"
-                                                            className="w-16 px-1.5 py-0.5 border rounded text-right font-mono text-xs bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 font-bold border-emerald-300 dark:border-emerald-700 focus:outline-none"
-                                                            value={advancePercentage || ''}
-                                                            onChange={(e) => {
-                                                                const pct = Number(e.target.value);
-                                                                const advAmt = +((totals.grand * pct) / 100).toFixed(2);
-                                                                const cond = `a). ${pct}% Advance Payment with the firm Order.\nb). Balance Payment on Completion of Work`;
-                                                                setAdvancePercentage(pct);
-                                                                setAdvanceAmount(advAmt);
-                                                                setConditionOfPayments(cond);
-                                                            }}
-                                                        />
-                                                        <span className="font-bold text-gray-400 dark:text-slate-500 text-[11px]">%</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex justify-between items-center text-xs text-gray-700 dark:text-slate-300">
-                                                    <span className="text-[11px]">Advance Amount (LKR)</span>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        className="w-24 px-1.5 py-0.5 border rounded text-right font-mono text-xs bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 font-bold border-emerald-300 dark:border-emerald-700 focus:outline-none"
-                                                        value={advanceAmount || ''}
-                                                        placeholder="0.00"
-                                                        onChange={(e) => {
-                                                            const amt = Number(e.target.value);
-                                                            const pct = totals.grand > 0 ? +((amt / totals.grand) * 100).toFixed(1) : 0;
-                                                            setAdvanceAmount(amt);
-                                                            setAdvancePercentage(pct);
-                                                            const cond = `a). ${pct}% Advance Payment with the firm Order.\nb). Balance Payment on Completion of Work`;
+                                            <div className="p-2.5 bg-emerald-50/60 dark:bg-emerald-950/40 rounded-lg border border-emerald-200 dark:border-emerald-800/60 flex justify-between items-center text-xs text-gray-700 dark:text-slate-300">
+                                                <span className="font-semibold text-xs">Advance Amount (LKR)</span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max={totals.grand}
+                                                    step="0.01"
+                                                    className="w-36 px-2.5 py-1 border rounded text-right font-mono text-xs bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 font-bold border-emerald-300 dark:border-emerald-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                                    value={advanceAmount || ''}
+                                                    placeholder="0.00"
+                                                    onChange={(e) => {
+                                                        const amt = Math.max(0, Number(e.target.value));
+                                                        setAdvanceAmount(amt);
+                                                        setAdvancePercentage(0);
+                                                        if (amt > 0) {
+                                                            const cond = `a). Advance Payment of LKR ${amt.toLocaleString()} with the firm Order.\nb). Balance Payment on Completion of Work`;
                                                             setConditionOfPayments(cond);
-                                                        }}
-                                                    />
-                                                </div>
+                                                        }
+                                                    }}
+                                                />
                                             </div>
 
                                             <div className="flex justify-between items-center font-bold text-amber-900 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800/60">

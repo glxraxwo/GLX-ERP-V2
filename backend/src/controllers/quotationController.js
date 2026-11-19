@@ -417,13 +417,25 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
         });
     }
 
-    const advancePaid = req.body.advanceAmount !== undefined 
-        ? Number(req.body.advanceAmount || 0) 
-        : Number(quotation.advanceAmount || 0);
+    const { default: Payment } = await import('../models/Payment.js');
+    const existingPayments = await Payment.find({
+        'allocations.documentId': quotation._id,
+        deletedAt: null
+    }).sort({ paymentDate: 1 });
+
+    const totalPaymentsOnQuote = existingPayments.reduce((sum, p) => {
+        const alloc = p.allocations.find(a => String(a.documentId) === String(quotation._id));
+        return sum + Number(alloc?.amount || p.amount || 0);
+    }, 0);
+
+    const advancePaid = Math.max(totalPaymentsOnQuote, Number(req.body.advanceAmount !== undefined ? req.body.advanceAmount : quotation.advanceAmount || 0));
     const grandTotal = Number(quotation.grandTotal || 0);
+    const balanceDue = Math.max(0, +(grandTotal - advancePaid).toFixed(2));
     let initialPaymentStatus = 'unpaid';
-    if (advancePaid > 0) {
-        initialPaymentStatus = advancePaid >= grandTotal ? 'paid' : 'partially_paid';
+    if (advancePaid >= grandTotal && grandTotal > 0) {
+        initialPaymentStatus = 'paid';
+    } else if (advancePaid > 0) {
+        initialPaymentStatus = 'partially_paid';
     }
 
     const invoice = new Invoice({
@@ -489,10 +501,13 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
         totalDiscount: quotation.discount || 0,
         totalTax: quotation.tax || 0,
         grandTotal: grandTotal,
-        advancePercentage: quotation.advancePercentage || 0,
+        amountPaid: advancePaid,
+        advancePercentage: 0,
         advanceAmount: advancePaid,
-        balanceDue: Math.max(0, grandTotal - advancePaid),
+        balanceDue: balanceDue,
+        showAdvanceOnInvoice: advancePaid > 0,
         paymentStatus: initialPaymentStatus,
+        lastPaymentDate: existingPayments.length > 0 ? existingPayments[existingPayments.length - 1].paymentDate : (advancePaid > 0 ? new Date() : undefined),
         notes: quotation.notes || `Converted from ${quotation.documentType || 'quotation'} ${quotation.quoteNumber}`,
 
         status: 'approved',
@@ -501,34 +516,53 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
 
     await invoice.save();
 
-    if (advancePaid > 0) {
-        const { default: Payment } = await import('../models/Payment.js');
+    // Transfer existing quotation advance payments to this newly converted invoice
+    for (const p of existingPayments) {
+        let updated = false;
+        p.allocations.forEach(a => {
+            if (String(a.documentId) === String(quotation._id)) {
+                a.documentType = 'invoice';
+                a.documentId = invoice._id;
+                a.documentNumber = invoice.invoiceNumber;
+                updated = true;
+            }
+        });
+        if (updated) {
+            p.notes = (p.notes ? p.notes + ' | ' : '') + `Transferred from ${quotation.documentType || 'quotation'} ${quotation.quoteNumber} to Invoice ${invoice.invoiceNumber}`;
+            await p.save();
+        }
+    }
+
+    // If additional advance was paid during conversion
+    const additionalAdvance = +(advancePaid - totalPaymentsOnQuote).toFixed(2);
+    if (additionalAdvance > 0) {
         const { default: BankAccount } = await import('../models/BankAccount.js');
         const payment = new Payment({
             direction: 'received',
             customerId: quotation.customerId || undefined,
             bankAccountId: req.body.bankAccountId || undefined,
-            amount: advancePaid,
+            amount: additionalAdvance,
             method: req.body.paymentMethod || 'cash',
             paymentDate: new Date(),
-            partyName: quotation.customerName || 'Walk-in Customer',
+            partyName: quotation.vehicleOwner || quotation.customerName || 'Valued Customer',
+            vehicleNo: quotation.vehicleNo || '',
             allocations: [{
                 documentType: 'invoice',
                 documentId: invoice._id,
                 documentNumber: invoice.invoiceNumber,
-                amount: advancePaid
+                amount: additionalAdvance
             }],
             transactionReference: req.body.paymentReference || undefined,
             receivedBy: req.user._id,
             createdBy: req.user._id,
-            notes: `Advance payment for Invoice ${invoice.invoiceNumber}`
+            notes: `Advance payment during conversion from ${quotation.quoteNumber} to Invoice ${invoice.invoiceNumber}`
         });
         await payment.save();
 
         if (req.body.bankAccountId) {
             const bankAccount = await BankAccount.findById(req.body.bankAccountId);
             if (bankAccount) {
-                bankAccount.balance = +(bankAccount.balance + advancePaid).toFixed(2);
+                bankAccount.balance = +(bankAccount.balance + additionalAdvance).toFixed(2);
                 await bankAccount.save();
             }
         }
@@ -541,7 +575,7 @@ export const convertQuotationToInvoice = asyncHandler(async (req, res) => {
 
     await Quotation.updateOne(
         { _id: quotation._id },
-        { $set: { status: 'converted', convertedInvoiceId: invoice._id, advanceAmount: advancePaid } }
+        { $set: { status: 'converted', convertedInvoiceId: invoice._id, advanceAmount: advancePaid, balanceAmount: balanceDue } }
     );
 
     createAuditLog({

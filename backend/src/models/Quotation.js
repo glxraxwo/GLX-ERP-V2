@@ -153,10 +153,17 @@ quotationSchema.pre('validate', async function () {
     this.discount = totalDiscount;
     this.grandTotal = Math.max(0, (this.totalAmount || 0) + (this.laborCost || 0) + (this.tax || 0) - (this.discount || 0));
 
-    // Compute advance amount from advancePercentage if specified
-    if (this.advancePercentage > 0) {
+    // Handle advance amount and balance calculation directly in currency (without forced percentage)
+    if (this.advanceAmount > 0) {
+        this.advanceAmount = +Number(this.advanceAmount).toFixed(2);
+        if (this.grandTotal > 0) {
+            this.advancePercentage = +((this.advanceAmount / this.grandTotal) * 100).toFixed(1);
+        }
+    } else if (this.advancePercentage > 0) {
         this.advanceAmount = +( (this.grandTotal * this.advancePercentage) / 100 ).toFixed(2);
-        this.conditionOfPayments = `a). ${this.advancePercentage}% Advance Payment with the firm Order.\nb). Balance Payment on Completion of Work`;
+    } else {
+        this.advanceAmount = 0;
+        this.advancePercentage = 0;
     }
 
     this.balanceAmount = Math.max(0, +( (this.grandTotal || 0) - (this.advanceAmount || 0) ).toFixed(2));

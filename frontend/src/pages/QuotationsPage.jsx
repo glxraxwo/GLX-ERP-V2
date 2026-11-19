@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import {
     Plus, FileText, Trash2, Send,
     MapPin, Clock, X, ShoppingCart, Edit, Eye, Download, Search, Image as ImageIcon, Printer, CheckCircle, RotateCcw, Briefcase,
-    Calendar, LayoutList, LayoutGrid, XCircle, Ban, Sparkles, Save, AlertCircle
+    Calendar, LayoutList, LayoutGrid, XCircle, Ban, Sparkles, Save, AlertCircle, Receipt
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -21,6 +21,7 @@ import { getSalesRepOptions, saveSalesRep } from '../utils/salesRepService';
 import { getSavedTerms, saveDefaultTerms } from '../utils/termsService';
 import { useSettings } from '../features/settings/useSettings';
 import DocumentPrintView from '../components/print/DocumentPrintView';
+import PaymentReceiptPrintView from '../components/print/PaymentReceiptPrintView';
 import ShareDocumentSmsModal from '../components/ShareDocumentSmsModal';
 import { exportDocumentToPDF, exportElementToPDF, printDocumentAsPDF, printElementAsPDF, buildDocumentFileName } from '../utils/dataExport';
 import { getApiUrl } from '../api/config';
@@ -283,6 +284,27 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     const [targetCancelQuote, setTargetCancelQuote] = useState(null);
     const [cancelReason, setCancelReason] = useState('');
     const [cancelling, setCancelling] = useState(false);
+
+    // Record Advance Payment Modal State
+    const [selectedPayQuote, setSelectedPayQuote] = useState(null);
+    const [payAmount, setPayAmount] = useState('');
+    const [payMethod, setPayMethod] = useState('cash');
+    const [payBankAccountId, setPayBankAccountId] = useState('');
+    const [payReference, setPayReference] = useState('');
+    const [payCustomerPhone, setPayCustomerPhone] = useState('');
+    const [sendPaySms, setSendPaySms] = useState(true);
+    const [isSubmittingPay, setIsSubmittingPay] = useState(false);
+
+    // Payment Receipt Printing State (Exact Invoice Receipt Format)
+    const [receiptToPrint, setReceiptToPrint] = useState(null);
+    const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+    const [sendingReceiptSms, setSendingReceiptSms] = useState(false);
+    const receiptPrintRef = useRef(null);
+
+    // View Past Receipts for a Quotation/Estimate
+    const [receiptHistoryQuote, setReceiptHistoryQuote] = useState(null);
+    const [quoteReceiptsList, setQuoteReceiptsList] = useState([]);
+    const [isLoadingQuoteReceipts, setIsLoadingQuoteReceipts] = useState(false);
 
     const fetchQuotations = async () => {
         try {
@@ -1017,6 +1039,126 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         }
     };
 
+    const handleOpenPayModal = (quote, e) => {
+        if (e) e.stopPropagation();
+        setSelectedPayQuote(quote);
+        const bal = quote.balanceAmount !== undefined ? quote.balanceAmount : Math.max(0, (quote.grandTotal || 0) - (quote.advanceAmount || 0));
+        setPayAmount(bal > 0 ? bal : '');
+        setPayMethod('cash');
+        setPayBankAccountId(bankAccounts[0]?._id || '');
+        setPayReference('');
+        setPayCustomerPhone(quote.customerPhone || quote.whatsappNum || quote.customerId?.primaryContact?.phone || quote.customerId?.primaryContact?.mobile || '');
+        setSendPaySms(true);
+    };
+
+    const handleQuickPaySubmit = async (e) => {
+        e.preventDefault();
+        if (!selectedPayQuote) return;
+        const pVal = Number(payAmount);
+        const bal = selectedPayQuote.balanceAmount !== undefined ? selectedPayQuote.balanceAmount : Math.max(0, (selectedPayQuote.grandTotal || 0) - (selectedPayQuote.advanceAmount || 0));
+        if (isNaN(pVal) || pVal <= 0) {
+            toast.error('Please enter a valid payment amount');
+            return;
+        }
+        if (pVal > bal + 0.01) {
+            toast.error(`Payment amount exceeds balance due of LKR ${bal.toLocaleString()}`);
+            return;
+        }
+
+        setIsSubmittingPay(true);
+        try {
+            const isEst = selectedPayQuote.documentType === 'estimate';
+            const docTypeName = isEst ? 'Estimate' : 'Quotation';
+            const payload = {
+                direction: 'received',
+                customerId: selectedPayQuote.customerId?._id || selectedPayQuote.customerId || undefined,
+                partyName: selectedPayQuote.vehicleOwner || selectedPayQuote.customerName || 'Valued Customer',
+                customerPhone: payCustomerPhone || selectedPayQuote.customerPhone || selectedPayQuote.whatsappNum || undefined,
+                vehicleNo: selectedPayQuote.vehicleNo || '',
+                amount: pVal,
+                method: payMethod,
+                bankAccountId: (payMethod === 'cheque' || payMethod === 'bank_transfer') ? (payBankAccountId || undefined) : undefined,
+                paymentDate: new Date().toISOString().split('T')[0],
+                sendSms: sendPaySms,
+                allocations: [{
+                    documentType: selectedPayQuote.documentType || 'quotation',
+                    documentId: selectedPayQuote._id,
+                    documentNumber: selectedPayQuote.quoteNumber || selectedPayQuote.quotationCode,
+                    amount: pVal,
+                    docTotal: selectedPayQuote.grandTotal,
+                    balanceDue: Math.max(0, bal - pVal)
+                }],
+                notes: payReference || `Advance payment for ${docTypeName} ${selectedPayQuote.quoteNumber || selectedPayQuote.quotationCode}`,
+                transactionReference: payReference || undefined
+            };
+
+            const res = await api.post('/payments', payload);
+            const savedPayment = res.data?.data;
+
+            toast.success(`Advance payment of LKR ${pVal.toLocaleString()} recorded for ${selectedPayQuote.quoteNumber || selectedPayQuote.quotationCode}!${sendPaySms ? ' (SMS receipt sent)' : ''}`);
+
+            // Prepare receipt object with proper balance info for PaymentReceiptPrintView
+            const receiptData = {
+                ...(savedPayment || {}),
+                partyName: selectedPayQuote.vehicleOwner || selectedPayQuote.customerName || savedPayment?.partyName || 'Valued Customer',
+                customerPhone: payCustomerPhone || selectedPayQuote.customerPhone || selectedPayQuote.whatsappNum || '',
+                vehicleNo: selectedPayQuote.vehicleNo || '',
+                totalDocAmount: selectedPayQuote.grandTotal,
+                totalBalanceDue: Math.max(0, +(bal - pVal).toFixed(2)),
+                allocations: [{
+                    documentType: selectedPayQuote.documentType || 'quotation',
+                    documentId: selectedPayQuote._id,
+                    documentNumber: selectedPayQuote.quoteNumber || selectedPayQuote.quotationCode,
+                    amount: pVal,
+                    docTotal: selectedPayQuote.grandTotal,
+                    balanceDue: Math.max(0, +(bal - pVal).toFixed(2))
+                }]
+            };
+
+            setSelectedPayQuote(null);
+            fetchQuotations();
+
+            // Open Receipt modal for instant printing in exact invoice receipt format!
+            setReceiptToPrint(receiptData);
+            setIsReceiptModalOpen(true);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to record advance payment');
+        } finally {
+            setIsSubmittingPay(false);
+        }
+    };
+
+    const handleSendReceiptSms = async (paymentToUse, phoneToUse) => {
+        const p = paymentToUse || receiptToPrint;
+        if (!p?._id) return;
+        setSendingReceiptSms(true);
+        try {
+            await api.post(`/payments/${p._id}/send-sms`, {
+                phone: phoneToUse || p.customerPhone || payCustomerPhone || receiptHistoryQuote?.customerPhone || receiptHistoryQuote?.whatsappNum || undefined
+            });
+            toast.success('Payment receipt SMS dispatched successfully!');
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to dispatch SMS');
+        } finally {
+            setSendingReceiptSms(false);
+        }
+    };
+
+    const handleViewQuoteReceipts = async (quote, e) => {
+        if (e) e.stopPropagation();
+        setReceiptHistoryQuote(quote);
+        setIsLoadingQuoteReceipts(true);
+        try {
+            const res = await api.get(`/payments?documentId=${quote._id}`);
+            setQuoteReceiptsList(res.data?.data || []);
+        } catch (err) {
+            console.error('Failed to load receipts', err);
+            toast.error('Failed to load receipts');
+        } finally {
+            setIsLoadingQuoteReceipts(false);
+        }
+    };
+
     const getStatusStyle = (status) => {
         const colors = {
             draft: 'text-gray-600 bg-gray-50 border-gray-200',
@@ -1171,17 +1313,28 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         },
         {
             key: 'grandTotal',
-            label: 'Total Amount',
-            render: (r) => (
-                <div>
-                    <span className="font-bold text-gray-900 font-mono text-sm">
-                        {fmt(r.grandTotal || r.totalAmount || 0)}
-                    </span>
-                    {r.advanceAmount > 0 && (
-                        <p className="text-[10px] text-emerald-600 font-semibold">Adv: {fmt(r.advanceAmount)}</p>
-                    )}
-                </div>
-            )
+            label: 'Total & Advance',
+            render: (r) => {
+                const adv = Number(r.advanceAmount || 0);
+                const bal = r.balanceAmount !== undefined ? Number(r.balanceAmount) : Math.max(0, Number(r.grandTotal || 0) - adv);
+                return (
+                    <div className="space-y-0.5">
+                        <div className="font-bold text-gray-900 dark:text-white font-mono text-xs sm:text-sm">
+                            {fmt(r.grandTotal || r.totalAmount || 0)}
+                        </div>
+                        {adv > 0 && (
+                            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                <span>Paid:</span> {fmt(adv)}
+                            </div>
+                        )}
+                        {bal > 0 && adv > 0 && (
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                                <span>Bal:</span> {fmt(bal)}
+                            </div>
+                        )}
+                    </div>
+                );
+            }
         },
         {
             key: 'status',
@@ -1196,7 +1349,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
         {
             key: 'actions',
             label: 'Actions',
-            width: '210px',
+            width: '260px',
             render: (r) => (
                 <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -1213,6 +1366,28 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                             title="Edit"
                         >
                             <Edit size={16} />
+                        </button>
+                    )}
+                    {/* Pay Advance Button */}
+                    {canEdit && r.status !== 'converted' && r.status !== 'cancelled' && ((r.balanceAmount === undefined) || r.balanceAmount > 0) && (
+                        <button
+                            type="button"
+                            onClick={(e) => handleOpenPayModal(r, e)}
+                            className="px-2 py-1 text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg transition flex items-center gap-1 shadow-xs cursor-pointer"
+                            title="Record Advance Payment (අත්තිකාරම් මුදල් භාරගැනීම)"
+                        >
+                            <CheckCircle size={12} /> Pay
+                        </button>
+                    )}
+                    {/* View Receipts Button */}
+                    {r.advanceAmount > 0 && (
+                        <button
+                            type="button"
+                            onClick={(e) => handleViewQuoteReceipts(r, e)}
+                            className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded transition cursor-pointer"
+                            title="Print / View Advance Receipts (රිසිට්පත මුද්‍රණය)"
+                        >
+                            <Receipt size={16} />
                         </button>
                     )}
                     {r.status === 'converted' ? (
@@ -1633,6 +1808,28 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                         {canEdit && (
                                             <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/invoices/new?type=${quote.documentType === 'estimate' ? 'estimate' : 'quotation'}&edit=${quote._id}`)}>
                                                 <Edit size={14} className="mr-1" /> Edit
+                                            </Button>
+                                        )}
+                                        {canEdit && quote.status !== 'converted' && quote.status !== 'cancelled' && ((quote.balanceAmount === undefined) || quote.balanceAmount > 0) && (
+                                            <Button 
+                                                variant="primary" 
+                                                size="sm" 
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" 
+                                                onClick={(e) => handleOpenPayModal(quote, e)} 
+                                                title="Record Advance Payment"
+                                            >
+                                                <CheckCircle size={14} className="mr-1" /> Pay
+                                            </Button>
+                                        )}
+                                        {quote.advanceAmount > 0 && (
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="text-emerald-700 border-emerald-300 bg-emerald-50 hover:bg-emerald-100" 
+                                                onClick={(e) => handleViewQuoteReceipts(quote, e)} 
+                                                title="Print / View Payment Receipts"
+                                            >
+                                                <Receipt size={14} />
                                             </Button>
                                         )}
                                         <Button variant="outline" size="sm" onClick={() => handleDirectDownloadPDF(quote)} title="Download PDF">
@@ -2520,48 +2717,29 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 <span className="font-mono text-blue-800">LKR {formData.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
                             <div className="space-y-1.5 pt-2 border-t">
-                                <div className="flex justify-between items-center text-xs font-semibold text-gray-700">
-                                    <span className="flex items-center gap-1">Advance (%) <span className="text-[10px] text-gray-400 font-normal">Auto-calc</span></span>
-                                    <div className="flex items-center gap-1">
-                                        <input 
-                                            type="number" 
-                                            min="0"
-                                            max="100"
-                                            step="any"
-                                            placeholder="0"
-                                            className="w-16 px-2 py-1 border rounded text-right font-mono text-xs bg-emerald-50 text-emerald-800 font-bold border-emerald-300"
-                                            value={formData.advancePercentage || ''} 
-                                            onChange={(e) => {
-                                                const pct = Number(e.target.value);
-                                                const advAmt = +( (formData.grandTotal * pct) / 100 ).toFixed(2);
-                                                const cond = `a). ${pct}% Advance Payment with the firm Order.\nb). Balance Payment on Completion of Work`;
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    advancePercentage: pct,
-                                                    advanceAmount: advAmt,
-                                                    balanceAmount: Math.max(0, +( (prev.grandTotal || 0) - advAmt ).toFixed(2)),
-                                                    conditionOfPayments: cond
-                                                }));
-                                            }}
-                                        />
-                                        <span className="font-bold text-gray-500">%</span>
-                                    </div>
-                                </div>
                                 <div className="flex justify-between items-center font-semibold text-gray-700">
                                     <span>Advance Amount (LKR)</span>
                                     <input 
                                         type="number" 
-                                        className="w-28 px-2 py-1 border rounded text-right font-mono text-xs bg-emerald-50 text-emerald-800 font-bold border-emerald-300"
-                                        value={formData.advanceAmount} 
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        className="w-36 px-2 py-1 border rounded text-right font-mono text-xs bg-emerald-50 text-emerald-800 font-bold border-emerald-300 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                        value={formData.advanceAmount || ''} 
                                         onChange={(e) => {
-                                            const amt = Number(e.target.value);
-                                            const pct = formData.grandTotal > 0 ? +( (amt / formData.grandTotal) * 100 ).toFixed(1) : 0;
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                advanceAmount: amt,
-                                                advancePercentage: pct,
-                                                balanceAmount: Math.max(0, +( (prev.grandTotal || 0) - amt ).toFixed(2))
-                                            }));
+                                            const amt = Math.max(0, Number(e.target.value));
+                                            setFormData(prev => {
+                                                const updated = {
+                                                    ...prev,
+                                                    advanceAmount: amt,
+                                                    advancePercentage: 0,
+                                                    balanceAmount: Math.max(0, +( (prev.grandTotal || 0) - amt ).toFixed(2))
+                                                };
+                                                if (amt > 0) {
+                                                    updated.conditionOfPayments = `a). Advance Payment of LKR ${amt.toLocaleString()} with the firm Order.\nb). Balance Payment on Completion of Work`;
+                                                }
+                                                return updated;
+                                            });
                                         }}
                                     />
                                 </div>
@@ -2722,6 +2900,34 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                             >
                                                 <Edit size={14} />
                                                 Edit
+                                            </button>
+                                        </>
+                                    )}
+                                    {canEdit && previewQuote.status !== 'converted' && previewQuote.status !== 'cancelled' && ((previewQuote.balanceAmount === undefined) || previewQuote.balanceAmount > 0) && (
+                                        <>
+                                            <div className="w-px h-5 bg-gray-200" />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenPayModal(previewQuote)}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-all duration-150 cursor-pointer"
+                                                title="Record Advance Payment"
+                                            >
+                                                <CheckCircle size={14} />
+                                                Pay Advance
+                                            </button>
+                                        </>
+                                    )}
+                                    {previewQuote.advanceAmount > 0 && (
+                                        <>
+                                            <div className="w-px h-5 bg-gray-200" />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleViewQuoteReceipts(previewQuote)}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg shadow-xs transition-all duration-150 cursor-pointer"
+                                                title="View & Print Payment Receipts"
+                                            >
+                                                <Receipt size={14} />
+                                                Receipts
                                             </button>
                                         </>
                                     )}
@@ -3113,6 +3319,20 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     LKR {(convertingQuote.grandTotal || convertingQuote.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </span>
                             </div>
+                            {convertingQuote.advanceAmount > 0 && (
+                                <div className="flex justify-between items-center text-emerald-700 dark:text-emerald-400 font-semibold">
+                                    <span>Already Paid Advance:</span>
+                                    <span className="font-mono font-bold">
+                                        - LKR {Number(convertingQuote.advanceAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center pt-1 border-t border-purple-200/60 dark:border-purple-800/40 text-amber-900 dark:text-amber-300 font-bold">
+                                <span>Remaining Balance on Invoice:</span>
+                                <span className="font-mono text-sm">
+                                    LKR {Math.max(0, (convertingQuote.grandTotal || 0) - (convertingQuote.advanceAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
                         </div>
 
                         <div className="flex justify-end gap-2.5">
@@ -3133,6 +3353,296 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                             >
                                 Yes, Convert / තහවුරු කරන්න
                             </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* QUICK PAY MODAL (RECORD ADVANCE PAYMENT) */}
+            {selectedPayQuote && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white dark:bg-[#111F33] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-scaleUp border border-gray-100 dark:border-slate-700">
+                        <div className="flex justify-between items-center border-b border-gray-100 dark:border-slate-700 pb-3">
+                            <div>
+                                <h3 className="font-bold text-gray-900 dark:text-white text-lg">
+                                    Record Advance Payment
+                                </h3>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 font-mono">
+                                    {selectedPayQuote.quoteNumber || selectedPayQuote.quotationCode} • {selectedPayQuote.vehicleOwner || selectedPayQuote.customerName || 'Valued Customer'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedPayQuote(null)}
+                                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-lg"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <form onSubmit={handleQuickPaySubmit} className="space-y-4">
+                            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between">
+                                <div>
+                                    <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400">Balance Due</span>
+                                    <p className="text-xl font-bold text-emerald-950 dark:text-emerald-200">
+                                        {fmt(selectedPayQuote.balanceAmount !== undefined ? selectedPayQuote.balanceAmount : Math.max(0, (selectedPayQuote.grandTotal || 0) - (selectedPayQuote.advanceAmount || 0)))}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400">Grand Total</span>
+                                    <p className="text-xs font-mono text-emerald-900 dark:text-emerald-300">{fmt(selectedPayQuote.grandTotal)}</p>
+                                    {selectedPayQuote.advanceAmount > 0 && (
+                                        <p className="text-[10px] text-emerald-600 font-semibold">Prev Adv: {fmt(selectedPayQuote.advanceAmount)}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase">Advance Payment Amount (LKR) *</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max={selectedPayQuote.balanceAmount !== undefined ? selectedPayQuote.balanceAmount : Math.max(0, (selectedPayQuote.grandTotal || 0) - (selectedPayQuote.advanceAmount || 0))}
+                                    step="0.01"
+                                    required
+                                    value={payAmount}
+                                    onChange={(e) => setPayAmount(e.target.value)}
+                                    placeholder="Enter advance amount"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm font-bold font-mono bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                                />
+                                <p className="text-[11px] text-gray-500 dark:text-slate-400">Enter partial advance or full balance payment.</p>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase">Payment Method</label>
+                                <select
+                                    value={payMethod}
+                                    onChange={(e) => setPayMethod(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white [&>option]:dark:bg-slate-900"
+                                >
+                                    <option value="cash">Cash</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="card">Card</option>
+                                    <option value="cheque">Cheque</option>
+                                </select>
+                            </div>
+
+                            {(payMethod === 'cheque' || payMethod === 'bank_transfer') && (
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase">Company Bank Account</label>
+                                    <select
+                                        required
+                                        value={payBankAccountId}
+                                        onChange={(e) => setPayBankAccountId(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white [&>option]:dark:bg-slate-900"
+                                    >
+                                        <option value="">-- Select Account --</option>
+                                        {bankAccounts.map(acc => (
+                                            <option key={acc._id} value={acc._id}>
+                                                {acc.bankName} - {acc.accountNumber} (LKR {acc.balance?.toLocaleString()})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase">Reference / Cheque #</label>
+                                <input
+                                    type="text"
+                                    value={payReference}
+                                    onChange={(e) => setPayReference(e.target.value)}
+                                    placeholder="e.g. Bank slip #, Cheque #, etc."
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                                />
+                            </div>
+
+                            {/* SMS Notification Option */}
+                            <div className="p-3 bg-blue-50/70 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-800/50 space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-900 dark:text-blue-300">
+                                    <input
+                                        type="checkbox"
+                                        checked={sendPaySms}
+                                        onChange={(e) => setSendPaySms(e.target.checked)}
+                                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                    />
+                                    <span>Send Payment Receipt SMS to Customer</span>
+                                </label>
+                                {sendPaySms && (
+                                    <div className="space-y-1">
+                                        <label className="text-[11px] font-semibold text-blue-800 dark:text-blue-300">
+                                            Recipient Mobile Number
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            value={payCustomerPhone}
+                                            onChange={(e) => setPayCustomerPhone(e.target.value)}
+                                            placeholder="e.g. 0771234567 / +94771234567"
+                                            className="w-full px-2.5 py-1.5 border border-blue-300 dark:border-blue-700 rounded-lg text-xs font-mono bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-slate-700">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedPayQuote(null)}
+                                    className="px-4 py-2 border border-gray-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmittingPay}
+                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+                                >
+                                    {isSubmittingPay ? 'Recording...' : 'Record Payment & Print Receipt'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* PAYMENT RECEIPT MODAL (INVOICE FORMAT) */}
+            {isReceiptModalOpen && receiptToPrint && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 overflow-y-auto">
+                    <div className="bg-white dark:bg-[#111F33] rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col border border-gray-200 dark:border-slate-700 animate-scaleUp">
+                        <div className="flex justify-between items-center px-6 py-3.5 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60">
+                            <div>
+                                <h3 className="font-bold text-gray-900 dark:text-white text-base">Payment Receipt (ගෙවීම් රිසිට්පත)</h3>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 font-mono">
+                                    {receiptToPrint.paymentNumber} • {receiptToPrint.allocations?.[0]?.documentNumber || ''}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSendReceiptSms(receiptToPrint, receiptToPrint.customerPhone || payCustomerPhone)}
+                                    disabled={sendingReceiptSms}
+                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition disabled:opacity-50 cursor-pointer"
+                                    title="Send / Resend SMS Receipt to Customer"
+                                >
+                                    <Send size={13} />
+                                    {sendingReceiptSms ? 'Sending...' : 'Send SMS'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setIsReceiptModalOpen(false);
+                                        setReceiptToPrint(null);
+                                    }}
+                                    className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-slate-700 text-lg transition cursor-pointer"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-100 dark:bg-slate-900 flex justify-center">
+                            <PaymentReceiptPrintView
+                                ref={receiptPrintRef}
+                                payment={receiptToPrint}
+                                companyInfo={settings}
+                                hideToolbar={false}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* RECEIPTS HISTORY MODAL */}
+            {receiptHistoryQuote && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white dark:bg-[#111F33] rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 animate-scaleUp border border-gray-100 dark:border-slate-700">
+                        <div className="flex justify-between items-center border-b border-gray-100 dark:border-slate-700 pb-3">
+                            <div>
+                                <h3 className="font-bold text-gray-900 dark:text-white text-lg">Advance Payment Receipts</h3>
+                                <p className="text-xs text-gray-500 dark:text-slate-400 font-mono">
+                                    {receiptHistoryQuote.quoteNumber || receiptHistoryQuote.quotationCode} • {receiptHistoryQuote.vehicleOwner || receiptHistoryQuote.customerName || 'Client'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setReceiptHistoryQuote(null);
+                                    setQuoteReceiptsList([]);
+                                }}
+                                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-lg cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between text-xs">
+                            <div>
+                                <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400">Total Advance Paid</span>
+                                <p className="text-lg font-bold text-emerald-950 dark:text-emerald-200">{fmt(receiptHistoryQuote.advanceAmount || 0)}</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400">Balance Due</span>
+                                <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                                    {fmt(receiptHistoryQuote.balanceAmount !== undefined ? receiptHistoryQuote.balanceAmount : Math.max(0, (receiptHistoryQuote.grandTotal || 0) - (receiptHistoryQuote.advanceAmount || 0)))}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="max-h-60 overflow-y-auto space-y-2">
+                            {isLoadingQuoteReceipts ? (
+                                <p className="text-center text-xs text-gray-500 py-6">Loading payment receipts...</p>
+                            ) : quoteReceiptsList.length === 0 ? (
+                                <p className="text-center text-xs text-gray-500 py-6">No payment records found.</p>
+                            ) : (
+                                quoteReceiptsList.map((p) => {
+                                    const quoteBal = receiptHistoryQuote.balanceAmount !== undefined ? receiptHistoryQuote.balanceAmount : Math.max(0, (receiptHistoryQuote.grandTotal || 0) - (receiptHistoryQuote.advanceAmount || 0));
+                                    const clientPh = p.customerPhone || receiptHistoryQuote.customerPhone || receiptHistoryQuote.whatsappNum;
+                                    return (
+                                        <div key={p._id} className="p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl flex items-center justify-between gap-3 hover:shadow-xs transition">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-mono font-bold text-xs text-blue-700 dark:text-blue-400">{p.paymentNumber || 'REC'}</span>
+                                                    <span className="text-[10px] text-gray-500 dark:text-slate-400">{formatDate(p.paymentDate)}</span>
+                                                </div>
+                                                <p className="text-xs text-gray-600 dark:text-slate-300 capitalize">{p.method?.replace('_', ' ')} {p.transactionReference ? `• Ref: ${p.transactionReference}` : ''}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300 text-sm">{fmt(p.amount)}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSendReceiptSms(p, clientPh)}
+                                                    disabled={sendingReceiptSms}
+                                                    className="p-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold flex items-center gap-1 border border-blue-200 cursor-pointer disabled:opacity-50"
+                                                    title="Send SMS Receipt to Customer"
+                                                >
+                                                    <Send size={12} /> SMS
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setReceiptToPrint({
+                                                            ...p,
+                                                            partyName: receiptHistoryQuote.vehicleOwner || receiptHistoryQuote.customerName || p.partyName || 'Valued Customer',
+                                                            customerPhone: clientPh || '',
+                                                            vehicleNo: receiptHistoryQuote.vehicleNo || '',
+                                                            totalDocAmount: receiptHistoryQuote.grandTotal,
+                                                            totalBalanceDue: quoteBal,
+                                                            allocations: [{
+                                                                documentType: receiptHistoryQuote.documentType || 'quotation',
+                                                                documentId: receiptHistoryQuote._id,
+                                                                documentNumber: receiptHistoryQuote.quoteNumber,
+                                                                amount: p.amount,
+                                                                docTotal: receiptHistoryQuote.grandTotal,
+                                                                balanceDue: quoteBal
+                                                            }]
+                                                        });
+                                                        setIsReceiptModalOpen(true);
+                                                    }}
+                                                    className="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1 border border-emerald-200 cursor-pointer"
+                                                    title="Print Receipt"
+                                                >
+                                                    <Printer size={13} /> Print
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
                 </div>

@@ -40,6 +40,7 @@ const paymentSchema = new mongoose.Schema({
     employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
     bankAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'BankAccount' },
     partyName: String,
+    customerPhone: String,
 
     paymentDate: { type: Date, default: Date.now },
 

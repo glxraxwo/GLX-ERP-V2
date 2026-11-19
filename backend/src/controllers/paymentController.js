@@ -15,10 +15,12 @@ import { updateCustomerBalance } from './invoiceController.js';
 export const createPayment = asyncHandler(async (req, res) => {
     const { direction, customerId, supplierId, bankAccountId, amount, allocations = [], method, chequeStatus, ...rest } = req.body;
 
-    if (direction === 'received' && !customerId) {
-        res.status(400); throw new Error('customerId required for received payments');
+    const hasQuotationAlloc = allocations.some(a => a.documentType === 'quotation' || a.documentType === 'estimate');
+
+    if (direction === 'received' && !customerId && !req.body.partyName && !hasQuotationAlloc) {
+        res.status(400); throw new Error('customerId or customer name required for received payments');
     }
-    if (direction === 'paid' && !supplierId) {
+    if (direction === 'paid' && !supplierId && !req.body.partyName) {
         res.status(400); throw new Error('supplierId required for paid payments');
     }
 
@@ -26,34 +28,68 @@ export const createPayment = asyncHandler(async (req, res) => {
     const isChequePending = method === 'cheque' && chequeStatus !== 'cleared';
 
     try {
+        let partyName = req.body.partyName || '';
+        let customerPhone = req.body.customerPhone || rest.customerPhone || '';
+        let vehicleNo = req.body.vehicleNo || rest.vehicleNo || '';
+
         // Validate & adjust allocations
         for (const alloc of allocations) {
             if (alloc.documentType === 'invoice') {
                 const inv = await Invoice.findById(alloc.documentId);
                 if (!inv) throw new Error(`Invoice ${alloc.documentId} not found`);
-                if (alloc.amount > inv.balanceDue) {
+                if (alloc.amount > (inv.balanceDue + 0.01)) {
                     throw new Error(`Cannot allocate ${alloc.amount} to invoice ${inv.invoiceNumber}, balance is ${inv.balanceDue}`);
                 }
                 alloc.documentNumber = inv.invoiceNumber;
+                if (!vehicleNo && inv.vehicleNo) vehicleNo = inv.vehicleNo;
+                if (!partyName && (inv.vehicleOwner || inv.customerSnapshot?.name)) {
+                    partyName = inv.vehicleOwner || inv.customerSnapshot?.name;
+                }
+                if (!customerPhone && (inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.contactName)) {
+                    customerPhone = inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.contactName;
+                }
             } else if (alloc.documentType === 'bill') {
                 const bill = await Bill.findById(alloc.documentId);
                 if (!bill) throw new Error(`Bill ${alloc.documentId} not found`);
-                if (alloc.amount > bill.balanceDue) {
+                if (alloc.amount > (bill.balanceDue + 0.01)) {
                     throw new Error(`Cannot allocate ${alloc.amount} to bill ${bill.billNumber}, balance is ${bill.balanceDue}`);
                 }
                 alloc.documentNumber = bill.billNumber;
+            } else if (alloc.documentType === 'quotation' || alloc.documentType === 'estimate') {
+                const Quotation = (await import('../models/Quotation.js')).default;
+                const quote = await Quotation.findById(alloc.documentId);
+                if (!quote) throw new Error(`Quotation/Estimate ${alloc.documentId} not found`);
+                const currentBalance = quote.balanceAmount !== undefined ? Number(quote.balanceAmount) : Math.max(0, Number(quote.grandTotal || 0) - Number(quote.advanceAmount || 0));
+                if (alloc.amount > currentBalance + 0.01) {
+                    throw new Error(`Cannot allocate ${alloc.amount} to ${quote.quoteNumber || 'document'}, balance is ${currentBalance}`);
+                }
+                alloc.documentNumber = quote.quoteNumber || quote.quotationCode;
+                if (!vehicleNo && quote.vehicleNo) vehicleNo = quote.vehicleNo;
+                if (!partyName) {
+                    partyName = quote.vehicleOwner || quote.customerName || 'Valued Customer';
+                }
+                if (!customerPhone && (quote.customerPhone || quote.whatsappNum)) {
+                    customerPhone = quote.customerPhone || quote.whatsappNum;
+                }
             }
         }
 
-        // Get party name
-        let partyName = '';
+        // Get party name from Customer or Supplier if not resolved
         if (direction === 'received') {
-            const c = await Customer.findById(customerId);
-            partyName = c?.displayName;
+            if (customerId) {
+                const c = await Customer.findById(customerId);
+                if (c?.displayName) partyName = c.displayName;
+                if (!customerPhone && (c?.primaryContact?.mobile || c?.primaryContact?.phone)) {
+                    customerPhone = c.primaryContact.mobile || c.primaryContact.phone;
+                }
+            }
+            if (!partyName) partyName = 'Valued Customer';
         } else {
-            const Supplier = (await import('../models/Supplier.js')).default;
-            const s = await Supplier.findById(supplierId);
-            partyName = s?.displayName;
+            if (supplierId) {
+                const Supplier = (await import('../models/Supplier.js')).default;
+                const s = await Supplier.findById(supplierId);
+                if (s?.displayName) partyName = s.displayName;
+            }
         }
 
         // Update bank account balance if bankAccountId is provided and not a pending cheque
@@ -79,6 +115,8 @@ export const createPayment = asyncHandler(async (req, res) => {
             method,
             chequeStatus: method === 'cheque' ? (chequeStatus || 'pending') : undefined,
             partyName,
+            customerPhone,
+            vehicleNo,
             allocations,
             receivedBy: req.user._id,
             createdBy: req.user._id,
@@ -87,23 +125,36 @@ export const createPayment = asyncHandler(async (req, res) => {
 
         await payment.save();
 
-        // Apply allocations to invoices/bills
+        // Apply allocations to invoices/bills/quotations
         for (const alloc of allocations) {
             if (alloc.documentType === 'invoice') {
                 const inv = await Invoice.findById(alloc.documentId);
-                inv.amountPaid = +(inv.amountPaid + alloc.amount).toFixed(2);
-                inv.lastPaymentDate = payment.paymentDate;
-                await inv.save();
+                if (inv) {
+                    inv.amountPaid = +(Number(inv.amountPaid || 0) + Number(alloc.amount)).toFixed(2);
+                    inv.lastPaymentDate = payment.paymentDate;
+                    await inv.save();
+                }
             } else if (alloc.documentType === 'bill') {
                 const bill = await Bill.findById(alloc.documentId);
-                bill.amountPaid = +(bill.amountPaid + alloc.amount).toFixed(2);
-                bill.lastPaymentDate = payment.paymentDate;
-                await bill.save();
+                if (bill) {
+                    bill.amountPaid = +(Number(bill.amountPaid || 0) + Number(alloc.amount)).toFixed(2);
+                    bill.lastPaymentDate = payment.paymentDate;
+                    await bill.save();
+                }
+            } else if (alloc.documentType === 'quotation' || alloc.documentType === 'estimate') {
+                const Quotation = (await import('../models/Quotation.js')).default;
+                const quote = await Quotation.findById(alloc.documentId);
+                if (quote) {
+                    const newAdvance = +(Number(quote.advanceAmount || 0) + Number(alloc.amount)).toFixed(2);
+                    quote.advanceAmount = newAdvance;
+                    quote.balanceAmount = Math.max(0, +(Number(quote.grandTotal || 0) - newAdvance).toFixed(2));
+                    await quote.save();
+                }
             }
         }
 
-        // Update customer balance if received
-        if (direction === 'received') {
+        // Update customer balance if received and customer exists
+        if (direction === 'received' && customerId) {
             await updateCustomerBalance(customerId);
         }
         try {
@@ -124,9 +175,11 @@ export const createPayment = asyncHandler(async (req, res) => {
         }
 
         const populated = await Payment.findById(payment._id)
-            .populate('customerId', 'displayName customerCode')
-            .populate('supplierId', 'displayName supplierCode')
-            .populate('bankAccountId', 'bankName accountNumber accountName');
+            .populate('customerId', 'displayName customerCode primaryContact billingAddress')
+            .populate('supplierId', 'displayName supplierCode primaryContact address')
+            .populate('bankAccountId', 'bankName accountNumber accountName')
+            .populate('receivedBy', 'firstName lastName fullName signature')
+            .populate('createdBy', 'firstName lastName fullName signature');
 
         // Dispatch payment receipt SMS with public view link to customer only if explicitly requested
         if (direction === 'received' && req.body.sendSms === true) {
@@ -628,20 +681,22 @@ export const searchLinkableDocuments = asyncHandler(async (req, res) => {
         // Quotations & Estimates
         const Quotation = (await import('../models/Quotation.js')).default;
         const qList = await Quotation.find(queryFilter)
-            .select('_id quotationCode quoteNumber documentType grandTotal status createdAt')
+            .select('_id quotationCode quoteNumber documentType grandTotal advanceAmount balanceAmount status createdAt')
             .sort({ createdAt: -1 })
             .limit(30);
 
         qList.forEach(q => {
+            const adv = Number(q.advanceAmount || 0);
+            const bal = q.balanceAmount !== undefined ? Number(q.balanceAmount) : Math.max(0, Number(q.grandTotal || 0) - adv);
             documents.push({
                 documentType: q.documentType || 'quotation',
                 documentId: q._id,
                 documentNumber: q.quoteNumber || q.quotationCode,
                 totalAmount: q.grandTotal,
-                amountPaid: 0,
-                balanceDue: q.grandTotal,
+                amountPaid: adv,
+                balanceDue: bal,
                 status: q.status,
-                label: `${q.documentType === 'estimate' ? 'Estimate' : 'Quotation'}: ${q.quoteNumber || q.quotationCode} (LKR ${q.grandTotal.toLocaleString()})`,
+                label: `${q.documentType === 'estimate' ? 'Estimate' : 'Quotation'}: ${q.quoteNumber || q.quotationCode} (Balance: LKR ${bal.toLocaleString()})`,
             });
         });
     }
@@ -836,4 +891,24 @@ export const downloadPaymentReceipt = asyncHandler(async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(pdfBuffer);
+});
+
+/**
+ * POST /api/payments/:id/send-sms
+ * Manually or re-dispatch payment receipt SMS
+ */
+export const sendPaymentSms = asyncHandler(async (req, res) => {
+    const payment = await Payment.findById(req.params.id)
+        .populate('customerId', 'displayName customerCode primaryContact billingAddress')
+        .populate('receivedBy', 'firstName lastName fullName signature');
+    if (!payment) {
+        res.status(404); throw new Error('Payment not found');
+    }
+    const hostOrigin = req.get('origin') || `${req.protocol}://${req.get('host')}`;
+    const { sendPaymentReceiptSms } = await import('../services/smsService.js');
+    if (req.body.phone) {
+        payment.customerPhone = req.body.phone;
+    }
+    await sendPaymentReceiptSms(payment, hostOrigin);
+    res.json({ success: true, message: 'Payment receipt SMS sent successfully' });
 });

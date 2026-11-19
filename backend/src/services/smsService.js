@@ -711,6 +711,32 @@ export const sendPaymentReceiptSms = async (payment, hostOrigin = '') => {
             }
         }
 
+        if (!clientPhone && payment.allocations && payment.allocations.length > 0) {
+            for (const alloc of payment.allocations) {
+                if (alloc.documentType === 'quotation' || alloc.documentType === 'estimate') {
+                    const Quotation = mongoose.model('Quotation');
+                    const quote = await Quotation.findById(alloc.documentId);
+                    if (quote) {
+                        clientPhone = quote.customerPhone || quote.whatsappNum;
+                        if (!clientName || clientName === 'Valued Customer') {
+                            clientName = quote.vehicleOwner || quote.customerName || clientName;
+                        }
+                        if (clientPhone) break;
+                    }
+                } else if (alloc.documentType === 'invoice') {
+                    const Invoice = mongoose.model('Invoice');
+                    const inv = await Invoice.findById(alloc.documentId);
+                    if (inv) {
+                        clientPhone = inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.contactName;
+                        if (!clientName || clientName === 'Valued Customer') {
+                            clientName = inv.vehicleOwner || inv.customerSnapshot?.name || clientName;
+                        }
+                        if (clientPhone) break;
+                    }
+                }
+            }
+        }
+
         if (!clientPhone) {
             console.log('[SMS Service] No phone number available for payment receipt SMS:', payment.paymentNumber);
             return;
