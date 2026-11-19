@@ -91,6 +91,11 @@ export default function InvoiceFormPage({ defaultDocType }) {
             const isQuotationOrEstimate = routeCategory === 'quotation' || routeCategory === 'estimate' || searchParams.get('type') === 'quotation' || searchParams.get('type') === 'estimate';
 
             const populateQuotation = (quote) => {
+                if (quote.status === 'converted' || quote.convertedInvoiceId) {
+                    toast.error('This document has been converted to an invoice and is locked. You must revert the conversion before editing.');
+                    navigate('/quotations');
+                    return;
+                }
                 setExistingInvoice(quote);
                 const loadedType = quote.documentType || routeCategory || 'quotation';
                 setDocType(loadedType);

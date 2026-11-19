@@ -295,6 +295,11 @@ export const updateQuotation = asyncHandler(async (req, res) => {
         throw new Error('Quotation not found');
     }
 
+    if (existing.status === 'converted' || existing.convertedInvoiceId) {
+        res.status(400);
+        throw new Error('Converted quotations/estimates are locked and cannot be edited. Please revert the conversion first.');
+    }
+
     Object.assign(existing, req.body);
     const newEditCount = (existing.editCount || 0) + 1;
     existing.editCount = newEditCount;
@@ -376,6 +381,11 @@ export const deleteQuotation = asyncHandler(async (req, res) => {
     if (!quotation) {
         res.status(404);
         throw new Error('Quotation not found');
+    }
+
+    if (quotation.status === 'converted' || quotation.convertedInvoiceId) {
+        res.status(400);
+        throw new Error('Converted quotations/estimates are locked and cannot be deleted. Please revert the conversion first.');
     }
     quotation.deletedAt = new Date();
     await quotation.save();
@@ -904,6 +914,11 @@ export const cancelQuotation = asyncHandler(async (req, res) => {
     if (!quotation) {
         res.status(404);
         throw new Error('Quotation not found');
+    }
+
+    if (quotation.status === 'converted' || quotation.convertedInvoiceId) {
+        res.status(400);
+        throw new Error('Converted quotations/estimates are locked and cannot be cancelled directly. Please revert the conversion first.');
     }
 
     quotation.status = 'cancelled';

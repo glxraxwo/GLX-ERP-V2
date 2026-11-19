@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import {
     Plus, FileText, Trash2, Send,
     MapPin, Clock, X, ShoppingCart, Edit, Eye, Download, Search, Image as ImageIcon, Printer, CheckCircle, RotateCcw, Briefcase,
-    Calendar, LayoutList, LayoutGrid, XCircle, Ban, Sparkles, Save, AlertCircle, Receipt
+    Calendar, LayoutList, LayoutGrid, XCircle, Ban, Sparkles, Save, AlertCircle, Receipt, Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -1350,67 +1350,82 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
             key: 'actions',
             label: 'Actions',
             width: '260px',
-            render: (r) => (
-                <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                    <button
-                        onClick={() => { setPreviewQuote(r); setIsPreviewOpen(true); }}
-                        className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded transition"
-                        title="View Document"
-                    >
-                        <Eye size={16} />
-                    </button>
-                    {canEdit && (
-                        <button
-                            onClick={() => navigate(`/invoices/new?type=${r.documentType === 'estimate' ? 'estimate' : 'quotation'}&edit=${r._id}`)}
-                            className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded transition"
-                            title="Edit"
-                        >
-                            <Edit size={16} />
-                        </button>
-                    )}
-                    {/* Pay Advance Button */}
-                    {canEdit && r.status !== 'converted' && r.status !== 'cancelled' && ((r.balanceAmount === undefined) || r.balanceAmount > 0) && (
-                        <button
-                            type="button"
-                            onClick={(e) => handleOpenPayModal(r, e)}
-                            className="px-2 py-1 text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg transition flex items-center gap-1 shadow-xs cursor-pointer"
-                            title="Record Advance Payment (අත්තිකාරම් මුදල් භාරගැනීම)"
-                        >
-                            <CheckCircle size={12} /> Pay
-                        </button>
-                    )}
-                    {/* View Receipts Button */}
-                    {r.advanceAmount > 0 && (
-                        <button
-                            type="button"
-                            onClick={(e) => handleViewQuoteReceipts(r, e)}
-                            className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded transition cursor-pointer"
-                            title="Print / View Advance Receipts (රිසිට්පත මුද්‍රණය)"
-                        >
-                            <Receipt size={16} />
-                        </button>
-                    )}
-                    {r.status === 'converted' ? (
-                        canEdit && (
-                            <div className="flex items-center gap-1">
-                                <button
-                                    onClick={() => handleOpenCancelModal(r, 'project')}
-                                    className="px-2 py-1 text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg transition flex items-center gap-1 border border-rose-200"
-                                    title="Cancel Project (Project Cancel කිරීම)"
-                                >
-                                    <Ban size={12} /> Cancel Project
-                                </button>
+            render: (r) => {
+                const isConverted = r.status === 'converted' || !!r.convertedInvoiceId;
+                if (isConverted) {
+                    return (
+                        <div className="flex items-center gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                onClick={() => { setPreviewQuote(r); setIsPreviewOpen(true); }}
+                                className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-800 rounded transition cursor-pointer"
+                                title="View Document (Preview)"
+                            >
+                                <Eye size={16} />
+                            </button>
+                            <button
+                                onClick={() => handleDirectDownloadPDF(r)}
+                                className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 rounded transition cursor-pointer"
+                                title="Download PDF"
+                            >
+                                <Download size={16} />
+                            </button>
+                            {canEdit && (
                                 <button
                                     onClick={() => { setRevertQuote(r); setRevertAdminPassword(''); setIsRevertModalOpen(true); }}
-                                    className="px-2 py-1 text-xs font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg transition flex items-center gap-1 border border-amber-200"
-                                    title="Revert Conversion"
+                                    className="px-2.5 py-1 text-xs font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 rounded-lg transition flex items-center gap-1 border border-amber-200 dark:border-amber-800 cursor-pointer shadow-2xs"
+                                    title="Revert Conversion (Admin Password required to unlock)"
                                 >
                                     <RotateCcw size={12} /> Revert
                                 </button>
-                            </div>
-                        )
-                    ) : (
-                        canEdit && r.status !== 'cancelled' && (
+                            )}
+                            <span className="px-2 py-0.5 text-[11px] font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-md flex items-center gap-1 shadow-2xs select-none">
+                                <Lock size={11} /> Locked
+                            </span>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={() => { setPreviewQuote(r); setIsPreviewOpen(true); }}
+                            className="p-1.5 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded transition"
+                            title="View Document"
+                        >
+                            <Eye size={16} />
+                        </button>
+                        {canEdit && (
+                            <button
+                                onClick={() => navigate(`/invoices/new?type=${r.documentType === 'estimate' ? 'estimate' : 'quotation'}&edit=${r._id}`)}
+                                className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded transition"
+                                title="Edit"
+                            >
+                                <Edit size={16} />
+                            </button>
+                        )}
+                        {/* Pay Advance Button */}
+                        {canEdit && r.status !== 'cancelled' && ((r.balanceAmount === undefined) || r.balanceAmount > 0) && (
+                            <button
+                                type="button"
+                                onClick={(e) => handleOpenPayModal(r, e)}
+                                className="px-2 py-1 text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg transition flex items-center gap-1 shadow-xs cursor-pointer"
+                                title="Record Advance Payment (අත්තිකාරම් මුදල් භාරගැනීම)"
+                            >
+                                <CheckCircle size={12} /> Pay
+                            </button>
+                        )}
+                        {/* View Receipts Button */}
+                        {r.advanceAmount > 0 && (
+                            <button
+                                type="button"
+                                onClick={(e) => handleViewQuoteReceipts(r, e)}
+                                className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded transition cursor-pointer"
+                                title="Print / View Advance Receipts (රිසිට්පත මුද්‍රණය)"
+                            >
+                                <Receipt size={16} />
+                            </button>
+                        )}
+                        {canEdit && r.status !== 'cancelled' && (
                             <div className="flex items-center gap-1">
                                 <button
                                     onClick={(e) => {
@@ -1431,33 +1446,33 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     <XCircle size={15} />
                                 </button>
                             </div>
-                        )
-                    )}
-                    <button
-                        onClick={() => handleDirectDownloadPDF(r)}
-                        className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded transition"
-                        title="Download PDF"
-                    >
-                        <Download size={16} />
-                    </button>
-                    <button
-                        onClick={() => { setPreviewQuote(r); setShareModalOpen(true); }}
-                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition"
-                        title="Share via SMS"
-                    >
-                        <Send size={16} />
-                    </button>
-                    {canDelete && (
+                        )}
                         <button
-                            onClick={() => setDeleting(r)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition"
-                            title="Delete"
+                            onClick={() => handleDirectDownloadPDF(r)}
+                            className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded transition"
+                            title="Download PDF"
                         >
-                            <Trash2 size={16} />
+                            <Download size={16} />
                         </button>
-                    )}
-                </div>
-            )
+                        <button
+                            onClick={() => { setPreviewQuote(r); setShareModalOpen(true); }}
+                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+                            title="Share via SMS"
+                        >
+                            <Send size={16} />
+                        </button>
+                        {canDelete && (
+                            <button
+                                onClick={() => setDeleting(r)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition"
+                                title="Delete"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        )}
+                    </div>
+                );
+            }
         }
     ];
 
@@ -1802,96 +1817,98 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                     </div>
 
                                     <div className="p-3 bg-gray-50 dark:bg-[#0E1A2B] flex gap-2 rounded-b-2xl border-t border-gray-100 dark:border-slate-800 flex-wrap">
-                                        <Button variant="outline" size="sm" className="flex-1" onClick={() => { setPreviewQuote(quote); setIsPreviewOpen(true); }}>
-                                            <Eye size={14} className="mr-1" /> View
-                                        </Button>
-                                        {canEdit && (
-                                            <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/invoices/new?type=${quote.documentType === 'estimate' ? 'estimate' : 'quotation'}&edit=${quote._id}`)}>
-                                                <Edit size={14} className="mr-1" /> Edit
-                                            </Button>
-                                        )}
-                                        {canEdit && quote.status !== 'converted' && quote.status !== 'cancelled' && ((quote.balanceAmount === undefined) || quote.balanceAmount > 0) && (
-                                            <Button 
-                                                variant="primary" 
-                                                size="sm" 
-                                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" 
-                                                onClick={(e) => handleOpenPayModal(quote, e)} 
-                                                title="Record Advance Payment"
-                                            >
-                                                <CheckCircle size={14} className="mr-1" /> Pay
-                                            </Button>
-                                        )}
-                                        {quote.advanceAmount > 0 && (
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className="text-emerald-700 border-emerald-300 bg-emerald-50 hover:bg-emerald-100" 
-                                                onClick={(e) => handleViewQuoteReceipts(quote, e)} 
-                                                title="Print / View Payment Receipts"
-                                            >
-                                                <Receipt size={14} />
-                                            </Button>
-                                        )}
-                                        <Button variant="outline" size="sm" onClick={() => handleDirectDownloadPDF(quote)} title="Download PDF">
-                                            <Download size={14} />
-                                        </Button>
-                                        <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setPreviewQuote(quote); setShareModalOpen(true); }} title="Share Quotation Link via SMS">
-                                            <Send size={14} />
-                                        </Button>
-                                        {quote.status === 'converted' ? (
-                                            canEdit && (
-                                                <>
+                                        {(quote.status === 'converted' || !!quote.convertedInvoiceId) ? (
+                                            <>
+                                                <Button variant="outline" size="sm" className="flex-1" onClick={() => { setPreviewQuote(quote); setIsPreviewOpen(true); }} title="View Document">
+                                                    <Eye size={14} className="mr-1" /> View
+                                                </Button>
+                                                <Button variant="outline" size="sm" onClick={() => handleDirectDownloadPDF(quote)} title="Download PDF">
+                                                    <Download size={14} className="mr-1" /> PDF
+                                                </Button>
+                                                {canEdit && (
                                                     <Button 
                                                         variant="outline" 
                                                         size="sm" 
-                                                        className="text-rose-700 border-rose-300 bg-rose-50 hover:bg-rose-100 font-bold" 
-                                                        onClick={() => handleOpenCancelModal(quote, 'project')} 
-                                                        title="Cancel Project (Project Cancel කිරීම)"
-                                                    >
-                                                        <Ban size={14} className="mr-1" /> Cancel Project
-                                                    </Button>
-                                                    <Button 
-                                                        variant="outline" 
-                                                        size="sm" 
-                                                        className="text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 font-bold" 
+                                                        className="text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 font-bold" 
                                                         onClick={() => { setRevertQuote(quote); setRevertAdminPassword(''); setIsRevertModalOpen(true); }} 
-                                                        title="Revert Conversion (Admin Password required)"
+                                                        title="Revert Conversion (Admin Password required to unlock)"
                                                     >
                                                         <RotateCcw size={14} className="mr-1" /> Revert
                                                     </Button>
-                                                </>
-                                            )
+                                                )}
+                                                <span className="px-2.5 py-1 text-xs font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-lg flex items-center gap-1 shadow-2xs select-none">
+                                                    <Lock size={12} /> Locked
+                                                </span>
+                                            </>
                                         ) : (
-                                            canEdit && quote.status !== 'cancelled' && (
-                                                <>
+                                            <>
+                                                <Button variant="outline" size="sm" className="flex-1" onClick={() => { setPreviewQuote(quote); setIsPreviewOpen(true); }}>
+                                                    <Eye size={14} className="mr-1" /> View
+                                                </Button>
+                                                {canEdit && (
+                                                    <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/invoices/new?type=${quote.documentType === 'estimate' ? 'estimate' : 'quotation'}&edit=${quote._id}`)}>
+                                                        <Edit size={14} className="mr-1" /> Edit
+                                                    </Button>
+                                                )}
+                                                {canEdit && quote.status !== 'cancelled' && ((quote.balanceAmount === undefined) || quote.balanceAmount > 0) && (
                                                     <Button 
                                                         variant="primary" 
                                                         size="sm" 
-                                                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white" 
-                                                        onClick={(e) => { 
-                                                            e.stopPropagation(); 
-                                                            setConvertingType('commercial'); 
-                                                            setConvertingQuote(quote); 
-                                                        }}
+                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold" 
+                                                        onClick={(e) => handleOpenPayModal(quote, e)} 
+                                                        title="Record Advance Payment"
                                                     >
-                                                        <ShoppingCart size={14} className="mr-1" /> Convert
+                                                        <CheckCircle size={14} className="mr-1" /> Pay
                                                     </Button>
+                                                )}
+                                                {quote.advanceAmount > 0 && (
                                                     <Button 
                                                         variant="outline" 
                                                         size="sm" 
-                                                        className="text-rose-600 border-rose-200 hover:bg-rose-50" 
-                                                        onClick={() => handleOpenCancelModal(quote, 'quotation')} 
-                                                        title="Cancel Quotation (Quotation Cancel කිරීම)"
+                                                        className="text-emerald-700 border-emerald-300 bg-emerald-50 hover:bg-emerald-100" 
+                                                        onClick={(e) => handleViewQuoteReceipts(quote, e)} 
+                                                        title="Print / View Payment Receipts"
                                                     >
-                                                        <XCircle size={14} />
+                                                        <Receipt size={14} />
                                                     </Button>
-                                                </>
-                                            )
-                                        )}
-                                        {canDelete && (
-                                            <Button variant="outline" size="sm" onClick={() => setDeleting(quote)}>
-                                                <Trash2 size={14} className="text-red-500" />
-                                            </Button>
+                                                )}
+                                                <Button variant="outline" size="sm" onClick={() => handleDirectDownloadPDF(quote)} title="Download PDF">
+                                                    <Download size={14} />
+                                                </Button>
+                                                <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => { setPreviewQuote(quote); setShareModalOpen(true); }} title="Share Quotation Link via SMS">
+                                                    <Send size={14} />
+                                                </Button>
+                                                {canEdit && quote.status !== 'cancelled' && (
+                                                    <>
+                                                        <Button 
+                                                            variant="primary" 
+                                                            size="sm" 
+                                                            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white" 
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                setConvertingType('commercial'); 
+                                                                setConvertingQuote(quote); 
+                                                            }}
+                                                        >
+                                                            <ShoppingCart size={14} className="mr-1" /> Convert
+                                                        </Button>
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            className="text-rose-600 border-rose-200 hover:bg-rose-50" 
+                                                            onClick={() => handleOpenCancelModal(quote, 'quotation')} 
+                                                            title="Cancel Quotation (Quotation Cancel කිරීම)"
+                                                        >
+                                                            <XCircle size={14} />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                                {canDelete && (
+                                                    <Button variant="outline" size="sm" onClick={() => setDeleting(quote)}>
+                                                        <Trash2 size={14} className="text-red-500" />
+                                                    </Button>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </div>
@@ -2935,30 +2952,20 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
                                 {/* Conversion / Cancellation Actions Group */}
                                 {previewQuote.status === 'converted' ? (
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                        <button
-                                            onClick={() => handleOpenCancelModal(previewQuote, 'project')}
-                                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition-all duration-150 shadow-xs"
-                                            title="Cancel Converted Project (Project Cancel කිරීම)"
-                                        >
-                                            <Ban size={13} />
-                                            Cancel Project
-                                        </button>
-                                        <button
-                                            onClick={() => handleOpenCancelModal(previewQuote, 'quotation')}
-                                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-all duration-150 shadow-xs"
-                                            title="Cancel Quotation (Quotation Cancel කිරීම)"
-                                        >
-                                            <XCircle size={13} />
-                                            Cancel Quote
-                                        </button>
-                                        <button
-                                            onClick={() => { setRevertQuote(previewQuote); setRevertAdminPassword(''); setIsRevertModalOpen(true); }}
-                                            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 hover:border-amber-300 transition-all duration-150 shadow-xs"
-                                        >
-                                            <RotateCcw size={13} />
-                                            Revert
-                                        </button>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-lg select-none">
+                                            <Lock size={13} /> Locked (Converted to Invoice)
+                                        </span>
+                                        {canEdit && (
+                                            <button
+                                                onClick={() => { setRevertQuote(previewQuote); setRevertAdminPassword(''); setIsRevertModalOpen(true); }}
+                                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-100 hover:border-amber-300 transition-all duration-150 shadow-xs cursor-pointer"
+                                                title="Revert Conversion (Admin Password required to unlock)"
+                                            >
+                                                <RotateCcw size={13} />
+                                                Revert Conversion
+                                            </button>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="flex items-center gap-1.5 flex-wrap">
