@@ -66,8 +66,11 @@ const paymentSchema = new mongoose.Schema({
 
     status: {
         type: String,
-        default: 'confirmed',
+        default: 'confirmed', // confirmed | cancelled
     },
+    cancellationReason: { type: String, trim: true },
+    cancelledAt: { type: Date, default: null },
+    cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
     notes: String,
     signatureNote: String,

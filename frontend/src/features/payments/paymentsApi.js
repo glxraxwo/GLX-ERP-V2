@@ -7,4 +7,5 @@ export const paymentsApi = {
     createVoucher: async (data) => (await api.post('/payments/voucher', data)).data,
     getLinkableDocuments: async (params = {}) => (await api.get('/payments/linkable-documents', { params })).data,
     getDocumentSummary: async (documentId) => (await api.get(`/payments/document-summary/${documentId}`)).data,
+    cancel: async (id, data = {}) => (await api.put(`/payments/${id}/cancel`, data)).data,
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, FileCheck, DollarSign, Clock, UserCheck, AlertCircle, Download, Printer } from 'lucide-react';
+import { ShieldCheck, FileCheck, DollarSign, Clock, UserCheck, AlertCircle, Download, Printer, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getApiUrl } from '../../api/config';
@@ -9,11 +9,14 @@ import PaymentReceiptPrintView from '../print/PaymentReceiptPrintView';
 import { exportElementToPDF, printElementAsPDF } from '../../utils/dataExport';
 import { useSettings } from '../../features/settings/useSettings';
 
-export default function DocumentPaymentAudit({ documentId, title = 'Payment History' }) {
+export default function DocumentPaymentAudit({ documentId, title = 'Payment History', onPaymentCancelled }) {
     const [summary, setSummary] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [previewPayment, setPreviewPayment] = useState(null);
+    const [cancellingPayment, setCancellingPayment] = useState(null);
+    const [cancelReason, setCancelReason] = useState('');
+    const [isCancelling, setIsCancelling] = useState(false);
     const printModalRef = useRef(null);
     const directExportRef = useRef(null);
     const [directExportPayment, setDirectExportPayment] = useState(null);
@@ -36,6 +39,26 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                 setIsLoading(false);
             });
     }, [documentId]);
+
+    const handleConfirmCancelPayment = async () => {
+        if (!cancellingPayment) return;
+        setIsCancelling(true);
+        try {
+            await paymentsApi.cancel(cancellingPayment.paymentId, { reason: cancelReason || 'Cancelled by user' });
+            toast.success(`Payment ${cancellingPayment.paymentNumber} has been cancelled successfully`);
+            setCancellingPayment(null);
+            setCancelReason('');
+            const res = await paymentsApi.getDocumentSummary(documentId);
+            setSummary(res);
+            if (onPaymentCancelled) {
+                onPaymentCancelled();
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to cancel payment');
+        } finally {
+            setIsCancelling(false);
+        }
+    };
 
     const handleDownloadReceipt = async (paymentId, paymentNumber, isVoucher) => {
         const prefix = isVoucher ? 'Voucher' : 'Receipt';
@@ -147,30 +170,45 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                                         <tr>
                                             <th className="p-3">Date</th>
                                             <th className="p-3">Ref #</th>
+                                            <th className="p-3">Status</th>
                                             <th className="p-3">Type</th>
                                             <th className="p-3">Method</th>
                                             <th className="p-3 text-right">Amount (LKR)</th>
                                             <th className="p-3">Handled By</th>
                                             <th className="p-3">Signature / Remarks</th>
-                                            <th className="p-3 text-center">Receipt</th>
+                                            <th className="p-3 text-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700 text-slate-800 dark:text-slate-200">
                                         {summary.payments.map((p) => {
                                             const isVoucher = p.direction === 'paid' || !!p.voucherType;
+                                            const isCancelled = p.status === 'cancelled';
                                             return (
-                                                <tr key={p.paymentId} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                                                <tr key={p.paymentId} className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 ${isCancelled ? 'opacity-60 bg-red-50/20' : ''}`}>
                                                     <td className="p-3 whitespace-nowrap font-medium">
                                                         {new Date(p.paymentDate).toLocaleDateString('en-GB')}
                                                     </td>
                                                     <td className="p-3 whitespace-nowrap font-mono font-bold">
                                                         <span className={`px-2 py-0.5 rounded text-[11px] ${
-                                                            isVoucher
-                                                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                                                                : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                                            isCancelled
+                                                                ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
+                                                                : isVoucher
+                                                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                                                                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
                                                         }`}>
                                                             {p.paymentNumber}
                                                         </span>
+                                                    </td>
+                                                    <td className="p-3 whitespace-nowrap">
+                                                        {isCancelled ? (
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 dark:bg-red-950/50 dark:text-red-300 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-800">
+                                                                Cancelled
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                                                                Active
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="p-3 capitalize font-semibold">
                                                         {p.voucherType ? (
@@ -186,7 +224,7 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                                                     <td className="p-3 capitalize">
                                                         {p.method} {p.chequeNumber ? `(#${p.chequeNumber})` : ''}
                                                     </td>
-                                                    <td className="p-3 text-right font-mono font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                                                    <td className={`p-3 text-right font-mono font-bold text-sm ${isCancelled ? 'line-through text-slate-400 dark:text-slate-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                                         LKR {(p.amount || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}
                                                     </td>
                                                     <td className="p-3 font-medium flex items-center gap-1.5">
@@ -194,10 +232,12 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                                                         {p.handledBy}
                                                     </td>
                                                     <td className="p-3 italic text-slate-600 dark:text-slate-400">
-                                                        {p.signatureNote || p.notes || '-'}
+                                                        {isCancelled && p.cancellationReason
+                                                            ? <span className="text-red-600 dark:text-red-400 not-italic font-medium">Cancelled: {p.cancellationReason}</span>
+                                                            : (p.signatureNote || p.notes || '-')}
                                                     </td>
                                                     <td className="p-3 text-center">
-                                                        <div className="flex items-center justify-center gap-1.5">
+                                                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handlePrintReceipt(p.paymentId, p)}
@@ -216,6 +256,20 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                                                                 <Download className="w-3.5 h-3.5" />
                                                                 PDF
                                                             </button>
+                                                            {!isCancelled && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setCancellingPayment(p);
+                                                                        setCancelReason('');
+                                                                    }}
+                                                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-800 transition cursor-pointer"
+                                                                    title="Cancel Payment & Reverse Balance"
+                                                                >
+                                                                    <Ban className="w-3.5 h-3.5" />
+                                                                    Cancel
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -287,9 +341,61 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                 )}
             </Modal>
 
+            {/* Cancel Payment Confirmation Modal */}
+            <Modal
+                isOpen={!!cancellingPayment}
+                onClose={() => !isCancelling && setCancellingPayment(null)}
+                title={`Cancel Payment - ${cancellingPayment?.paymentNumber || ''}`}
+                size="md"
+            >
+                {cancellingPayment && (
+                    <div className="space-y-4">
+                        <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-800 dark:text-red-300">
+                            <p className="font-bold mb-1">⚠️ Warning: Are you sure you want to cancel this payment?</p>
+                            <p>
+                                Cancelling payment <span className="font-mono font-bold">{cancellingPayment.paymentNumber}</span> for <span className="font-bold">LKR {(cancellingPayment.amount || 0).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span> will automatically reverse the settlement and restore the balance due on this document.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Cancellation Reason (Required)
+                            </label>
+                            <textarea
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                placeholder="E.g. Customer requested refund, duplicate entry, incorrect payment amount..."
+                                rows={3}
+                                className="w-full text-xs p-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-red-500"
+                            />
+                        </div>
+
+                        <div className="flex justify-end items-center gap-2 pt-2 border-t border-gray-200 dark:border-slate-700">
+                            <button
+                                type="button"
+                                disabled={isCancelling}
+                                onClick={() => setCancellingPayment(null)}
+                                className="px-4 py-2 text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+                            >
+                                Back / Keep Payment
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isCancelling}
+                                onClick={handleConfirmCancelPayment}
+                                className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition disabled:opacity-50 flex items-center gap-1.5"
+                            >
+                                <Ban size={14} />
+                                {isCancelling ? 'Cancelling Payment...' : 'Yes, Cancel Payment'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
             {/* Offscreen print renderer for direct row/card PDF downloads */}
             {directExportPayment && (
-                <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '210mm', opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
+                <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '210mm', pointerEvents: 'none', zIndex: -100 }}>
                     <PaymentReceiptPrintView
                         ref={directExportRef}
                         payment={directExportPayment}

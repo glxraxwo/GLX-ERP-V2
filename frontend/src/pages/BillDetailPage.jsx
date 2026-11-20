@@ -21,7 +21,7 @@ export default function BillDetailPage() {
     const navigate = useNavigate();
     const { data: settingsData } = useSettings();
     const settings = settingsData?.data;
-    const { data, isLoading } = useBill(id);
+    const { data, isLoading, refetch } = useBill(id);
     const bill = data?.data;
 
     const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
@@ -263,7 +263,7 @@ export default function BillDetailPage() {
                     </Card>
 
                     {/* Payment Audit */}
-                    <DocumentPaymentAudit documentId={bill._id} />
+                    <DocumentPaymentAudit documentId={bill._id} onPaymentCancelled={refetch} />
                 </div>
 
                 <div className="space-y-6">

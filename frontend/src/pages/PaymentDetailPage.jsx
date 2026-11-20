@@ -1,6 +1,6 @@
-import { useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, ExternalLink, Printer } from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink, Printer, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getApiUrl } from '../api/config';
@@ -9,6 +9,7 @@ import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import Modal from '../components/ui/Modal';
 import { useQuery } from '@tanstack/react-query';
 import { paymentsApi } from '../features/payments/paymentsApi';
 import { useSettings } from '../features/settings/useSettings';
@@ -19,8 +20,11 @@ export default function PaymentDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const printRef = useRef(null);
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [cancelReason, setCancelReason] = useState('');
+    const [isCancelling, setIsCancelling] = useState(false);
 
-    const { data, isLoading } = useQuery({
+    const { data, isLoading, refetch } = useQuery({
         queryKey: ['payment', id], queryFn: () => paymentsApi.getById(id),
     });
     const { data: settingsData } = useSettings();
@@ -78,9 +82,25 @@ export default function PaymentDetailPage() {
         });
     };
 
+    const handleConfirmCancel = async () => {
+        setIsCancelling(true);
+        try {
+            await paymentsApi.cancel(id, { reason: cancelReason || 'Payment cancelled by user' });
+            toast.success('Payment has been cancelled and balances recalculated');
+            setIsCancelModalOpen(false);
+            setCancelReason('');
+            refetch();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to cancel payment');
+        } finally {
+            setIsCancelling(false);
+        }
+    };
+
     if (isLoading || !p) return <div className="py-16 text-center text-gray-500">Loading...</div>;
 
     const isVoucher = p.direction === 'paid' || !!p.voucherType;
+    const isCancelled = p.status === 'cancelled';
 
     return (
         <div>
@@ -89,8 +109,8 @@ export default function PaymentDetailPage() {
                 <PageHeader
                     title={<span className="flex items-center gap-3">
                         Payment {p.paymentNumber}
-                        <Badge variant={p.direction === 'received' ? 'success' : 'info'}>
-                            {p.direction === 'received' ? 'MONEY IN' : 'MONEY OUT'}
+                        <Badge variant={isCancelled ? 'danger' : (p.direction === 'received' ? 'success' : 'info')}>
+                            {isCancelled ? 'CANCELLED' : (p.direction === 'received' ? 'MONEY IN' : 'MONEY OUT')}
                         </Badge>
                     </span>}
                     description={`${fmtDate(p.paymentDate)}${p.method ? ' · ' + p.method.replace(/_/g, ' ') : ''}`}
@@ -116,9 +136,33 @@ export default function PaymentDetailPage() {
                                     <span>Public View</span>
                                 </a>
                             )}
+                            {!isCancelled && (
+                                <Button
+                                    onClick={() => {
+                                        setIsCancelModalOpen(true);
+                                        setCancelReason('');
+                                    }}
+                                    className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-xs"
+                                >
+                                    <Ban size={16} className="mr-1.5" /> Cancel Payment
+                                </Button>
+                            )}
                         </div>
                     }
                 />
+
+                {isCancelled && (
+                    <div className="p-4 mb-5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-800 dark:text-red-200 flex items-center justify-between">
+                        <div>
+                            <p className="font-bold text-sm">⚠️ This payment has been CANCELLED</p>
+                            <p className="mt-1">
+                                Reason: <span className="font-semibold">{p.cancellationReason || 'No reason specified'}</span>
+                                {p.cancelledAt && ` · Cancelled on ${new Date(p.cancelledAt).toLocaleString('en-GB')}`}
+                            </p>
+                        </div>
+                        <Badge variant="danger">VOID</Badge>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
                     <div className="lg:col-span-2 space-y-5">
@@ -241,6 +285,56 @@ export default function PaymentDetailPage() {
                     />
                 </div>
             </Card>
+
+            {/* Cancel Payment Confirmation Modal */}
+            <Modal
+                isOpen={isCancelModalOpen}
+                onClose={() => !isCancelling && setIsCancelModalOpen(false)}
+                title={`Cancel Payment - ${p?.paymentNumber || ''}`}
+                size="md"
+            >
+                <div className="space-y-4">
+                    <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-800 dark:text-red-300">
+                        <p className="font-bold mb-1">⚠️ Are you sure you want to cancel this payment?</p>
+                        <p>
+                            Cancelling this payment will reverse settlements on all allocated invoices, quotations, estimates, and bills, restore the balance due, and reverse bank/cash balance adjustments.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                            Cancellation Reason (Required)
+                        </label>
+                        <textarea
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                            placeholder="Enter the reason for cancelling this payment..."
+                            rows={3}
+                            className="w-full text-xs p-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-red-500"
+                        />
+                    </div>
+
+                    <div className="flex justify-end items-center gap-2 pt-2 border-t border-gray-200 dark:border-slate-700">
+                        <button
+                            type="button"
+                            disabled={isCancelling}
+                            onClick={() => setIsCancelModalOpen(false)}
+                            className="px-4 py-2 text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+                        >
+                            Back / Keep Payment
+                        </button>
+                        <button
+                            type="button"
+                            disabled={isCancelling}
+                            onClick={handleConfirmCancel}
+                            className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition disabled:opacity-50 flex items-center gap-1.5"
+                        >
+                            <Ban size={14} />
+                            {isCancelling ? 'Cancelling...' : 'Yes, Cancel Payment'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

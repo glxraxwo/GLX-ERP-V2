@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ArrowLeft, ArrowRight, Filter, Download, ExternalLink, Printer } from 'lucide-react';
+import { Plus, Search, ArrowLeft, ArrowRight, Filter, Download, ExternalLink, Printer, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getApiUrl } from '../api/config';
@@ -16,7 +16,7 @@ import Pagination from '../components/ui/Pagination';
 import EmptyState from '../components/ui/EmptyState';
 import Modal from '../components/ui/Modal';
 import DateRangeFilter from '../components/ui/DateRangeFilter';
-import { usePayments } from '../features/payments/usePayments';
+import { usePayments, useCancelPayment } from '../features/payments/usePayments';
 import { useAuthStore } from '../store/authStore';
 import { usePermission } from '../hooks/usePermission';
 import { useSettings } from '../features/settings/useSettings';
@@ -52,10 +52,15 @@ function PaymentsPage() {
     const [search, setSearch] = useState('');
     const [direction, setDirection] = useState('');
     const [method, setMethod] = useState('');
+    const [status, setStatus] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
     const [previewPayment, setPreviewPayment] = useState(null);
+    const [cancellingPayment, setCancellingPayment] = useState(null);
+    const [cancelReason, setCancelReason] = useState('');
+    const cancelPaymentMutation = useCancelPayment();
+
     const printModalRef = useRef(null);
     const directExportRef = useRef(null);
     const [directExportPayment, setDirectExportPayment] = useState(null);
@@ -66,6 +71,7 @@ function PaymentsPage() {
         search,
         direction,
         method,
+        status,
         startDate,
         endDate,
     });
@@ -191,10 +197,21 @@ function PaymentsPage() {
             render: (row) => methodLabels[row.method] || row.method || 'N/A',
         },
         {
+            key: 'status',
+            label: 'Status',
+            render: (row) => (
+                row.status === 'cancelled' ? (
+                    <Badge variant="danger">Cancelled</Badge>
+                ) : (
+                    <Badge variant="success">Active</Badge>
+                )
+            ),
+        },
+        {
             key: 'amount',
             label: 'Amount',
             render: (row) => (
-                <span className="font-semibold text-gray-900">{fmt(row.amount)}</span>
+                <span className={`font-semibold ${row.status === 'cancelled' ? 'line-through text-gray-400' : 'text-gray-900'}`}>{fmt(row.amount)}</span>
             ),
         },
         {
@@ -204,9 +221,9 @@ function PaymentsPage() {
         },
         {
             key: 'actions',
-            label: 'Receipt / Voucher',
+            label: 'Receipt / Actions',
             render: (row) => (
-                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
                     <button
                         type="button"
                         onClick={(e) => handlePrintReceipt(e, row)}
@@ -235,6 +252,21 @@ function PaymentsPage() {
                         >
                             <ExternalLink size={14} />
                         </a>
+                    )}
+                    {row.status !== 'cancelled' && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setCancellingPayment(row);
+                                setCancelReason('');
+                            }}
+                            title="Cancel this payment & reverse balance"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-md border border-red-200 transition cursor-pointer"
+                        >
+                            <Ban size={12} />
+                            <span>Cancel</span>
+                        </button>
                     )}
                 </div>
             ),
@@ -288,7 +320,18 @@ function PaymentsPage() {
                                     { value: '', label: 'All Methods' },
                                     ...Object.entries(methodLabels).map(([k, v]) => ({ value: k, label: v })),
                                 ]}
-                                className="w-40"
+                                className="w-36"
+                            />
+
+                            <Select
+                                value={status}
+                                onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+                                options={[
+                                    { value: '', label: 'All Statuses' },
+                                    { value: 'confirmed', label: 'Confirmed Only' },
+                                    { value: 'cancelled', label: 'Cancelled Only' },
+                                ]}
+                                className="w-36"
                             />
 
                             <DateRangeFilter
@@ -388,6 +431,70 @@ function PaymentsPage() {
                                 companyInfo={companyInfo}
                                 hideToolbar={false}
                             />
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* Cancel Payment Confirmation Modal */}
+            <Modal
+                isOpen={!!cancellingPayment}
+                onClose={() => !cancelPaymentMutation.isPending && setCancellingPayment(null)}
+                title={`Cancel Payment - ${cancellingPayment?.paymentNumber || ''}`}
+                size="md"
+            >
+                {cancellingPayment && (
+                    <div className="space-y-4">
+                        <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-800 dark:text-red-300">
+                            <p className="font-bold mb-1">⚠️ Are you sure you want to cancel this payment?</p>
+                            <p>
+                                Cancelling payment <span className="font-mono font-bold">{cancellingPayment.paymentNumber}</span> for <span className="font-bold">{fmt(cancellingPayment.amount)}</span> will automatically reverse linked invoice/quotation/estimate/bill settlements, reinstate the balance due, and reverse bank/cash balances.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Cancellation Reason (Required)
+                            </label>
+                            <textarea
+                                value={cancelReason}
+                                onChange={(e) => setCancelReason(e.target.value)}
+                                placeholder="E.g. Incorrect amount entered, customer returned cheque, duplicate payment..."
+                                rows={3}
+                                className="w-full text-xs p-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-red-500"
+                            />
+                        </div>
+
+                        <div className="flex justify-end items-center gap-2 pt-2 border-t border-gray-200 dark:border-slate-700">
+                            <button
+                                type="button"
+                                disabled={cancelPaymentMutation.isPending}
+                                onClick={() => setCancellingPayment(null)}
+                                className="px-4 py-2 text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+                            >
+                                Back / Keep Payment
+                            </button>
+                            <button
+                                type="button"
+                                disabled={cancelPaymentMutation.isPending}
+                                onClick={async () => {
+                                    if (!cancellingPayment) return;
+                                    try {
+                                        await cancelPaymentMutation.mutateAsync({
+                                            id: cancellingPayment._id,
+                                            reason: cancelReason || 'Payment cancelled by user',
+                                        });
+                                        setCancellingPayment(null);
+                                        setCancelReason('');
+                                    } catch (err) {
+                                        // Error handled in useCancelPayment
+                                    }
+                                }}
+                                className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition disabled:opacity-50 flex items-center gap-1.5"
+                            >
+                                <Ban size={14} />
+                                {cancelPaymentMutation.isPending ? 'Cancelling Payment...' : 'Yes, Cancel Payment'}
+                            </button>
                         </div>
                     </div>
                 )}

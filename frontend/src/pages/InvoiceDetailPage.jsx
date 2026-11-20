@@ -42,7 +42,7 @@ export default function InvoiceDetailPage() {
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [isEditLogOpen, setIsEditLogOpen] = useState(false);
 
-    const { data, isLoading } = useInvoice(id);
+    const { data, isLoading, refetch } = useInvoice(id);
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const changeStatus = useChangeInvoiceStatus();
     const inv = data?.data;
@@ -577,7 +577,7 @@ export default function InvoiceDetailPage() {
                     </Card>
 
                     {/* Payment Audit & History */}
-                    <DocumentPaymentAudit documentId={inv._id} />
+                    <DocumentPaymentAudit documentId={inv._id} onPaymentCancelled={refetch} />
 
                     {(inv.notes || inv.paymentInstructions) && (
                         <Card className="p-6">

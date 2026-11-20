@@ -305,6 +305,48 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
     const [receiptHistoryQuote, setReceiptHistoryQuote] = useState(null);
     const [quoteReceiptsList, setQuoteReceiptsList] = useState([]);
     const [isLoadingQuoteReceipts, setIsLoadingQuoteReceipts] = useState(false);
+    const [cancellingQuotePayment, setCancellingQuotePayment] = useState(null);
+    const [cancelQuotePayReason, setCancelQuotePayReason] = useState('');
+    const [isCancellingQuotePay, setIsCancellingQuotePay] = useState(false);
+
+    const handleConfirmCancelQuotePayment = async () => {
+        if (!cancellingQuotePayment) return;
+        setIsCancellingQuotePay(true);
+        try {
+            await api.put(`/payments/${cancellingQuotePayment._id}/cancel`, {
+                reason: cancelQuotePayReason || 'Advance payment cancelled by user'
+            });
+            toast.success(`Payment ${cancellingQuotePayment.paymentNumber || ''} cancelled successfully`);
+            setCancellingQuotePayment(null);
+            setCancelQuotePayReason('');
+
+            // Invalidate/refresh quotations
+            fetchQuotations();
+
+            // Refresh quote receipts list
+            if (receiptHistoryQuote) {
+                const res = await api.get(`/payments?documentId=${receiptHistoryQuote._id}`);
+                setQuoteReceiptsList(res.data?.data || []);
+
+                // Update receiptHistoryQuote state
+                const cancelledAmt = Number(cancellingQuotePayment.amount || 0);
+                setReceiptHistoryQuote(prev => {
+                    const newAdv = Math.max(0, +(Number(prev.advanceAmount || 0) - cancelledAmt).toFixed(2));
+                    const newBal = Math.max(0, +(Number(prev.grandTotal || 0) - newAdv).toFixed(2));
+                    return {
+                        ...prev,
+                        advanceAmount: newAdv,
+                        balanceAmount: newBal
+                    };
+                });
+            }
+        } catch (err) {
+            console.error('Cancel payment error:', err);
+            toast.error(err.response?.data?.message || 'Failed to cancel payment');
+        } finally {
+            setIsCancellingQuotePay(false);
+        }
+    };
 
     const fetchQuotations = async () => {
         try {
@@ -3599,22 +3641,31 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                 quoteReceiptsList.map((p) => {
                                     const quoteBal = receiptHistoryQuote.balanceAmount !== undefined ? receiptHistoryQuote.balanceAmount : Math.max(0, (receiptHistoryQuote.grandTotal || 0) - (receiptHistoryQuote.advanceAmount || 0));
                                     const clientPh = p.customerPhone || receiptHistoryQuote.customerPhone || receiptHistoryQuote.whatsappNum;
+                                    const isCancelled = p.status === 'cancelled';
                                     return (
-                                        <div key={p._id} className="p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl flex items-center justify-between gap-3 hover:shadow-xs transition">
+                                        <div key={p._id} className={`p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl flex items-center justify-between gap-3 hover:shadow-xs transition ${isCancelled ? 'opacity-60 bg-red-50/20' : ''}`}>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-mono font-bold text-xs text-blue-700 dark:text-blue-400">{p.paymentNumber || 'REC'}</span>
+                                                    <span className={`font-mono font-bold text-xs ${isCancelled ? 'text-red-700 dark:text-red-400 line-through' : 'text-blue-700 dark:text-blue-400'}`}>{p.paymentNumber || 'REC'}</span>
                                                     <span className="text-[10px] text-gray-500 dark:text-slate-400">{formatDate(p.paymentDate)}</span>
+                                                    {isCancelled && (
+                                                        <span className="text-[9px] uppercase font-bold text-red-700 bg-red-50 px-1.5 py-0.2 rounded border border-red-200">
+                                                            Cancelled
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                <p className="text-xs text-gray-600 dark:text-slate-300 capitalize">{p.method?.replace('_', ' ')} {p.transactionReference ? `• Ref: ${p.transactionReference}` : ''}</p>
+                                                <p className="text-xs text-gray-600 dark:text-slate-300 capitalize">
+                                                    {p.method?.replace('_', ' ')} {p.transactionReference ? `• Ref: ${p.transactionReference}` : ''}
+                                                    {isCancelled && p.cancellationReason ? ` · Reason: ${p.cancellationReason}` : ''}
+                                                </p>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300 text-sm">{fmt(p.amount)}</span>
+                                                <span className={`font-mono font-bold text-sm ${isCancelled ? 'line-through text-gray-400 dark:text-slate-500' : 'text-emerald-700 dark:text-emerald-300'}`}>{fmt(p.amount)}</span>
                                                 <button
                                                     type="button"
                                                     onClick={() => handleSendReceiptSms(p, clientPh)}
-                                                    disabled={sendingReceiptSms}
-                                                    className="p-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold flex items-center gap-1 border border-blue-200 cursor-pointer disabled:opacity-50"
+                                                    disabled={sendingReceiptSms || isCancelled}
+                                                    className="p-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold flex items-center gap-1 border border-blue-200 cursor-pointer disabled:opacity-40"
                                                     title="Send SMS Receipt to Customer"
                                                 >
                                                     <Send size={12} /> SMS
@@ -3645,6 +3696,19 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                                                 >
                                                     <Printer size={13} /> Print
                                                 </button>
+                                                {!isCancelled && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setCancellingQuotePayment(p);
+                                                            setCancelQuotePayReason('');
+                                                        }}
+                                                        className="p-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg text-xs font-semibold flex items-center gap-1 border border-red-200 cursor-pointer"
+                                                        title="Cancel Payment & Reverse Advance"
+                                                    >
+                                                        <Ban size={13} /> Cancel
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -3654,6 +3718,58 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
                     </div>
                 </div>
             )}
+
+            {/* Cancel Advance Payment Confirmation Modal */}
+            <Modal
+                isOpen={!!cancellingQuotePayment}
+                onClose={() => !isCancellingQuotePay && setCancellingQuotePayment(null)}
+                title={`Cancel Payment - ${cancellingQuotePayment?.paymentNumber || ''}`}
+                size="md"
+            >
+                {cancellingQuotePayment && (
+                    <div className="space-y-4">
+                        <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-800 dark:text-red-300">
+                            <p className="font-bold mb-1">⚠️ Are you sure you want to cancel this payment?</p>
+                            <p>
+                                Cancelling payment <span className="font-mono font-bold">{cancellingQuotePayment.paymentNumber}</span> for <span className="font-bold">{fmt(cancellingQuotePayment.amount)}</span> will automatically deduct this advance from the quotation/estimate, restore the balance due, and reverse linked bank/cash and invoice entries.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">
+                                Cancellation Reason (Required)
+                            </label>
+                            <textarea
+                                value={cancelQuotePayReason}
+                                onChange={(e) => setCancelQuotePayReason(e.target.value)}
+                                placeholder="E.g. Customer cancelled advance, cheque bounced, payment recorded on wrong quote..."
+                                rows={3}
+                                className="w-full text-xs p-2.5 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-red-500"
+                            />
+                        </div>
+
+                        <div className="flex justify-end items-center gap-2 pt-2 border-t border-gray-200 dark:border-slate-700">
+                            <button
+                                type="button"
+                                disabled={isCancellingQuotePay}
+                                onClick={() => setCancellingQuotePayment(null)}
+                                className="px-4 py-2 text-xs font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition"
+                            >
+                                Back / Keep Payment
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isCancellingQuotePay}
+                                onClick={handleConfirmCancelQuotePayment}
+                                className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition disabled:opacity-50 flex items-center gap-1.5"
+                            >
+                                <Ban size={14} />
+                                {isCancellingQuotePay ? 'Cancelling Payment...' : 'Yes, Cancel Payment'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
 
             <ConfirmDialog isOpen={!!deleting} onClose={() => setDeleting(null)} onConfirm={handleDelete}
                 title="Delete Document" message={`Permanently remove ${deleting?.quoteNumber || deleting?.quotationCode}?`} />

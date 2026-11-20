@@ -815,6 +815,199 @@ export const searchLinkableDocuments = asyncHandler(async (req, res) => {
 });
 
 /**
+ * PUT /api/payments/:id/cancel
+ * Cancel a payment or voucher, reversing allocations on Invoices, Quotations, Estimates, Bills, BankAccount, and Customer balances.
+ */
+export const cancelPayment = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { reason = 'Cancelled by user' } = req.body;
+
+    const payment = await Payment.findById(id);
+    if (!payment) {
+        res.status(404);
+        throw new Error('Payment not found');
+    }
+
+    if (payment.status === 'cancelled') {
+        res.status(400);
+        throw new Error('This payment is already cancelled');
+    }
+
+    // 1. Reverse Bank Account balance if it was adjusted
+    const isChequePending = payment.method === 'cheque' && payment.chequeStatus !== 'cleared';
+    if (payment.bankAccountId && !isChequePending) {
+        const bankAccount = await BankAccount.findById(payment.bankAccountId);
+        if (bankAccount) {
+            const payAmount = Number(payment.amount || 0);
+            if (payment.direction === 'received') {
+                bankAccount.balance = +(bankAccount.balance - payAmount).toFixed(2);
+            } else if (payment.direction === 'paid') {
+                bankAccount.balance = +(bankAccount.balance + payAmount).toFixed(2);
+            }
+            await bankAccount.save();
+
+            try {
+                broadcast('bank_balance_update', {
+                    bankAccountId: payment.bankAccountId,
+                    balance: bankAccount.balance,
+                });
+            } catch (_) {}
+        }
+    }
+
+    // 2. Reverse allocations across Invoices, Quotations, Estimates, and Bills
+    const allocations = Array.isArray(payment.allocations) ? payment.allocations : [];
+    for (const alloc of allocations) {
+        const allocAmt = Number(alloc.amount || 0);
+        if (allocAmt <= 0) continue;
+
+        if (alloc.documentType === 'invoice') {
+            const inv = await Invoice.findById(alloc.documentId);
+            if (inv) {
+                inv.amountPaid = Math.max(0, +(Number(inv.amountPaid || 0) - allocAmt).toFixed(2));
+                inv.balanceDue = Math.max(0, +(Number(inv.grandTotal || 0) - Number(inv.amountPaid)).toFixed(2));
+                if (inv.amountPaid <= 0) {
+                    inv.paymentStatus = 'unpaid';
+                    inv.fullyPaidAt = null;
+                } else if (inv.amountPaid < inv.grandTotal) {
+                    inv.paymentStatus = 'partially_paid';
+                    inv.fullyPaidAt = null;
+                } else {
+                    inv.paymentStatus = 'paid';
+                }
+
+                // Recalculate lastPaymentDate
+                const lastPay = await Payment.findOne({
+                    'allocations.documentId': inv._id,
+                    status: 'confirmed',
+                    _id: { $ne: payment._id }
+                }).sort({ paymentDate: -1 });
+                inv.lastPaymentDate = lastPay ? lastPay.paymentDate : null;
+
+                await inv.save();
+
+                // Synchronize with source Quotation / Estimate if this invoice originated from one
+                try {
+                    const Quotation = (await import('../models/Quotation.js')).default;
+                    let quote = null;
+                    if (inv.sourceDocumentId && (inv.sourceDocumentType === 'quotation' || inv.sourceDocumentType === 'estimate')) {
+                        quote = await Quotation.findById(inv.sourceDocumentId);
+                    }
+                    if (!quote) quote = await Quotation.findOne({ convertedInvoiceId: inv._id });
+                    if (!quote && inv.sourceDocumentCode) quote = await Quotation.findOne({ quoteNumber: inv.sourceDocumentCode });
+                    if (!quote && inv.projectId) quote = await Quotation.findOne({ convertedProjectId: inv.projectId });
+
+                    if (quote) {
+                        quote.advanceAmount = Number(inv.amountPaid || 0);
+                        quote.balanceAmount = Math.max(0, +(Number(quote.grandTotal || inv.grandTotal || 0) - Number(inv.amountPaid || 0)).toFixed(2));
+                        await quote.save();
+                    }
+                } catch (syncErr) {
+                    console.error('[Quotation-Invoice Sync on Cancel Error]:', syncErr.message);
+                }
+            }
+        } else if (alloc.documentType === 'quotation' || alloc.documentType === 'estimate') {
+            const Quotation = (await import('../models/Quotation.js')).default;
+            const quote = await Quotation.findById(alloc.documentId);
+            if (quote) {
+                const newAdvance = Math.max(0, +(Number(quote.advanceAmount || 0) - allocAmt).toFixed(2));
+                quote.advanceAmount = newAdvance;
+                quote.balanceAmount = Math.max(0, +(Number(quote.grandTotal || 0) - newAdvance).toFixed(2));
+                await quote.save();
+
+                // Synchronize with converted invoice if one exists
+                if (quote.convertedInvoiceId) {
+                    try {
+                        const inv = await Invoice.findById(quote.convertedInvoiceId);
+                        if (inv) {
+                            inv.amountPaid = newAdvance;
+                            inv.balanceDue = Math.max(0, +(Number(inv.grandTotal || 0) - newAdvance).toFixed(2));
+                            if (inv.amountPaid <= 0) {
+                                inv.paymentStatus = 'unpaid';
+                                inv.fullyPaidAt = null;
+                            } else if (inv.amountPaid < inv.grandTotal) {
+                                inv.paymentStatus = 'partially_paid';
+                                inv.fullyPaidAt = null;
+                            } else {
+                                inv.paymentStatus = 'paid';
+                            }
+                            const lastPay = await Payment.findOne({
+                                'allocations.documentId': inv._id,
+                                status: 'confirmed',
+                                _id: { $ne: payment._id }
+                            }).sort({ paymentDate: -1 });
+                            inv.lastPaymentDate = lastPay ? lastPay.paymentDate : null;
+                            await inv.save();
+                        }
+                    } catch (invSyncErr) {
+                        console.error('[Invoice-Quotation Sync on Cancel Error]:', invSyncErr.message);
+                    }
+                }
+            }
+        } else if (alloc.documentType === 'bill') {
+            const bill = await Bill.findById(alloc.documentId);
+            if (bill) {
+                bill.amountPaid = Math.max(0, +(Number(bill.amountPaid || 0) - allocAmt).toFixed(2));
+                bill.balanceDue = Math.max(0, +(Number(bill.grandTotal || 0) - Number(bill.amountPaid)).toFixed(2));
+                if (bill.amountPaid <= 0) {
+                    bill.paymentStatus = 'unpaid';
+                } else if (bill.amountPaid < bill.grandTotal) {
+                    bill.paymentStatus = 'partially_paid';
+                } else {
+                    bill.paymentStatus = 'paid';
+                }
+                const lastPay = await Payment.findOne({
+                    'allocations.documentId': bill._id,
+                    status: 'confirmed',
+                    _id: { $ne: payment._id }
+                }).sort({ paymentDate: -1 });
+                bill.lastPaymentDate = lastPay ? lastPay.paymentDate : null;
+                await bill.save();
+            }
+        }
+    }
+
+    // 3. Update customer balance if received and customer exists
+    if (payment.direction === 'received' && payment.customerId) {
+        await updateCustomerBalance(payment.customerId);
+    }
+
+    // 4. Mark payment as cancelled
+    payment.status = 'cancelled';
+    payment.cancellationReason = reason;
+    payment.cancelledAt = new Date();
+    payment.cancelledBy = req.user._id;
+    await payment.save();
+
+    // 5. Broadcast updates
+    try {
+        broadcast('payment_cancelled', {
+            paymentId: payment._id,
+            paymentNumber: payment.paymentNumber,
+            direction: payment.direction,
+            amount: payment.amount,
+        });
+        broadcast('financial_update', {
+            message: `Payment ${payment.paymentNumber || id} has been cancelled`,
+        });
+    } catch (_) {}
+
+    const populated = await Payment.findById(payment._id)
+        .populate('customerId', 'displayName customerCode primaryContact billingAddress')
+        .populate('supplierId', 'displayName supplierCode primaryContact address')
+        .populate('bankAccountId', 'bankName accountNumber accountName')
+        .populate('receivedBy', 'firstName lastName fullName signature')
+        .populate('createdBy', 'firstName lastName fullName signature')
+        .populate('cancelledBy', 'firstName lastName fullName');
+
+    res.json({
+        success: true,
+        message: `Payment ${payment.paymentNumber || id} cancelled successfully. Balances have been recalculated.`,
+        data: populated,
+    });
+});
+
+/**
  * GET /api/payments/document-summary/:documentId
  * Fetch Payment History Audit & Total Paid Summary for a given document (Invoice, Quotation, Estimate, Bill, GRN, etc.)
  */
@@ -827,12 +1020,12 @@ export const getDocumentPaymentSummary = asyncHandler(async (req, res) => {
     // Find all payments / vouchers where allocations contain this documentId
     const payments = await Payment.find({
         'allocations.documentId': documentId,
-        status: 'confirmed',
     })
     .populate('customerId', 'displayName customerCode companyName')
     .populate('supplierId', 'displayName supplierCode companyName')
     .populate('receivedBy', 'firstName lastName')
     .populate('createdBy', 'firstName lastName')
+    .populate('cancelledBy', 'firstName lastName')
     .sort({ paymentDate: -1 });
 
     let totalPaidSoFar = 0;
@@ -840,11 +1033,14 @@ export const getDocumentPaymentSummary = asyncHandler(async (req, res) => {
         const alloc = p.allocations.find(a => a.documentId?.toString() === documentId.toString());
         const allocAmount = alloc ? alloc.amount : p.amount;
         
-        // Receipts add to net paid; Advance Refunds deduct from net paid
-        if (p.direction === 'paid' || p.voucherType === 'customer_advance_refund') {
-            totalPaidSoFar -= allocAmount;
-        } else {
-            totalPaidSoFar += allocAmount;
+        const isCancelled = p.status === 'cancelled';
+        if (!isCancelled) {
+            // Receipts add to net paid; Advance Refunds deduct from net paid
+            if (p.direction === 'paid' || p.voucherType === 'customer_advance_refund') {
+                totalPaidSoFar -= allocAmount;
+            } else {
+                totalPaidSoFar += allocAmount;
+            }
         }
 
         return {
@@ -852,6 +1048,10 @@ export const getDocumentPaymentSummary = asyncHandler(async (req, res) => {
             paymentNumber: p.paymentNumber,
             direction: p.direction,
             voucherType: p.voucherType,
+            status: p.status || 'confirmed',
+            cancellationReason: p.cancellationReason,
+            cancelledAt: p.cancelledAt,
+            cancelledByName: p.cancelledBy ? `${p.cancelledBy.firstName || ''} ${p.cancelledBy.lastName || ''}`.trim() : null,
             paymentDate: p.paymentDate,
             amount: allocAmount,
             totalPaymentAmount: p.amount,

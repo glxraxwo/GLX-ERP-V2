@@ -27,9 +27,27 @@ export const useCreatePayment = () => {
             qc.invalidateQueries({ queryKey: ['invoices'] });
             qc.invalidateQueries({ queryKey: ['bills'] });
             qc.invalidateQueries({ queryKey: ['customers'] });
+            qc.invalidateQueries({ queryKey: ['quotations'] });
             invalidateReportsAndDashboard(qc);
             toast.success('Payment recorded');
         },
         onError: (err) => toast.error(err.response?.data?.message || 'Failed'),
+    });
+};
+
+export const useCancelPayment = () => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, reason }) => paymentsApi.cancel(id, { reason }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['payments'] });
+            qc.invalidateQueries({ queryKey: ['invoices'] });
+            qc.invalidateQueries({ queryKey: ['bills'] });
+            qc.invalidateQueries({ queryKey: ['customers'] });
+            qc.invalidateQueries({ queryKey: ['quotations'] });
+            invalidateReportsAndDashboard(qc);
+            toast.success('Payment cancelled and balances recalculated');
+        },
+        onError: (err) => toast.error(err.response?.data?.message || 'Failed to cancel payment'),
     });
 };
