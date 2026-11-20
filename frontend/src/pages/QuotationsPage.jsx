@@ -3683,7 +3683,7 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
             {/* Offscreen print renderer for direct row/card PDF downloads */}
             {directExportDoc && (
-                <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '210mm', opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
+                <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '210mm', pointerEvents: 'none', zIndex: -100 }}>
                     <DocumentPrintView
                         ref={directExportRef}
                         document={directExportDoc}

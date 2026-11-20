@@ -316,7 +316,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                             type="button"
                             onClick={handlePrintClick}
                             style={{
-                                padding: '5px 14px', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', border: 'none',
+                                padding: '5px 14px', borderRadius: 7, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', border: 'none',
                                 background: '#059669', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6,
                                 boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                             }}
@@ -330,7 +330,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                             type="button"
                             onClick={handleDownloadClick}
                             style={{
-                                padding: '5px 14px', borderRadius: 7, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', border: 'none',
+                                padding: '5px 14px', borderRadius: 7, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', border: 'none',
                                 background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6,
                                 boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                             }}
@@ -406,17 +406,17 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                         alignItems: 'center', 
                         justifyContent: 'center', 
                         margin: '6px 0 12px 0', 
-                        padding: '6px 0', 
+                        padding: '5px 0', 
                         background: '#f8fafc', 
                         borderTop: '1px solid #e2e8f0', 
-                        borderBottom: '2px solid #0f172a',
+                        borderBottom: '1.5px solid #475569',
                         borderRadius: 4
                     }}>
                         <span style={{ 
-                            fontSize: 14, 
-                            fontWeight: 800, 
-                            letterSpacing: '2px', 
-                            color: '#0f172a', 
+                            fontSize: 13.5, 
+                            fontWeight: 600, 
+                            letterSpacing: '1.5px', 
+                            color: '#1e293b', 
                             textTransform: 'uppercase',
                             fontFamily: DOCUMENT_FONT_FAMILY
                         }}>
@@ -425,22 +425,22 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                     </div>
 
                     {/* ── 2. CUSTOMER + DOCUMENT META ── */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, fontSize: 12.5 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, fontSize: 12 }}>
                         {/* Left: Customer / Party Block */}
                         <div style={{ maxWidth: '54%', lineHeight: 1.55 }}>
-                            <div style={{ fontWeight: 600, fontSize: 12.5, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4, color: '#334155' }}>
+                            <div style={{ fontWeight: 500, fontSize: 11.5, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4, color: '#64748b' }}>
                                 {isVoucher ? 'PAID TO / BENEFICIARY' : 'BILL TO / CUSTOMER'}
                             </div>
                             <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{partyName}</div>
                             {partyAddress && partyAddress !== '—' && (
-                                <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{partyAddress}</div>
+                                <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.45 }}>{partyAddress}</div>
                             )}
                             {partyPhone && partyPhone !== '—' && (
-                                <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{partyPhone}</div>
+                                <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.45 }}>{partyPhone}</div>
                             )}
                             {vehicleNo && (
-                                <div style={{ fontWeight: 600, fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 12.5, marginTop: 4, color: '#0f172a', letterSpacing: 0.4 }}>
-                                    Vehicle No: {vehicleNo}
+                                <div style={{ fontWeight: 500, fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 12, marginTop: 4, color: '#334155', letterSpacing: 0.3 }}>
+                                    Vehicle No: <span style={{ fontWeight: 600, color: '#0f172a' }}>{vehicleNo}</span>
                                 </div>
                             )}
                         </div>
@@ -456,14 +456,14 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                     {fmtTime(paymentDate) && <><br/><span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5 }}>{fmtTime(paymentDate)}</span></>}
                                 </>],
                             ].map(([label, value]) => (
-                                <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 12.5 }}>
-                                    <span style={{ fontWeight: 600, color: '#334155' }}>{label}</span>
-                                    <span style={{ color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>&nbsp;&nbsp;{value}</span>
+                                <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 12 }}>
+                                    <span style={{ fontWeight: 500, color: '#64748b' }}>{label}</span>
+                                    <span style={{ color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>&nbsp;&nbsp;{value}</span>
                                 </div>
                             ))}
 
                             <div style={{ marginTop: 4, paddingTop: 3, borderTop: '1px dashed #cbd5e1' }}>
-                                <div style={{ color: '#059669', fontWeight: 600, fontSize: 11, fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>
+                                <div style={{ color: '#059669', fontWeight: 500, fontSize: 11, fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums' }}>
                                     • Method: {methodLabel} (CONFIRMED)
                                 </div>
                             </div>
@@ -471,7 +471,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                     </div>
 
                     {/* ── 3. ITEMS TABLE ── */}
-                    <table className="no-zebra print-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 12.5, marginBottom: 4, background: 'transparent' }}>
+                    <table className="no-zebra print-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 12, marginBottom: 4, background: 'transparent' }}>
                         <colgroup>
                             <col style={{ width: 'auto' }} />
                             <col style={{ width: 95 }} />
@@ -479,17 +479,17 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                             <col style={{ width: 105 }} />
                         </colgroup>
                         <thead>
-                            <tr style={{ background: 'transparent', borderBottom: '1.5px solid #cbd5e1' }}>
-                                <th style={{ padding: '6px 4px 6px 0', textAlign: 'left', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, color: '#334155', background: 'transparent' }}>
+                            <tr style={{ background: 'transparent', borderBottom: '1px solid #cbd5e1' }}>
+                                <th style={{ padding: '6px 4px 6px 0', textAlign: 'left', fontWeight: 500, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, color: '#475569', background: 'transparent' }}>
                                     DESCRIPTION
                                 </th>
-                                <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 95, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                <th style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 500, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 95, color: '#475569', background: 'transparent', whiteSpace: 'nowrap' }}>
                                     RATE
                                 </th>
-                                <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 55, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                <th style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 500, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 55, color: '#475569', background: 'transparent', whiteSpace: 'nowrap' }}>
                                     QTY
                                 </th>
-                                <th style={{ padding: '6px 0 6px 8px', textAlign: 'right', fontWeight: 600, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 105, color: '#334155', background: 'transparent', whiteSpace: 'nowrap' }}>
+                                <th style={{ padding: '6px 0 6px 8px', textAlign: 'right', fontWeight: 500, fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, width: 105, color: '#475569', background: 'transparent', whiteSpace: 'nowrap' }}>
                                     AMOUNT
                                 </th>
                             </tr>
@@ -548,18 +548,18 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                     </table>
 
                     {/* ── 4. SUBTOTALS + REMARKS + BALANCE DUE ── */}
-                    <div style={{ marginTop: 10, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, fontSize: 12.5 }}>
+                    <div style={{ marginTop: 10, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, fontSize: 12 }}>
                         {/* Left: Remarks & Words */}
                         <div style={{ maxWidth: '48%', lineHeight: 1.6 }}>
                             <div style={{ marginBottom: 4 }}>
-                                <span style={{ fontWeight: 600, color: '#334155' }}>Remarks &nbsp;&nbsp;&nbsp;&nbsp;:</span>
+                                <span style={{ fontWeight: 500, color: '#64748b' }}>Remarks &nbsp;&nbsp;&nbsp;&nbsp;:</span>
                                 <span style={{ marginLeft: 6, color: '#1e293b' }}>
                                     {payment.notes || (allocations.length > 0 ? `Settlement for ${allocations.map(a => a.documentNumber).filter(Boolean).join(', ')}` : 'Payment received with thanks')}
                                 </span>
                             </div>
 
                             <div style={{ marginTop: 4 }}>
-                                <span style={{ fontWeight: 600, color: '#334155' }}>Amount in Words:</span>
+                                <span style={{ fontWeight: 500, color: '#64748b' }}>Amount in Words:</span>
                                 <div style={{ fontStyle: 'italic', color: '#1e293b', marginTop: 1, fontSize: 11.5 }}>
                                     {convertNumberToWords(totalAmount)}
                                 </div>
@@ -567,7 +567,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
 
                             {payment.bankAccountId && (
                                 <div style={{ marginTop: 4, color: '#475569', fontSize: 11 }}>
-                                    <span style={{ fontWeight: 600 }}>Deposited To:</span> {payment.bankAccountId.bankName || 'GLX Account'} ({payment.bankAccountId.accountNumber || ''})
+                                    <span style={{ fontWeight: 500 }}>Deposited To:</span> {payment.bankAccountId.bankName || 'GLX Account'} ({payment.bankAccountId.accountNumber || ''})
                                 </div>
                             )}
                         </div>
@@ -575,36 +575,36 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                         {/* Right: Totals block matching Quotation / Invoice template */}
                         <div style={{ minWidth: 260 }}>
                             {/* FULL TOTAL */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginBottom: 4, color: '#475569', fontSize: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, marginBottom: 4, color: '#64748b', fontSize: 12 }}>
                                 <span>FULL TOTAL</span>
-                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', color: '#1e293b', fontWeight: 600 }}>{fmt(fullTotal)}</span>
+                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', color: '#334155', fontWeight: 500 }}>{fmt(fullTotal)}</span>
                             </div>
 
                             {/* PAID AMOUNT */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: 12.5, color: '#166534', marginTop: 4, borderTop: '1px solid #cbd5e1', paddingTop: 4 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, fontSize: 12, color: '#166534', marginTop: 4, borderTop: '1px solid #cbd5e1', paddingTop: 4 }}>
                                 <span>{isVoucher ? 'TOTAL PAID' : 'PAID AMOUNT'}</span>
-                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{fmt(totalAmount)}</span>
+                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 600, fontSize: 12.5 }}>{fmt(totalAmount)}</span>
                             </div>
 
                             {/* BALANCE DUE */}
                             <div style={{ 
                                 display: 'flex', 
                                 justifyContent: 'space-between', 
-                                fontWeight: 700, 
-                                fontSize: 13, 
+                                fontWeight: 600, 
+                                fontSize: 12.5, 
                                 color: balanceDue > 0 ? '#b91c1c' : '#166534', 
                                 marginTop: 4, 
-                                borderTop: '1.5px solid #0f172a', 
+                                borderTop: '1px solid #cbd5e1', 
                                 paddingTop: 4 
                             }}>
                                 <span>BALANCE DUE</span>
-                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: 13.5 }}>{fmt(balanceDue)}</span>
+                                <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 600, fontSize: 12.5 }}>{fmt(balanceDue)}</span>
                             </div>
 
                             {unallocated > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 4, color: '#92400e', fontSize: 11.5 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 500, marginTop: 4, color: '#92400e', fontSize: 11.5 }}>
                                     <span>UNALLOCATED CREDIT</span>
-                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(unallocated)}</span>
+                                    <span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>{fmt(unallocated)}</span>
                                 </div>
                             )}
                         </div>
@@ -613,15 +613,15 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                     {/* ── 5. FOOTER: Signatures (left) + QR Code (right) (Immediately after Totals, NOT at page bottom) ── */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 6, marginTop: 8, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <div>
-                            <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 2, color: '#0f172a' }}>
+                            <div style={{ fontSize: 10.5, fontWeight: 400, marginBottom: 2, color: '#334155' }}>
                                 Yours Faithfully,
                             </div>
-                            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f172a', marginBottom: 12, lineHeight: 1.2 }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: '#0f172a', marginBottom: 10, lineHeight: 1.2 }}>
                                 {resolvedCompany?.companyName || 'GLX INDUSTRIES'} - {branchVal}
                             </div>
 
                             {/* Seal + Signature image area */}
-                            <div style={{ position: 'relative', minHeight: 48, height: 50, marginTop: 4 }}>
+                            <div style={{ position: 'relative', minHeight: 46, height: 48, marginTop: 2 }}>
                                 {activeSeal && (
                                     <img
                                         src={activeSeal}
@@ -630,8 +630,8 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                             position: 'absolute', 
                                             bottom: 8, 
                                             left: 125, 
-                                            width: 52, 
-                                            height: 52, 
+                                            width: 50, 
+                                            height: 50, 
                                             objectFit: 'contain', 
                                             opacity: 0.85, 
                                             pointerEvents: 'none', 
@@ -644,8 +644,8 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                         src={activeSignature}
                                         alt="Authorized Signature"
                                         style={{ 
-                                            height: 38, 
-                                            maxWidth: 165, 
+                                            height: 36, 
+                                            maxWidth: 160, 
                                             objectFit: 'contain', 
                                             marginBottom: 2, 
                                             position: 'relative', 
@@ -654,25 +654,25 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                         }}
                                     />
                                 ) : (
-                                    <div style={{ height: 34 }} />
+                                    <div style={{ height: 32 }} />
                                 )}
-                                <div style={{ fontSize: 13, letterSpacing: 0.8, color: '#444', lineHeight: 0.8 }}>
+                                <div style={{ fontSize: 13, letterSpacing: 0.8, color: '#64748b', lineHeight: 0.8 }}>
                                     ............................................................
                                 </div>
                             </div>
-                            <div style={{ fontSize: 10.5, color: '#0f172a', marginTop: 6, fontWeight: 600 }}>
+                            <div style={{ fontSize: 10, color: '#334155', marginTop: 5, fontWeight: 500 }}>
                                 Authorized Signature ({signerName})
                             </div>
 
                             {/* Print timestamp in RED font */}
-                            <div style={{ fontSize: 9.5, color: '#dc2626', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', marginTop: 4, fontWeight: 600 }}>
+                            <div style={{ fontSize: 9.5, color: '#dc2626', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', marginTop: 4, fontWeight: 500 }}>
                                 Printed at &nbsp;&nbsp;&nbsp;&nbsp; {printTimestamp}
                             </div>
                         </div>
 
                         {/* QR Code */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <QRCodeSVG value={qrString} size={80} level="M" />
+                            <QRCodeSVG value={qrString} size={76} level="M" />
                         </div>
                     </div>
                 </div>

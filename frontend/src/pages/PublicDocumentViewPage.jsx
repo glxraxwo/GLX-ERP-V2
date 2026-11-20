@@ -622,7 +622,7 @@ export default function PublicDocumentViewPage() {
                 {/* ══════════════════════════════════════════════════════
                     2. OFFICIAL A4 PRINT VIEW (Desktop default or toggled)
                 ══════════════════════════════════════════════════════ */}
-                <div className={viewMode === 'mobile' ? 'fixed -left-[9999px] top-0 w-[800px] pointer-events-none z-[-50] md:static md:w-auto md:pointer-events-auto md:z-auto' : 'block print:block'}>
+                <div className={viewMode === 'mobile' ? 'fixed -left-[9999px] top-0 w-[800px] pointer-events-none z-[-50] md:static md:w-auto md:pointer-events-auto md:z-auto print:static print:left-auto print:w-full print:pointer-events-auto print:z-auto' : 'block print:block'}>
                     {/* Horizontal scroll notice for mobile if in A4 mode */}
                     {viewMode === 'a4' && (
                         <div className="no-print md:hidden bg-blue-50 border border-blue-200 text-blue-700 text-[11px] p-2 rounded-xl mb-3 flex items-center justify-between">
@@ -640,7 +640,7 @@ export default function PublicDocumentViewPage() {
                     <div className="bg-white shadow-sm border border-slate-200 rounded-2xl print:shadow-none print:border-0 print:p-0 overflow-x-auto">
                         <div className="min-w-[760px] p-2 sm:p-6 md:p-8 mx-auto">
                             {isPaymentReceipt ? (
-                                <PaymentReceiptPrintView ref={printRef} payment={doc} companyInfo={companyInfo} />
+                                <PaymentReceiptPrintView ref={printRef} payment={doc} companyInfo={companyInfo} hideToolbar={true} />
                             ) : (
                                 <DocumentPrintView ref={printRef} document={printDoc} companyInfo={companyInfo} hideToolbar={true} />
                             )}

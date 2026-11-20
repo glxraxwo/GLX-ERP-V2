@@ -714,7 +714,14 @@ export const generateElementPDF = async (element) => {
                 logging: false,
                 backgroundColor: '#ffffff',
                 ignoreElements: (el) => el.classList?.contains('no-print') || el.tagName === 'BUTTON',
-                onclone: (clonedDoc) => {
+                onclone: (clonedDoc, clonedElement) => {
+                    if (clonedElement) {
+                        clonedElement.style.position = 'static';
+                        clonedElement.style.left = '0';
+                        clonedElement.style.top = '0';
+                        clonedElement.style.opacity = '1';
+                        clonedElement.style.visibility = 'visible';
+                    }
                     const inputs = clonedDoc.querySelectorAll('input, textarea');
                     inputs.forEach(inp => {
                         inp.style.border = 'none';
@@ -780,7 +787,14 @@ export const generateElementPDF = async (element) => {
             logging: false,
             backgroundColor: '#ffffff',
             ignoreElements: (el) => el.classList?.contains('no-print') || el.tagName === 'BUTTON',
-            onclone: (clonedDoc) => {
+            onclone: (clonedDoc, clonedElement) => {
+                if (clonedElement) {
+                    clonedElement.style.position = 'static';
+                    clonedElement.style.left = '0';
+                    clonedElement.style.top = '0';
+                    clonedElement.style.opacity = '1';
+                    clonedElement.style.visibility = 'visible';
+                }
                 const inputs = clonedDoc.querySelectorAll('input, textarea');
                 inputs.forEach(inp => {
                     inp.style.border = 'none';

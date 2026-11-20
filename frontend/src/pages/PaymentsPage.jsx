@@ -395,7 +395,7 @@ function PaymentsPage() {
 
             {/* Offscreen print renderer for direct row/card PDF downloads */}
             {directExportPayment && (
-                <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '210mm', opacity: 0, pointerEvents: 'none', zIndex: -100 }}>
+                <div style={{ position: 'fixed', left: '-9999px', top: 0, width: '210mm', pointerEvents: 'none', zIndex: -100 }}>
                     <PaymentReceiptPrintView
                         ref={directExportRef}
                         payment={directExportPayment}

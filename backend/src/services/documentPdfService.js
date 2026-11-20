@@ -2,6 +2,7 @@ import PdfPrinter from 'pdfkit-table';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import QRCode from 'qrcode';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -535,30 +536,30 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
             // Document Title Header Banner matching quotation/invoice template
             const titleY = 106;
             pdfDoc.rect(36, titleY, pdfDoc.page.width - 72, 19).fillAndStroke('#F8FAFC', '#CBD5E1');
-            pdfDoc.font('Helvetica-Bold').fontSize(11).fillColor('#0F172A')
-                .text(docTitle, 36, titleY + 4.5, { align: 'center', width: pdfDoc.page.width - 72, characterSpacing: 2 });
-            pdfDoc.moveTo(36, titleY + 19).lineTo(pdfDoc.page.width - 36, titleY + 19).lineWidth(1.5).strokeColor('#0F172A').stroke();
+            pdfDoc.font('Helvetica-Bold').fontSize(10.5).fillColor('#1E293B')
+                .text(docTitle, 36, titleY + 4.5, { align: 'center', width: pdfDoc.page.width - 72, characterSpacing: 1.5 });
+            pdfDoc.moveTo(36, titleY + 19).lineTo(pdfDoc.page.width - 36, titleY + 19).lineWidth(1).strokeColor('#475569').stroke();
 
             // ── 2. Meta Info (Customer Left vs Document Details Right) ────────
             const metaY = 133;
 
             // Left Column: Customer / Beneficiary
-            pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155')
+            pdfDoc.font('Helvetica').fontSize(8).fillColor('#64748B')
                 .text(isVoucher ? 'PAID TO / BENEFICIARY' : 'BILL TO / CUSTOMER', 36, metaY);
             pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor('#0F172A')
                 .text(partyName, 36, metaY + 13, { width: 280 });
 
             let curY = pdfDoc.y + 2;
             if (partyAddress && partyAddress !== '—') {
-                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#334155').text(partyAddress, 36, curY, { width: 280 });
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#475569').text(partyAddress, 36, curY, { width: 280 });
                 curY = pdfDoc.y + 2;
             }
             if (partyPhone && partyPhone !== '—') {
-                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#334155').text(partyPhone, 36, curY);
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#475569').text(partyPhone, 36, curY);
                 curY = pdfDoc.y + 2;
             }
             if (vehicleNo) {
-                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#0F172A').text(`Vehicle No: ${vehicleNo}`, 36, curY);
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#334155').text(`Vehicle No: ${vehicleNo}`, 36, curY);
                 curY = pdfDoc.y + 2;
             }
 
@@ -568,8 +569,8 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
             let metaRightY = metaY;
 
             const renderMetaRow = (label, val, subVal = '') => {
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155').text(label, rightX, metaRightY, { width: 85 });
-                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#0F172A').text(val, rightX + 85, metaRightY, { width: rightWidth - 85 });
+                pdfDoc.font('Helvetica').fontSize(8).fillColor('#64748B').text(label, rightX, metaRightY, { width: 85 });
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#1E293B').text(val, rightX + 85, metaRightY, { width: rightWidth - 85 });
                 metaRightY += 14;
                 if (subVal) {
                     pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#475569').text(subVal, rightX + 85, metaRightY - 1, { width: rightWidth - 85 });
@@ -583,7 +584,7 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
             renderMetaRow('Date', docDateStr, docTimeStr);
 
             // Method line
-            pdfDoc.font('Helvetica-Bold').fontSize(8).fillColor('#059669')
+            pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#059669')
                 .text(`• Method: ${methodLabel} (CONFIRMED)`, rightX, metaRightY + 2);
             metaRightY += 14;
 
@@ -634,13 +635,13 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                     padding: 5,
                     columnSpacing: 4,
                     divider: {
-                        header: { disabled: false, width: 1.2, opacity: 1 },
+                        header: { disabled: false, width: 0.8, opacity: 0.8 },
                         horizontal: { disabled: false, width: 0.5, opacity: 0.15 }
                     }
                 }
             };
 
-            const renderReceiptSummaryAndFooter = () => {
+            const renderReceiptSummaryAndFooter = async () => {
                 pdfDoc.moveDown(0.5);
                 const summaryY = pdfDoc.y + 12;
                 const summaryWidth = 220;
@@ -648,15 +649,15 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
 
                 // Left: Remarks & Amount in Words
                 const leftWidth = summaryX - 36 - 20;
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155').text('Remarks        :', 36, summaryY);
+                pdfDoc.font('Helvetica').fontSize(8).fillColor('#64748B').text('Remarks        :', 36, summaryY);
                 pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#1E293B').text(
                     payment.notes || (allocations.length > 0 ? `Settlement for ${allocations.map(a => a.documentNumber).filter(Boolean).join(', ')}` : 'Payment received with thanks'),
                     105, summaryY, { width: leftWidth - 70 }
                 );
 
                 const wordsY = pdfDoc.y + 8;
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155').text('Amount in Words:', 36, wordsY);
-                pdfDoc.font('Helvetica-Oblique').fontSize(8).fillColor('#1E293B').text(convertNumberToWords(totalPaid), 36, wordsY + 12, { width: leftWidth });
+                pdfDoc.font('Helvetica').fontSize(8).fillColor('#64748B').text('Amount in Words:', 36, wordsY);
+                pdfDoc.font('Helvetica-Oblique').fontSize(7.5).fillColor('#1E293B').text(convertNumberToWords(totalPaid), 36, wordsY + 12, { width: leftWidth });
 
                 if (payment.bankAccountId) {
                     const bName = payment.bankAccountId.bankName || 'GLX Account';
@@ -667,35 +668,35 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 // Right: Totals (Full Total, Paid Amount, Balance Due) matching Quotation / Invoice template
                 let rY = summaryY;
 
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#475569').text('FULL TOTAL', summaryX, rY);
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#1E293B').text(fmtNum(fullTotal), summaryX, rY, { width: summaryWidth, align: 'right' });
+                pdfDoc.font('Helvetica').fontSize(8).fillColor('#64748B').text('FULL TOTAL', summaryX, rY);
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#334155').text(fmtNum(fullTotal), summaryX, rY, { width: summaryWidth, align: 'right' });
                 rY += 14;
 
                 pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(0.5).strokeColor('#CBD5E1').stroke();
                 rY += 5;
 
-                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#166534').text(isVoucher ? 'TOTAL PAID' : 'PAID AMOUNT', summaryX, rY);
-                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#166534').text(fmtNum(totalPaid), summaryX, rY, { width: summaryWidth, align: 'right' });
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#166534').text(isVoucher ? 'TOTAL PAID' : 'PAID AMOUNT', summaryX, rY);
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#166534').text(fmtNum(totalPaid), summaryX, rY, { width: summaryWidth, align: 'right' });
                 rY += 15;
 
-                pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(1.2).strokeColor('#0F172A').stroke();
+                pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(0.6).strokeColor('#CBD5E1').stroke();
                 rY += 5;
 
-                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor(balanceDue > 0 ? '#B91C1C' : '#166534')
+                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor(balanceDue > 0 ? '#B91C1C' : '#166534')
                     .text('BALANCE DUE', summaryX, rY);
-                pdfDoc.font('Helvetica-Bold').fontSize(9.5).fillColor(balanceDue > 0 ? '#B91C1C' : '#166534')
+                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor(balanceDue > 0 ? '#B91C1C' : '#166534')
                     .text(fmtNum(balanceDue), summaryX, rY, { width: summaryWidth, align: 'right' });
 
                 if (unalloc > 0) {
                     rY += 14;
-                    pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#92400E').text('UNALLOCATED CREDIT', summaryX, rY);
+                    pdfDoc.font('Helvetica').fontSize(8).fillColor('#92400E').text('UNALLOCATED CREDIT', summaryX, rY);
                     pdfDoc.text(fmtNum(unalloc), summaryX, rY, { width: summaryWidth, align: 'right' });
                 }
 
-                // Bottom: Signatures and red print timestamp (Placed at end of content)
+                // Bottom: Signatures, red print timestamp, and QR Code
                 const bottomY = Math.max(pdfDoc.y + 14, rY + 14);
-                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#000000').text('Yours Faithfully,', 36, bottomY);
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(`GLX INDUSTRIES - ${branchVal}`, 36, bottomY + 11);
+                pdfDoc.font('Helvetica').fontSize(8).fillColor('#334155').text('Yours Faithfully,', 36, bottomY);
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0F172A').text(`GLX INDUSTRIES - ${branchVal}`, 36, bottomY + 11);
 
                 // Embed official seal image if available - placed safely below company name, centered on dotted line
                 const sealData = settings?.companySeal;
@@ -715,11 +716,20 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                     } catch (e) {}
                 }
 
-                pdfDoc.fillColor('#444444').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 60);
+                pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 60);
                 const signerTitle = payment.receivedBy?.firstName ? handledBy : (settings?.bossName || handledBy);
-                pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(8).text(`Authorized Signature (${signerTitle})`, 36, bottomY + 74);
+                pdfDoc.fillColor('#334155').font('Helvetica').fontSize(7.5).text(`Authorized Signature (${signerTitle})`, 36, bottomY + 74);
 
-                pdfDoc.fillColor('#DC2626').font('Helvetica-Bold').fontSize(8).text(`Printed at    ${printTimestamp}`, 36, bottomY + 88);
+                pdfDoc.fillColor('#DC2626').font('Helvetica').fontSize(7.5).text(`Printed at    ${printTimestamp}`, 36, bottomY + 88);
+
+                // QR Code on right side matching online view
+                const qrString = payment.publicToken 
+                    ? `https://glxgroup.lk/public/documents/${payment.publicToken}` 
+                    : `https://glxgroup.lk/public/documents/${docCode}`;
+                try {
+                    const qrBuffer = await QRCode.toBuffer(qrString, { width: 70, margin: 1 });
+                    pdfDoc.image(qrBuffer, pdfDoc.page.width - 36 - 70, bottomY + 12, { width: 70, height: 70 });
+                } catch (qrErr) {}
 
                 // Multi-page bottom disclaimer
                 const range = pdfDoc.bufferedPageRange();
@@ -740,17 +750,17 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
 
             try {
                 const tableResult = pdfDoc.table(table, {
-                    prepareHeader: () => pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#334155'),
+                    prepareHeader: () => pdfDoc.font('Helvetica-Bold').fontSize(8).fillColor('#475569'),
                     prepareRow: () => pdfDoc.font('Helvetica').fontSize(8).fillColor('#1E293B')
                 });
 
                 if (tableResult instanceof Promise) {
                     tableResult.then(renderReceiptSummaryAndFooter).catch(reject);
                 } else {
-                    renderReceiptSummaryAndFooter();
+                    renderReceiptSummaryAndFooter().catch(reject);
                 }
             } catch (tableErr) {
-                renderReceiptSummaryAndFooter();
+                renderReceiptSummaryAndFooter().catch(reject);
             }
 
         } catch (err) {
