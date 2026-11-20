@@ -389,7 +389,7 @@ export const exportDocumentToPDF = async (docData, documentType = 'invoice') => 
         const bankDetails = [
             'Account Name: GLX Truck Body Engineers',
             'Bank: Nations Trust Bank, Ja-Ela Branch',
-            'Account No: 1001-XXXX-XXXX',
+            'Account No: 100600002717',
             'Terms: 70% Advance with Order, balance on Completion.'
         ].join('\n');
         doc.text(bankDetails, 10, finalY + 9);
@@ -631,7 +631,7 @@ export const printDocumentAsPDF = async (docData, documentType = 'invoice') => {
         doc.setFont('helvetica', 'bold'); doc.setFontSize(8);
         doc.text('Payment & Bank Details:', 10, finalY + 5);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
-        doc.text('Account Name: GLX Truck Body Engineers\nBank: Nations Trust Bank, Ja-Ela Branch\nAccount No: 1001-XXXX-XXXX\nTerms: 70% Advance with Order, balance on Completion.', 10, finalY + 9);
+        doc.text('Account Name: GLX Truck Body Engineers\nBank: Nations Trust Bank, Ja-Ela Branch\nAccount No: 100600002717\nTerms: 70% Advance with Order, balance on Completion.', 10, finalY + 9);
     }
 
     const bottomY = doc.internal.pageSize.height - 40;
