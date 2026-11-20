@@ -584,8 +584,8 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
             renderMetaRow('Date', docDateStr, docTimeStr);
 
             // Method line
-            pdfDoc.font('Helvetica').fontSize(7.5).fillColor('#059669')
-                .text(`• Method: ${methodLabel} (CONFIRMED)`, rightX, metaRightY + 2);
+            pdfDoc.font('Helvetica-Bold').fontSize(8).fillColor('#0F172A')
+                .text(`Method: ${methodLabel} (CONFIRMED)`, rightX, metaRightY + 2);
             metaRightY += 14;
 
             pdfDoc.y = Math.max(curY + 10, metaRightY + 8, 205);
@@ -657,7 +657,7 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
 
                 const wordsY = pdfDoc.y + 8;
                 pdfDoc.font('Helvetica').fontSize(8).fillColor('#64748B').text('Amount in Words:', 36, wordsY);
-                pdfDoc.font('Helvetica-Oblique').fontSize(7.5).fillColor('#1E293B').text(convertNumberToWords(totalPaid), 36, wordsY + 12, { width: leftWidth });
+                pdfDoc.font('Helvetica').fontSize(8).fillColor('#0F172A').text(convertNumberToWords(totalPaid), 36, wordsY + 12, { width: leftWidth });
 
                 if (payment.bankAccountId) {
                     const bName = payment.bankAccountId.bankName || 'GLX Account';
@@ -669,27 +669,27 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 let rY = summaryY;
 
                 pdfDoc.font('Helvetica').fontSize(8).fillColor('#64748B').text('FULL TOTAL', summaryX, rY);
-                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#334155').text(fmtNum(fullTotal), summaryX, rY, { width: summaryWidth, align: 'right' });
+                pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#1E293B').text(fmtNum(fullTotal), summaryX, rY, { width: summaryWidth, align: 'right' });
                 rY += 14;
 
                 pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(0.5).strokeColor('#CBD5E1').stroke();
                 rY += 5;
 
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#166534').text(isVoucher ? 'TOTAL PAID' : 'PAID AMOUNT', summaryX, rY);
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#166534').text(fmtNum(totalPaid), summaryX, rY, { width: summaryWidth, align: 'right' });
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0F172A').text(isVoucher ? 'TOTAL PAID' : 'PAID AMOUNT', summaryX, rY);
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0F172A').text(fmtNum(totalPaid), summaryX, rY, { width: summaryWidth, align: 'right' });
                 rY += 15;
 
-                pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(0.6).strokeColor('#CBD5E1').stroke();
+                pdfDoc.moveTo(summaryX, rY).lineTo(summaryX + summaryWidth, rY).lineWidth(1.2).strokeColor('#0F172A').stroke();
                 rY += 5;
 
-                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor(balanceDue > 0 ? '#B91C1C' : '#166534')
+                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#0F172A')
                     .text('BALANCE DUE', summaryX, rY);
-                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor(balanceDue > 0 ? '#B91C1C' : '#166534')
+                pdfDoc.font('Helvetica-Bold').fontSize(9).fillColor('#0F172A')
                     .text(fmtNum(balanceDue), summaryX, rY, { width: summaryWidth, align: 'right' });
 
                 if (unalloc > 0) {
                     rY += 14;
-                    pdfDoc.font('Helvetica').fontSize(8).fillColor('#92400E').text('UNALLOCATED CREDIT', summaryX, rY);
+                    pdfDoc.font('Helvetica').fontSize(8).fillColor('#475569').text('UNALLOCATED CREDIT', summaryX, rY);
                     pdfDoc.text(fmtNum(unalloc), summaryX, rY, { width: summaryWidth, align: 'right' });
                 }
 
@@ -720,7 +720,7 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 const signerTitle = payment.receivedBy?.firstName ? handledBy : (settings?.bossName || handledBy);
                 pdfDoc.fillColor('#334155').font('Helvetica').fontSize(7.5).text(`Authorized Signature (${signerTitle})`, 36, bottomY + 76);
 
-                pdfDoc.fillColor('#DC2626').font('Helvetica').fontSize(7.5).text(`Printed at    ${printTimestamp}`, 36, bottomY + 90);
+                pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7.5).text(`Printed at    ${printTimestamp}`, 36, bottomY + 90);
 
                 // QR Code on right side matching online view
                 const qrString = payment.publicToken 
