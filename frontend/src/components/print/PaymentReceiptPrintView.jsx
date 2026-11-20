@@ -349,7 +349,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                     className="receipt-print-page print-container single-page-doc" 
                     style={{ 
                         background: '#fff', 
-                        padding: showLetterheadHeader ? '8px 12px 8px 12px' : '18mm 12px 8px 12px', 
+                        padding: showLetterheadHeader ? '14px 18px 14px 18px' : '28mm 18px 14px 18px', 
                         width: '100%',
                         boxSizing: 'border-box',
                         margin: '0 auto',
@@ -358,9 +358,9 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                 >
                     {/* ── 1. COMPANY HEADER ── */}
                     {showLetterheadHeader && (
-                        <div style={{ borderBottom: '1.5px solid #444', paddingBottom: 6, marginBottom: 10 }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                                <div style={{ flexShrink: 0, width: 62, marginTop: 1 }}>
+                        <div style={{ borderBottom: '1.5px solid #444', paddingBottom: 8, marginBottom: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                                <div style={{ flexShrink: 0, width: 70, marginTop: 2 }}>
                                     <img 
                                         src="/logo.jpg" 
                                         alt="GLX Logo" 
@@ -369,13 +369,13 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                     />
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 700, fontSize: 15.5, letterSpacing: 0.3, lineHeight: 1.15, color: '#0f172a' }}>
+                                    <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: 0.4, lineHeight: 1.15, color: '#0f172a' }}>
                                         GLX TRUCK BODY ENGINEERS
                                     </div>
-                                    <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: 0.5, color: '#475569', marginBottom: 4 }}>
+                                    <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: 0.6, color: '#475569', marginBottom: 5 }}>
                                         ALUMINIUM , STEEL &amp; FREEZER BOX MANUFACTURE
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 10.5, lineHeight: 1.45, color: '#334155' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 10.5, lineHeight: 1.5, color: '#334155' }}>
                                         <div>
                                             No.14,Negambo Road,<br />
                                             Thudella,Ja-Ela,<br />
@@ -388,11 +388,11 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                             Sri Lanka.<br />
                                             (11390)
                                         </div>
-                                        <div style={{ fontSize: 10.5, lineHeight: 1.5 }}>
-                                            <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Mobile</span> : 071 6666 888</div>
-                                            <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Tel</span> : 011 740 4446</div>
-                                            <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Email</span> : glx.engi@gmail.com</div>
-                                            <div><span style={{ display: 'inline-block', width: 44, fontWeight: 500, color: '#475569' }}>Web</span> : {companyInfo?.companyWebsite || 'www.glxgroup.lk'}</div>
+                                        <div style={{ fontSize: 10.5, lineHeight: 1.55 }}>
+                                            <div><span style={{ display: 'inline-block', width: 46, fontWeight: 500, color: '#475569' }}>Mobile</span> : 071 6666 888</div>
+                                            <div><span style={{ display: 'inline-block', width: 46, fontWeight: 500, color: '#475569' }}>Tel</span> : 011 740 4446</div>
+                                            <div><span style={{ display: 'inline-block', width: 46, fontWeight: 500, color: '#475569' }}>Email</span> : glx.engi@gmail.com</div>
+                                            <div><span style={{ display: 'inline-block', width: 46, fontWeight: 500, color: '#475569' }}>Web</span> : {companyInfo?.companyWebsite || 'www.glxgroup.lk'}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -611,29 +611,30 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                     </div>
 
                     {/* ── 5. FOOTER: Signatures (left) + QR Code (right) (Immediately after Totals, NOT at page bottom) ── */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 6, marginTop: 8, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: 8, marginTop: 10, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                         <div>
-                            <div style={{ fontSize: 10.5, fontWeight: 400, marginBottom: 2, color: '#334155' }}>
+                            <div style={{ fontSize: 10.5, fontWeight: 400, marginBottom: 2, color: '#475569' }}>
                                 Yours Faithfully,
                             </div>
-                            <div style={{ fontSize: 11.5, fontWeight: 600, color: '#0f172a', marginBottom: 10, lineHeight: 1.2 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', marginBottom: 16, lineHeight: 1.2 }}>
                                 {resolvedCompany?.companyName || 'GLX INDUSTRIES'} - {branchVal}
                             </div>
 
                             {/* Seal + Signature image area */}
-                            <div style={{ position: 'relative', minHeight: 46, height: 48, marginTop: 2 }}>
+                            <div style={{ position: 'relative', minHeight: 56, marginTop: 8, marginBottom: 4 }}>
                                 {activeSeal && (
                                     <img
                                         src={activeSeal}
                                         alt="Official Company Seal"
+                                        crossOrigin="anonymous"
                                         style={{ 
                                             position: 'absolute', 
-                                            bottom: 8, 
-                                            left: 125, 
-                                            width: 50, 
-                                            height: 50, 
+                                            bottom: 4, 
+                                            left: 135, 
+                                            width: 58, 
+                                            height: 58, 
                                             objectFit: 'contain', 
-                                            opacity: 0.85, 
+                                            opacity: 0.82, 
                                             pointerEvents: 'none', 
                                             zIndex: 1 
                                         }}
@@ -643,8 +644,9 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                     <img
                                         src={activeSignature}
                                         alt="Authorized Signature"
+                                        crossOrigin="anonymous"
                                         style={{ 
-                                            height: 36, 
+                                            height: 44, 
                                             maxWidth: 160, 
                                             objectFit: 'contain', 
                                             marginBottom: 2, 
@@ -654,13 +656,13 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                         }}
                                     />
                                 ) : (
-                                    <div style={{ height: 32 }} />
+                                    <div style={{ height: 40 }} />
                                 )}
-                                <div style={{ fontSize: 13, letterSpacing: 0.8, color: '#64748b', lineHeight: 0.8 }}>
+                                <div style={{ fontSize: 13, letterSpacing: 0.8, color: '#94a3b8', lineHeight: 0.8, position: 'relative', zIndex: 2 }}>
                                     ............................................................
                                 </div>
                             </div>
-                            <div style={{ fontSize: 10, color: '#334155', marginTop: 5, fontWeight: 500 }}>
+                            <div style={{ fontSize: 10.5, color: '#334155', marginTop: 4, fontWeight: 500 }}>
                                 Authorized Signature ({signerName})
                             </div>
 

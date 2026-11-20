@@ -696,14 +696,14 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 // Bottom: Signatures, red print timestamp, and QR Code
                 const bottomY = Math.max(pdfDoc.y + 14, rY + 14);
                 pdfDoc.font('Helvetica').fontSize(8).fillColor('#334155').text('Yours Faithfully,', 36, bottomY);
-                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0F172A').text(`GLX INDUSTRIES - ${branchVal}`, 36, bottomY + 11);
+                pdfDoc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0F172A').text(`GLX INDUSTRIES - ${branchVal}`, 36, bottomY + 12);
 
                 // Embed official seal image if available - placed safely below company name, centered on dotted line
                 const sealData = settings?.companySeal;
                 if (sealData && sealData.includes('base64,')) {
                     try {
                         const sealBuffer = Buffer.from(sealData.split('base64,')[1], 'base64');
-                        pdfDoc.image(sealBuffer, 135, bottomY + 26, { width: 40, height: 40 });
+                        pdfDoc.image(sealBuffer, 135, bottomY + 30, { width: 44, height: 44 });
                     } catch (e) {}
                 }
 
@@ -712,15 +712,15 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 if (sigData && sigData.includes('base64,')) {
                     try {
                         const sigBuffer = Buffer.from(sigData.split('base64,')[1], 'base64');
-                        pdfDoc.image(sigBuffer, 36, bottomY + 28, { width: 95, height: 30 });
+                        pdfDoc.image(sigBuffer, 36, bottomY + 28, { width: 95, height: 32 });
                     } catch (e) {}
                 }
 
-                pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 60);
+                pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(10).text('............................................................', 36, bottomY + 62);
                 const signerTitle = payment.receivedBy?.firstName ? handledBy : (settings?.bossName || handledBy);
-                pdfDoc.fillColor('#334155').font('Helvetica').fontSize(7.5).text(`Authorized Signature (${signerTitle})`, 36, bottomY + 74);
+                pdfDoc.fillColor('#334155').font('Helvetica').fontSize(7.5).text(`Authorized Signature (${signerTitle})`, 36, bottomY + 76);
 
-                pdfDoc.fillColor('#DC2626').font('Helvetica').fontSize(7.5).text(`Printed at    ${printTimestamp}`, 36, bottomY + 88);
+                pdfDoc.fillColor('#DC2626').font('Helvetica').fontSize(7.5).text(`Printed at    ${printTimestamp}`, 36, bottomY + 90);
 
                 // QR Code on right side matching online view
                 const qrString = payment.publicToken 

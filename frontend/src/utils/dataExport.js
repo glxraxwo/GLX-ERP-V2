@@ -713,14 +713,39 @@ export const generateElementPDF = async (element) => {
                 allowTaint: false,
                 logging: false,
                 backgroundColor: '#ffffff',
+                scrollX: 0,
+                scrollY: 0,
+                windowWidth: 1200,
                 ignoreElements: (el) => el.classList?.contains('no-print') || el.tagName === 'BUTTON',
                 onclone: (clonedDoc, clonedElement) => {
+                    if (clonedDoc?.defaultView) {
+                        try { clonedDoc.defaultView.scrollTo(0, 0); } catch (_) {}
+                    }
                     if (clonedElement) {
                         clonedElement.style.position = 'static';
                         clonedElement.style.left = '0';
                         clonedElement.style.top = '0';
+                        clonedElement.style.margin = '0 auto';
                         clonedElement.style.opacity = '1';
                         clonedElement.style.visibility = 'visible';
+                        clonedElement.style.transform = 'none';
+
+                        // Neutralize offscreen / fixed parent styles so html2canvas renders the full canvas from top
+                        let parent = clonedElement.parentElement;
+                        while (parent && parent !== clonedDoc.body) {
+                            if (parent.style) {
+                                parent.style.position = 'static';
+                                parent.style.left = '0';
+                                parent.style.top = '0';
+                                parent.style.margin = '0';
+                                parent.style.padding = '0';
+                                parent.style.transform = 'none';
+                                parent.style.visibility = 'visible';
+                                parent.style.display = 'block';
+                                parent.style.overflow = 'visible';
+                            }
+                            parent = parent.parentElement;
+                        }
                     }
                     const inputs = clonedDoc.querySelectorAll('input, textarea');
                     inputs.forEach(inp => {
@@ -742,7 +767,20 @@ export const generateElementPDF = async (element) => {
             let imgWidth = maxPageWidth;
             let imgHeight = (canvas.height * maxPageWidth) / canvas.width;
 
-            if (imgHeight <= maxPageHeight * 1.04) {
+            const isSinglePageDoc = pageEl.classList?.contains('single-page-doc') || pageEl.classList?.contains('receipt-print-page');
+
+            if (isSinglePageDoc) {
+                // Ensure a single-page document always fits on one crisp A4 page without slicing
+                let finalWidth = maxPageWidth;
+                let finalHeight = imgHeight;
+                if (finalHeight > maxPageHeight) {
+                    finalHeight = maxPageHeight;
+                    finalWidth = (canvas.width * finalHeight) / canvas.height;
+                }
+                const centeredX = marginX + (maxPageWidth - finalWidth) / 2;
+                if (i > 0) pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', centeredX, marginTop, finalWidth, finalHeight);
+            } else if (imgHeight <= maxPageHeight * 1.04) {
                 // Fits cleanly on this A4 page without shrinking width or font size
                 const renderH = Math.min(imgHeight, maxPageHeight);
                 if (i > 0) pdf.addPage();
@@ -786,14 +824,38 @@ export const generateElementPDF = async (element) => {
             allowTaint: false,
             logging: false,
             backgroundColor: '#ffffff',
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: 1200,
             ignoreElements: (el) => el.classList?.contains('no-print') || el.tagName === 'BUTTON',
             onclone: (clonedDoc, clonedElement) => {
+                if (clonedDoc?.defaultView) {
+                    try { clonedDoc.defaultView.scrollTo(0, 0); } catch (_) {}
+                }
                 if (clonedElement) {
                     clonedElement.style.position = 'static';
                     clonedElement.style.left = '0';
                     clonedElement.style.top = '0';
+                    clonedElement.style.margin = '0 auto';
                     clonedElement.style.opacity = '1';
                     clonedElement.style.visibility = 'visible';
+                    clonedElement.style.transform = 'none';
+
+                    let parent = clonedElement.parentElement;
+                    while (parent && parent !== clonedDoc.body) {
+                        if (parent.style) {
+                            parent.style.position = 'static';
+                            parent.style.left = '0';
+                            parent.style.top = '0';
+                            parent.style.margin = '0';
+                            parent.style.padding = '0';
+                            parent.style.transform = 'none';
+                            parent.style.visibility = 'visible';
+                            parent.style.display = 'block';
+                            parent.style.overflow = 'visible';
+                        }
+                        parent = parent.parentElement;
+                    }
                 }
                 const inputs = clonedDoc.querySelectorAll('input, textarea');
                 inputs.forEach(inp => {
