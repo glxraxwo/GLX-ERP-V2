@@ -86,7 +86,7 @@ export const getManagerPhone = async (apiInstance) => {
 };
 
 // ── The question dialog (plain DOM so it works from the axios layer) ───────
-// Resolves to 'yes', 'no' or 'cancel'. 'cancel' (X button, Cancel, Esc)
+// Resolves to 'yes', 'no' or 'cancel'. 'cancel' (X button or Esc)
 // stops the whole request: nothing is saved and no SMS is sent.
 let openDialog = null; // reuse one answer if several requests fire at the same moment
 
@@ -127,15 +127,10 @@ export const askSendToManager = (managerPhone) => {
 
         const note = document.createElement('div');
         note.style.cssText = `font-size:12px;color:${c.sub};margin:-8px 0 16px;line-height:1.5;`;
-        note.textContent = 'Pressed by mistake? Cancel stops everything, nothing is saved. / වැරදිලා නම් Cancel ඔබන්න, කිසිවක් save වෙන්නේ නෑ.';
+        note.textContent = 'Pressed by mistake? Close with × (or Esc), nothing is saved. / වැරදිලා නම් × ඔබන්න, කිසිවක් save වෙන්නේ නෑ.';
 
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;';
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.textContent = 'Cancel / අවලංගු කරන්න';
-        cancelBtn.style.cssText = `padding:10px 16px;border-radius:10px;border:1px solid ${c.border};background:transparent;color:${c.sub};font-weight:600;font-size:14px;cursor:pointer;min-height:44px;margin-right:auto;`;
 
         const noBtn = document.createElement('button');
         noBtn.type = 'button';
@@ -157,18 +152,17 @@ export const askSendToManager = (managerPhone) => {
             if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish('cancel'); }
             if (e.key === 'Enter') {
                 e.preventDefault(); e.stopPropagation();
-                if (document.activeElement === cancelBtn || document.activeElement === closeBtn) finish('cancel');
+                if (document.activeElement === closeBtn) finish('cancel');
                 else finish(document.activeElement === noBtn ? 'no' : 'yes');
             }
         };
 
         closeBtn.addEventListener('click', () => finish('cancel'));
-        cancelBtn.addEventListener('click', () => finish('cancel'));
         noBtn.addEventListener('click', () => finish('no'));
         yesBtn.addEventListener('click', () => finish('yes'));
         document.addEventListener('keydown', onKey, true);
 
-        row.append(cancelBtn, noBtn, yesBtn);
+        row.append(noBtn, yesBtn);
         card.append(closeBtn, title, titleSi, sub, note, row);
         overlay.append(card);
         document.body.append(overlay);

@@ -285,11 +285,15 @@ export const clearPaymentCheque = asyncHandler(async (req, res) => {
         throw new Error('Cheque is already cleared');
     }
 
+    // Cheque vouchers take the money out of the bank when they are issued (no cheque status is stored),
+    // so clearing them must not take it out a second time.
+    const alreadyDeducted = payment.direction === 'paid' && !payment.chequeStatus;
+
     try {
         payment.chequeStatus = 'cleared';
         await payment.save();
 
-        if (payment.bankAccountId) {
+        if (payment.bankAccountId && !alreadyDeducted) {
             const bankAccount = await BankAccount.findById(payment.bankAccountId);
             if (!bankAccount) throw new Error('Associated company bank account not found');
 
@@ -359,7 +363,8 @@ export const updatePaymentChequeStatus = asyncHandler(async (req, res) => {
         throw new Error('Only cheque payments can have their status updated');
     }
 
-    const oldStatus = payment.chequeStatus || 'pending';
+    // Cheque vouchers without a status already took the money out of the bank: treat them as cleared
+    const oldStatus = payment.chequeStatus || (payment.direction === 'paid' ? 'cleared' : 'pending');
     const newStatus = chequeStatus;
 
     if (oldStatus === newStatus) {
@@ -869,6 +874,25 @@ const applyAllocationDelta = async (alloc, delta) => {
  *  - Bank balances: the old effect is reversed and the new effect applied.
  *  - Every edit is written to the Audit Log.
  */
+/**
+ * Find the salary advance that a labour / salary advance voucher created.
+ * New vouchers store paymentId on the advance; older ones are matched by employee, amount and reason.
+ */
+const findVoucherAdvance = async (payment) => {
+    if (!payment.employeeId) return null;
+    const SalaryAdvance = (await import('../models/SalaryAdvance.js')).default;
+    const linked = await SalaryAdvance.findOne({ paymentId: payment._id });
+    if (linked) return linked;
+    const candidates = await SalaryAdvance.find({
+        employeeId: payment.employeeId,
+        amount: Number(payment.amount || 0),
+        paymentId: { $exists: false },
+        reason: { $in: [payment.notes, `Payment Voucher Advance: ${payment.paymentNumber}`].filter(Boolean) },
+    });
+    return candidates.length === 1 ? candidates[0] : null;
+};
+const isAdvanceDeducted = (adv) => Boolean(adv && (adv.isDeducted || Number(adv.amountPaid || 0) > 0 || adv.deductedPayrollId || adv.deductedSalaryPaymentId));
+
 const LINKED_PARTY_VOUCHERS = ['customer_advance_refund', 'supplier_payment', 'labor_advance', 'salary_advance'];
 const voucherBankApplied = (bankId, method, chequeStatus) =>
     Boolean(bankId) && !(method === 'cheque' && chequeStatus && chequeStatus !== 'cleared');
@@ -941,22 +965,11 @@ const updateVoucher = async (req, res, payment) => {
             }
         }
         if ((payment.voucherType === 'labor_advance' || payment.voucherType === 'salary_advance') && payment.employeeId) {
-            const SalaryAdvance = (await import('../models/SalaryAdvance.js')).default;
-            advanceToChange = await SalaryAdvance.findOne({ paymentId: payment._id });
-            if (!advanceToChange) {
-                // Older vouchers were not linked: find the advance that was created with this voucher
-                const candidates = await SalaryAdvance.find({
-                    employeeId: payment.employeeId,
-                    amount: before.amount,
-                    paymentId: { $exists: false },
-                    reason: { $in: [payment.notes, `Payment Voucher Advance: ${payment.paymentNumber}`].filter(Boolean) },
-                });
-                if (candidates.length === 1) advanceToChange = candidates[0];
-            }
+            advanceToChange = await findVoucherAdvance(payment);
             if (!advanceToChange) {
                 blocked('The salary advance linked to this voucher could not be found, so the amount cannot be edited. Cancel it and create a new voucher instead.');
             }
-            if (advanceToChange.isDeducted || Number(advanceToChange.amountPaid || 0) > 0 || advanceToChange.deductedPayrollId || advanceToChange.deductedSalaryPaymentId) {
+            if (isAdvanceDeducted(advanceToChange)) {
                 blocked('Part of this advance has already been deducted from salary, so the amount cannot be edited.');
             }
         }
@@ -1302,6 +1315,18 @@ export const cancelPayment = asyncHandler(async (req, res) => {
         throw new Error('This payment is already cancelled');
     }
 
+    const isRefundVoucher = payment.direction === 'paid' && payment.voucherType === 'customer_advance_refund';
+
+    // 0. Labour / salary advance voucher: the advance must not have been deducted from salary yet
+    let advanceToCancel = null;
+    if (payment.voucherType === 'labor_advance' || payment.voucherType === 'salary_advance') {
+        advanceToCancel = await findVoucherAdvance(payment);
+        if (isAdvanceDeducted(advanceToCancel)) {
+            res.status(400);
+            throw new Error('This advance has already been deducted from salary (fully or partly), so the voucher cannot be cancelled.');
+        }
+    }
+
     // 1. Reverse Bank Account balance if it was adjusted
     const isChequePending = payment.direction === 'paid'
         ? (payment.method === 'cheque' && !!payment.chequeStatus && payment.chequeStatus !== 'cleared')
@@ -1335,7 +1360,10 @@ export const cancelPayment = asyncHandler(async (req, res) => {
         if (alloc.documentType === 'invoice') {
             const inv = await Invoice.findById(alloc.documentId);
             if (inv) {
-                inv.amountPaid = Math.max(0, +(Number(inv.amountPaid || 0) - allocAmt).toFixed(2));
+                // A customer refund voucher reduced the invoice's paid amount, so cancelling it adds it back.
+                inv.amountPaid = isRefundVoucher
+                    ? +(Number(inv.amountPaid || 0) + allocAmt).toFixed(2)
+                    : Math.max(0, +(Number(inv.amountPaid || 0) - allocAmt).toFixed(2));
                 inv.balanceDue = Math.max(0, +(Number(inv.grandTotal || 0) - Number(inv.amountPaid)).toFixed(2));
                 if (inv.amountPaid <= 0) {
                     inv.paymentStatus = 'unpaid';
@@ -1438,9 +1466,18 @@ export const cancelPayment = asyncHandler(async (req, res) => {
         }
     }
 
-    // 3. Update customer balance if received and customer exists
-    if (payment.direction === 'received' && payment.customerId) {
+    // 3. Update customer balance (receipts and customer refund vouchers)
+    if (payment.customerId && (payment.direction === 'received' || isRefundVoucher)) {
         await updateCustomerBalance(payment.customerId);
+    }
+
+    // 3b. Stop the salary advance so it is not deducted from salary
+    if (advanceToCancel) {
+        advanceToCancel.status = 'rejected';
+        advanceToCancel.rejectedAt = new Date();
+        advanceToCancel.rejectedBy = req.user._id;
+        advanceToCancel.rejectedReason = `Voucher ${payment.paymentNumber || ''} cancelled`;
+        await advanceToCancel.save();
     }
 
     // 4. Mark payment as cancelled
