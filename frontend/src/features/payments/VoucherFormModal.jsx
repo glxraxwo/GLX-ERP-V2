@@ -6,6 +6,7 @@ import Select from '../../components/ui/Select';
 import CustomerAutocompleteSelect from '../../components/ui/CustomerAutocompleteSelect';
 import { paymentsApi } from './paymentsApi';
 import api from '../../api/axios';
+import AddBankAccountButton from '../../components/finance/AddBankAccountButton';
 
 const VOUCHER_REASON_TYPES = [
     {
@@ -443,9 +444,12 @@ export default function VoucherFormModal({ isOpen, onClose, onSuccess }) {
 
                         {method !== 'cash' && (
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                    Company Bank Account
-                                </label>
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        Company Bank Account
+                                    </label>
+                                    <AddBankAccountButton onCreated={(acc) => { setBankAccounts((prev) => [acc, ...prev]); setBankAccountId(acc._id); }} />
+                                </div>
                                 <Select
                                     value={bankAccountId}
                                     onChange={(e) => setBankAccountId(e.target.value)}

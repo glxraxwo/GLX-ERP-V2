@@ -11,8 +11,9 @@ const Select = forwardRef(({
     children,
     ...props
 }, ref) => {
+    const hasCustomWidth = /\bw-\S+/.test(className);
     return (
-        <div className={`w-full ${className}`}>
+        <div className={`${hasCustomWidth ? '' : 'w-full'} ${className}`}>
             {label && (
                 <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
                     {label}

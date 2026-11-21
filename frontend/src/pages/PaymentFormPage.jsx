@@ -18,6 +18,7 @@ import { suppliersApi } from '../features/suppliers/suppliersApi';
 import { invoicesApi } from '../features/invoices/invoicesApi';
 import { billsApi } from '../features/bills/billsApi';
 import { useCreatePayment } from '../features/payments/usePayments';
+import AddBankAccountButton from '../components/finance/AddBankAccountButton';
 
 const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
 
@@ -219,8 +220,11 @@ export default function PaymentFormPage() {
                                 value={method} onChange={(e) => { setMethod(e.target.value); setBankAccountId(''); }} />
 
                             {(method === 'cheque' || method === 'bank_transfer') && (
-                                <Select label="Company Bank Account" required placeholder="Select company bank account..."
-                                    options={bankAccountOptions} value={bankAccountId} onChange={(e) => setBankAccountId(e.target.value)} />
+                                <div>
+                                    <Select label="Company Bank Account" required placeholder="Select company bank account..."
+                                        options={bankAccountOptions} value={bankAccountId} onChange={(e) => setBankAccountId(e.target.value)} />
+                                    <AddBankAccountButton className="mt-1" onCreated={(acc) => setBankAccountId(acc._id)} />
+                                </div>
                             )}
 
                             {method === 'cheque' && (

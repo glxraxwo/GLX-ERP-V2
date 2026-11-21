@@ -14,7 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { paymentsApi } from '../features/payments/paymentsApi';
 import { useSettings } from '../features/settings/useSettings';
 import PaymentReceiptPrintView from '../components/print/PaymentReceiptPrintView';
-import { exportElementToPDF, printElementAsPDF } from '../utils/dataExport';
+import { exportElementToPDF, printElementAsPDF, buildPaymentFileName } from '../utils/dataExport';
 
 export default function PaymentDetailPage() {
     const { id } = useParams();
@@ -46,10 +46,7 @@ export default function PaymentDetailPage() {
 
     const handleDownloadReceipt = async () => {
         if (!p) return;
-        const isVoucher = p.direction === 'paid' || !!p.voucherType;
-        const prefix = isVoucher ? 'Voucher' : 'Receipt';
-        const docNum = p.paymentNumber || p._id;
-        const filename = `${prefix}_${String(docNum).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
+        const filename = buildPaymentFileName(p);
 
         toast.loading('Generating PDF...', { id: 'pdetail-receipt' });
         try {

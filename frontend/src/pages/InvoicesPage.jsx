@@ -18,6 +18,7 @@ import { useInvoices, useAgingSummary } from '../features/invoices/useInvoices';
 import { useAuthStore } from '../store/authStore';
 import QuotationsPage from './QuotationsPage';
 import api from '../api/axios';
+import AddBankAccountButton from '../components/finance/AddBankAccountButton';
 
 const paymentStatusVariant = {
     unpaid: 'warning',
@@ -363,7 +364,17 @@ export default function InvoicesPage() {
                                 setPayMethod('cash');
                                 setPayBankAccountId('');
                                 setPayReference('');
-                                const phone = r.customerPhone || r.whatsappNum || r.customerSnapshot?.mobile || r.customerSnapshot?.phone || r.customerId?.primaryContact?.mobile || r.customerId?.primaryContact?.phone || '';
+                                const isPhone = (val) => val && typeof val === 'string' && /^[0-9+() -]{7,15}$/.test(val.trim());
+                                const phone = (isPhone(r.customerPhone) && r.customerPhone.trim()) ||
+                                    (isPhone(r.whatsappNum) && r.whatsappNum.trim()) ||
+                                    (isPhone(r.customerId?.primaryContact?.mobile) && r.customerId.primaryContact.mobile.trim()) ||
+                                    (isPhone(r.customerId?.primaryContact?.phone) && r.customerId.primaryContact.phone.trim()) ||
+                                    (isPhone(r.customerId?.whatsappNumber) && r.customerId.whatsappNumber.trim()) ||
+                                    (isPhone(r.customerId?.phone) && r.customerId.phone.trim()) ||
+                                    (isPhone(r.customerSnapshot?.mobile) && r.customerSnapshot.mobile.trim()) ||
+                                    (isPhone(r.customerSnapshot?.phone) && r.customerSnapshot.phone.trim()) ||
+                                    (isPhone(r.customerSnapshot?.whatsappNum) && r.customerSnapshot.whatsappNum.trim()) ||
+                                    (isPhone(r.customerSnapshot?.contactName) && r.customerSnapshot.contactName.trim()) || '';
                                 setPayCustomerPhone(phone);
                                 setSendPaySms(true);
                             }}
@@ -868,7 +879,10 @@ export default function InvoicesPage() {
 
                             {(payMethod === 'cheque' || payMethod === 'bank_transfer') && (
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase">Company Bank Account</label>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <label className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase">Company Bank Account</label>
+                                        <AddBankAccountButton onCreated={(acc) => setPayBankAccountId(acc._id)} />
+                                    </div>
                                     <select
                                         required
                                         value={payBankAccountId}

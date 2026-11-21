@@ -23,6 +23,7 @@ import { getApiUrl } from '../api/config';
 import { useQuery } from '@tanstack/react-query';
 import { paymentsApi } from '../features/payments/paymentsApi';
 import DocumentPaymentAudit from '../components/finance/DocumentPaymentAudit';
+import AddBankAccountButton from '../components/finance/AddBankAccountButton';
 import { useSettings } from '../features/settings/useSettings';
 
 const paymentStatusVariant = {
@@ -370,7 +371,17 @@ export default function InvoiceDetailPage() {
                                 setQuickPayBankAccountId('');
                                 setQuickPayReference('');
                                 setQuickPayNotes('');
-                                const phone = inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.mobile || inv.customerSnapshot?.phone || inv.customerId?.primaryContact?.mobile || inv.customerId?.primaryContact?.phone || '';
+                                const isPhone = (val) => val && typeof val === 'string' && /^[0-9+() -]{7,15}$/.test(val.trim());
+                                const phone = (isPhone(inv.customerPhone) && inv.customerPhone.trim()) ||
+                                    (isPhone(inv.whatsappNum) && inv.whatsappNum.trim()) ||
+                                    (isPhone(inv.customerId?.primaryContact?.mobile) && inv.customerId.primaryContact.mobile.trim()) ||
+                                    (isPhone(inv.customerId?.primaryContact?.phone) && inv.customerId.primaryContact.phone.trim()) ||
+                                    (isPhone(inv.customerId?.whatsappNumber) && inv.customerId.whatsappNumber.trim()) ||
+                                    (isPhone(inv.customerId?.phone) && inv.customerId.phone.trim()) ||
+                                    (isPhone(inv.customerSnapshot?.mobile) && inv.customerSnapshot.mobile.trim()) ||
+                                    (isPhone(inv.customerSnapshot?.phone) && inv.customerSnapshot.phone.trim()) ||
+                                    (isPhone(inv.customerSnapshot?.whatsappNum) && inv.customerSnapshot.whatsappNum.trim()) ||
+                                    (isPhone(inv.customerSnapshot?.contactName) && inv.customerSnapshot.contactName.trim()) || '';
                                 setQuickPayCustomerPhone(phone);
                                 setSendQuickPaySms(true);
                                 setIsQuickPayOpen(true);
@@ -794,7 +805,10 @@ export default function InvoiceDetailPage() {
 
                             {(quickPayMethod === 'cheque' || quickPayMethod === 'bank_transfer') && (
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-700 uppercase">Company Bank Account</label>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <label className="text-xs font-bold text-gray-700 uppercase">Company Bank Account</label>
+                                        <AddBankAccountButton onCreated={(acc) => setQuickPayBankAccountId(acc._id)} />
+                                    </div>
                                     <select
                                         required
                                         value={quickPayBankAccountId}

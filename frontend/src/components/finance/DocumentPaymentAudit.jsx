@@ -6,7 +6,7 @@ import { getApiUrl } from '../../api/config';
 import { paymentsApi } from '../../features/payments/paymentsApi';
 import Modal from '../ui/Modal';
 import PaymentReceiptPrintView from '../print/PaymentReceiptPrintView';
-import { exportElementToPDF, printElementAsPDF } from '../../utils/dataExport';
+import { exportElementToPDF, printElementAsPDF, buildPaymentFileName } from '../../utils/dataExport';
 import { useSettings } from '../../features/settings/useSettings';
 
 export default function DocumentPaymentAudit({ documentId, title = 'Payment History', onPaymentCancelled }) {
@@ -61,9 +61,7 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
     };
 
     const handleDownloadReceipt = async (paymentId, paymentNumber, isVoucher) => {
-        const prefix = isVoucher ? 'Voucher' : 'Receipt';
-        const docNum = paymentNumber || paymentId;
-        const filename = `${prefix}_${String(docNum).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
+        let filename = buildPaymentFileName({ _id: paymentId, paymentNumber, direction: isVoucher ? 'paid' : 'received' });
 
         toast.loading('Downloading PDF...', { id: 'audit-receipt' });
         try {
@@ -72,6 +70,8 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                 headers: token ? { Authorization: `Bearer ${token}` } : {}
             });
             const fullPayment = res.data?.data || { _id: paymentId, paymentNumber, direction: isVoucher ? 'paid' : 'received' };
+            // Use the full record so the customer name is included in the file name
+            filename = buildPaymentFileName(fullPayment);
 
             setDirectExportPayment(fullPayment);
             setTimeout(async () => {
@@ -318,10 +318,7 @@ export default function DocumentPaymentAudit({ documentId, title = 'Payment Hist
                                     type="button"
                                     onClick={async () => {
                                         if (!previewPayment || !printModalRef.current) return;
-                                        const isV = previewPayment.direction === 'paid' || !!previewPayment.voucherType;
-                                        const pfx = isV ? 'Voucher' : 'Receipt';
-                                        const dNum = previewPayment.paymentNumber || previewPayment._id;
-                                        await exportElementToPDF(printModalRef.current, `${pfx}_${String(dNum).replace(/[\\/:*?"<>|]/g, '_')}.pdf`);
+                                        await exportElementToPDF(printModalRef.current, buildPaymentFileName(previewPayment));
                                     }}
                                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition cursor-pointer"
                                 >

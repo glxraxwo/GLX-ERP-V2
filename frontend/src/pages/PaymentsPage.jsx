@@ -21,7 +21,7 @@ import { useAuthStore } from '../store/authStore';
 import { usePermission } from '../hooks/usePermission';
 import { useSettings } from '../features/settings/useSettings';
 import PaymentReceiptPrintView from '../components/print/PaymentReceiptPrintView';
-import { exportElementToPDF, printElementAsPDF } from '../utils/dataExport';
+import { exportElementToPDF, printElementAsPDF, buildPaymentFileName } from '../utils/dataExport';
 
 const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
 const fmtDate = (d) => new Date(d).toLocaleDateString('en-LK');
@@ -103,10 +103,7 @@ function PaymentsPage() {
 
     const handleDownloadReceipt = async (e, row) => {
         e.stopPropagation();
-        const isVoucher = row.direction === 'paid' || !!row.voucherType;
-        const prefix = isVoucher ? 'Voucher' : 'Receipt';
-        const docNum = row.paymentNumber || row._id;
-        const filename = `${prefix}_${String(docNum).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
+        let filename = buildPaymentFileName(row);
         
         toast.loading('Generating PDF...', { id: 'receipt-dl' });
         try {
@@ -123,6 +120,8 @@ function PaymentsPage() {
             } catch (fetchErr) {
                 // proceed with row
             }
+            // Use the full record so the customer name is included in the file name
+            filename = buildPaymentFileName(fullPayment);
 
             setDirectExportPayment(fullPayment);
             setTimeout(async () => {
@@ -288,60 +287,58 @@ function PaymentsPage() {
             />
 
             <Card>
-                <div className="p-4 border-b border-gray-200 dark:border-slate-800">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="relative flex-1">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-                            <input
-                                type="text"
-                                placeholder="Search by payment number, party name..."
-                                value={search}
-                                onChange={handleSearch}
-                                className="w-full pl-9 pr-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Select
-                                value={direction}
-                                onChange={(e) => { setDirection(e.target.value); setPage(1); }}
-                                options={[
-                                    { value: '', label: 'All Directions' },
-                                    { value: 'received', label: 'Money In' },
-                                    { value: 'paid', label: 'Money Out' },
-                                ]}
-                                className="w-40"
-                            />
-
-                            <Select
-                                value={method}
-                                onChange={(e) => { setMethod(e.target.value); setPage(1); }}
-                                options={[
-                                    { value: '', label: 'All Methods' },
-                                    ...Object.entries(methodLabels).map(([k, v]) => ({ value: k, label: v })),
-                                ]}
-                                className="w-36"
-                            />
-
-                            <Select
-                                value={status}
-                                onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-                                options={[
-                                    { value: '', label: 'All Statuses' },
-                                    { value: 'confirmed', label: 'Confirmed Only' },
-                                    { value: 'cancelled', label: 'Cancelled Only' },
-                                ]}
-                                className="w-36"
-                            />
-
-                            <DateRangeFilter
-                                startDate={startDate}
-                                endDate={endDate}
-                                onStartDateChange={(d) => { setStartDate(d); setPage(1); }}
-                                onEndDateChange={(d) => { setEndDate(d); setPage(1); }}
-                            />
-                        </div>
+                <div className="p-4 border-b border-gray-200 dark:border-slate-800 flex flex-wrap items-center gap-3">
+                    <div className="relative flex-1 min-w-[220px]">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
+                        <input
+                            type="text"
+                            placeholder="Search by payment number, party name..."
+                            value={search}
+                            onChange={handleSearch}
+                            className="w-full pl-9 pr-4 py-2 min-h-[44px] border border-gray-300 dark:border-slate-700 bg-white dark:bg-[#132238] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
                     </div>
+
+                    <div className="w-full sm:w-40">
+                        <Select
+                            placeholder="All Directions"
+                            value={direction}
+                            onChange={(e) => { setDirection(e.target.value); setPage(1); }}
+                            options={[
+                                { value: 'received', label: 'Money In' },
+                                { value: 'paid', label: 'Money Out' },
+                            ]}
+                        />
+                    </div>
+
+                    <div className="w-full sm:w-40">
+                        <Select
+                            placeholder="All Methods"
+                            value={method}
+                            onChange={(e) => { setMethod(e.target.value); setPage(1); }}
+                            options={Object.entries(methodLabels).map(([k, v]) => ({ value: k, label: v }))}
+                        />
+                    </div>
+
+                    <div className="w-full sm:w-40">
+                        <Select
+                            placeholder="All Statuses"
+                            value={status}
+                            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+                            options={[
+                                { value: 'confirmed', label: 'Confirmed Only' },
+                                { value: 'cancelled', label: 'Cancelled Only' },
+                            ]}
+                        />
+                    </div>
+
+                    <DateRangeFilter
+                        startDate={startDate}
+                        endDate={endDate}
+                        onStartDateChange={(d) => { setStartDate(d); setPage(1); }}
+                        onEndDateChange={(d) => { setEndDate(d); setPage(1); }}
+                        onClear={() => { setStartDate(''); setEndDate(''); setPage(1); }}
+                    />
                 </div>
 
                 {isLoading ? (
@@ -370,16 +367,12 @@ function PaymentsPage() {
                                 onRowClick={(row) => navigate(`/payments/${row._id}`)}
                             />
                         </div>
-                        <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-                            <p className="text-sm text-gray-500">
-                                Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, total)} of {total} payments
-                            </p>
-                            <Pagination
-                                currentPage={page}
-                                totalPages={totalPages}
-                                onPageChange={setPage}
-                            />
-                        </div>
+                        <Pagination
+                            page={page}
+                            totalPages={totalPages}
+                            total={total}
+                            onPageChange={setPage}
+                        />
                     </>
                 )}
             </Card>
@@ -413,10 +406,7 @@ function PaymentsPage() {
                                 <Button 
                                     onClick={async () => {
                                         if (!previewPayment || !printModalRef.current) return;
-                                        const isV = previewPayment.direction === 'paid' || !!previewPayment.voucherType;
-                                        const pfx = isV ? 'Voucher' : 'Receipt';
-                                        const dNum = previewPayment.paymentNumber || previewPayment._id;
-                                        await exportElementToPDF(printModalRef.current, `${pfx}_${String(dNum).replace(/[\\/:*?"<>|]/g, '_')}.pdf`);
+                                        await exportElementToPDF(printModalRef.current, buildPaymentFileName(previewPayment));
                                     }} 
                                     className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
                                 >

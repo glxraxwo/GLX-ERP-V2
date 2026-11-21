@@ -2,7 +2,7 @@ import React, { forwardRef, useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthStore } from '../../store/authStore';
 import { useSettings } from '../../features/settings/useSettings';
-import { exportElementToPDF, printElementAsPDF } from '../../utils/dataExport';
+import { exportElementToPDF, printElementAsPDF, buildPaymentFileName } from '../../utils/dataExport';
 
 export const DOCUMENT_FONT_FAMILY = "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif";
 
@@ -103,8 +103,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
         if (onDownload) {
             onDownload();
         } else if (ref && ref.current) {
-            const prefix = isVoucher ? 'Voucher' : 'Receipt';
-            const filename = `${prefix}_${String(docCode).replace(/[\\/:*?"<>|]/g, '_')}${!showLetterheadHeader ? '_no_header' : ''}.pdf`;
+            const filename = buildPaymentFileName(payment, !showLetterheadHeader ? 'no_header' : '');
             await exportElementToPDF(ref.current, filename);
         }
     };
@@ -349,98 +348,108 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                     className="receipt-print-page print-container single-page-doc" 
                     style={{ 
                         background: '#fff', 
-                        padding: showLetterheadHeader ? '14px 18px 14px 18px' : '28mm 18px 14px 18px', 
+                        padding: showLetterheadHeader ? '16px 20px 16px 20px' : '28mm 20px 16px 20px', 
                         width: '100%',
                         boxSizing: 'border-box',
                         margin: '0 auto',
-                        fontFamily: DOCUMENT_FONT_FAMILY
+                        fontFamily: DOCUMENT_FONT_FAMILY,
+                        border: '1px solid #cbd5e1',
+                        borderRadius: 8
                     }}
                 >
                     {/* ── 1. COMPANY HEADER ── */}
                     {showLetterheadHeader && (
-                        <div style={{ borderBottom: '1.5px solid #444', paddingBottom: 8, marginBottom: 12 }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                                <div style={{ flexShrink: 0, width: 70, marginTop: 2 }}>
-                                    <img 
-                                        src="/logo.jpg" 
-                                        alt="GLX Logo" 
-                                        crossOrigin="anonymous" 
-                                        style={{ width: '100%', height: 'auto', objectFit: 'contain' }} 
-                                    />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: 0.4, lineHeight: 1.15, color: '#0f172a' }}>
-                                        GLX TRUCK BODY ENGINEERS
-                                    </div>
-                                    <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: 0.6, color: '#475569', marginBottom: 5 }}>
-                                        ALUMINIUM , STEEL &amp; FREEZER BOX MANUFACTURE
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, fontSize: 10.5, lineHeight: 1.5, color: '#334155' }}>
-                                        <div>
-                                            No.14,Negambo Road,<br />
-                                            Thudella,Ja-Ela,<br />
-                                            Sri Lanka.<br />
-                                            (11350)
-                                        </div>
-                                        <div>
-                                            No.2020/3L,2,Seeduwa Road,<br />
-                                            Kotugoda,Ja-Ela.<br />
-                                            Sri Lanka.<br />
-                                            (11390)
-                                        </div>
-                                        <div style={{ fontSize: 10.5, lineHeight: 1.55 }}>
-                                            <div><span style={{ display: 'inline-block', width: 46, fontWeight: 500, color: '#475569' }}>Mobile</span> : 071 6666 888</div>
-                                            <div><span style={{ display: 'inline-block', width: 46, fontWeight: 500, color: '#475569' }}>Tel</span> : 011 740 4446</div>
-                                            <div><span style={{ display: 'inline-block', width: 46, fontWeight: 500, color: '#475569' }}>Email</span> : glx.engi@gmail.com</div>
-                                            <div><span style={{ display: 'inline-block', width: 46, fontWeight: 500, color: '#475569' }}>Web</span> : {companyInfo?.companyWebsite || 'www.glxgroup.lk'}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div style={{ borderBottom: '1.5px solid #444', paddingBottom: 10, marginBottom: 14 }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', borderSpacing: 0 }}>
+                                <tbody>
+                                    <tr>
+                                        <td style={{ width: 79, verticalAlign: 'top', padding: 0 }}>
+                                            {/* Logo top lines up with the top of "GLX TRUCK BODY ENGINEERS",
+                                                bottom lines up with the bottom of the "Sri Lanka." address line */}
+                                            <img 
+                                                src="/logo.jpg" 
+                                                alt="GLX Logo" 
+                                                style={{ width: 78.75, height: 78.75, display: 'block', objectFit: 'contain', marginTop: 4.75 }} 
+                                            />
+                                        </td>
+                                        <td style={{ verticalAlign: 'top', paddingLeft: 14 }}>
+                                            <div style={{ fontWeight: 700, fontSize: 16.5, letterSpacing: 0.4, lineHeight: 1.15, color: '#0f172a' }}>
+                                                GLX TRUCK BODY ENGINEERS
+                                            </div>
+                                            <div style={{ fontSize: 9.5, fontWeight: 500, letterSpacing: 0.6, lineHeight: 1.3, color: '#475569', marginBottom: 5 }}>
+                                                ALUMINIUM, STEEL &amp; FREEZER BOX MANUFACTURE
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, fontSize: 11, lineHeight: 1.55, color: '#334155' }}>
+                                                <div>
+                                                    No.14, Negambo Road,<br />
+                                                    Thudella, Ja-Ela,<br />
+                                                    Sri Lanka.<br />
+                                                    (11350)
+                                                </div>
+                                                <div>
+                                                    No.2020/3L, 2, Seeduwa Road,<br />
+                                                    Kotugoda, Ja-Ela.<br />
+                                                    Sri Lanka.<br />
+                                                    (11390)
+                                                </div>
+                                                <div style={{ fontSize: 11, lineHeight: 1.55 }}>
+                                                    <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Mobile</span> : 071 6666 888</div>
+                                                    <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Tel</span> : 011 740 4446</div>
+                                                    <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Email</span> : glx.engi@gmail.com</div>
+                                                    <div><span style={{ display: 'inline-block', width: 48, fontWeight: 500, color: '#475569' }}>Web</span> : {companyInfo?.companyWebsite || 'www.glxgroup.lk'}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     )}
 
                     {/* ── DOCUMENT TITLE HEADER ── */}
                     <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        margin: '6px 0 12px 0', 
-                        padding: '5px 0', 
+                        margin: '10px 0 14px 0', 
+                        height: 30, 
                         background: '#f8fafc', 
-                        borderTop: '1px solid #e2e8f0', 
-                        borderBottom: '1.5px solid #475569',
-                        borderRadius: 4
+                        border: '1px solid #cbd5e1', 
+                        borderRadius: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxSizing: 'border-box'
                     }}>
                         <span style={{ 
-                            fontSize: 13.5, 
-                            fontWeight: 600, 
-                            letterSpacing: '1.5px', 
-                            color: '#1e293b', 
+                            fontSize: 12.5, 
+                            fontWeight: 700, 
+                            letterSpacing: '2px', 
+                            color: '#0f172a', 
                             textTransform: 'uppercase',
-                            fontFamily: DOCUMENT_FONT_FAMILY
+                            lineHeight: 1,
+                            fontFamily: DOCUMENT_FONT_FAMILY,
+                            display: 'inline-block',
+                            paddingTop: 1
                         }}>
                             {docTitle}
                         </span>
                     </div>
 
                     {/* ── 2. CUSTOMER + DOCUMENT META ── */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, fontSize: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, fontSize: 12.5 }}>
                         {/* Left: Customer / Party Block */}
                         <div style={{ maxWidth: '54%', lineHeight: 1.55 }}>
-                            <div style={{ fontWeight: 500, fontSize: 11.5, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4, color: '#64748b' }}>
+                            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.4, color: '#475569' }}>
                                 {isVoucher ? 'PAID TO / BENEFICIARY' : 'BILL TO / CUSTOMER'}
                             </div>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{partyName}</div>
+                            <div style={{ fontWeight: 700, fontSize: 13.5, color: '#0f172a' }}>{partyName}</div>
                             {partyAddress && partyAddress !== '—' && (
-                                <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.45 }}>{partyAddress}</div>
+                                <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{partyAddress}</div>
                             )}
                             {partyPhone && partyPhone !== '—' && (
-                                <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.45 }}>{partyPhone}</div>
+                                <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{partyPhone}</div>
                             )}
                             {vehicleNo && (
-                                <div style={{ fontWeight: 500, fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 12, marginTop: 4, color: '#334155', letterSpacing: 0.3 }}>
-                                    Vehicle No: <span style={{ fontWeight: 600, color: '#0f172a' }}>{vehicleNo}</span>
+                                <div style={{ fontWeight: 600, fontFamily: DOCUMENT_FONT_FAMILY, fontSize: 12.5, marginTop: 4, color: '#0f172a', letterSpacing: 0.3 }}>
+                                    Vehicle No: <span style={{ fontWeight: 700, color: '#0f172a' }}>{vehicleNo}</span>
                                 </div>
                             )}
                         </div>
@@ -456,15 +465,15 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                     {fmtTime(paymentDate) && <><br/><span style={{ fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 11.5 }}>{fmtTime(paymentDate)}</span></>}
                                 </>],
                             ].map(([label, value]) => (
-                                <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 12 }}>
-                                    <span style={{ fontWeight: 500, color: '#64748b' }}>{label}</span>
-                                    <span style={{ color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>&nbsp;&nbsp;{value}</span>
+                                <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 12.5 }}>
+                                    <span style={{ fontWeight: 600, color: '#475569' }}>{label}</span>
+                                    <span style={{ color: '#0f172a', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>&nbsp;&nbsp;{value}</span>
                                 </div>
                             ))}
 
                             <div style={{ marginTop: 4, paddingTop: 3, borderTop: '1px dashed #cbd5e1' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 11.5 }}>
-                                    <span style={{ fontWeight: 500, color: '#64748b' }}>Method</span>
+                                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', columnGap: 4, lineHeight: 1.6, fontSize: 12 }}>
+                                    <span style={{ fontWeight: 600, color: '#475569' }}>Method</span>
                                     <span style={{ color: '#0f172a', fontWeight: 600 }}>&nbsp;&nbsp;{methodLabel} (CONFIRMED)</span>
                                 </div>
                             </div>
@@ -510,6 +519,8 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                                 </div>
                                                 <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>
                                                     Payment Method: {methodLabel}{methodDetails ? ` (${methodDetails})` : ''}
+                                                    {alloc.docTotal ? ` · Doc Total: ${fmt(alloc.docTotal)}` : ''}
+                                                    {alloc.balanceDue !== undefined && alloc.balanceDue >= 0 ? ` · Remaining Due: ${fmt(alloc.balanceDue)}` : ''}
                                                 </div>
                                             </td>
                                             <td style={{ padding: '6px 8px 2px', textAlign: 'right', fontFamily: DOCUMENT_FONT_FAMILY, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: '#1e293b', background: 'transparent', width: 95, whiteSpace: 'nowrap' }}>
@@ -553,7 +564,7 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                         {/* Left: Remarks & Words */}
                         <div style={{ maxWidth: '48%', lineHeight: 1.6 }}>
                             <div style={{ marginBottom: 4 }}>
-                                <span style={{ fontWeight: 500, color: '#64748b' }}>Remarks &nbsp;&nbsp;&nbsp;&nbsp;:</span>
+                                <span style={{ fontWeight: 500, color: '#64748b' }}>Remarks:</span>
                                 <span style={{ marginLeft: 6, color: '#1e293b' }}>
                                     {payment.notes || (allocations.length > 0 ? `Settlement for ${allocations.map(a => a.documentNumber).filter(Boolean).join(', ')}` : 'Payment received with thanks')}
                                 </span>
@@ -627,7 +638,6 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                     <img
                                         src={activeSeal}
                                         alt="Official Company Seal"
-                                        crossOrigin="anonymous"
                                         style={{ 
                                             position: 'absolute', 
                                             bottom: 4, 
@@ -645,7 +655,6 @@ const PaymentReceiptPrintView = forwardRef(({ payment, companyInfo, hideToolbar 
                                     <img
                                         src={activeSignature}
                                         alt="Authorized Signature"
-                                        crossOrigin="anonymous"
                                         style={{ 
                                             height: 44, 
                                             maxWidth: 160, 

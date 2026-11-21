@@ -3,6 +3,19 @@
 @tailwind utilities;
 
 /* ========================================================
+   PDF export fix (html2canvas + Tailwind preflight)
+   Tailwind sets img { display: block }, which breaks the tiny
+   test image html2canvas uses to measure font baselines. That
+   makes all text in exported PDFs render a few pixels too low
+   (e.g. the PAYMENT RECEIPT title sitting at the bottom of its
+   box). Keep only html2canvas's measuring image inline.
+   ======================================================== */
+img[src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"] {
+  display: inline !important;
+  vertical-align: baseline !important;
+}
+
+/* ========================================================
    High-Contrast Universal Cursor & Caret System
    Ensures the mouse cursor and text carets NEVER disappear
    or blend into white/light/dark backgrounds anywhere.

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, CheckCircle, Wallet, Calendar, AlertCircle, Building, DollarSign, FileText, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
+import AddBankAccountButton from './finance/AddBankAccountButton';
 import { manualAttendanceApi } from '../features/hr/hrApi';
 
 export default function PaySalaryModal({
@@ -247,9 +248,12 @@ export default function PaySalaryModal({
 
                         {paymentMethod === 'bank_transfer' && (
                             <div>
-                                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                    Paid From Company Bank Account
-                                </label>
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                        Paid From Company Bank Account
+                                    </label>
+                                    <AddBankAccountButton onCreated={(acc) => setBankAccountId(acc._id)} />
+                                </div>
                                 <select
                                     value={bankAccountId}
                                     onChange={(e) => setBankAccountId(e.target.value)}

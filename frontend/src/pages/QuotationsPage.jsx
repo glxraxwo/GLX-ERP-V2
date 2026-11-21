@@ -30,6 +30,7 @@ import { usePermission } from '../hooks/usePermission';
 import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
 import DocumentEditLogModal from '../components/common/DocumentEditLogModal';
 import { useAuthStore } from '../store/authStore';
+import AddBankAccountButton from '../components/finance/AddBankAccountButton';
 import { saveFormDraft, getFormDraft, clearFormDraft, formatDraftTime } from '../utils/draftStorageUtils';
 
 const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
@@ -3160,7 +3161,10 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
                                         {(projectAdvanceMethod === 'cheque' || projectAdvanceMethod === 'bank_transfer') && (
                                             <div className="space-y-1">
-                                                <label className="text-[10px] uppercase font-bold text-gray-500">Company Bank Account</label>
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <label className="text-[10px] uppercase font-bold text-gray-500">Company Bank Account</label>
+                                                    <AddBankAccountButton onCreated={(acc) => { setBankAccounts((prev) => [acc, ...prev]); setProjectAdvanceBankAccountId(acc._id); }} />
+                                                </div>
                                                 <select
                                                     required
                                                     value={projectAdvanceBankAccountId}
@@ -3476,7 +3480,10 @@ const QuotationsPage = ({ embedded = false, initialTab = null }) => {
 
                             {(payMethod === 'cheque' || payMethod === 'bank_transfer') && (
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase">Company Bank Account</label>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <label className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase">Company Bank Account</label>
+                                        <AddBankAccountButton onCreated={(acc) => { setBankAccounts((prev) => [acc, ...prev]); setPayBankAccountId(acc._id); }} />
+                                    </div>
                                     <select
                                         required
                                         value={payBankAccountId}

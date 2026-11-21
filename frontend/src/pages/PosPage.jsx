@@ -21,6 +21,7 @@ import { useCategories } from '../features/products/useProducts';
 import { useCreateSalesOrder } from '../features/salesOrders/useSalesOrders';
 import QuickCreateCustomerModal from '../features/customers/QuickCreateCustomerModal';
 import api from '../api/axios';
+import AddBankAccountButton from '../components/finance/AddBankAccountButton';
 
 export default function PosPage() {
     const navigate = useNavigate();
@@ -1144,7 +1145,10 @@ function CartPanel({
                         {/* Company Account Selector */}
                         {paymentMethod !== 'cash' && (
                             <div className="space-y-1">
-                                <label className="text-[10px] uppercase font-bold text-gray-400">Account</label>
+                                <div className="flex items-center justify-between gap-2">
+                                    <label className="text-[10px] uppercase font-bold text-gray-400">Account</label>
+                                    <AddBankAccountButton onCreated={(acc) => setBankAccountId(acc._id)} />
+                                </div>
                                 <select
                                     value={bankAccountId}
                                     onChange={(e) => setBankAccountId(e.target.value)}

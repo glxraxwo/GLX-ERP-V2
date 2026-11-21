@@ -509,7 +509,7 @@ export const getInvoices = asyncHandler(async (req, res) => {
 
     const [invoices, total] = await Promise.all([
         Invoice.find(filter)
-            .populate('customerId', 'displayName customerCode introducer introducerName')
+            .populate('customerId', 'displayName customerCode primaryContact whatsappNumber phone billingAddress introducer introducerName')
             .populate('introducer', 'firstName lastName callingName employeeCode')
             .populate('biller', 'firstName lastName')
             .populate('salesOrderIds', 'orderNumber')

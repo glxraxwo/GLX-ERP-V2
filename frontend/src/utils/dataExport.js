@@ -903,8 +903,10 @@ export const buildDocumentFileName = (docType, docNumber, customerName, suffix =
     
     let custPart = '';
     if (customerName && typeof customerName === 'string') {
+        // Keep letters and numbers from any language (e.g. Sinhala / Tamil names),
+        // drop characters Windows does not allow in file names.
         const words = customerName
-            .replace(/[^\w\s-]/g, ' ')
+            .replace(/[^\p{L}\p{M}\p{N}\s-]/gu, ' ')
             .trim()
             .split(/\s+/)
             .filter(Boolean)
@@ -916,6 +918,36 @@ export const buildDocumentFileName = (docType, docNumber, customerName, suffix =
     }
     const cleanSuffix = suffix ? ('_' + suffix.replace(/^_+/, '')) : '';
     return `${cleanType}_${cleanNum}${custPart}${cleanSuffix}.pdf`;
+};
+
+/**
+ * Find the customer / party name on any document (invoice, quotation,
+ * payment receipt, voucher...) so it can be added to the PDF file name.
+ */
+export const getDocumentPartyName = (doc) => {
+    if (!doc) return '';
+    const employeeName = doc.employeeId
+        ? (doc.employeeId.callingName || `${doc.employeeId.firstName || ''} ${doc.employeeId.lastName || ''}`.trim())
+        : '';
+    const name = doc.customerSnapshot?.name
+        || doc.customerName
+        || doc.partyName
+        || doc.vehicleOwner
+        || doc.customer?.displayName || doc.customer?.companyName
+        || doc.customerId?.displayName || doc.customerId?.companyName || doc.customerId?.name
+        || doc.supplierId?.displayName || doc.supplierId?.companyName
+        || employeeName
+        || '';
+    return typeof name === 'string' ? name : '';
+};
+
+/**
+ * File name for a payment receipt / voucher PDF, e.g. receipt_REC-0012_Kamal_Perera.pdf
+ */
+export const buildPaymentFileName = (payment, suffix = '') => {
+    const isVoucher = payment?.direction === 'paid' || !!payment?.voucherType;
+    const docNum = payment?.paymentNumber || payment?._id || 'document';
+    return buildDocumentFileName(isVoucher ? 'voucher' : 'receipt', docNum, getDocumentPartyName(payment), suffix);
 };
 
 /**

@@ -13,6 +13,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import { usePermission } from '../hooks/usePermission';
+import AddBankAccountButton from '../components/finance/AddBankAccountButton';
 
 export default function DailyPayrollPage() {
     const navigate = useNavigate();
@@ -106,7 +107,17 @@ export default function DailyPayrollPage() {
 
     const workers = summaryData?.workers || [];
     const activeProjects = summaryData?.activeProjects || [];
-    const bankAccounts = summaryData?.bankAccounts || [];
+    // Bank accounts added from this page (shown straight away, before the summary reloads)
+    const [addedBankAccounts, setAddedBankAccounts] = useState([]);
+    const summaryBankAccounts = summaryData?.bankAccounts || [];
+    const bankAccounts = [
+        ...addedBankAccounts.filter((a) => !summaryBankAccounts.some((b) => b._id === a._id)),
+        ...summaryBankAccounts,
+    ];
+    const handleBankAccountAdded = (acc, select) => {
+        setAddedBankAccounts((prev) => [acc, ...prev]);
+        select(acc._id);
+    };
     const historyList = historyData?.data || [];
 
     const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
@@ -394,6 +405,9 @@ export default function DailyPayrollPage() {
                                             <option key={b._id} value={b._id}>{b.bankName} ({fmt(b.balance)})</option>
                                         ))}
                                     </select>
+                                )}
+                                {bulkPaymentMethod !== 'cash' && (
+                                    <AddBankAccountButton onDark label="Add Bank" onCreated={(acc) => handleBankAccountAdded(acc, setBulkBankAccountId)} />
                                 )}
 
                                 <Button
@@ -784,6 +798,9 @@ export default function DailyPayrollPage() {
                                             ))}
                                         </select>
                                     )}
+                                    {bimonthlyPaymentMethod !== 'cash' && (
+                                        <AddBankAccountButton onDark label="Add Bank" onCreated={(acc) => handleBankAccountAdded(acc, setBimonthlyBankAccountId)} />
+                                    )}
 
                                     <Button
                                         variant="primary"
@@ -903,7 +920,10 @@ export default function DailyPayrollPage() {
 
                             {singlePaymentMethod !== 'cash' && (
                                 <div className="space-y-1">
-                                    <label className="text-xs font-bold text-gray-600 uppercase">Bank Account *</label>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <label className="text-xs font-bold text-gray-600 uppercase">Bank Account *</label>
+                                        <AddBankAccountButton onCreated={(acc) => handleBankAccountAdded(acc, setSingleBankAccountId)} />
+                                    </div>
                                     <select
                                         required
                                         value={singleBankAccountId}

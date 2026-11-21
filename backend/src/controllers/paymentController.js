@@ -7,6 +7,8 @@ import Customer from '../models/Customer.js';
 import BankAccount from '../models/BankAccount.js';
 import { broadcast } from '../services/socketService.js';
 import { updateCustomerBalance } from './invoiceController.js';
+import { enrichPaymentWithDocumentDetails } from '../utils/paymentEnrichment.js';
+import { buildDocumentFileName, getDocumentPartyName, pdfContentDisposition } from '../utils/pdfFileName.js';
 
 /**
  * POST /api/payments
@@ -45,8 +47,17 @@ export const createPayment = asyncHandler(async (req, res) => {
                 if (!partyName && (inv.vehicleOwner || inv.customerSnapshot?.name)) {
                     partyName = inv.vehicleOwner || inv.customerSnapshot?.name;
                 }
+                if (!customerId && inv.customerId) {
+                    customerId = inv.customerId;
+                }
                 if (!customerPhone) {
-                    customerPhone = inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.mobile || inv.customerSnapshot?.phone || inv.customerSnapshot?.whatsappNum || '';
+                    const isP = (v) => v && typeof v === 'string' && /^[0-9+() -]{7,15}$/.test(v.trim());
+                    customerPhone = (isP(inv.customerPhone) && inv.customerPhone.trim()) ||
+                                    (isP(inv.whatsappNum) && inv.whatsappNum.trim()) ||
+                                    (isP(inv.customerSnapshot?.mobile) && inv.customerSnapshot.mobile.trim()) ||
+                                    (isP(inv.customerSnapshot?.phone) && inv.customerSnapshot.phone.trim()) ||
+                                    (isP(inv.customerSnapshot?.whatsappNum) && inv.customerSnapshot.whatsappNum.trim()) ||
+                                    (isP(inv.customerSnapshot?.contactName) && inv.customerSnapshot.contactName.trim()) || '';
                 }
             } else if (alloc.documentType === 'bill') {
                 const bill = await Bill.findById(alloc.documentId);
@@ -82,8 +93,8 @@ export const createPayment = asyncHandler(async (req, res) => {
                 if (c?.displayName && (!partyName || partyName === 'Valued Customer')) {
                     partyName = c.displayName;
                 }
-                if (!customerPhone && (c?.primaryContact?.mobile || c?.primaryContact?.phone)) {
-                    customerPhone = c.primaryContact.mobile || c.primaryContact.phone;
+                if (!customerPhone && c) {
+                    customerPhone = c.primaryContact?.mobile || c.primaryContact?.phone || c.whatsappNumber || c.phone || (c.contacts && c.contacts[0]?.mobile) || (c.contacts && c.contacts[0]?.phone) || '';
                 }
             }
             if (!partyName) partyName = 'Valued Customer';
@@ -491,45 +502,7 @@ export const getPaymentById = asyncHandler(async (req, res) => {
     if (!payment) { res.status(404); throw new Error('Payment or Voucher not found'); }
 
     // Enrich allocations with linked invoice/quotation totals & remaining balance due
-    if (Array.isArray(payment.allocations) && payment.allocations.length > 0) {
-        const Invoice = (await import('../models/Invoice.js')).default;
-        const Quotation = (await import('../models/Quotation.js')).default;
-
-        let totalDocAmount = 0;
-        let totalBalanceDue = 0;
-        let hasDocBalance = false;
-
-        for (const alloc of payment.allocations) {
-            if (alloc.documentType === 'invoice' && alloc.documentId) {
-                const inv = await Invoice.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount amountPaid invoiceNumber vehicleNo customerName').lean();
-                if (inv) {
-                    alloc.docTotal = Number(inv.grandTotal !== undefined ? inv.grandTotal : (inv.totalAmount || 0));
-                    alloc.balanceDue = Number(inv.balanceAmount !== undefined ? inv.balanceAmount : Math.max(0, alloc.docTotal - (inv.amountPaid || 0)));
-                    alloc.vehicleNo = inv.vehicleNo || '';
-                    if (!payment.vehicleNo && inv.vehicleNo) payment.vehicleNo = inv.vehicleNo;
-                    totalDocAmount += alloc.docTotal;
-                    totalBalanceDue += alloc.balanceDue;
-                    hasDocBalance = true;
-                }
-            } else if ((alloc.documentType === 'quotation' || alloc.documentType === 'estimate') && alloc.documentId) {
-                const quote = await Quotation.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount advanceAmount quoteNumber vehicleNo customerName').lean();
-                if (quote) {
-                    alloc.docTotal = Number(quote.grandTotal !== undefined ? quote.grandTotal : (quote.totalAmount || 0));
-                    alloc.balanceDue = Number(quote.balanceAmount !== undefined ? quote.balanceAmount : Math.max(0, alloc.docTotal - (quote.advanceAmount || 0)));
-                    alloc.vehicleNo = quote.vehicleNo || '';
-                    if (!payment.vehicleNo && quote.vehicleNo) payment.vehicleNo = quote.vehicleNo;
-                    totalDocAmount += alloc.docTotal;
-                    totalBalanceDue += alloc.balanceDue;
-                    hasDocBalance = true;
-                }
-            }
-        }
-
-        if (hasDocBalance) {
-            payment.totalDocAmount = totalDocAmount;
-            payment.totalBalanceDue = totalBalanceDue;
-        }
-    }
+    await enrichPaymentWithDocumentDetails(payment);
 
     res.json({ success: true, data: payment });
 });
@@ -1095,45 +1068,7 @@ export const downloadPaymentReceipt = asyncHandler(async (req, res) => {
     }
 
     // Enrich allocations with linked invoice/quotation totals & remaining balance due
-    if (Array.isArray(payment.allocations) && payment.allocations.length > 0) {
-        const Invoice = (await import('../models/Invoice.js')).default;
-        const Quotation = (await import('../models/Quotation.js')).default;
-
-        let totalDocAmount = 0;
-        let totalBalanceDue = 0;
-        let hasDocBalance = false;
-
-        for (const alloc of payment.allocations) {
-            if (alloc.documentType === 'invoice' && alloc.documentId) {
-                const inv = await Invoice.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount amountPaid invoiceNumber vehicleNo customerName').lean();
-                if (inv) {
-                    alloc.docTotal = Number(inv.grandTotal !== undefined ? inv.grandTotal : (inv.totalAmount || 0));
-                    alloc.balanceDue = Number(inv.balanceAmount !== undefined ? inv.balanceAmount : Math.max(0, alloc.docTotal - (inv.amountPaid || 0)));
-                    alloc.vehicleNo = inv.vehicleNo || '';
-                    if (!payment.vehicleNo && inv.vehicleNo) payment.vehicleNo = inv.vehicleNo;
-                    totalDocAmount += alloc.docTotal;
-                    totalBalanceDue += alloc.balanceDue;
-                    hasDocBalance = true;
-                }
-            } else if ((alloc.documentType === 'quotation' || alloc.documentType === 'estimate') && alloc.documentId) {
-                const quote = await Quotation.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount advanceAmount quoteNumber vehicleNo customerName').lean();
-                if (quote) {
-                    alloc.docTotal = Number(quote.grandTotal !== undefined ? quote.grandTotal : (quote.totalAmount || 0));
-                    alloc.balanceDue = Number(quote.balanceAmount !== undefined ? quote.balanceAmount : Math.max(0, alloc.docTotal - (quote.advanceAmount || 0)));
-                    alloc.vehicleNo = quote.vehicleNo || '';
-                    if (!payment.vehicleNo && quote.vehicleNo) payment.vehicleNo = quote.vehicleNo;
-                    totalDocAmount += alloc.docTotal;
-                    totalBalanceDue += alloc.balanceDue;
-                    hasDocBalance = true;
-                }
-            }
-        }
-
-        if (hasDocBalance) {
-            payment.totalDocAmount = totalDocAmount;
-            payment.totalBalanceDue = totalBalanceDue;
-        }
-    }
+    await enrichPaymentWithDocumentDetails(payment);
 
     const Settings = (await import('../models/Settings.js')).default;
     const settings = await Settings.findOne().lean();
@@ -1141,11 +1076,11 @@ export const downloadPaymentReceipt = asyncHandler(async (req, res) => {
     const pdfBuffer = await generatePaymentReceiptPDF({ payment, settings });
 
     const isVoucher = payment.direction === 'paid' || !!payment.voucherType;
-    const docType = isVoucher ? 'Voucher' : 'Receipt';
-    const filename = `${docType}_${String(payment.paymentNumber || payment._id).replace(/[\\/:*?"<>|]/g, '_')}.pdf`;
+    const docType = isVoucher ? 'voucher' : 'receipt';
+    const filename = buildDocumentFileName(docType, payment.paymentNumber || payment._id, getDocumentPartyName(payment));
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Disposition', pdfContentDisposition(filename));
     res.send(pdfBuffer);
 });
 
@@ -1155,7 +1090,7 @@ export const downloadPaymentReceipt = asyncHandler(async (req, res) => {
  */
 export const sendPaymentSms = asyncHandler(async (req, res) => {
     const payment = await Payment.findById(req.params.id)
-        .populate('customerId', 'displayName customerCode primaryContact billingAddress')
+        .populate('customerId', 'displayName customerCode primaryContact whatsappNumber phone billingAddress')
         .populate('receivedBy', 'firstName lastName fullName signature');
     if (!payment) {
         res.status(404); throw new Error('Payment not found');
@@ -1166,10 +1101,21 @@ export const sendPaymentSms = asyncHandler(async (req, res) => {
     }
     if (hostOrigin.includes(',')) hostOrigin = hostOrigin.split(',')[0].trim();
 
-    const { sendPaymentReceiptSms } = await import('../services/smsService.js');
-    if (req.body.phone) {
-        payment.customerPhone = req.body.phone;
+    if (req.body.phone && typeof req.body.phone === 'string' && req.body.phone.trim()) {
+        payment.customerPhone = req.body.phone.trim();
+        await Payment.updateOne({ _id: payment._id }, { $set: { customerPhone: payment.customerPhone } });
+    } else if (!payment.customerPhone && payment.customerId) {
+        const phone = payment.customerId.primaryContact?.mobile ||
+                      payment.customerId.primaryContact?.phone ||
+                      payment.customerId.whatsappNumber ||
+                      payment.customerId.phone || '';
+        if (phone) {
+            payment.customerPhone = phone;
+            await Payment.updateOne({ _id: payment._id }, { $set: { customerPhone: phone } });
+        }
     }
+
+    const { sendPaymentReceiptSms } = await import('../services/smsService.js');
     await sendPaymentReceiptSms(payment, hostOrigin);
     res.json({ success: true, message: 'Payment receipt SMS sent successfully' });
 });

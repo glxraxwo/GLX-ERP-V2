@@ -4,6 +4,7 @@ import {
   Building2, Trash2, Edit, CheckCircle, FileText, TrendingUp, AlertCircle
 } from 'lucide-react';
 import api from '../api/axios';
+import AddBankAccountButton from '../components/finance/AddBankAccountButton';
 import DateRangeFilter from '../components/ui/DateRangeFilter';
 
 const EXPENSE_CATEGORIES = [
@@ -640,7 +641,10 @@ export default function ExpensesPage() {
               {formData.paymentMethod === 'Bank Transfer' && (
                 <div className="p-3 bg-indigo-50 rounded-lg space-y-3">
                   <div>
-                    <label className="block text-xs font-semibold text-indigo-800 mb-1">Bank Account *</label>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <label className="block text-xs font-semibold text-indigo-800">Bank Account *</label>
+                      <AddBankAccountButton onCreated={(acc) => { setBankAccounts((prev) => [acc, ...prev]); setFormData((prev) => ({ ...prev, bankAccountId: acc._id })); }} />
+                    </div>
                     <select
                       required
                       value={formData.bankAccountId}

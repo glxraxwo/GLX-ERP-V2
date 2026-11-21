@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import DocumentPrintView from '../components/print/DocumentPrintView';
 import PaymentReceiptPrintView from '../components/print/PaymentReceiptPrintView';
-import { exportElementToPDF, buildDocumentFileName } from '../utils/dataExport';
+import { exportElementToPDF, buildDocumentFileName, getDocumentPartyName } from '../utils/dataExport';
 import { getApiUrl } from '../api/config';
 import { getDocumentEditHistory, formatEditItem } from '../utils/editHistoryUtils';
 import { 
@@ -61,35 +61,36 @@ export default function PublicDocumentViewPage() {
 
     const handleDownloadPDF = async () => {
         setDownloading(true);
-
         try {
+            const isVoucher = docType === 'payment_receipt' && (doc.direction === 'paid' || !!doc.voucherType);
+            const prefix = docType === 'payment_receipt' ? (isVoucher ? 'voucher' : 'receipt') : docType;
+            const docNum = doc.paymentNumber || doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || 'document';
+            const custName = getDocumentPartyName(doc);
+            const fileName = buildDocumentFileName(prefix, docNum, custName);
+
             if (printRef.current) {
-                const isVoucher = docType === 'payment_receipt' && (doc.direction === 'paid' || !!doc.voucherType);
-                const prefix = docType === 'payment_receipt' ? (isVoucher ? 'voucher' : 'receipt') : docType;
-                const docNum = doc.paymentNumber || doc.invoiceNumber || doc.quoteNumber || doc.quotationCode || 'document';
-                const custName = doc.customerSnapshot?.name || doc.customerName || doc.vehicleOwner || doc.customer?.companyName || doc.customerId?.companyName || '';
-                const fileName = buildDocumentFileName(prefix, docNum, custName);
                 await exportElementToPDF(printRef.current, fileName);
                 setDownloading(false);
                 return;
             }
         } catch (err) {
-            console.warn('In-browser PDF export failed, falling back to server PDF download:', err);
+            console.warn('In-browser PDF export failed, falling back to server:', err);
+            const isVoucher = docType === 'payment_receipt' && (doc.direction === 'paid' || !!doc.voucherType);
+            const prefix = docType === 'payment_receipt' ? (isVoucher ? 'voucher' : 'receipt') : docType;
+            const docNum = doc.paymentNumber || doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || 'document';
+            const custName = getDocumentPartyName(doc);
+            const fileName = buildDocumentFileName(prefix, docNum, custName);
+
+            const directUrl = `${getApiUrl()}/public/documents/${token}/download`;
+            const link = document.createElement('a');
+            link.href = directUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         } finally {
             setDownloading(false);
         }
-
-        // Direct server download fallback: streams clean PDF directly from server
-        const directUrl = `${getApiUrl()}/public/documents/${token}/download`;
-        const link = document.createElement('a');
-        link.href = directUrl;
-        const prefix = docType === 'payment_receipt' ? ((doc.direction === 'paid' || !!doc.voucherType) ? 'voucher' : 'receipt') : docType;
-        const docNum = doc.paymentNumber || doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || 'document';
-        const custName = doc.customerSnapshot?.name || doc.customerName || doc.vehicleOwner || doc.customer?.companyName || doc.customerId?.companyName || '';
-        link.download = buildDocumentFileName(prefix, docNum, custName);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
     };
 
     if (loading) {
@@ -346,18 +347,42 @@ export default function PublicDocumentViewPage() {
                                 <div className="space-y-1.5">
                                     {(doc.allocations || []).length > 0 ? (
                                         doc.allocations.map((alloc, idx) => (
-                                            <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
-                                                <div>
-                                                    <span className="font-mono font-bold text-blue-600">{alloc.documentNumber || `ID: ${String(alloc.documentId).slice(-6)}`}</span>
-                                                    <span className="text-[10px] text-slate-400 uppercase ml-2">({alloc.documentType || 'Invoice'})</span>
+                                            <div key={idx} className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <span className="font-mono font-bold text-blue-600">{alloc.documentNumber || `ID: ${String(alloc.documentId).slice(-6)}`}</span>
+                                                        <span className="text-[10px] text-slate-400 uppercase ml-2">({alloc.documentType || 'Invoice'})</span>
+                                                    </div>
+                                                    <span className="font-mono font-bold text-slate-900">Paid: Rs. {fmt(alloc.amount)}</span>
                                                 </div>
-                                                <span className="font-mono font-bold text-slate-900">Rs. {fmt(alloc.amount)}</span>
+                                                {(alloc.docTotal || alloc.balanceDue !== undefined) && (
+                                                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60 font-mono">
+                                                        <span>Doc Total: Rs. {fmt(alloc.docTotal || alloc.amount)}</span>
+                                                        <span className="font-bold text-amber-800">Remaining Due: Rs. {fmt(alloc.balanceDue || 0)}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))
                                     ) : (
                                         <p className="text-xs text-slate-500 italic">Advance payment credited on customer account.</p>
                                     )}
                                 </div>
+                                {(doc.totalDocAmount > 0 || doc.totalBalanceDue !== undefined) && (
+                                    <div className="mt-3 p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
+                                        <div className="flex justify-between text-slate-600">
+                                            <span>Full Document Total:</span>
+                                            <span className="font-mono font-medium">Rs. {fmt(doc.totalDocAmount || doc.amount)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-emerald-700 font-bold">
+                                            <span>This Payment:</span>
+                                            <span className="font-mono">Rs. {fmt(doc.amount)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-amber-800 font-bold border-t border-slate-200 pt-1">
+                                            <span>Remaining Balance Due:</span>
+                                            <span className="font-mono">Rs. {fmt(doc.totalBalanceDue !== undefined ? doc.totalBalanceDue : Math.max(0, (doc.totalDocAmount || doc.amount) - doc.amount))}</span>
+                                        </div>
+                                    </div>
+                                )}
                                 {doc.unallocatedAmount > 0 && (
                                     <div className="mt-2 flex items-center justify-between text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg border border-emerald-200">
                                         <span>Remaining Credit Balance:</span>

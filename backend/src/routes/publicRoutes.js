@@ -6,6 +6,8 @@ import Quotation from '../models/Quotation.js';
 import Invoice from '../models/Invoice.js';
 import Payment from '../models/Payment.js';
 import Settings from '../models/Settings.js';
+import { enrichPaymentWithDocumentDetails } from '../utils/paymentEnrichment.js';
+import { buildDocumentFileName, getDocumentPartyName, pdfContentDisposition } from '../utils/pdfFileName.js';
 
 const router = express.Router();
 
@@ -59,6 +61,7 @@ router.get('/documents/:token', asyncHandler(async (req, res) => {
         .lean();
 
     if (doc) {
+        await enrichPaymentWithDocumentDetails(doc);
         return res.json({
             success: true,
             documentType: 'payment_receipt',
@@ -113,16 +116,14 @@ router.get('/documents/:token/download', asyncHandler(async (req, res) => {
     }
     
     const docCode = doc.paymentNumber || doc.quotationCode || doc.invoiceNumber || doc.quoteNumber || doc._id.toString();
-    const custRaw = doc.customerSnapshot?.name || doc.customerName || doc.vehicleOwner || doc.customer?.companyName || doc.customerId?.companyName || '';
-    let custPart = '';
-    if (custRaw && typeof custRaw === 'string') {
-        const words = custRaw.replace(/[^\w\s-]/g, ' ').trim().split(/\s+/).filter(Boolean).slice(0, 4).join('_');
-        if (words) custPart = `_${words}`;
-    }
-    const filename = `${docType}_${String(docCode).replace(/[\\/:*?"<>|]/g, '_')}${custPart}.pdf`;
+    const filePrefix = docType === 'payment_receipt'
+        ? ((doc.direction === 'paid' || doc.voucherType) ? 'voucher' : 'receipt')
+        : docType;
+    const filename = buildDocumentFileName(filePrefix, docCode, getDocumentPartyName(doc));
     
     let pdfBuffer;
     if (docType === 'payment_receipt') {
+        await enrichPaymentWithDocumentDetails(doc);
         const { generatePaymentReceiptPDF } = await import('../services/documentPdfService.js');
         pdfBuffer = await generatePaymentReceiptPDF({ payment: doc, settings });
     } else {
@@ -131,7 +132,7 @@ router.get('/documents/:token/download', asyncHandler(async (req, res) => {
     }
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Disposition', pdfContentDisposition(filename));
     res.send(pdfBuffer);
 }));
 

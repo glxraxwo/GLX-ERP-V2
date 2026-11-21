@@ -712,7 +712,10 @@ export const sendPaymentReceiptSms = async (payment, hostOrigin = '') => {
         if (payment.customerId) {
             if (typeof payment.customerId === 'object' && payment.customerId !== null) {
                 if (!clientPhone) {
-                    clientPhone = payment.customerId.primaryContact?.mobile || payment.customerId.primaryContact?.phone || payment.customerId.phone || '';
+                    clientPhone = payment.customerId.primaryContact?.mobile ||
+                                  payment.customerId.primaryContact?.phone ||
+                                  payment.customerId.whatsappNumber ||
+                                  payment.customerId.phone || '';
                 }
                 if (!clientName || clientName === 'Valued Customer') {
                     clientName = payment.customerId.displayName || payment.customerId.companyName || clientName;
@@ -722,7 +725,12 @@ export const sendPaymentReceiptSms = async (payment, hostOrigin = '') => {
                 const cust = await Customer.findById(payment.customerId).lean();
                 if (cust) {
                     if (!clientPhone) {
-                        clientPhone = cust.primaryContact?.mobile || cust.primaryContact?.phone || cust.phone || '';
+                        clientPhone = cust.primaryContact?.mobile ||
+                                      cust.primaryContact?.phone ||
+                                      cust.whatsappNumber ||
+                                      cust.phone ||
+                                      (cust.contacts && cust.contacts[0]?.mobile) ||
+                                      (cust.contacts && cust.contacts[0]?.phone) || '';
                     }
                     if (!clientName || clientName === 'Valued Customer') {
                         clientName = cust.displayName || cust.companyName || clientName;
@@ -748,6 +756,13 @@ export const sendPaymentReceiptSms = async (payment, hostOrigin = '') => {
                         if (!clientPhone) {
                             clientPhone = quote.customerPhone || quote.whatsappNum || quote.contactPerson?.mobile || quote.contactPerson?.phone || '';
                         }
+                        if (!clientPhone && quote.customerId) {
+                            const Customer = mongoose.model('Customer');
+                            const cust = await Customer.findById(quote.customerId).lean();
+                            if (cust) {
+                                clientPhone = cust.primaryContact?.mobile || cust.primaryContact?.phone || cust.whatsappNumber || cust.phone || '';
+                            }
+                        }
                         if (!clientName || clientName === 'Valued Customer') {
                             clientName = quote.vehicleOwner || quote.customerName || clientName;
                         }
@@ -757,7 +772,20 @@ export const sendPaymentReceiptSms = async (payment, hostOrigin = '') => {
                     const inv = await Invoice.findById(alloc.documentId).lean();
                     if (inv) {
                         if (!clientPhone) {
-                            clientPhone = inv.customerPhone || inv.whatsappNum || inv.customerSnapshot?.mobile || inv.customerSnapshot?.phone || inv.customerSnapshot?.whatsappNum || '';
+                            const isP = (v) => v && typeof v === 'string' && /^[0-9+() -]{7,15}$/.test(v.trim());
+                            clientPhone = (isP(inv.customerPhone) && inv.customerPhone.trim()) ||
+                                          (isP(inv.whatsappNum) && inv.whatsappNum.trim()) ||
+                                          (isP(inv.customerSnapshot?.mobile) && inv.customerSnapshot.mobile.trim()) ||
+                                          (isP(inv.customerSnapshot?.phone) && inv.customerSnapshot.phone.trim()) ||
+                                          (isP(inv.customerSnapshot?.whatsappNum) && inv.customerSnapshot.whatsappNum.trim()) ||
+                                          (isP(inv.customerSnapshot?.contactName) && inv.customerSnapshot.contactName.trim()) || '';
+                        }
+                        if (!clientPhone && inv.customerId) {
+                            const Customer = mongoose.model('Customer');
+                            const cust = await Customer.findById(inv.customerId).lean();
+                            if (cust) {
+                                clientPhone = cust.primaryContact?.mobile || cust.primaryContact?.phone || cust.whatsappNumber || cust.phone || '';
+                            }
                         }
                         if (!clientName || clientName === 'Valued Customer') {
                             clientName = inv.vehicleOwner || inv.customerSnapshot?.name || clientName;
@@ -767,6 +795,16 @@ export const sendPaymentReceiptSms = async (payment, hostOrigin = '') => {
                         }
                     }
                 }
+            }
+        }
+
+        if (clientPhone && !payment.customerPhone && payment._id) {
+            payment.customerPhone = clientPhone;
+            try {
+                const Payment = mongoose.model('Payment');
+                await Payment.updateOne({ _id: payment._id }, { $set: { customerPhone: clientPhone } });
+            } catch (pUpdateErr) {
+                // silent
             }
         }
 

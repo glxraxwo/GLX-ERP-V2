@@ -15,6 +15,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { useAuthStore } from '../store/authStore';
 import ProductAutocompleteSelect from '../components/ui/ProductAutocompleteSelect';
 import DateRangeFilter from '../components/ui/DateRangeFilter';
+import AddBankAccountButton from '../components/finance/AddBankAccountButton';
 
 export default function GrnsPage() {
     const { user } = useAuthStore();
@@ -635,7 +636,10 @@ export default function GrnsPage() {
 
                                 {paymentMethod !== 'cash' && (
                                     <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-600 block">Company Bank/Cash Account *</label>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <label className="text-xs font-bold text-gray-600 block">Company Bank/Cash Account *</label>
+                                            <AddBankAccountButton onCreated={(acc) => { setBankAccounts((prev) => [acc, ...prev]); setBankAccountId(acc._id); }} />
+                                        </div>
                                         <select
                                             value={bankAccountId}
                                             onChange={(e) => setBankAccountId(e.target.value)}

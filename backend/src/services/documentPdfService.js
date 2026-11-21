@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import QRCode from 'qrcode';
+import { enrichPaymentWithDocumentDetails } from '../utils/paymentEnrichment.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -81,41 +82,45 @@ const convertNumberToWords = (amount) => {
 /**
  * Renders the official GLX company letterhead matching media_1793119480998_7033f283.png
  */
-const drawOfficialHeader = (pdfDoc, settings = null) => {
+const drawOfficialHeader = (pdfDoc, settings = null, isFullHeightLogo = false) => {
     // 1. Logo
+    // Logo height (60pt) spans exactly from top of company title (y=24) to line 3 of address "Sri Lanka." (y=84)
+    const logoW = isFullHeightLogo ? 60 : 54;
+    const logoH = isFullHeightLogo ? 60 : 54;
+    const textX = isFullHeightLogo ? 106 : 100;
+
     if (fs.existsSync(LOGO_PATH)) {
         try {
-            pdfDoc.image(LOGO_PATH, 36, 24, { width: 54, height: 54, fit: [54, 54] });
+            pdfDoc.image(LOGO_PATH, 36, 24, { width: logoW, height: logoH, fit: [logoW, logoH] });
         } catch (e) {
             // fallback if image fail
         }
     }
 
     // 2. Company Title & Subtitle
-    const textX = 100;
-    pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(14)
+    pdfDoc.fillColor('#000000').font('Helvetica-Bold').fontSize(14.5)
         .text('GLX TRUCK BODY ENGINEERS', textX, 24, { characterSpacing: 0.3 });
-    pdfDoc.fillColor('#333333').font('Helvetica-Bold').fontSize(7.5)
-        .text('ALUMINIUM , STEEL & FREEZER BOX MANUFACTURE', textX, 40, { characterSpacing: 0.5 });
+    pdfDoc.fillColor('#333333').font('Helvetica-Bold').fontSize(8)
+        .text('ALUMINIUM, STEEL & FREEZER BOX MANUFACTURE', textX, 42, { characterSpacing: 0.5 });
 
     // 3. 3-Column Address Block
-    const colY = 54;
+    const colY = 56;
     const col1X = textX;
-    const col2X = 248;
-    const col3X = 398;
+    const col2X = isFullHeightLogo ? 252 : 248;
+    const col3X = isFullHeightLogo ? 400 : 398;
 
-    pdfDoc.fillColor('#222222').font('Helvetica').fontSize(7).lineGap(1.5);
+    pdfDoc.fillColor('#222222').font('Helvetica').fontSize(7.5).lineGap(2);
 
-    pdfDoc.text('No.14,Negambo Road,\nThudella,Ja-Ela,\nSri Lanka.\n(11350)', col1X, colY, { width: 140 });
-    pdfDoc.text('No.2020/3L,2,Seeduwa Road,\nKotugoda,Ja-Ela.\nSri Lanka.\n(11390)', col2X, colY, { width: 140 });
+    pdfDoc.text('No.14, Negambo Road,\nThudella, Ja-Ela,\nSri Lanka.\n(11350)', col1X, colY, { width: 135 });
+    pdfDoc.text('No.2020/3L, 2, Seeduwa Road,\nKotugoda, Ja-Ela.\nSri Lanka.\n(11390)', col2X, colY, { width: 135 });
     const webVal = settings?.companyWebsite || 'www.glxgroup.lk';
     pdfDoc.text(`Mobile : 071 6666 888\nTel        : 011 740 4446\nEmail   : glx.engi@gmail.com\nWeb     : ${webVal}`, col3X, colY, { width: 160 });
 
     pdfDoc.lineGap(0);
 
     // 4. Horizontal Divider Line
-    const dividerY = 102;
-    pdfDoc.moveTo(36, dividerY).lineTo(pdfDoc.page.width - 36, dividerY).lineWidth(1.2).strokeColor('#333333').stroke();
+    const dividerY = isFullHeightLogo ? 104 : 102;
+    pdfDoc.moveTo(36, dividerY).lineTo(pdfDoc.page.width - 36, dividerY).lineWidth(1.5).strokeColor('#333333').stroke();
 };
 
 /**
@@ -385,50 +390,9 @@ export const generateDocumentPDF = async ({ doc, docType = 'quotation', settings
  */
 export const generatePaymentReceiptPDF = async ({ payment, settings = null }) => {
     // Enrich allocations with linked invoice/quotation totals & remaining balance due if missing
-    if (Array.isArray(payment?.allocations) && payment.allocations.length > 0) {
+    if (payment) {
         try {
-            const Invoice = (await import('../models/Invoice.js')).default;
-            const Quotation = (await import('../models/Quotation.js')).default;
-            let totalDocAmount = 0;
-            let totalBalanceDue = 0;
-            let hasDocBalance = false;
-
-            for (const alloc of payment.allocations) {
-                if (!alloc.docTotal && alloc.documentId) {
-                    if (alloc.documentType === 'invoice') {
-                        const inv = await Invoice.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount amountPaid invoiceNumber vehicleNo customerName').lean();
-                        if (inv) {
-                            alloc.docTotal = Number(inv.grandTotal !== undefined ? inv.grandTotal : (inv.totalAmount || 0));
-                            alloc.balanceDue = Number(inv.balanceAmount !== undefined ? inv.balanceAmount : Math.max(0, alloc.docTotal - (inv.amountPaid || 0)));
-                            alloc.vehicleNo = inv.vehicleNo || '';
-                            if (!payment.vehicleNo && inv.vehicleNo) payment.vehicleNo = inv.vehicleNo;
-                            totalDocAmount += alloc.docTotal;
-                            totalBalanceDue += alloc.balanceDue;
-                            hasDocBalance = true;
-                        }
-                    } else if (alloc.documentType === 'quotation' || alloc.documentType === 'estimate') {
-                        const quote = await Quotation.findById(alloc.documentId).select('grandTotal totalAmount balanceAmount advanceAmount quoteNumber vehicleNo customerName').lean();
-                        if (quote) {
-                            alloc.docTotal = Number(quote.grandTotal !== undefined ? quote.grandTotal : (quote.totalAmount || 0));
-                            alloc.balanceDue = Number(quote.balanceAmount !== undefined ? quote.balanceAmount : Math.max(0, alloc.docTotal - (quote.advanceAmount || 0)));
-                            alloc.vehicleNo = quote.vehicleNo || '';
-                            if (!payment.vehicleNo && quote.vehicleNo) payment.vehicleNo = quote.vehicleNo;
-                            totalDocAmount += alloc.docTotal;
-                            totalBalanceDue += alloc.balanceDue;
-                            hasDocBalance = true;
-                        }
-                    }
-                } else if (alloc.docTotal) {
-                    totalDocAmount += Number(alloc.docTotal || 0);
-                    totalBalanceDue += Number(alloc.balanceDue || 0);
-                    hasDocBalance = true;
-                }
-            }
-
-            if (hasDocBalance && (!payment.totalDocAmount || payment.totalDocAmount <= 0)) {
-                payment.totalDocAmount = totalDocAmount;
-                payment.totalBalanceDue = totalBalanceDue;
-            }
+            await enrichPaymentWithDocumentDetails(payment);
         } catch (e) {
             // continue if enrichment fails
         }
@@ -531,17 +495,20 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
             const branchVal = payment.branch || 'JA-ELA';
 
             // ── 1. Official Header ───────────────────────────────────────────
-            drawOfficialHeader(pdfDoc, settings);
+            drawOfficialHeader(pdfDoc, settings, true);
 
-            // Document Title Header Banner matching quotation/invoice template
-            const titleY = 106;
-            pdfDoc.rect(36, titleY, pdfDoc.page.width - 72, 19).fillAndStroke('#F8FAFC', '#CBD5E1');
-            pdfDoc.font('Helvetica-Bold').fontSize(10.5).fillColor('#1E293B')
-                .text(docTitle, 36, titleY + 4.5, { align: 'center', width: pdfDoc.page.width - 72, characterSpacing: 1.5 });
-            pdfDoc.moveTo(36, titleY + 19).lineTo(pdfDoc.page.width - 36, titleY + 19).lineWidth(1).strokeColor('#475569').stroke();
+            // Document Title Header Banner matching online view exactly
+            // divider is at 104; 12pt gap -> title box starts at 116
+            const titleY = 116;
+            const titleBoxH = 22;
+            pdfDoc.roundedRect(36, titleY, pdfDoc.page.width - 72, titleBoxH, 4).fillAndStroke('#F8FAFC', '#CBD5E1');
+            // Center text vertically: titleY + 7 (perfect 50/50 optical centering for uppercase in 22pt box)
+            pdfDoc.font('Helvetica-Bold').fontSize(11).fillColor('#0F172A')
+                .text(docTitle, 36, titleY + 7, { align: 'center', width: pdfDoc.page.width - 72, characterSpacing: 1.5, lineBreak: false });
 
             // ── 2. Meta Info (Customer Left vs Document Details Right) ────────
-            const metaY = 133;
+            // title box ends at 138; meta starts at 152 (14pt clean margin below banner)
+            const metaY = 152;
 
             // Left Column: Customer / Beneficiary
             pdfDoc.font('Helvetica').fontSize(8).fillColor('#64748B')
@@ -588,7 +555,12 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                 .text(`Method: ${methodLabel} (CONFIRMED)`, rightX, metaRightY + 2);
             metaRightY += 14;
 
-            pdfDoc.y = Math.max(curY + 10, metaRightY + 8, 205);
+            // CRITICAL: Reset X cursor to left margin before table rendering.
+            // After rendering the right meta column (at rightX=350), pdfDoc.x is stuck at 350.
+            // pdfkit-table uses pdfDoc.x as the starting X, so without reset, table starts at x=350
+            // causing columns to overflow the right edge of the A4 page (595pt).
+            pdfDoc.x = pdfDoc.page.margins.left || 36;
+            pdfDoc.y = Math.max(curY + 12, metaRightY + 10, 225);
 
             // ── 3. Table of Allocations (Exact Columns: DESCRIPTION, RATE, QTY, AMOUNT) ──
             const tableRows = [];
@@ -598,8 +570,12 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                     const docNum = alloc.documentNumber || `ID: ${String(alloc.documentId).slice(-6)}`;
                     const amt = Number(alloc.amount || 0);
 
+                    let details = `Payment Method: ${methodLabel}${methodDetails ? ` (${methodDetails})` : ''}`;
+                    if (alloc.docTotal) details += ` · Doc Total: ${fmtNum(alloc.docTotal)}`;
+                    if (alloc.balanceDue !== undefined && alloc.balanceDue >= 0) details += ` · Remaining Due: ${fmtNum(alloc.balanceDue)}`;
+
                     tableRows.push({
-                        description: `Payment Received — Settlement for ${docTypeStr} ${docNum}\nPayment Method: ${methodLabel}${methodDetails ? ` (${methodDetails})` : ''}`,
+                        description: `Payment Received — Settlement for ${docTypeStr} ${docNum}\n${details}`,
                         rate: fmtNum(amt),
                         qty: '1',
                         amount: fmtNum(amt)
@@ -649,10 +625,10 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
 
                 // Left: Remarks & Amount in Words
                 const leftWidth = summaryX - 36 - 20;
-                pdfDoc.font('Helvetica').fontSize(8).fillColor('#64748B').text('Remarks        :', 36, summaryY);
+                pdfDoc.font('Helvetica').fontSize(8).fillColor('#64748B').text('Remarks:', 36, summaryY);
                 pdfDoc.font('Helvetica').fontSize(8.5).fillColor('#1E293B').text(
                     payment.notes || (allocations.length > 0 ? `Settlement for ${allocations.map(a => a.documentNumber).filter(Boolean).join(', ')}` : 'Payment received with thanks'),
-                    105, summaryY, { width: leftWidth - 70 }
+                    80, summaryY, { width: leftWidth - 45 }
                 );
 
                 const wordsY = pdfDoc.y + 8;
@@ -731,19 +707,12 @@ export const generatePaymentReceiptPDF = async ({ payment, settings = null }) =>
                     pdfDoc.image(qrBuffer, pdfDoc.page.width - 36 - 70, bottomY + 12, { width: 70, height: 70 });
                 } catch (qrErr) {}
 
-                // Multi-page bottom disclaimer
-                const range = pdfDoc.bufferedPageRange();
-                for (let i = range.start; i < range.start + range.count; i++) {
-                    pdfDoc.switchToPage(i);
-                    pdfDoc.page.margins.bottom = 0;
-                    const footerY = pdfDoc.page.height - 22;
-                    pdfDoc.moveTo(36, footerY - 4).lineTo(pdfDoc.page.width - 36, footerY - 4).lineWidth(0.5).strokeColor('#E2E8F0').stroke();
-                    pdfDoc.fillColor('#64748B').font('Helvetica').fontSize(7)
-                        .text('GLX TRUCK BODY ENGINEERS - Computer Generated Official Receipt', 36, footerY, { lineBreak: false });
-                    const pageText = `Page ${i + 1} of ${range.count}`;
-                    const pageTextWidth = pdfDoc.widthOfString(pageText);
-                    pdfDoc.text(pageText, pdfDoc.page.width - 36 - pageTextWidth, footerY, { lineBreak: false });
-                }
+                // Draw outer card border around the receipt matching online view
+                const cardMargin = 20;
+                const cardTop = 14;
+                const cardBottom = Math.max(bottomY + 104, 520);
+                pdfDoc.roundedRect(cardMargin, cardTop, pdfDoc.page.width - (cardMargin * 2), cardBottom - cardTop, 8)
+                    .lineWidth(1).strokeColor('#E2E8F0').stroke();
 
                 pdfDoc.end();
             };
