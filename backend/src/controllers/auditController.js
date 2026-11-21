@@ -1,7 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import AuditLog from '../models/AuditLog.js';
 import SmsLog from '../models/SmsLog.js';
-import { formatSmsContact } from '../services/smsService.js';
+import { formatSmsContact, sendManagerCopyIfRequested } from '../services/smsService.js';
 
 /**
  * @desc    Get all audit logs
@@ -170,6 +170,8 @@ export const sendManualSms = asyncHandler(async (req, res) => {
         res.status(500);
         throw new Error(errorMessage || 'Failed to dispatch SMS through gateway');
     }
+
+    await sendManagerCopyIfRequested(`[Manager Copy] SMS to ${recipientName || contact} (${contact}): ${message}`);
 
     res.json({
         success: true,

@@ -9,6 +9,7 @@ import { broadcast } from '../services/socketService.js';
 import { updateCustomerBalance } from './invoiceController.js';
 import { enrichPaymentWithDocumentDetails } from '../utils/paymentEnrichment.js';
 import { buildDocumentFileName, getDocumentPartyName, pdfContentDisposition } from '../utils/pdfFileName.js';
+import { createAuditLog } from '../utils/auditLogger.js';
 
 /**
  * POST /api/payments
@@ -785,6 +786,281 @@ export const searchLinkableDocuments = asyncHandler(async (req, res) => {
     }
 
     res.json({ success: true, count: results.length, data: results });
+});
+
+/**
+ * Set an invoice's paid amount and recompute balance / status (same rules as cancelPayment).
+ */
+const setInvoicePaidAmount = async (inv, newPaid) => {
+    inv.amountPaid = Math.max(0, +Number(newPaid).toFixed(2));
+    inv.balanceDue = Math.max(0, +(Number(inv.grandTotal || 0) - Number(inv.amountPaid)).toFixed(2));
+    if (inv.amountPaid <= 0) {
+        inv.paymentStatus = 'unpaid';
+        inv.fullyPaidAt = null;
+    } else if (inv.amountPaid < inv.grandTotal) {
+        inv.paymentStatus = 'partially_paid';
+        inv.fullyPaidAt = null;
+    } else {
+        inv.paymentStatus = 'paid';
+        if (!inv.fullyPaidAt) inv.fullyPaidAt = new Date();
+    }
+    await inv.save();
+};
+
+/**
+ * Change one allocation of a receipt by `delta` (positive = more paid, negative = less paid)
+ * and keep the linked Invoice / Quotation / Estimate in sync.
+ */
+const applyAllocationDelta = async (alloc, delta) => {
+    if (!delta) return;
+    const Quotation = (await import('../models/Quotation.js')).default;
+
+    if (alloc.documentType === 'invoice') {
+        const inv = await Invoice.findById(alloc.documentId);
+        if (!inv) return;
+        await setInvoicePaidAmount(inv, Number(inv.amountPaid || 0) + delta);
+
+        // Keep the source quotation / estimate in sync (same lookup as createPayment)
+        try {
+            let quote = null;
+            if (inv.sourceDocumentId && (inv.sourceDocumentType === 'quotation' || inv.sourceDocumentType === 'estimate')) {
+                quote = await Quotation.findById(inv.sourceDocumentId);
+            }
+            if (!quote) quote = await Quotation.findOne({ convertedInvoiceId: inv._id });
+            if (!quote && inv.sourceDocumentCode) quote = await Quotation.findOne({ quoteNumber: inv.sourceDocumentCode });
+            if (!quote && inv.projectId) quote = await Quotation.findOne({ convertedProjectId: inv.projectId });
+            if (quote) {
+                quote.advanceAmount = Number(inv.amountPaid || 0);
+                quote.balanceAmount = Math.max(0, +(Number(quote.grandTotal || inv.grandTotal || 0) - Number(inv.amountPaid || 0)).toFixed(2));
+                await quote.save();
+            }
+        } catch (syncErr) {
+            console.error('[Quotation-Invoice Sync on Edit Error]:', syncErr.message);
+        }
+    } else if (alloc.documentType === 'quotation' || alloc.documentType === 'estimate') {
+        const quote = await Quotation.findById(alloc.documentId);
+        if (!quote) return;
+        const newAdvance = Math.max(0, +(Number(quote.advanceAmount || 0) + delta).toFixed(2));
+        quote.advanceAmount = newAdvance;
+        quote.balanceAmount = Math.max(0, +(Number(quote.grandTotal || 0) - newAdvance).toFixed(2));
+        await quote.save();
+        if (quote.convertedInvoiceId) {
+            try {
+                const inv = await Invoice.findById(quote.convertedInvoiceId);
+                if (inv) await setInvoicePaidAmount(inv, newAdvance);
+            } catch (invSyncErr) {
+                console.error('[Invoice-Quotation Sync on Edit Error]:', invSyncErr.message);
+            }
+        }
+    }
+};
+
+/**
+ * PUT /api/payments/:id
+ * Edit a customer payment receipt.
+ *
+ * Safe rules:
+ *  - Only confirmed receipts (money received) can be edited. Vouchers and cancelled receipts cannot.
+ *  - The customer and the linked documents cannot be changed (cancel and re-create the receipt for that).
+ *  - The amount can be changed only when the receipt is linked to one document (or none) and the
+ *    whole amount is on that document. Then the invoice / quotation paid amount moves by the difference.
+ *  - Bank account, method, date, reference, cheque details, phone, vehicle no. and notes can be changed.
+ *  - Bank balances are corrected: the old effect is reversed and the new effect applied.
+ *  - Every edit is written to the Audit Log with the old and new values.
+ */
+export const updatePayment = asyncHandler(async (req, res) => {
+    const payment = await Payment.findById(req.params.id);
+    if (!payment) {
+        res.status(404);
+        throw new Error('Payment not found');
+    }
+    if (payment.status === 'cancelled') {
+        res.status(400);
+        throw new Error('A cancelled receipt cannot be edited');
+    }
+    if (payment.direction === 'paid' || payment.voucherType) {
+        res.status(400);
+        throw new Error('Only customer payment receipts can be edited');
+    }
+
+    const body = req.body || {};
+    const editReason = String(body.editReason || '').trim();
+    if (!editReason) {
+        res.status(400);
+        throw new Error('Please enter a reason for editing this receipt');
+    }
+
+    const EDITABLE_TEXT = ['transactionReference', 'chequeNumber', 'bankName', 'customerPhone', 'vehicleNo', 'notes', 'partyName'];
+    const before = {
+        amount: Number(payment.amount || 0),
+        method: payment.method,
+        bankAccountId: payment.bankAccountId ? String(payment.bankAccountId) : null,
+        chequeStatus: payment.chequeStatus,
+        paymentDate: payment.paymentDate,
+        chequeDate: payment.chequeDate,
+    };
+    EDITABLE_TEXT.forEach((k) => { before[k] = payment[k] ?? ''; });
+
+    // ── New values ──
+    const newAmount = body.amount !== undefined && body.amount !== '' ? +Number(body.amount).toFixed(2) : before.amount;
+    if (!(newAmount > 0)) {
+        res.status(400);
+        throw new Error('Amount must be greater than zero');
+    }
+    const newMethod = body.method || before.method;
+    const newBankAccountId = body.bankAccountId !== undefined
+        ? (body.bankAccountId ? String(body.bankAccountId) : null)
+        : before.bankAccountId;
+    if (newMethod !== 'cash' && newMethod !== 'cheque' && !newBankAccountId) {
+        res.status(400);
+        throw new Error('Select the company bank account for this payment method');
+    }
+    let newChequeStatus = before.chequeStatus;
+    if (newMethod === 'cheque' && before.method !== 'cheque') newChequeStatus = 'pending';
+    if (newMethod !== 'cheque') newChequeStatus = undefined;
+
+    // ── Amount change rules ──
+    const delta = +(newAmount - before.amount).toFixed(2);
+    const allocations = Array.isArray(payment.allocations) ? payment.allocations : [];
+    const allocatedTotal = allocations.reduce((s, a) => s + Number(a.amount || 0), 0);
+    let allocToChange = null;
+    if (delta !== 0) {
+        if (allocations.length > 1) {
+            res.status(400);
+            throw new Error('This receipt is split across several documents, so the amount cannot be edited. Cancel it and create a new receipt instead.');
+        }
+        if (allocations.length === 1) {
+            if (Math.abs(allocatedTotal - before.amount) > 0.01) {
+                res.status(400);
+                throw new Error('Only part of this receipt is applied to the document, so the amount cannot be edited. Cancel it and create a new receipt instead.');
+            }
+            allocToChange = allocations[0];
+            if (allocToChange.documentType === 'bill') {
+                res.status(400);
+                throw new Error('This receipt cannot be edited');
+            }
+            // Do not allow paying more than the document still owes
+            if (delta > 0) {
+                if (allocToChange.documentType === 'invoice') {
+                    const inv = await Invoice.findById(allocToChange.documentId);
+                    if (inv && delta > Number(inv.balanceDue || 0) + 0.01) {
+                        res.status(400);
+                        throw new Error(`Invoice ${inv.invoiceNumber} only has Rs. ${Number(inv.balanceDue || 0).toLocaleString('en-LK')} left to pay. The amount can be increased by that much at most.`);
+                    }
+                } else if (allocToChange.documentType === 'quotation' || allocToChange.documentType === 'estimate') {
+                    const Quotation = (await import('../models/Quotation.js')).default;
+                    const quote = await Quotation.findById(allocToChange.documentId);
+                    if (quote) {
+                        const bal = quote.balanceAmount !== undefined ? Number(quote.balanceAmount) : Math.max(0, Number(quote.grandTotal || 0) - Number(quote.advanceAmount || 0));
+                        if (delta > bal + 0.01) {
+                            res.status(400);
+                            throw new Error(`${quote.quoteNumber || 'This document'} only has Rs. ${bal.toLocaleString('en-LK')} left to pay. The amount can be increased by that much at most.`);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Bank account balances: reverse old effect, apply new effect ──
+    const oldApplied = before.bankAccountId && !(before.method === 'cheque' && before.chequeStatus !== 'cleared');
+    const newApplied = newBankAccountId && !(newMethod === 'cheque' && newChequeStatus !== 'cleared');
+    let newBank = null;
+    if (newApplied) {
+        newBank = await BankAccount.findById(newBankAccountId);
+        if (!newBank) {
+            res.status(400);
+            throw new Error('Company bank account not found');
+        }
+    }
+    const touchedBanks = new Set();
+    if (oldApplied) {
+        const oldBank = await BankAccount.findById(before.bankAccountId);
+        if (oldBank) {
+            oldBank.balance = +(Number(oldBank.balance || 0) - before.amount).toFixed(2);
+            await oldBank.save();
+            touchedBanks.add(String(oldBank._id));
+        }
+    }
+    if (newApplied) {
+        newBank = await BankAccount.findById(newBankAccountId); // re-read in case it is the same account
+        newBank.balance = +(Number(newBank.balance || 0) + newAmount).toFixed(2);
+        await newBank.save();
+        touchedBanks.add(String(newBank._id));
+    }
+
+    // ── Documents ──
+    if (allocToChange && delta !== 0) {
+        await applyAllocationDelta(allocToChange, delta);
+        allocToChange.amount = +(Number(allocToChange.amount || 0) + delta).toFixed(2);
+    }
+
+    // ── Save the receipt ──
+    payment.amount = newAmount;
+    payment.method = newMethod;
+    payment.bankAccountId = newBankAccountId || undefined;
+    payment.chequeStatus = newChequeStatus;
+    if (body.paymentDate) payment.paymentDate = new Date(body.paymentDate);
+    if (body.chequeDate !== undefined) payment.chequeDate = body.chequeDate ? new Date(body.chequeDate) : undefined;
+    EDITABLE_TEXT.forEach((k) => {
+        if (body[k] !== undefined) payment[k] = typeof body[k] === 'string' ? body[k].trim() : body[k];
+    });
+    await payment.save();
+
+    if (payment.customerId) {
+        await updateCustomerBalance(payment.customerId);
+    }
+
+    // ── Audit log (only the fields that changed) ──
+    const after = {
+        amount: payment.amount,
+        method: payment.method,
+        bankAccountId: payment.bankAccountId ? String(payment.bankAccountId) : null,
+        chequeStatus: payment.chequeStatus,
+        paymentDate: payment.paymentDate,
+        chequeDate: payment.chequeDate,
+    };
+    EDITABLE_TEXT.forEach((k) => { after[k] = payment[k] ?? ''; });
+    const changes = {};
+    const previousData = {};
+    Object.keys(after).forEach((k) => {
+        const a = after[k] instanceof Date ? after[k].toISOString() : after[k];
+        const b = before[k] instanceof Date ? before[k].toISOString() : before[k];
+        if (String(a ?? '') !== String(b ?? '')) {
+            changes[k] = after[k];
+            previousData[k] = before[k];
+        }
+    });
+    await createAuditLog({
+        action: 'update',
+        module: 'finance',
+        documentId: payment._id,
+        documentCode: payment.paymentNumber,
+        description: `Receipt ${payment.paymentNumber} edited. Reason: ${editReason}`,
+        changes: { ...changes, editReason },
+        previousData,
+        req,
+    });
+
+    try {
+        broadcast('financial_update', { message: `Receipt ${payment.paymentNumber} was edited` });
+        for (const bankId of touchedBanks) {
+            const acc = await BankAccount.findById(bankId);
+            if (acc) broadcast('bank_balance_update', { bankAccountId: acc._id, balance: acc.balance });
+        }
+    } catch (_) {}
+
+    const populated = await Payment.findById(payment._id)
+        .populate('customerId', 'displayName customerCode primaryContact billingAddress')
+        .populate('bankAccountId', 'bankName accountNumber accountName')
+        .populate('receivedBy', 'firstName lastName fullName signature')
+        .populate('createdBy', 'firstName lastName fullName signature');
+
+    res.json({
+        success: true,
+        message: `Receipt ${payment.paymentNumber} updated. Balances have been recalculated.`,
+        data: populated,
+    });
 });
 
 /**

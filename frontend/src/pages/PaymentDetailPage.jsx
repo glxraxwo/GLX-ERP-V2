@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, ExternalLink, Printer, Ban } from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink, Printer, Ban, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getApiUrl } from '../api/config';
@@ -15,6 +15,8 @@ import { paymentsApi } from '../features/payments/paymentsApi';
 import { useSettings } from '../features/settings/useSettings';
 import PaymentReceiptPrintView from '../components/print/PaymentReceiptPrintView';
 import { exportElementToPDF, printElementAsPDF, buildPaymentFileName } from '../utils/dataExport';
+import EditReceiptModal from '../features/payments/EditReceiptModal';
+import { usePermission } from '../hooks/usePermission';
 
 export default function PaymentDetailPage() {
     const { id } = useParams();
@@ -23,6 +25,8 @@ export default function PaymentDetailPage() {
     const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
     const [cancelReason, setCancelReason] = useState('');
     const [isCancelling, setIsCancelling] = useState(false);
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const { hasPermission } = usePermission();
 
     const { data, isLoading, refetch } = useQuery({
         queryKey: ['payment', id], queryFn: () => paymentsApi.getById(id),
@@ -132,6 +136,11 @@ export default function PaymentDetailPage() {
                                     <ExternalLink size={15} />
                                     <span>Public View</span>
                                 </a>
+                            )}
+                            {!isCancelled && !isVoucher && hasPermission('payments.manage') && (
+                                <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+                                    <Pencil size={16} className="mr-1.5" /> Edit Receipt
+                                </Button>
                             )}
                             {!isCancelled && (
                                 <Button
@@ -284,6 +293,13 @@ export default function PaymentDetailPage() {
             </Card>
 
             {/* Cancel Payment Confirmation Modal */}
+            <EditReceiptModal
+                isOpen={isEditOpen}
+                onClose={() => setIsEditOpen(false)}
+                payment={p}
+                onSaved={() => refetch()}
+            />
+
             <Modal
                 isOpen={isCancelModalOpen}
                 onClose={() => !isCancelling && setIsCancelModalOpen(false)}

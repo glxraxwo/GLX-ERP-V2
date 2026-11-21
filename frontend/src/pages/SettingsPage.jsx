@@ -463,7 +463,7 @@ export default function SettingsPage() {
                                                 Manager SMS Alert Phone (කළමනාකරුගේ SMS අංකය)
                                             </label>
                                             <p className="text-xs text-amber-800/80 dark:text-amber-400/80 mb-2">
-                                                Shared document SMS alerts will be dispatched to this number. Save settings to apply.
+                                                Whenever a payment is recorded or an SMS is sent, the system asks whether to send a copy to this number. Leave empty to never ask. Save settings to apply.
                                             </p>
                                             <div className="max-w-md">
                                                 <StyledInput
@@ -552,7 +552,7 @@ export default function SettingsPage() {
                                                 </span>
                                             </div>
                                             <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mb-3 font-medium">
-                                                Quotation, Invoice, Estimate share කිරීමේදී Manager වෙත SMS යැවීමට මෙම දුරකථන අංකය ස්වයංක්‍රීයව භාවිත වේ.
+                                                Payment එකක් save කරද්දී හෝ SMS එකක් යවද්දී, මේ අංකයටත් copy එකක් යවන්නද කියලා system එක හැම වෙලාවෙම අහනවා. අංකය හිස්ව තිබ්බොත් අහන්නේ නැහැ.
                                             </p>
                                             <div className="max-w-md">
                                                 <StyledInput

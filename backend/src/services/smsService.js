@@ -5,6 +5,69 @@ import mongoose from 'mongoose';
 import SmsLog from '../models/SmsLog.js';
 import Supplier from '../models/Supplier.js';
 import { generateDocumentPDF } from './documentPdfService.js';
+import { getManagerSmsPreference } from '../utils/requestContext.js';
+
+/**
+ * Decide whether a "[Manager Copy]" SMS should be sent for the current request.
+ * The user is asked in the app every time ("Also send this SMS to the manager?")
+ * and the answer arrives as the X-Manager-Sms header.
+ *  - answered "no"  -> never send
+ *  - answered "yes" -> send
+ *  - not asked (automatic/background SMS) -> keep the old behaviour (defaultSend)
+ */
+export const shouldSendManagerCopy = (options = {}, defaultSend = true) => {
+    if (options?.skipManagerDuplicate) return false;
+    const pref = getManagerSmsPreference();
+    if (pref === 'no') return false;
+    if (pref === 'yes') return true;
+    return defaultSend;
+};
+
+/**
+ * Send a copy of an SMS to the manager number saved in Settings, but only when
+ * the user said "yes" for this request. Used by SMS types that never had a
+ * manager copy before (GRN, project delivery, manual SMS).
+ */
+export const sendManagerCopyIfRequested = async (managerMsg) => {
+    try {
+        if (!shouldSendManagerCopy({}, false)) return;
+        const Settings = mongoose.model('Settings');
+        const settings = await Settings.findOne();
+        if (!settings?.managerSmsPhone) return;
+        const managerContact = formatSmsContact(settings.managerSmsPhone);
+        const { SMS_USER_ID, SMS_API_KEY, SMS_SENDER_ID, SMS_GATEWAY_URL } = process.env;
+        let status = 'sent';
+        if (SMS_USER_ID && SMS_API_KEY && SMS_SENDER_ID && SMS_GATEWAY_URL && managerContact) {
+            try {
+                const response = await fetch(SMS_GATEWAY_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: SMS_USER_ID,
+                        api_key: SMS_API_KEY,
+                        sender_id: SMS_SENDER_ID,
+                        contact: managerContact,
+                        message: managerMsg
+                    })
+                });
+                const data = await response.json();
+                if (response.status !== 200 || !(data.success || data.status === 'success')) status = 'failed';
+            } catch (err) {
+                status = 'failed';
+            }
+        } else {
+            console.log(`[SMS Gateway Simulated Manager Copy] To: ${settings.managerSmsPhone} | Msg: ${managerMsg}`);
+        }
+        await SmsLog.create({
+            supplierName: 'Manager (Copy)',
+            supplierPhone: settings.managerSmsPhone,
+            message: managerMsg,
+            status
+        });
+    } catch (err) {
+        console.error('[SMS Service] Manager copy failed:', err.message);
+    }
+};
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -112,6 +175,8 @@ export const sendGrnConfirmationSms = async (grn, customMessage = null, customPh
             grnId: grn._id,
             status
         });
+
+        await sendManagerCopyIfRequested(`[Manager Copy] SMS to ${supplierName} (${supplierPhone}): ${message}`);
 
         return log;
     } catch (error) {
@@ -248,6 +313,8 @@ export const sendGrnCreationSms = async (grn, customMessage = null, customPhone 
             status
         });
 
+        await sendManagerCopyIfRequested(`[Manager Copy] SMS to ${supplierName} (${supplierPhone}): ${message}`);
+
         return log;
     } catch (error) {
         console.error('[SMS Service] Failed to send/log GRN Creation SMS:', error.message);
@@ -312,7 +379,7 @@ export const sendPublicDocumentSms = async (doc, clientPhone, documentType, host
         // Send duplicate copy to Manager
         const Settings = mongoose.model('Settings');
         const settings = await Settings.findOne();
-        if (!options.skipManagerDuplicate && settings && settings.managerSmsPhone) {
+        if (shouldSendManagerCopy(options) && settings && settings.managerSmsPhone) {
             let managerContact = formatSmsContact(settings.managerSmsPhone);
             const managerMsg = `[Manager Copy] Document link sent to ${clientPhone} (${clientName}): ${link}`;
             
@@ -396,7 +463,7 @@ export const sendPayslipSms = async (payslipData, employeePhone, hostOrigin, cus
         // Send duplicate copy to Manager
         const Settings = mongoose.model('Settings');
         const settings = await Settings.findOne();
-        if (!options.skipManagerDuplicate && settings && settings.managerSmsPhone) {
+        if (shouldSendManagerCopy() && settings && settings.managerSmsPhone) {
             let managerContact = formatSmsContact(settings.managerSmsPhone);
             const managerMsg = `[Manager Copy] Payslip link sent to ${employeePhone} (${employeeName}): ${link}`;
             
@@ -475,7 +542,7 @@ export const sendPaymentSheetSms = async (employeeData, employeePhone, startDate
         // Send duplicate copy to Manager
         const Settings = mongoose.model('Settings');
         const settings = await Settings.findOne();
-        if (!options.skipManagerDuplicate && settings && settings.managerSmsPhone) {
+        if (shouldSendManagerCopy() && settings && settings.managerSmsPhone) {
             let managerContact = formatSmsContact(settings.managerSmsPhone);
             const managerMsg = `[Manager Copy] Payment sheet summary sent to ${employeePhone} (${employeeName}): ${message}`;
             
@@ -575,6 +642,8 @@ export const sendProjectDeliveredSms = async (project, clientPhone) => {
             message,
             status
         });
+
+        await sendManagerCopyIfRequested(`[Manager Copy] SMS to ${project.customerName || 'customer'} (${clientPhone}): ${message}`);
     } catch (err) {
         console.error('[SMS Service] Failed to send project delivery SMS:', err.message);
     }
@@ -633,7 +702,7 @@ export const dispatchSmsNotification = async ({ contactPhone, recipientName, mes
     try {
         const Settings = mongoose.model('Settings');
         const settings = await Settings.findOne();
-        if (!options?.skipManagerDuplicate && settings && settings.managerSmsPhone) {
+        if (shouldSendManagerCopy(options) && settings && settings.managerSmsPhone) {
             let managerContact = formatSmsContact(settings.managerSmsPhone);
             const managerMsg = `[Manager Copy] Alert sent to ${contactPhone || 'client'} (${recipientName}): ${message}`;
             if (SMS_USER_ID && SMS_API_KEY && SMS_SENDER_ID && SMS_GATEWAY_URL && managerContact) {

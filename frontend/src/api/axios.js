@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getApiUrl } from './config';
+import { isManagerSmsRequest, getManagerPhone, askSendToManager, clearManagerPhoneCache } from '../utils/managerSmsPrompt';
 
 const api = axios.create({
     baseURL: getApiUrl(),
@@ -53,9 +54,31 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// Ask "Also send this SMS to the manager?" for every request that records a
+// received payment or sends an SMS. Skipped when no manager number is saved
+// in Settings. The answer goes to the backend in the X-Manager-Sms header.
+api.interceptors.request.use(async (config) => {
+    if (config.skipManagerSmsPrompt || config.headers?.['X-Manager-Sms']) return config;
+    if (!isManagerSmsRequest(config)) return config;
+    const managerPhone = await getManagerPhone(api);
+    if (!managerPhone) {
+        config.headers['X-Manager-Sms'] = 'no';
+        return config;
+    }
+    const yes = await askSendToManager(managerPhone);
+    config.headers['X-Manager-Sms'] = yes ? 'yes' : 'no';
+    return config;
+});
+
 // Handle API error responses globally
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        // Settings saved -> reload the manager number next time it is needed
+        if (String(response.config?.method).toLowerCase() === 'put' && /\/settings\/?$/.test(String(response.config?.url || '').split('?')[0])) {
+            clearManagerPhoneCache();
+        }
+        return response;
+    },
     (error) => {
         const status = error.response?.status;
         const message = error.response?.data?.message || error.message || 'An unexpected error occurred';

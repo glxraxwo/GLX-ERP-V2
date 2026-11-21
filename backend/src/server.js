@@ -21,6 +21,7 @@ import productRoutes from './routes/productRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 import { sendPublicDocumentSms } from './services/smsService.js';
+import { requestContextMiddleware } from './utils/requestContext.js';
 import Quotation from './models/Quotation.js';
 import Invoice from './models/Invoice.js';
 import asyncHandler from 'express-async-handler';
@@ -140,6 +141,9 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Remember the user's "Also send SMS to manager?" answer (X-Manager-Sms header) for this request
+app.use(requestContextMiddleware);
 
 // Recursive request body sanitizer to prevent Mongoose Date/ID casting errors
 const cleanRequestBody = (obj) => {

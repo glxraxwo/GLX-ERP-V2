@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ArrowLeft, ArrowRight, Filter, Download, ExternalLink, Printer, Ban } from 'lucide-react';
+import { Plus, Search, ArrowLeft, ArrowRight, Filter, Download, ExternalLink, Printer, Ban, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { getApiUrl } from '../api/config';
@@ -22,6 +22,7 @@ import { usePermission } from '../hooks/usePermission';
 import { useSettings } from '../features/settings/useSettings';
 import PaymentReceiptPrintView from '../components/print/PaymentReceiptPrintView';
 import { exportElementToPDF, printElementAsPDF, buildPaymentFileName } from '../utils/dataExport';
+import EditReceiptModal from '../features/payments/EditReceiptModal';
 
 const fmt = (n) => new Intl.NumberFormat('en-LK', { style: 'currency', currency: 'LKR', minimumFractionDigits: 2 }).format(n || 0);
 const fmtDate = (d) => new Date(d).toLocaleDateString('en-LK');
@@ -58,6 +59,7 @@ function PaymentsPage() {
 
     const [previewPayment, setPreviewPayment] = useState(null);
     const [cancellingPayment, setCancellingPayment] = useState(null);
+    const [editingPayment, setEditingPayment] = useState(null);
     const [cancelReason, setCancelReason] = useState('');
     const cancelPaymentMutation = useCancelPayment();
 
@@ -252,6 +254,20 @@ function PaymentsPage() {
                             <ExternalLink size={14} />
                         </a>
                     )}
+                    {row.status !== 'cancelled' && row.direction !== 'paid' && !row.voucherType && canCreate && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingPayment(row);
+                            }}
+                            title="Edit this receipt"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-md border border-amber-200 transition cursor-pointer"
+                        >
+                            <Pencil size={12} />
+                            <span>Edit</span>
+                        </button>
+                    )}
                     {row.status !== 'cancelled' && (
                         <button
                             type="button"
@@ -425,6 +441,13 @@ function PaymentsPage() {
                     </div>
                 )}
             </Modal>
+
+            {/* Edit Receipt Modal */}
+            <EditReceiptModal
+                isOpen={!!editingPayment}
+                onClose={() => setEditingPayment(null)}
+                payment={editingPayment}
+            />
 
             {/* Cancel Payment Confirmation Modal */}
             <Modal

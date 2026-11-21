@@ -1,7 +1,7 @@
 import express from 'express';
 import {
     createPayment, createVoucher, getPayments, getPaymentById, clearPaymentCheque, updatePaymentChequeStatus,
-    searchLinkableDocuments, getDocumentPaymentSummary, downloadPaymentReceipt, sendPaymentSms, cancelPayment
+    searchLinkableDocuments, getDocumentPaymentSummary, downloadPaymentReceipt, sendPaymentSms, cancelPayment, updatePayment
 } from '../controllers/paymentController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { requirePermission } from '../middleware/permissionMiddleware.js';
@@ -20,7 +20,9 @@ router.get('/document-summary/:documentId', requirePermission('payments.view'), 
 
 router.get('/:id/receipt', requirePermission('payments.view'), downloadPaymentReceipt);
 router.post('/:id/send-sms', requirePermission('payments.view'), sendPaymentSms);
-router.route('/:id').get(requirePermission('payments.view'), getPaymentById);
+router.route('/:id')
+    .get(requirePermission('payments.view'), getPaymentById)
+    .put(requirePermission('payments.manage'), updatePayment);
 router.put('/:id/clear', requirePermission('payments.manage'), clearPaymentCheque);
 router.put('/:id/status', requirePermission('payments.manage'), updatePaymentChequeStatus);
 router.put('/:id/cancel', requirePermission('payments.manage'), cancelPayment);
