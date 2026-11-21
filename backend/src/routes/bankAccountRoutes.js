@@ -8,6 +8,7 @@ import {
     getBankAccountLedger
 } from '../controllers/bankAccountController.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { requirePermission } from '../middleware/permissionMiddleware.js';
 
 const router = express.Router();
 
@@ -19,8 +20,8 @@ router.route('/')
 
 router.route('/:id')
     .get(getBankAccountById)
-    .put(updateBankAccount)
-    .delete(deleteBankAccount);
+    .put(requirePermission('payments.manage'), updateBankAccount)
+    .delete(requirePermission('payments.manage'), deleteBankAccount);
 
 router.route('/:id/ledger')
     .get(getBankAccountLedger);

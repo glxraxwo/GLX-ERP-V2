@@ -65,8 +65,15 @@ api.interceptors.request.use(async (config) => {
         config.headers['X-Manager-Sms'] = 'no';
         return config;
     }
-    const yes = await askSendToManager(managerPhone);
-    config.headers['X-Manager-Sms'] = yes ? 'yes' : 'no';
+    const answer = await askSendToManager(managerPhone);
+    if (answer === 'cancel') {
+        // User backed out: stop the request so nothing is saved and no SMS goes out.
+        // A response-like message is attached so existing catch blocks show a clear toast.
+        const err = new axios.CanceledError('Cancelled. Nothing was saved and no SMS was sent.', 'ERR_CANCELED', config);
+        err.response = { status: 499, data: { message: 'Cancelled. Nothing was saved and no SMS was sent.' }, config, headers: {} };
+        throw err;
+    }
+    config.headers['X-Manager-Sms'] = answer === 'yes' ? 'yes' : 'no';
     return config;
 });
 

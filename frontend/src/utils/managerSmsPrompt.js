@@ -86,6 +86,8 @@ export const getManagerPhone = async (apiInstance) => {
 };
 
 // ── The question dialog (plain DOM so it works from the axios layer) ───────
+// Resolves to 'yes', 'no' or 'cancel'. 'cancel' (X button, Cancel, Esc)
+// stops the whole request: nothing is saved and no SMS is sent.
 let openDialog = null; // reuse one answer if several requests fire at the same moment
 
 export const askSendToManager = (managerPhone) => {
@@ -102,10 +104,10 @@ export const askSendToManager = (managerPhone) => {
         overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(2,6,23,0.6);';
 
         const card = document.createElement('div');
-        card.style.cssText = `width:100%;max-width:420px;background:${c.card};color:${c.text};border:1px solid ${c.border};border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,0.35);padding:20px;font-family:inherit;`;
+        card.style.cssText = `position:relative;width:100%;max-width:420px;background:${c.card};color:${c.text};border:1px solid ${c.border};border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,0.35);padding:20px;font-family:inherit;`;
 
         const title = document.createElement('div');
-        title.style.cssText = 'font-size:16px;font-weight:700;margin-bottom:6px;';
+        title.style.cssText = 'font-size:16px;font-weight:700;margin-bottom:6px;padding-right:36px;';
         title.textContent = 'Send a copy to the manager?';
 
         const titleSi = document.createElement('div');
@@ -116,8 +118,24 @@ export const askSendToManager = (managerPhone) => {
         sub.style.cssText = `font-size:13px;color:${c.sub};margin-bottom:18px;line-height:1.5;`;
         sub.textContent = `Manager number: ${managerPhone}`;
 
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.setAttribute('aria-label', 'Cancel');
+        closeBtn.title = 'Cancel (nothing will be saved) / අවලංගු කරන්න';
+        closeBtn.textContent = '\u00D7';
+        closeBtn.style.cssText = `position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:9px;border:none;background:transparent;color:${c.sub};font-size:24px;line-height:1;cursor:pointer;`;
+
+        const note = document.createElement('div');
+        note.style.cssText = `font-size:12px;color:${c.sub};margin:-8px 0 16px;line-height:1.5;`;
+        note.textContent = 'Pressed by mistake? Cancel stops everything, nothing is saved. / වැරදිලා නම් Cancel ඔබන්න, කිසිවක් save වෙන්නේ නෑ.';
+
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.textContent = 'Cancel / අවලංගු කරන්න';
+        cancelBtn.style.cssText = `padding:10px 16px;border-radius:10px;border:1px solid ${c.border};background:transparent;color:${c.sub};font-weight:600;font-size:14px;cursor:pointer;min-height:44px;margin-right:auto;`;
 
         const noBtn = document.createElement('button');
         noBtn.type = 'button';
@@ -136,16 +154,22 @@ export const askSendToManager = (managerPhone) => {
             resolve(answer);
         };
         const onKey = (e) => {
-            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); }
-            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); finish(document.activeElement !== noBtn); }
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish('cancel'); }
+            if (e.key === 'Enter') {
+                e.preventDefault(); e.stopPropagation();
+                if (document.activeElement === cancelBtn || document.activeElement === closeBtn) finish('cancel');
+                else finish(document.activeElement === noBtn ? 'no' : 'yes');
+            }
         };
 
-        noBtn.addEventListener('click', () => finish(false));
-        yesBtn.addEventListener('click', () => finish(true));
+        closeBtn.addEventListener('click', () => finish('cancel'));
+        cancelBtn.addEventListener('click', () => finish('cancel'));
+        noBtn.addEventListener('click', () => finish('no'));
+        yesBtn.addEventListener('click', () => finish('yes'));
         document.addEventListener('keydown', onKey, true);
 
-        row.append(noBtn, yesBtn);
-        card.append(title, titleSi, sub, row);
+        row.append(cancelBtn, noBtn, yesBtn);
+        card.append(closeBtn, title, titleSi, sub, note, row);
         overlay.append(card);
         document.body.append(overlay);
         setTimeout(() => yesBtn.focus(), 30);

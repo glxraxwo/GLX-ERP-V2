@@ -137,9 +137,9 @@ export default function PaymentDetailPage() {
                                     <span>Public View</span>
                                 </a>
                             )}
-                            {!isCancelled && !isVoucher && hasPermission('payments.manage') && (
+                            {!isCancelled && hasPermission('payments.manage') && (
                                 <Button variant="outline" onClick={() => setIsEditOpen(true)}>
-                                    <Pencil size={16} className="mr-1.5" /> Edit Receipt
+                                    <Pencil size={16} className="mr-1.5" /> Edit {isVoucher ? 'Voucher' : 'Receipt'}
                                 </Button>
                             )}
                             {!isCancelled && (

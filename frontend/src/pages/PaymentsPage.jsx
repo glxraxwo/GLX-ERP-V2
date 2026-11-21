@@ -254,14 +254,14 @@ function PaymentsPage() {
                             <ExternalLink size={14} />
                         </a>
                     )}
-                    {row.status !== 'cancelled' && row.direction !== 'paid' && !row.voucherType && canCreate && (
+                    {row.status !== 'cancelled' && canCreate && (
                         <button
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setEditingPayment(row);
                             }}
-                            title="Edit this receipt"
+                            title={row.direction === 'paid' || row.voucherType ? 'Edit this voucher' : 'Edit this receipt'}
                             className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-md border border-amber-200 transition cursor-pointer"
                         >
                             <Pencil size={12} />

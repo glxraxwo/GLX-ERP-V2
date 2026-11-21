@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus, Eye, Receipt, TrendingUp, DollarSign, RefreshCw, X, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Plus, Eye, Receipt, TrendingUp, DollarSign, RefreshCw, X, ArrowUpRight, ArrowDownLeft, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
+import { usePermission } from '../hooks/usePermission';
 
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
@@ -18,6 +19,8 @@ import DynamicForm from '../components/ui/DynamicForm';
 export default function BankAccountsPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const { hasPermission } = usePermission();
+    const canManage = hasPermission('payments.manage');
     const [accounts, setAccounts] = useState([]);
     const [selectedAccount, setSelectedAccount] = useState(null);
     const [ledger, setLedger] = useState([]);
@@ -53,10 +56,85 @@ export default function BankAccountsPage() {
         { name: 'balance', label: 'Initial / Starting Balance (LKR)', type: 'number', required: true },
     ];
 
+    // Edit / delete state
+    const [editAccount, setEditAccount] = useState(null);
+    const [editData, setEditData] = useState({});
+    const [savingEdit, setSavingEdit] = useState(false);
+    const [deleteAccount, setDeleteAccount] = useState(null);
+    const [deleting, setDeleting] = useState(false);
+
+    const editSchema = [
+        ...formSchema.filter(f => f.name !== 'balance'),
+        {
+            name: 'isActive',
+            label: 'Status',
+            type: 'select',
+            options: [
+                { value: 'true', label: 'Active (shown in payment dropdowns)' },
+                { value: 'false', label: 'Inactive (hidden from payment dropdowns)' }
+            ]
+        },
+    ];
+
+    const openEdit = (acc) => {
+        setEditAccount(acc);
+        setEditData({
+            bankName: acc.bankName || '',
+            accountName: acc.accountName || '',
+            accountNumber: acc.accountNumber || '',
+            branchName: acc.branchName || '',
+            accountType: acc.accountType || 'current',
+            isActive: acc.isActive === false ? 'false' : 'true',
+        });
+    };
+
+    const handleEditSubmit = async () => {
+        if (!editAccount) return;
+        setSavingEdit(true);
+        try {
+            await api.put(`/finance/bank-accounts/${editAccount._id}`, {
+                ...editData,
+                isActive: editData.isActive !== 'false',
+            });
+            toast.success('Bank account updated');
+            setEditAccount(null);
+            fetchAccounts();
+            queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update account');
+        } finally {
+            setSavingEdit(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!deleteAccount) return;
+        setDeleting(true);
+        try {
+            const { data } = await api.delete(`/finance/bank-accounts/${deleteAccount._id}`);
+            if (data?.deactivated) {
+                toast.success(data.message || 'Account has transactions, so it was deactivated instead of deleted');
+            } else {
+                toast.success(data?.message || 'Bank account deleted');
+                if (selectedAccount?._id === deleteAccount._id) {
+                    setSelectedAccount(null);
+                    setLedger([]);
+                }
+            }
+            setDeleteAccount(null);
+            fetchAccounts();
+            queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete account');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     const fetchAccounts = async () => {
         setLoadingAccounts(true);
         try {
-            const { data } = await api.get('/finance/bank-accounts');
+            const { data } = await api.get('/finance/bank-accounts', { params: { includeInactive: true } });
             const list = data.data || [];
             setAccounts(list);
             
@@ -244,9 +322,31 @@ export default function BankAccountsPage() {
                                             <h4 className="font-bold text-gray-900">{acc.bankName}</h4>
                                             <p className="text-xs font-semibold text-gray-500 mt-0.5 capitalize">{acc.accountType} Account</p>
                                         </div>
-                                        <Badge variant={acc.isActive ? 'success' : 'neutral'}>
-                                            {acc.isActive ? 'Active' : 'Inactive'}
-                                        </Badge>
+                                        <div className="flex items-center gap-1.5">
+                                            <Badge variant={acc.isActive ? 'success' : 'neutral'}>
+                                                {acc.isActive ? 'Active' : 'Inactive'}
+                                            </Badge>
+                                            {canManage && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); openEdit(acc); }}
+                                                        className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition"
+                                                        title="Edit bank account"
+                                                    >
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); setDeleteAccount(acc); }}
+                                                        className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                                        title="Delete bank account"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="mt-4 pt-4 border-t border-dashed border-gray-100 flex justify-between items-end">
                                         <div>
@@ -325,6 +425,42 @@ export default function BankAccountsPage() {
                         loading={saving}
                         submitLabel="Create Account"
                     />
+                </div>
+            </Modal>
+
+            {/* Edit Bank Account Modal */}
+            <Modal isOpen={!!editAccount} onClose={() => setEditAccount(null)} title="Edit Bank Account" size="lg">
+                <div className="p-6">
+                    <p className="text-xs text-gray-500 mb-4">
+                        The balance cannot be edited here. It changes only through payments, so the ledger stays correct.
+                    </p>
+                    <DynamicForm
+                        schema={editSchema}
+                        formData={editData}
+                        onChange={(name, value) => setEditData(prev => ({ ...prev, [name]: value }))}
+                        onSubmit={handleEditSubmit}
+                        loading={savingEdit}
+                        submitLabel="Save Changes"
+                    />
+                </div>
+            </Modal>
+
+            {/* Delete Bank Account Confirm */}
+            <Modal isOpen={!!deleteAccount} onClose={() => !deleting && setDeleteAccount(null)} title="Delete Bank Account" size="md">
+                <div className="p-6 space-y-4">
+                    <p className="text-sm text-gray-700">
+                        Delete <span className="font-bold">{deleteAccount?.bankName}</span> ({deleteAccount?.accountNumber})?
+                    </p>
+                    <p className="text-xs text-gray-500">
+                        If this account already has payments or a non-zero balance, it will be marked Inactive instead of deleted,
+                        so past receipts and the ledger stay intact. Inactive accounts are hidden from payment dropdowns.
+                    </p>
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="secondary" onClick={() => setDeleteAccount(null)} disabled={deleting}>Cancel</Button>
+                        <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+                            {deleting ? 'Deleting...' : 'Delete'}
+                        </Button>
+                    </div>
                 </div>
             </Modal>
         </div>

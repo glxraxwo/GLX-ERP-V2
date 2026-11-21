@@ -623,6 +623,7 @@ export const createVoucher = asyncHandler(async (req, res) => {
                 approvedBy: req.user._id,
                 approvedAt: new Date(),
                 createdBy: req.user._id,
+                paymentId: voucher._id,
             }]);
         }
 
@@ -856,6 +857,225 @@ const applyAllocationDelta = async (alloc, delta) => {
 };
 
 /**
+ * Edit a payment voucher (money paid out: supplier payment, customer advance refund,
+ * labour / salary advance, other vouchers). Called from updatePayment.
+ *
+ * Safe rules (same idea as receipts):
+ *  - A reason is required. The party (supplier / customer / employee) cannot be changed.
+ *  - The amount can change only when the voucher is linked to one document (or none) and the
+ *    whole amount is on that document. Supplier bills and refunded invoices are corrected.
+ *  - Labour / salary advance: the linked salary advance is updated too, but only while
+ *    nothing has been deducted from salary yet.
+ *  - Bank balances: the old effect is reversed and the new effect applied.
+ *  - Every edit is written to the Audit Log.
+ */
+const LINKED_PARTY_VOUCHERS = ['customer_advance_refund', 'supplier_payment', 'labor_advance', 'salary_advance'];
+const voucherBankApplied = (bankId, method, chequeStatus) =>
+    Boolean(bankId) && !(method === 'cheque' && chequeStatus && chequeStatus !== 'cleared');
+
+const updateVoucher = async (req, res, payment) => {
+    const body = req.body || {};
+    const editReason = String(body.editReason || '').trim();
+    if (!editReason) {
+        res.status(400);
+        throw new Error('Please enter a reason for editing this voucher');
+    }
+
+    const EDITABLE_TEXT = ['transactionReference', 'chequeNumber', 'bankName', 'notes', 'signatureNote', 'hireNoteNumber', 'vehicleNo', 'transportDriver'];
+    if (!LINKED_PARTY_VOUCHERS.includes(payment.voucherType)) EDITABLE_TEXT.push('partyName');
+
+    const before = {
+        amount: Number(payment.amount || 0),
+        method: payment.method,
+        bankAccountId: payment.bankAccountId ? String(payment.bankAccountId) : null,
+        paymentDate: payment.paymentDate,
+        chequeDate: payment.chequeDate,
+    };
+    EDITABLE_TEXT.forEach((k) => { before[k] = payment[k] ?? ''; });
+
+    const newAmount = body.amount !== undefined && body.amount !== '' ? +Number(body.amount).toFixed(2) : before.amount;
+    if (!(newAmount > 0)) {
+        res.status(400);
+        throw new Error('Amount must be greater than zero');
+    }
+    const newMethod = body.method || before.method;
+    const newBankAccountId = body.bankAccountId !== undefined
+        ? (body.bankAccountId ? String(body.bankAccountId) : null)
+        : before.bankAccountId;
+    // Keep the cheque status as it is (vouchers are normally created without one)
+    const newChequeStatus = newMethod === 'cheque' ? payment.chequeStatus : undefined;
+
+    // ── Amount change rules ──
+    const delta = +(newAmount - before.amount).toFixed(2);
+    const allocations = Array.isArray(payment.allocations) ? payment.allocations : [];
+    const allocatedTotal = allocations.reduce((s, a) => s + Number(a.amount || 0), 0);
+    let allocToChange = null;
+    let advanceToChange = null;
+    const blocked = (msg) => { res.status(400); throw new Error(msg); };
+
+    if (delta !== 0) {
+        if (allocations.length > 1) {
+            blocked('This voucher is split across several documents, so the amount cannot be edited. Cancel it and create a new voucher instead.');
+        }
+        if (allocations.length === 1) {
+            if (Math.abs(allocatedTotal - before.amount) > 0.01) {
+                blocked('Only part of this voucher is applied to the document, so the amount cannot be edited. Cancel it and create a new voucher instead.');
+            }
+            allocToChange = allocations[0];
+            if (allocToChange.documentType === 'bill') {
+                if (delta > 0) {
+                    const bill = await Bill.findById(allocToChange.documentId);
+                    if (bill && delta > Number(bill.balanceDue || 0) + 0.01) {
+                        blocked(`Bill ${bill.billNumber || ''} only has Rs. ${Number(bill.balanceDue || 0).toLocaleString('en-LK')} left to pay. The amount can be increased by that much at most.`);
+                    }
+                }
+            } else if (allocToChange.documentType === 'invoice' && payment.voucherType === 'customer_advance_refund') {
+                if (delta > 0) {
+                    const inv = await Invoice.findById(allocToChange.documentId);
+                    if (inv && delta > Number(inv.amountPaid || 0) + 0.01) {
+                        blocked(`Invoice ${inv.invoiceNumber} only has Rs. ${Number(inv.amountPaid || 0).toLocaleString('en-LK')} paid, so the refund cannot be increased by more than that.`);
+                    }
+                }
+            } else {
+                blocked('The amount of this voucher cannot be edited because of the document it is linked to. Cancel it and create a new voucher instead.');
+            }
+        }
+        if ((payment.voucherType === 'labor_advance' || payment.voucherType === 'salary_advance') && payment.employeeId) {
+            const SalaryAdvance = (await import('../models/SalaryAdvance.js')).default;
+            advanceToChange = await SalaryAdvance.findOne({ paymentId: payment._id });
+            if (!advanceToChange) {
+                // Older vouchers were not linked: find the advance that was created with this voucher
+                const candidates = await SalaryAdvance.find({
+                    employeeId: payment.employeeId,
+                    amount: before.amount,
+                    paymentId: { $exists: false },
+                    reason: { $in: [payment.notes, `Payment Voucher Advance: ${payment.paymentNumber}`].filter(Boolean) },
+                });
+                if (candidates.length === 1) advanceToChange = candidates[0];
+            }
+            if (!advanceToChange) {
+                blocked('The salary advance linked to this voucher could not be found, so the amount cannot be edited. Cancel it and create a new voucher instead.');
+            }
+            if (advanceToChange.isDeducted || Number(advanceToChange.amountPaid || 0) > 0 || advanceToChange.deductedPayrollId || advanceToChange.deductedSalaryPaymentId) {
+                blocked('Part of this advance has already been deducted from salary, so the amount cannot be edited.');
+            }
+        }
+    }
+
+    // ── Bank balances: reverse the old effect (money back), apply the new one (money out) ──
+    const oldApplied = voucherBankApplied(before.bankAccountId, before.method, payment.chequeStatus);
+    const newApplied = voucherBankApplied(newBankAccountId, newMethod, newChequeStatus);
+    if (newApplied) {
+        const exists = await BankAccount.findById(newBankAccountId);
+        if (!exists) blocked('Company bank account not found');
+    }
+    const touchedBanks = new Set();
+    if (oldApplied) {
+        const oldBank = await BankAccount.findById(before.bankAccountId);
+        if (oldBank) {
+            oldBank.balance = +(Number(oldBank.balance || 0) + before.amount).toFixed(2);
+            await oldBank.save();
+            touchedBanks.add(String(oldBank._id));
+        }
+    }
+    if (newApplied) {
+        const newBank = await BankAccount.findById(newBankAccountId);
+        newBank.balance = +(Number(newBank.balance || 0) - newAmount).toFixed(2);
+        await newBank.save();
+        touchedBanks.add(String(newBank._id));
+    }
+
+    // ── Linked documents ──
+    if (allocToChange && delta !== 0) {
+        if (allocToChange.documentType === 'bill') {
+            const bill = await Bill.findById(allocToChange.documentId);
+            if (bill) {
+                bill.amountPaid = Math.max(0, +(Number(bill.amountPaid || 0) + delta).toFixed(2));
+                await bill.save(); // the Bill model recalculates balanceDue and paymentStatus
+            }
+        } else if (allocToChange.documentType === 'invoice') {
+            const inv = await Invoice.findById(allocToChange.documentId);
+            if (inv) await setInvoicePaidAmount(inv, Number(inv.amountPaid || 0) - delta);
+        }
+        allocToChange.amount = +(Number(allocToChange.amount || 0) + delta).toFixed(2);
+    }
+    if (advanceToChange && delta !== 0) {
+        advanceToChange.amount = newAmount;
+        advanceToChange.installmentAmount = 0; // recalculated on save
+        if (!advanceToChange.paymentId) advanceToChange.paymentId = payment._id;
+        await advanceToChange.save();
+    }
+
+    // ── Save the voucher ──
+    payment.amount = newAmount;
+    payment.method = newMethod;
+    payment.bankAccountId = newBankAccountId || undefined;
+    payment.chequeStatus = newChequeStatus;
+    if (body.paymentDate) payment.paymentDate = new Date(body.paymentDate);
+    if (body.chequeDate !== undefined) payment.chequeDate = body.chequeDate ? new Date(body.chequeDate) : undefined;
+    EDITABLE_TEXT.forEach((k) => {
+        if (body[k] !== undefined) payment[k] = typeof body[k] === 'string' ? body[k].trim() : body[k];
+    });
+    await payment.save();
+
+    if (payment.voucherType === 'customer_advance_refund' && payment.customerId) {
+        await updateCustomerBalance(payment.customerId);
+    }
+
+    // ── Audit log ──
+    const after = {
+        amount: payment.amount,
+        method: payment.method,
+        bankAccountId: payment.bankAccountId ? String(payment.bankAccountId) : null,
+        paymentDate: payment.paymentDate,
+        chequeDate: payment.chequeDate,
+    };
+    EDITABLE_TEXT.forEach((k) => { after[k] = payment[k] ?? ''; });
+    const changes = {};
+    const previousData = {};
+    Object.keys(after).forEach((k) => {
+        const a = after[k] instanceof Date ? after[k].toISOString() : after[k];
+        const b = before[k] instanceof Date ? before[k].toISOString() : before[k];
+        if (String(a ?? '') !== String(b ?? '')) {
+            changes[k] = after[k];
+            previousData[k] = before[k];
+        }
+    });
+    await createAuditLog({
+        action: 'update',
+        module: 'finance',
+        documentId: payment._id,
+        documentCode: payment.paymentNumber,
+        description: `Payment voucher ${payment.paymentNumber} edited. Reason: ${editReason}`,
+        changes: { ...changes, editReason },
+        previousData,
+        req,
+    });
+
+    try {
+        broadcast('financial_update', { message: `Voucher ${payment.paymentNumber} was edited` });
+        for (const bankId of touchedBanks) {
+            const acc = await BankAccount.findById(bankId);
+            if (acc) broadcast('bank_balance_update', { bankAccountId: acc._id, balance: acc.balance });
+        }
+    } catch (_) {}
+
+    const populated = await Payment.findById(payment._id)
+        .populate('customerId', 'displayName customerCode primaryContact billingAddress')
+        .populate('supplierId', 'displayName supplierCode primaryContact address')
+        .populate('employeeId', 'firstName lastName employeeCode')
+        .populate('bankAccountId', 'bankName accountNumber accountName')
+        .populate('receivedBy', 'firstName lastName fullName signature')
+        .populate('createdBy', 'firstName lastName fullName signature');
+
+    res.json({
+        success: true,
+        message: `Voucher ${payment.paymentNumber} updated. Balances have been recalculated.`,
+        data: populated,
+    });
+};
+
+/**
  * PUT /api/payments/:id
  * Edit a customer payment receipt.
  *
@@ -879,8 +1099,8 @@ export const updatePayment = asyncHandler(async (req, res) => {
         throw new Error('A cancelled receipt cannot be edited');
     }
     if (payment.direction === 'paid' || payment.voucherType) {
-        res.status(400);
-        throw new Error('Only customer payment receipts can be edited');
+        // Payment vouchers (money paid out) have their own rules
+        return updateVoucher(req, res, payment);
     }
 
     const body = req.body || {};
@@ -1083,7 +1303,9 @@ export const cancelPayment = asyncHandler(async (req, res) => {
     }
 
     // 1. Reverse Bank Account balance if it was adjusted
-    const isChequePending = payment.method === 'cheque' && payment.chequeStatus !== 'cleared';
+    const isChequePending = payment.direction === 'paid'
+        ? (payment.method === 'cheque' && !!payment.chequeStatus && payment.chequeStatus !== 'cleared')
+        : (payment.method === 'cheque' && payment.chequeStatus !== 'cleared');
     if (payment.bankAccountId && !isChequePending) {
         const bankAccount = await BankAccount.findById(payment.bankAccountId);
         if (bankAccount) {
