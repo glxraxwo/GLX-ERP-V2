@@ -174,6 +174,62 @@ export default function EmployeeFormPage() {
         }
     }, [isEdit, existingData]);
 
+    // ── Draft auto-save ─────────────────────────────────────────────────────
+    // Keeps what was typed in this browser so leaving the page does not lose it.
+    // The draft is removed after a successful save.
+    const draftKey = isEdit ? `glx-employee-form-draft:${id}` : 'glx-employee-form-draft:new';
+    const draftReadyRef = useRef(false);
+    const baselineRef = useRef(null);
+
+    const readDraft = () => {
+        try {
+            const raw = localStorage.getItem(draftKey);
+            return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+    };
+    const clearDraft = () => {
+        try { localStorage.removeItem(draftKey); } catch { }
+    };
+
+    // Restore the draft once (for edit: after the saved employee has loaded)
+    useEffect(() => {
+        if (draftReadyRef.current) return;
+        if (isEdit && !existingData?.data) return;
+        const draft = readDraft();
+        if (draft?.form) {
+            setForm((prev) => ({ ...prev, ...draft.form, loginPassword: '' }));
+            if (draft.step === 1 || draft.step === 2) setStep(draft.step);
+            toast.success('Unsaved draft restored (සුරැකූ කෙටුම්පත ලබා ගත්තා)');
+        }
+        draftReadyRef.current = true;
+    }, [isEdit, existingData]);
+
+    // Save the draft whenever the form changes
+    useEffect(() => {
+        if (!draftReadyRef.current) return;
+        const { loginPassword, ...rest } = form;
+        const draftForm = { ...rest };
+        // Picked files cannot be kept in a draft, so drop their placeholder names
+        for (const docType of ['gsCertificate', 'educationCertificates', 'policeReport']) {
+            if (pendingFiles[docType] && draftForm[docType]) {
+                draftForm[docType] = { ...draftForm[docType], url: '', status: 'pending' };
+            }
+        }
+        const snapshot = JSON.stringify(draftForm);
+        if (baselineRef.current === null) { baselineRef.current = snapshot; return; }
+        if (snapshot === baselineRef.current) return; // nothing typed yet
+        try {
+            localStorage.setItem(draftKey, JSON.stringify({ form: draftForm, step, savedAt: Date.now() }));
+        } catch { }
+    }, [form, step, pendingFiles]);
+
+    const discardDraft = () => {
+        clearDraft();
+        toast.success('Draft cleared');
+        if (isEdit) window.location.reload();
+        else { baselineRef.current = null; draftReadyRef.current = false; window.location.reload(); }
+    };
+
     // Auto-focus on step change
     useEffect(() => {
         if (step === 1) {
@@ -286,11 +342,7 @@ export default function EmployeeFormPage() {
     };
 
     const submit = async () => {
-        if (!form.firstName || !form.lastName || !form.dateOfJoining) {
-            toast.error('First name, last name and date of joining are required');
-            setStep(1);
-            return;
-        }
+        // No employee field is mandatory: an employee can be saved with any field left empty.
         if (form.createLogin && (!isEdit || !existingData?.data?.userId)) {
             const emailToUse = form.loginEmail || form.email;
             if (!emailToUse) {
@@ -343,10 +395,12 @@ export default function EmployeeFormPage() {
             };
             if (isEdit) {
                 await updateMutation.mutateAsync({ id, data: payload });
+                clearDraft();
                 navigate(`/employees/${id}`);
             } else {
                 const result = await createMutation.mutateAsync(payload);
                 const newId = result?.data?._id || result?._id;
+                clearDraft();
 
                 const pendingKeys = Object.keys(pendingFiles);
                 if (pendingKeys.length > 0 && newId) {
@@ -554,14 +608,12 @@ export default function EmployeeFormPage() {
                                     <Input
                                         ref={firstNameInputRef}
                                         label="First Name"
-                                        required
                                         value={form.firstName}
                                         onChange={(e) => update('firstName', e.target.value)}
                                         placeholder="First Name (මුල් නම)"
                                     />
                                     <Input
                                         label="Last Name"
-                                        required
                                         value={form.lastName}
                                         onChange={(e) => update('lastName', e.target.value)}
                                         placeholder="Last Name (වාසගම)"
@@ -741,7 +793,6 @@ export default function EmployeeFormPage() {
                                     />
                                     <Input
                                         label="Date of Joining (සේවයට එක්වූ දිනය)"
-                                        required
                                         type="date"
                                         value={form.dateOfJoining}
                                         onChange={(e) => update('dateOfJoining', e.target.value)}
@@ -807,7 +858,6 @@ export default function EmployeeFormPage() {
                                     <Select
                                         ref={compensationRef}
                                         label="Labour Payment Type (ගෙවීම් ක්‍රමය)"
-                                        required
                                         options={[
                                             { value: 'monthly', label: 'Monthly (මාසික වැටුප්)' },
                                             { value: 'per_day', label: 'Per Day (දිනකට ගෙවන ගාස්තුව)' },
@@ -823,7 +873,6 @@ export default function EmployeeFormPage() {
                                             type="number"
                                             step="0.01"
                                             min="0"
-                                            required
                                             value={form.labourRate || ''}
                                             onChange={(e) => {
                                                 const val = Number(e.target.value);
@@ -840,7 +889,6 @@ export default function EmployeeFormPage() {
                                             type="number"
                                             step="0.01"
                                             min="0"
-                                            required
                                             value={form.monthlySalary || ''}
                                             onChange={(e) => {
                                                 const val = Number(e.target.value);
@@ -855,7 +903,6 @@ export default function EmployeeFormPage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                     <Select
                                         label="Employee Category"
-                                        required
                                         options={[
                                             { value: 'Permanent', label: 'Permanent' },
                                             { value: 'Trainee', label: 'Trainee' }

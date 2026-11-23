@@ -93,7 +93,30 @@ export const deleteDesignation = asyncHandler(async (req, res) => {
 // EMPLOYEES
 // ============================================================
 
+// No employee field is mandatory. Blank values from the form ('' / null) would make
+// Mongoose fail on ObjectId refs and enum fields, so drop them before saving.
+const EMPLOYEE_REF_FIELDS = ['userId', 'departmentId', 'designationId', 'reportsToId', 'workShift', 'salaryStructureId', 'leaveStructureId'];
+const EMPLOYEE_ENUM_FIELDS = ['paymentType', 'employeeCategory'];
+const EMPLOYEE_DOC_FIELDS = ['gsCertificate', 'educationCertificates', 'policeReport'];
+const sanitizeEmployeeBody = (body = {}, { forUpdate = false } = {}) => {
+    const isBlank = (v) => v === '' || v === null || (typeof v === 'string' && v.trim() === '');
+    for (const f of EMPLOYEE_REF_FIELDS) {
+        if (f in body && isBlank(body[f])) {
+            if (forUpdate) body[f] = null; else delete body[f];
+        }
+    }
+    for (const f of EMPLOYEE_ENUM_FIELDS) {
+        if (f in body && isBlank(body[f])) delete body[f];
+    }
+    for (const f of EMPLOYEE_DOC_FIELDS) {
+        if (body[f] && typeof body[f] === 'object' && isBlank(body[f].status)) delete body[f].status;
+    }
+    if ('employeeCode' in body && isBlank(body.employeeCode)) delete body.employeeCode;
+    return body;
+};
+
 export const createEmployee = asyncHandler(async (req, res) => {
+    sanitizeEmployeeBody(req.body);
 
     let linkedUserId = req.body.userId || null;
 
@@ -279,6 +302,7 @@ export const updateEmployee = asyncHandler(async (req, res) => {
         res.status(404);
         throw new Error('Employee not found');
     }
+    sanitizeEmployeeBody(req.body, { forUpdate: true });
 
     // Do not block partial updates (like status toggling: active / inactive)
     const isPartialUpdate = req.body.status !== undefined && !req.body.firstName && !req.body.employeeCode;
